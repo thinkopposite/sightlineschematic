@@ -574,6 +574,25 @@ const SPORTS={
   rugbyu:Object.assign(rugby({union:true,ig:10,W:70,post:5.6}),{region:'world',name:'Rugby Union',org:'World Rugby',rule:'World Rugby Laws of the Game, Law 1'}),
   rugbyl:Object.assign(rugby({union:false,ig:8,W:68,post:5.5}),{region:'world',name:'Rugby League',org:'IRL',rule:'IRL International Laws of the Game, Section 1'})
 };
+// Minimum Sideline Depth (red line to the Tier 1 front riser) and Tier-1 bottom tread above the pitch, by sport. These are the
+// defaults and the lowest slider values. US sports in feet, international in round metres. Depth: governing-body clearances
+// (sources in the notes); height: no governing body sets one, so these are practice values for seeing over boards and benches.
+const FT_=0.3048,SPORT_MIN={
+  nfl:[40*FT_,8*FT_],      // practice: 6 ft border + team area + limit line behind it
+  ncaafb:[35*FT_,8*FT_],   // NCAA FR-17: limit line 12 ft outside the sideline, team area behind it
+  nba:[8*FT_,0],           // NBA Rule 1: minimum floor 110 ft x 60 ft (8 ft past end lines, 5 ft past sidelines); courtside at floor level
+  ncaabb:[3*FT_,0],        // NCAA court diagram: minimum 3 ft (preferably 10 ft) unobstructed outside the court
+  mls:[20*FT_,3.333*FT_],  // follows FIFA/UEFA: boards 3 m from the lines + boards + 2 m working space behind them
+  nhl:[2*FT_,1*FT_],       // practice: first row directly behind the dasher boards and glass
+  usta:[21*FT_,2*FT_],     // ITF Appendix: 21 ft (6.40 m) behind the baseline, 12 ft (3.66 m) beside the sidelines
+  fifa:[6.0,1.0],          // UEFA: fixed elements at least 3 m from the lines, 2 m working space behind boards; FIFA recommends 8.5 m / 10 m
+  fiba:[2.0,0],            // FIBA 2026 Equipment 11.3: spectators at least 2,000 mm from the boundary line
+  fih:[3.0,0.5],           // FIH: run-off 2 m at the sidelines, 3 m at the backlines
+  itf:[6.5,0.6],           // ITF Appendix: 6.40 m behind the baseline (3.66 m beside the sidelines)
+  rugbyu:[5.0,1.0],        // World Rugby Law 1: perimeter area 5 m where practicable (3.5 m men's minimum)
+  rugbyl:[5.0,1.0]};       // no IRL figure found: World Rugby's 5 m perimeter used
+Object.entries(SPORT_MIN).forEach(([k,[D,Z]])=>{if(SPORTS[k])Object.assign(SPORTS[k],{D,Z,Dmin:D,Zmin:Z});});
+
 const LEGACY_SPORT={football:'fifa',rugby:'rugbyu',gridiron:'nfl',athletics:'usatf'};
 
 // ---------- dimension strings (architectural ticks, text in the selected unit format) ----------
@@ -735,6 +754,8 @@ function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGAC
   if(P.eyeRev!==EYE_REV){P.eye=eyeDefaults();P.eyeRev=EYE_REV;}P.eye=Object.assign(eyeDefaults(),P.eye||{});delete P.eye.bnFront;if(P.eyeMode!=='stand')P.eyeMode='sit';
   for(const k of['fl','cf','bs','L','W','lanes','railH','minHead','suiteH','maxRiser','step','slabT'])if(!(P[k]>0))P[k]=d[k];
   P.north='L';if(P.planOri!=='h')P.planOri='v';
+  P.zt.forEach((t,i)=>GEO.forEach(k=>{const z=t.z[k];if(!z)return;z.tread=Math.max(z.tread,33*25.4);z.tread0=Math.max(z.tread0,33*25.4);
+    const Sp=SPORTS[P.sport];if(i===0&&Sp){z.D=Math.max(z.D,Sp.Dmin??0);z.Z=Math.max(z.Z,Sp.Zmin??0);}}));
   if(P.cvRev!==2){P.zt.forEach(t=>GEO.forEach(k=>{if(t.z[k])t.z[k].target=cvDefault(P.sport);}));P.cvRev=2;}   // adopt the sport C-value onceP.tierCount=Math.min(2,Math.max(1,P.tierCount|0||2));
   Object.assign(P,{step:12.7,maxRiser:24*25.4,bank:1,railH:26*25.4,minHead:10*304.8});             // fixed values
   if(P.sport==='nfl'||P.sport==='ncaafb')Object.assign(P,{L:360*0.3048,W:160*0.3048});           // football field 360 ft x 160 ftif(!GEO.includes(P.sec))P.sec='T';
@@ -943,7 +964,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.04.2';
+const VERSION='2026.10.05.1';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1074,11 +1095,14 @@ function zoneEditor(ti,g){
   h+=all4?seatBlock(['T','B'],'East and West sidelines')+seatBlock(['L','R'],'North and South end zones'):seatBlock(g,'');
   h+='<div class="lab">Riser</div><div class="seg">'+[['parabolic','Parabolic riser'],['constant','Constant riser']].map(([k,n])=>`<button data-riser="${k}" data-g="${pre}" class="${(z.riser||'parabolic')===k?'on':''}">${n}</button>`).join('')+'</div>'
     +`<p class="hint">${z.riser==='constant'?`One riser for every row: the smallest ${L(P.step)} step that meets the C-value, up to the ${L(P.maxRiser)} maximum.`:`Each riser sized to meet the C-value, in ${L(P.step)} steps.`} Sized for ${BASIS[z.basis]||'sitting'} spectators.</p>`;
-  h+=slider(pre+'.rows','Rows (1 row)',3,80,1,'rows')+slider(pre+'.tread','Typical row depth (1 inch)',24*25.4,52*25.4,25.4,'mm')
-    +slider(pre+'.tread0','Bottom row depth (1 inch)',24*25.4,60*25.4,25.4,'mm')
+  h+=slider(pre+'.rows','Rows (1 row)',3,80,1,'rows')+slider(pre+'.tread','Typical row depth (1 inch)',33*25.4,52*25.4,25.4,'mm')
+    +slider(pre+'.tread0','Bottom row depth (1 inch)',33*25.4,60*25.4,25.4,'mm')
     +cvEditor(pre,z,ti);
-  if(ti===0)h+=slider(pre+'.D','Sideline depth (2 foot)',20*0.3048,60*0.3048,0.6096,'m')+slider(pre+'.Z','Tier-1 bottom tread above the pitch (4 inch)',1*0.3048,20*0.3048,0.1016,'m');
-  else h+=slider(pre+'.X','Sideline depth (2 foot)',20*0.3048,400*0.3048,0.6096,'m')
+  const Sp=SPORTS[P.sport],imp=imperial();
+  if(ti===0)h+=slider(pre+'.D',`Sideline depth (${imp?'1 foot':'100 mm'})`,Sp.Dmin??0,imp?60*0.3048:18,imp?0.3048:0.1,'m')
+    +slider(pre+'.Z',`Tier-1 bottom tread above the pitch (${imp?'4 inch':'100 mm'})`,Sp.Zmin??0,imp?20*0.3048:6,imp?0.1016:0.1,'m')
+    +`<p class="hint">${Sp.name} minimum: ${L((Sp.Dmin??0)*1000)} depth, ${L((Sp.Zmin??0)*1000)} bottom tread.</p>`;
+  else h+=slider(pre+'.X',`Sideline depth (${imperial()?'1 foot':'100 mm'})`,2*0.3048,400*0.3048,imperial()?0.3048:0.1,'m')
     +(z.X==null?'<p class="hint">First riser aligned over the Tier-1 last riser; it follows Tier 1 automatically.</p>'
       :`<p class="hint" id="sbHint">${setbackText(ti,g[0])}</p><button data-realign="${ti}" style="margin:4px 0 6px">Align to Tier-1 last riser</button>`)
     +slider(pre+'.Zabs','Tier-2 bottom tread above the pitch (4 inch)',3*0.3048,150*0.3048,0.1016,'m');
