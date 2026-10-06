@@ -1083,7 +1083,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.06.6';
+const VERSION='2026.10.06.8';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1463,6 +1463,37 @@ function drawDetail(all,o={}){
   for(let i=1;i<pts.length;i++)s+=`<text x="${f1((+X(pts[i-1])+ +X(pts[i]))/2)}" y="${f1(+Y(yc)+fs*.85)}" font-size="${f1(fs*.6)}" fill="${c}" font-weight="600" text-anchor="middle">${L(pts[i]-pts[i-1])}${i===pts.length-1&&i>=2?'<tspan font-weight="400"> (TYP.)</tspan>':''}</text>`;
   return s+'</svg>';
 }
+function drawPlatform(o={}){
+  const g=platformGeo();if(!g)return '<p class="empty" style="padding:16px">Needs at least four rows.</p>';
+  const {rs,s0,sd,p1,p2,zP,edge,front,eye,st,si}=g,IN=25.4,E=P.eye,hr=4.5*IN,t=slabT(),fs=o.fs||110;
+  const X0=s0.x-300-fs*8,X1=p2.x+p2.T+9*IN+fs*17,Z0=s0.z-30*IN-fs*2.2,Z1=Math.max(st.z,eye.z,si.z)+HEAD+fs*1.6,W=X1-X0,H=Z1-Z0;
+  const X=x=>(x-X0).toFixed(1),Y=z=>(Z1-z).toFixed(1),c='var(--dim)',tk=fs*.3,f1=v=>(+v).toFixed(1);
+  const ln=(x0,z0,x1,z1,w)=>`<line x1="${X(x0)}" y1="${Y(z0)}" x2="${X(x1)}" y2="${Y(z1)}" stroke="${c}" stroke-width="${w||0.9}" vector-effect="non-scaling-stroke"/>`;
+  const vdim=(x,z0,z1,lab,right)=>{const ym=(+Y(z0)+ +Y(z1))/2;return ln(x,z0,x,z1)+[z0,z1].map(z=>`<line x1="${f1(+X(x)-tk)}" y1="${Y(z)}" x2="${f1(+X(x)+tk)}" y2="${Y(z)}" stroke="${c}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`).join('')
+    +`<text x="${f1(+X(x)+(right?fs*.4:-fs*.4))}" y="${f1(ym+fs*.22)}" font-size="${f1(fs*.62)}" fill="${c}" text-anchor="${right?'start':'end'}">${lab}</text>`;};
+  const hdim=(x0,x1,z,lab)=>ln(x0,z,x1,z)+[x0,x1].map(x=>`<line x1="${f1(+X(x)-tk)}" y1="${f1(+Y(z)+tk)}" x2="${f1(+X(x)+tk)}" y2="${f1(+Y(z)-tk)}" stroke="${c}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`).join('')
+    +`<text x="${f1((+X(x0)+ +X(x1))/2)}" y="${f1(+Y(z)-fs*.3)}" font-size="${f1(fs*.62)}" fill="${c}" text-anchor="middle">${lab}</text>`;
+  let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Wheelchair on an accessible platform">`+gridBg(X0,X1,Z0,Z1,X,Y,s0.x,s0.z);
+  s+=`<polygon points="${profileOf(rs,1).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(0)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;   /* bowl section unchanged */
+  s+=`<rect x="${X(p1.x)}" y="${Y(zP)}" width="${f1(p2.x-p1.x)}" height="${f1(zP-p1.z)}" fill="${tierFill(1)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;   /* infill up to the top tread */
+  s+=`<rect x="${X(edge-25.4)}" y="${Y(zP+P.railH)}" width="50.8" height="${P.railH.toFixed(1)}" fill="#000000"/>`;   /* 26 in guard rail at the platform edge */
+  const people=[{e:si,r:s0,k:'sit'},{e:st,r:sd,k:'stand'},{e:eye,k:'wc'}];
+  people.forEach(p=>{s+=`<line x1="${X(p.e.x)}" y1="${Y(p.e.z)}" x2="${X(X0)}" y2="${Y(p.e.z*X0/p.e.x)}" stroke="var(--sl-ok)" stroke-width="0.9" vector-effect="non-scaling-stroke"/>`;});
+  people.forEach(p=>{const e=p.e,cy=e.z+4.45*IN-hr,floor=p.k==='wc'?zP:p.r.z;
+    s+=`<line x1="${X(e.x)}" y1="${Y(cy-hr)}" x2="${X(e.x)}" y2="${Y(floor)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>`
+      +`<circle cx="${X(e.x)}" cy="${Y(cy)}" r="${hr}" fill="none" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`
+      +`<line x1="${X(e.x-3.5*IN)}" y1="${Y(e.z+2.25*IN)}" x2="${X(e.x+3.5*IN)}" y2="${Y(e.z+2.25*IN)}" stroke="#FF0000" stroke-width="1" vector-effect="non-scaling-stroke"/>`
+      +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(IN*.9)}" fill="var(${p.k==='stand'?'--eye-stand':'--eye-sit'})" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`
+      +(p.k==='wc'?`<circle cx="${X(e.x-4*IN)}" cy="${Y(zP+12*IN)}" r="${12*IN}" fill="none" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`:'');});
+  rs.forEach(r=>{s+=`<text x="${X(r.x+r.T/2)}" y="${f1(+Y(r.z-t)+fs*.75)}" font-size="${f1(fs*.55)}" fill="var(--ink)" font-weight="600" text-anchor="middle">Row ${r.row}</text>`;});
+  s+=`<text x="${X((p1.x+p2.x)/2)}" y="${f1((+Y(zP)+ +Y(p1.z))/2+fs*.2)}" font-size="${f1(fs*.55)}" fill="var(--ink)" font-weight="600" text-anchor="middle">Platform</text>`;
+  const zc=zP+(eye.z-zP)*.42;s+=hdim(edge,front,zc,'12"')+hdim(front,eye.x,zc,'30"')+ln(eye.x,eye.z,eye.x,zc-tk,0.5)+ln(front,zP,front,zc+tk,0.5);   /* A117.1: edge, 12 in to the space, 30 in to the eye */
+  const xe=p2.x+p2.T+9*IN;s+=vdim(xe,zP,eye.z,`Wheelchair eye ${L(E.wcH)}`,true)+ln(eye.x,eye.z,xe+tk,eye.z,0.5)+ln(p2.x+p2.T,zP,xe+tk,zP,0.5);
+  s+=vdim(edge-5*IN,sd.z,zP,`Platform ${inchText(zP-sd.z)} (min ${inchText(Math.max(0,g.Hreq)*25.4)})`,false);
+  s+=vdim(edge+5*IN,zP,zP+P.railH,'26" rail',true);
+  const zl=eye.z*st.x/eye.x;s+=vdim(st.x-5*IN,st.z,zl,`C ${CV(zl-st.z)}`,false);
+  return s+'</svg>';
+}
 // ---------- isometric view ----------
 // The 3D stands (same geometry as the SketchUp export), seen from one corner in true isometric, painter's-sorted and shaded.
 // Model axes: +X south, +Y east (north end zone at -X). The camera sits on the chosen corner, up at 35.26 degrees.
@@ -1521,19 +1552,34 @@ function drawIso(){
   return svg+'</svg>';
 }
 // ---------- enlarged spectators: three Tier 1 rows, sitting or standing, with the eye sight values dimensioned ----------
-function spectatorRows(){const t1=(ZR.T||[]).filter(r=>r.tier===0);if(t1.length<3)return t1;
-  let k=2,best=Infinity;for(let i=2;i<t1.length;i++){const c=rowC(t1,i,'sit');if(c!=null&&c<best){best=c;k=i;}}return t1.slice(k-2,k+1);}   // ends at the governing row
+function spectatorRows(){const t1=(ZR.T||[]).filter(r=>r.tier===0);if(t1.length<4)return t1;
+  let k=3,best=Infinity;for(let i=3;i<t1.length;i++){const c=rowC(t1,i,'sit');if(c!=null&&c<best){best=c;k=i;}}return t1.slice(k-3,k+1);}   // four rows ending at the governing row   // ends at the governing row
 function spectatorInfo(mode){
-  if(mode==='wc'){const E=P.eye,rs=spectatorRows(),last=rs[rs.length-1],m=rs[1];if(!last||!m)return [];
+  if(mode==='plat')return platformInfo();
+  if(mode==='wc'){const E=P.eye,rs=spectatorRows(),last=rs[rs.length-1],m=rs[rs.length-2];if(!last||!m)return [];
     const e={x:last.x+last.T,z:last.z+E.wcH},p={x:m.x+m.T,z:m.z+E.sitH},C=e.z*p.x/e.x-p.z;
     return [['Wheelchair eye height',`${L(E.wcH)} above the tread`],['Wheelchair eye, horizontal','aligned to the back riser'],['Wheelchair head height',`${L(E.wcH+HEAD)} (eye + 2 × 2 ¼")`],
-      ['Red line','2 ¼" above the eye'],[`C-value, row ${last.row} (wheelchair) over row ${m.row}`,`${CV(C)} (minimum ${CV(last.target)})`],['Rows in front','sitting spectators']];}const E=P.eye,rs=spectatorRows(),t1=(ZR.T||[]).filter(r=>r.tier===0),i=t1.indexOf(rs[rs.length-1]),C=rowC(t1,i,mode),tg=rs[rs.length-1]?.target;
+      ['Red line','2 ¼" above the eye'],[`C-value, row ${last.row} (wheelchair) over row ${m.row}`,`${CV(C)} (minimum ${CV(last.target)})`],['Rows in front','sitting spectators']];}const E=P.eye,rs=spectatorRows(),t1=(ZR.T||[]).filter(r=>r.tier===0),i=t1.indexOf(rs[rs.length-1]),C=rowC(t1,i,mode),tg=rs[rs.length-1]?.target,rf=rs[rs.length-2];
   const ci=v=>v==null?'n/a':CV(v);
   return mode==='stand'?[['Standing eye height',`${L(E.stH)} above the tread`],['Standing eye, horizontal',`${L(E.stOff)} back from the front riser`],['Standing head height',`${L(E.stH+HEAD)} (eye + 2 × 2 ¼")`],
-      ['Red line','2 ¼" above the eye'],[`C-value, row ${rs[rs.length-1]?.row} over row ${rs[1]?.row}`,`${ci(C)} (minimum ${ci(tg)})`],['Wheelchair eye height',L(E.wcH)]]
+      ['Red line','2 ¼" above the eye'],[`C-value, row ${rs[rs.length-1]?.row} over row ${rf?.row}`,`${ci(C)} (minimum ${ci(tg)})`],['Wheelchair eye height',L(E.wcH)]]
     :[['Sitting eye height',`${L(E.sitH)} above the tread`],['Sitting eye, horizontal','aligned to the back riser'],['Sitting head height',`${L(E.sitH+HEAD)} (eye + 2 × 2 ¼")`],
-      ['Red line','2 ¼" above the eye'],[`C-value, row ${rs[rs.length-1]?.row} over row ${rs[1]?.row}`,`${ci(C)} (minimum ${ci(tg)})`],['Eye sight values','locked standard, chairback and bench']];}
+      ['Red line','2 ¼" above the eye'],[`C-value, row ${rs[rs.length-1]?.row} over row ${rf?.row}`,`${ci(C)} (minimum ${ci(tg)})`],['Eye sight values','locked standard, chairback and bench']];}
+// Wheelchair on an accessible platform (ICC A117.1 802.9.2). The bowl section is unchanged; the space above the top two treads
+// is filled up to the top tread to make a level platform. Bottom row sitting, next row standing, wheelchair on the platform:
+// front of the wheelchair space 12 in from the platform edge (the back of the tread in front, 802.9.2.1), eye 30 in behind that
+// (the geometry behind Table 802.9.2.2: H = (2X+34)(Y-2.25)/X + (20.2-Y)); 26 in sightline guard rail on the platform edge.
+function platformGeo(){const rs=spectatorRows();if(rs.length<4)return null;const E=P.eye,IN=25.4,s0=rs[0],sd=rs[1],p1=rs[2],p2=rs[3];
+  const zP=p2.z,edge=p1.x,front=edge+12*IN,eye={x:front+30*IN,z:zP+E.wcH},st={x:sd.x+E.stOff,z:sd.z+E.stH},si={x:s0.x+s0.T,z:s0.z+E.sitH};
+  const X=sd.T/IN,Y=(sd.riser??p1.riser??0)/IN,Hreq=(2*X+34)*(Y-2.25)/X+(20.2-Y),H=(zP-sd.z)/IN,C=eye.z*st.x/eye.x-st.z;
+  return {rs,s0,sd,p1,p2,zP,edge,front,eye,st,si,X,Y,Hreq,H,C};}
+function platformInfo(){const g=platformGeo();if(!g)return [];const E=P.eye;
+  return [['Platform',`infill over rows ${g.p1.row}–${g.p2.row}, level with row ${g.p2.row}; 26" guard rail on its edge`],
+    ['Front of wheelchair space','12" from the platform edge (ICC A117.1 802.9.2.1)'],['Wheelchair eye',`${L(E.wcH)} above the platform, 30" behind the front of the space`],
+    [`Platform above row ${g.sd.row}`,`${inchText(g.H*25.4)} (A117.1 Table 802.9.2.2 minimum ${inchText(Math.max(0,g.Hreq)*25.4)}: ${g.H>=g.Hreq-0.01?'meets':'below'})`],
+    [`C-value over the standing spectator, row ${g.sd.row}`,CV(g.C)],[`Row ${g.s0.row}`,'sitting']];}
 function drawSpectator(mode,o={}){
+  if(mode==='plat')return drawPlatform(o);
   const rs=spectatorRows();if(rs.length<2)return '<p class="empty" style="padding:16px">Needs at least two rows.</p>';
   const IN=25.4,E=P.eye,hr=4.5*IN,last=rs[rs.length-1],ey=rs.map(r=>mode==='stand'?{x:r.x+E.stOff,z:r.z+E.stH}:{x:r.x+r.T,z:r.z+(mode==='wc'&&r===last?E.wcH:E.sitH)});
   const fs=o.fs||110,eT0=ey[ey.length-1];                              // margins follow the text size, so larger print scales fit
@@ -1555,7 +1601,7 @@ function drawSpectator(mode,o={}){
       +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(IN*.9)}" fill="var(${mode==='stand'?'--eye-stand':'--eye-sit'})" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`
       +(mode==='wc'&&r===last?`<circle cx="${X(e.x-4*IN)}" cy="${Y(r.z+12*IN)}" r="${12*IN}" fill="none" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`:'')
       +`<text x="${X(r.x+r.T*.5)}" y="${f1(+Y(r.z-slabT())+fs*.75)}" font-size="${f1(fs*.55)}" fill="var(--ink)" font-weight="600" text-anchor="middle">Row ${r.row}</text>`;});   // under the tread
-  const r0=rs[0],e0=ey[0],m=rs[1],em=ey[1],eT=ey[ey.length-1];
+  const r0=rs[0],e0=ey[0],m=rs[rs.length-2],em=ey[rs.length-2],eT=ey[ey.length-1];
   // eye height and head height on the top spectator, in the open space to its right
   const xe=Math.max(eT.x,last.x+last.T)+9*IN;
   const eH=mode==='stand'?E.stH:mode==='wc'?E.wcH:E.sitH,eN=mode==='stand'?'Standing':mode==='wc'?'Wheelchair':'Sitting';
@@ -1731,7 +1777,7 @@ function update(){
   $('countTable').innerHTML=countTableHTML();
   $('lgSurf').textContent=surf();$('lgT1').style.background=tierFill(0);$('lgT2').style.background=tierFill(1);
   {const tab=m=>'<table class="fixed" style="margin-top:6px">'+spectatorInfo(m).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+'</table>';
-   $('spect').innerHTML=['sit','stand','wc'].map(m=>`<div><div class="lab"><b>${({stand:'Standing',wc:'Wheelchair'})[m]||'Sitting'}</b>, Tier 1 East, rows ${spectatorRows().map(r=>r.row).join('–')}</div>${drawSpectator(m)}${tab(m)}</div>`).join('');}
+   $('spect').innerHTML=['sit','stand','wc','plat'].map(m=>`<div><div class="lab"><b>${({stand:'Standing',wc:'Wheelchair',plat:'Wheelchair on accessible platform'})[m]||'Sitting'}</b>, Tier 1 East, rows ${spectatorRows().map(r=>r.row).join('–')}</div>${drawSpectator(m)}${tab(m)}</div>`).join('');}
   $('iso').innerHTML=drawIso();$('isoTitle').textContent=`Isometric view from the ${({SE:'south-east',SW:'south-west',NW:'north-west',NE:'north-east'})[ISOVIEW]}`;
   renderOpts();
 }
@@ -1890,7 +1936,7 @@ function scaleBar(sh,fit){const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=
   return g+`<text x="${f(B+5*u*per+sh.txt*.5)}" y="${f(gy+sh.txt*.5+bh*.9)}" font-size="${f(sh.txt*.85)}">${imperial()?'feet':'metres'}</text>`;}
 // Sitting and standing spectators side by side at one standard scale, with the eye sight values listed under each.
 function plotSpectators(sh){const B=sh.B,f=v=>(+v).toFixed(4),title=sh.txt*3.2,gap=sh.txt*5,info=sh.txt*9,cw=(sh.w-2*B-gap)/2,ch=(sh.h-2*B-title-gap)/2,aw=cw,ah=ch-info-sh.txt*2;
-  const modes=['sit','stand','wc'],names={sit:'Sitting',stand:'Standing',wc:'Wheelchair'};let fit=null;
+  const modes=['sit','stand','wc','plat'],names={sit:'Sitting',stand:'Standing',wc:'Wheelchair',plat:'Wheelchair on accessible platform'};let fit=null;
   for(const sc of DETAIL_SCALES()){const k=1/sc.ratio/25.4,fs=sh.txt*1.7*25.4*sc.ratio,d=modes.map(m=>drawSpectator(m,{fs}));
     const v=d.map(x=>x.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number));
     if(v.every(([w,h])=>w*k<=aw&&h*k<=ah)){fit={sc,k,d,v,u:25.4*sc.ratio};break;}}
@@ -1900,7 +1946,7 @@ function plotSpectators(sh){const B=sh.B,f=v=>(+v).toFixed(4),title=sh.txt*3.2,g
     svg+=`<text x="${f(cx)}" y="${f(cy+sh.txt*1.2)}" font-size="${f(sh.txt*1.3)}" font-weight="800">${names[m]} spectators, Tier 1 ${zoneName(P,'T')}, rows ${rs.map(r=>r.row).join('–')}</text>`
       +trueStrokes(fit.d[i],fit.u).replace('<svg ',`<svg x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" preserveAspectRatio="xMidYMid meet" `);
     spectatorInfo(m).forEach(([k2,v2],j)=>{const yy=cy+sh.txt*2+ah+sh.txt*(1.3+j*1.3);svg+=`<text x="${f(cx)}" y="${f(yy)}" font-size="${f(sh.txt*.95)}" font-weight="700">${k2}</text><text x="${f(cx+sh.txt*26)}" y="${f(yy)}" font-size="${f(sh.txt*.95)}">${v2}</text>`;   /* two columns: bold text widths are not measured reliably in the PDF */});});
-  svg+=`<text x="${f(sh.w*.5)}" y="${f(ty-sh.txt*1.6)}" font-size="${f(sh.txt*1.5)}" font-weight="800" text-anchor="start">Sightline Schematic: Eye sight values, sitting, standing and wheelchair</text>`
+  svg+=`<text x="${f(sh.w*.5)}" y="${f(ty-sh.txt*1.6)}" font-size="${f(sh.txt*1.5)}" font-weight="800" text-anchor="start">Sightline Schematic: Eye sight values, sitting, standing, wheelchair and accessible platform</text>`
     +`<text x="${f(sh.w*.5)}" y="${f(ty)}" font-size="${f(sh.txt*.95)}" text-anchor="start">${Sp.name} (${Sp.org}) | ${optName()} | Scale ${fit.sc.label} | ${sh.name} landscape | ${new Date().toLocaleDateString()}</text></svg>`;
   const tmp=document.createElement('div');tmp.innerHTML=svg;titleize(tmp);return {svg:tmp.innerHTML,scale:fit.sc.label,sheet:sh,what:'spect'};}
 // Bowl section (both tiers, the side picked above the section) on one landscape sheet, largest standard scale that fits.
