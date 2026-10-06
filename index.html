@@ -1083,7 +1083,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.06.4';
+const VERSION='2026.10.06.5';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1358,7 +1358,7 @@ function drawSection(rows,o={}){
     s+=`<circle cx="${X(r.ex)}" cy="${Y(r.ez)}" r="${dot}" fill="var(${stand?'--eye-stand':'--eye-sit'})"${stand?' stroke="var(--eye-sit)" stroke-width="0.5" vector-effect="non-scaling-stroke"':''}><title>${stand?'Standing':'Seated'} eye, ${tip}</title></circle>`;});
   const cs=rows.filter(r=>r.C!=null),w=cs.reduce((a,r)=>!a||r.C<a.C?r:a,null);
   if(w){const i=rows.indexOf(w),p=rows[i-1],zl=p.ez+w.C;
-    s+=`<line x1="${X(w.ex)}" y1="${Y(w.ez)}" x2="${X(0)}" y2="${Y(0)}" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/><line x1="${X(p.ex)}" y1="${Y(p.ez)}" x2="${X(p.ex)}" y2="${Y(zl)}" stroke="var(--ink)" stroke-width="3" vector-effect="non-scaling-stroke"/><text x="${+X(p.ex)-fs*.5}" y="${+Y(zl)-fs*.5}" font-size="${fs*.95}" font-weight="650" fill="var(--ink)" text-anchor="end">Lowest C ${CV(w.C)}</text>`;}
+    /* lowest-C marker removed: the value is in Results and the tables */}
   s+=chainDims(rows,tiers,X,Y,fs,band);
   s+=`<line x1="${X(0)}" y1="${+Y(0)+band}" x2="${X(0)}" y2="${+Y(0)-fs*1.6}" stroke="${FOCAL}" stroke-width="1.3" vector-effect="non-scaling-stroke"/>`;
   s+=`<circle cx="${X(0)}" cy="${Y(0)}" r="${dot*1.8}" fill="var(--ink)"/><text x="${X(0)}" y="${(+Y(0)+band+fs*1.05).toFixed(0)}" font-size="${fs*.85}" fill="var(--ink)" text-anchor="middle">Point of focus</text></svg>`;
@@ -1559,8 +1559,8 @@ function drawSpectator(mode,o={}){
   if(mode==='stand'){const zc=m.z+(em.z-m.z)/2;   // half way between the tread and the eyes+=hdim(m.x,em.x,zc,inchText(em.x-m.x))+hdim(em.x,m.x+m.T,zc,inchText(m.x+m.T-em.x))     // chain: front riser, eye line, back riser
     +ln(em.x,em.z,em.x,zc-tk,0.5);}
   else s+=hdim(m.x,em.x,m.z+(em.z-m.z)/2,`Eye at back riser, ${inchText(m.T)}`);
-  s+=hdim(m.x,m.x+m.T,m.z+1.5*IN,`Tread ${inchText(m.T)}`,true);   // on the tread surface
-  if(last.riser!=null)s+=vdim(last.x+4*IN,m.z,last.z,`Riser ${inchText(last.riser)}`,true);
+  s+=hdim(m.x,m.x+m.T,m.z+1.5*IN,'',true)+`<text x="${X(m.x+m.T*.25)}" y="${f1(+Y(m.z+1.5*IN)-fs*.3)}" font-size="${f1(fs*.62)}" fill="${c}" text-anchor="middle">Tread ${inchText(m.T)}</text>`;   // on the tread surface
+  if(last.riser!=null){const xm=m.x+m.T/2;s+=vdim(xm,m.z,last.z,`Riser ${inchText(last.riser)}`,true)+ln(xm-tk,last.z,last.x,last.z,0.5);}   // at the middle of the tread
   // C-value: the back spectator's sightline over the eye of the one in front
   const zl=eT.z*em.x/eT.x;s+=vdim(em.x-5*IN,em.z,zl,`C ${CV(zl-em.z)}`,false);
   return s+'</svg>';
