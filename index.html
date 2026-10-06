@@ -257,7 +257,7 @@ button,a.btnlink,select.sel,.sl-val input,.hex,.swatch{border-color:var(--edge)}
       <span><i style="background:var(--sl-low);height:2px"></i>C-value below the minimum</span>
       <span id="lgEye"><i style="background:var(--eye-sit);border-radius:50%;width:9px;height:9px"></i>Seated eye</span>
       <span><i style="background:#FF1A1A;height:2px"></i>Point of focus line</span>
-      <span><i style="background:var(--pitch);height:8px"></i>Pitch</span>
+      <span><i style="background:var(--pitch);height:8px"></i><b id="lgSurf" style="font-weight:inherit">Pitch</b></span>
       <span><i style="background:var(--grass2);height:8px"></i>Buffer</span>
       <span><i id="lgT1" style="background:#CCCCCC;height:8px;border:1px solid var(--ink)"></i>Tier 1 bowl</span>
       <span><i id="lgT2" style="background:#999999;height:8px;border:1px solid var(--ink)"></i>Tier 2 bowl</span>
@@ -773,6 +773,8 @@ function groups(P,ti){if(!zoned(P))return [['T']];const l=P.zt[ti].link;return l
 function groupName(P,ti,g){if(!zoned(P))return 'All around';if(g.length===4)return 'All four sides';
   if(g.length===2)return (isSide(g[0])?'Sidelines ':'End zones ')+'('+g.map(k=>zoneName(P,k,true)).join(', ')+')';return zoneName(P,g[0]);}
 const PER_SIDE=['seat','seatW'];                                       // only seat type and seat width differ by side
+const SURFACE={nfl:'Field',ncaafb:'Field',mls:'Field',nba:'Court',ncaabb:'Court',fiba:'Court',usta:'Court',itf:'Court',nhl:'Rink',fifa:'Pitch',rugbyu:'Pitch',rugbyl:'Pitch',fih:'Pitch'};
+const surf=()=>SURFACE[P.sport]||'Pitch',surfLow=()=>surf().toLowerCase();   // US football and soccer: field; international football: pitch
 const TIER_COL=['#CCCCCC','#999999'];                                  // 20% and 40% grey
 const tierFill=ti=>(P.tierColors&&P.tierColors[ti])||TIER_COL[ti]||TIER_COL[1];
 function zp(o){return Object.assign({on:true,rows:20,seat:'standard',riser:'parabolic',basis:'sit',tread:34*25.4,tread0:36*25.4,treadN:34*25.4,seatW:22*25.4,target:2.25*25.4,D:35*0.3048,Z:8*0.3048,X:null,gap:2.4,rise:3.048,suites:0},o);}
@@ -1081,7 +1083,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.06.2';
+const VERSION='2026.10.06.4';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1198,7 +1200,7 @@ function set(path,v){if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.')
 const CV=v=>v==null?'':imperial()?(v/25.4).toFixed(4)+'"':v.toFixed(4)+' mm';   // every C-value: 4 decimals, e.g. 2.5000" or 60.0000 mm
 function cvEditor(pre,z,ti){const set=cvSet(P.sport),p=pre+'.target';META[p]={min:25.4,max:10*25.4,step:1e-6,kind:'mm'};
   const lab=mm=>imperial()?`${(mm/25.4).toFixed(4)}" (${mm.toFixed(4)} mm)`:`${mm.toFixed(4)} mm (${(mm/25.4).toFixed(4)}")`;
-  return `<div class="sl"><div class="sl-top"><label for="n_${p}">Absolute minimum C-value</label><span class="sl-val"><input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="len" id="n_${p}" data-p="${p}" value="${CV(z.target).replace(/"/g,'&quot;')}" title="Type a value to override, e.g. 2.5&quot; or 64 mm"></span></div>`
+  return `<div class="sl"><div class="sl-top"><label for="n_${p}">Absolute minimum C-value override</label><span class="sl-val"><input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="len" id="n_${p}" data-p="${p}" value="${CV(z.target).replace(/"/g,'&quot;')}" title="Type a value to override, e.g. 2.5&quot; or 64 mm"></span></div>`
     +`<div class="hint" style="margin:2px 0 6px">${set.src}</div><div class="seg stack">`
     +set.opts.map(([n,mm])=>`<button data-cv="${mm}" data-g="${pre}" class="${Math.abs(z.target-mm)<0.01?'on':''}" title="${n}">${n}: ${lab(mm)}</button>`).join('')
     +`<button data-cvreset="${pre}">Reset</button></div></div>`;}
@@ -1218,12 +1220,12 @@ function zoneEditor(ti,g){
     +cvEditor(pre,z,ti);
   const Sp=SPORTS[P.sport],imp=imperial();
   if(ti===0)h+=slider(pre+'.D',`Sideline depth (${imp?'1 foot':'100 mm'})`,Sp.Dmin??0,imp?60*0.3048:18,imp?0.3048:0.1,'m')
-    +slider(pre+'.Z',`Tier-1 bottom tread above the pitch (${imp?'4 inch':'100 mm'})`,Sp.Zmin??0,imp?20*0.3048:6,imp?0.1016:0.1,'m')
+    +slider(pre+'.Z',`Tier-1 bottom tread above the ${surfLow()} (${imp?'4 inch':'100 mm'})`,Sp.Zmin??0,imp?20*0.3048:6,imp?0.1016:0.1,'m')
     +`<p class="hint">${Sp.name} minimum: ${L((Sp.Dmin??0)*1000)} depth, ${L((Sp.Zmin??0)*1000)} bottom tread.</p>`;
   else h+=slider(pre+'.X',`Sideline depth (${imperial()?'1 foot':'100 mm'})`,2*0.3048,400*0.3048,imperial()?0.3048:0.1,'m')
     +(z.X==null?'<p class="hint">First riser aligned over the Tier-1 last riser; it follows Tier 1 automatically.</p>'
       :`<p class="hint" id="sbHint">${setbackText(ti,g[0])}</p><button data-realign="${ti}" style="margin:4px 0 6px">Align to Tier-1 last riser</button>`)
-    +slider(pre+'.Zabs','Tier-2 bottom tread above the pitch (4 inch)',3*0.3048,150*0.3048,0.1016,'m');
+    +slider(pre+'.Zabs',`Tier-2 bottom tread above the ${surfLow()} (4 inch)`,3*0.3048,150*0.3048,0.1016,'m');
   h+=`<button data-zreset="${pre}" style="margin-top:10px">Reset</button>`;
   return h;}
 function renderControls(){
@@ -1337,7 +1339,7 @@ function drawSection(rows,o={}){
   for(let g=0;g<=Z1;g+=GS)s+=`<line x1="0" y1="${Y(g)}" x2="${W}" y2="${Y(g)}" stroke="var(--edge)" stroke-width="0.8" opacity=".7" vector-effect="non-scaling-stroke"/>${g?`<text x="${fs*.4}" y="${+Y(g)-fs*.3}" font-size="${fs*.8}" fill="var(--muted)">${gl(g)}</text>`:''}`;
   const fx=rows[0].x,bf=Math.min(fs*.6,band*.62);
   s+=`<rect x="0" y="${Y(0)}" width="${X(0)}" height="${band}" fill="var(--pitch)"/><rect x="${X(0)}" y="${Y(0)}" width="${(fx).toFixed(0)}" height="${band}" fill="var(--grass2)"/>`;
-  s+=`<text x="${+X(0)/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(0)}" fill="#fff" text-anchor="middle" font-weight="600">Pitch</text>`;
+  s+=`<text x="${+X(0)/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(0)}" fill="#fff" text-anchor="middle" font-weight="600">${surf()}</text>`;
   if(fx>fs*3.2)s+=`<text x="${+X(0)+fx/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(0)}" fill="#fff" text-anchor="middle" font-weight="600">Buffer ${L(fx)}</text>`;
   const tiers=[...new Set(rows.map(r=>r.tier))];
   tiers.forEach(ti=>{const tr=rows.filter(r=>r.tier===ti);s+=`<polygon points="${profileOf(tr,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;});
@@ -1405,9 +1407,9 @@ function rowC(rs,i,m){if(i===0||!rs[i]||!rs[i-1])return null;const e=detEye(rs[i
 // inches for detail labels: 14 ½", or mm in metric
 function inchText(v){if(!imperial())return `${Math.round(v)} mm`;const t=Math.round(v/25.4*16),w=Math.floor(t/16),f=t%16,
   g={2:'⅛',4:'¼',6:'⅜',8:'½',10:'⅝',12:'¾',14:'⅞'}[f]||(f?`${f}/16`:'');return `${w}${g?' '+g:''}"`;}
-function gridBg(X0,X1,Z0,Z1,X,Y){const mi=imperial()?304.8:1000,ma=imperial()?3048:5000;let a='',b='';
-  for(let g=Math.ceil(X0/mi)*mi;g<=X1+1e-6;g+=mi){const major=Math.abs(g/ma-Math.round(g/ma))<1e-6,seg=`M${X(g)} ${Y(Z0)}V${Y(Z1)}`;if(major)b+=seg;else a+=seg;}
-  for(let g=Math.ceil(Z0/mi)*mi;g<=Z1+1e-6;g+=mi){const major=Math.abs(g/ma-Math.round(g/ma))<1e-6,seg=`M${X(X0)} ${Y(g)}H${X(X1)}`;if(major)b+=seg;else a+=seg;}
+function gridBg(X0,X1,Z0,Z1,X,Y,ox=0,oz=0){const mi=imperial()?304.8:1000,ma=imperial()?3048:5000;let a='',b='';   // ox, oz: the grid's 0,0
+  for(let g=ox+Math.ceil((X0-ox)/mi)*mi;g<=X1+1e-6;g+=mi){const k=(g-ox)/ma,major=Math.abs(k-Math.round(k))<1e-6,seg=`M${X(g)} ${Y(Z0)}V${Y(Z1)}`;if(major)b+=seg;else a+=seg;}
+  for(let g=oz+Math.ceil((Z0-oz)/mi)*mi;g<=Z1+1e-6;g+=mi){const k=(g-oz)/ma,major=Math.abs(k-Math.round(k))<1e-6,seg=`M${X(X0)} ${Y(g)}H${X(X1)}`;if(major)b+=seg;else a+=seg;}
   return `<path d="${a}" fill="none" stroke="var(--grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><path d="${b}" fill="none" stroke="var(--edge)" stroke-width="0.6" opacity=".55" vector-effect="non-scaling-stroke"/>`;}
 function drawDetail(all,o={}){
   const ti=o.tier||0,rs=all.filter(r=>r.tier===ti);if(!rs.length)return `<p class="empty" style="padding:16px">No Tier ${ti+1} rows.</p>`;
@@ -1423,10 +1425,10 @@ function drawDetail(all,o={}){
   const ln=(x0,z0,x1,z1,w)=>`<line x1="${X(x0)}" y1="${Y(z0)}" x2="${X(x1)}" y2="${Y(z1)}" stroke="${c}" stroke-width="${w||0.9}" vector-effect="non-scaling-stroke"/>`;
   const vdim=(x,z0,z1,lab)=>{const tx=+X(x)-fs*.45,ym=(+Y(z0)+ +Y(z1))/2;return ln(x,z0,x,z1)+tickH(x,z0)+tickH(x,z1)
     +`<text x="${f1(tx)}" y="${f1(ym)}" font-size="${f1(fs*.7)}" fill="${c}" font-weight="600" text-anchor="middle" transform="rotate(-90 ${f1(tx)} ${f1(ym)})">${lab}</text>`;};
-  let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Tier ${ti+1} sightline detail">`+gridBg(X0,X1,Z0,Z1,X,Y);
+  let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Tier ${ti+1} sightline detail">`+(NF?gridBg(X0,X1,Z0,Z1,X,Y,r0.x,r0.z):gridBg(X0,X1,Z0,Z1,X,Y));   // Tier 2: 0,0 at the top of its bottom tread
   // pitch, buffer and the point-of-focus line
   if(!NF){s+=`<rect x="0" y="${Y(0)}" width="${X(0)}" height="${band}" fill="var(--pitch)"/><rect x="${X(0)}" y="${Y(0)}" width="${f1(bufX)}" height="${band}" fill="var(--grass2)"/>`
-    +`<text x="${f1(+X(0)/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(fs*.65)}" fill="#fff" font-weight="600" text-anchor="middle">Pitch</text>`
+    +`<text x="${f1(+X(0)/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(fs*.65)}" fill="#fff" font-weight="600" text-anchor="middle">${surf()}</text>`
     +`<text x="${f1(+X(0)+bufX/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(fs*.65)}" fill="#fff" font-weight="600" text-anchor="middle">Buffer</text>`
     +`<line x1="${X(0)}" y1="${f1(+Y(0)+band)}" x2="${X(0)}" y2="${f1(+Y(0)-fs*1.6)}" stroke="${FOCAL}" stroke-width="1.2" vector-effect="non-scaling-stroke"/><circle cx="${X(0)}" cy="${Y(0)}" r="${f1(fs*.22)}" fill="var(--ink)"/>`;}
   s+=`<polygon points="${profileOf(rs,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
@@ -1445,15 +1447,15 @@ function drawDetail(all,o={}){
     // C-value to the right of the head, 4 decimals; the lowest in blue
     if(labels&&C!=null)s+=`<text x="${X(e.x+hr+1.5*IN)}" y="${f1(+Y(cy)+fs*.2)}" font-size="${f1(fs*.55)}" fill="${low?'var(--sl-low)':isMin?'#0000FF':'var(--ink)'}" font-weight="${isMin?800:600}">${CV(C)}</text>`;});
   // eye height on the top spectator, right side, plain text
-  const eT=ey[ey.length-1],xd=eT.x+hr+1*IN,zTop=m==='stand'?last.z+E.stH+HEAD:eT.z,ym=(+Y(last.z)+ +Y(zTop))/2;
+  const eT=ey[ey.length-1],xd=eT.x+hr+1.5*IN+fs*3.2,zTop=m==='stand'?last.z+E.stH+HEAD:eT.z,ym=(+Y(last.z)+ +Y(zTop))/2;
   s+=ln(xd,last.z,xd,zTop)+tickH(xd,last.z)+tickH(xd,zTop)
     +`<text x="${f1(+X(xd)+fs*.35)}" y="${f1(ym+fs*.2)}" font-size="${f1(fs*.55)}" fill="${c}">${m==='stand'?`${L(E.stH+HEAD)} standing head height`:`${L(E.sitH)} sitting eye height`}</text>`;
   // vertical: bottom tread above the pitch (left of the leg wall); overall pitch to the top tread (left of the point of focus)
-  if(!NF)s+=vdim(r0.x-fs*.9,0,r0.z,L(r0.z));
-  else s+=`<text x="${f1(+X(r0.x)-fs*.4)}" y="${f1(+Y(r0.z)+fs*1.1)}" font-size="${f1(fs*.62)}" fill="${c}" text-anchor="end">Bottom tread ${L(r0.z)} above the pitch</text>`;
+  if(!NF)s+=vdim(r0.x-r0.T,0,r0.z,L(r0.z))+ln(r0.x-r0.T-tk,r0.z,r0.x,r0.z,0.5);   // one tread depth in front of the leg wall
+  else s+=`<text x="${f1(+X(r0.x)-fs*.4)}" y="${f1(+Y(r0.z)+fs*1.1)}" font-size="${f1(fs*.62)}" fill="${c}" text-anchor="end">Bottom tread ${L(r0.z)} above the ${surfLow()}</text>`;
   {const z0=NF?r0.z:0,xo=last.x+last.T+2700,ym2=(+Y(z0)+ +Y(last.z))/2,tx=+X(xo)+fs*.55;              // overall: pitch to the top tread, right of the bowl
     s+=ln(xo,z0,xo,last.z)+tickH(xo,z0)+tickH(xo,last.z)+ln(last.x+last.T,last.z,xo+tk,last.z,0.6)+ln(r0.x,z0,xo+tk,z0,0.4)
-      +`<text x="${f1(tx)}" y="${f1(ym2)}" font-size="${f1(fs*.7)}" fill="${c}" font-weight="600" text-anchor="middle" transform="rotate(90 ${f1(tx)} ${f1(ym2)})">${NF?`${L(last.z-r0.z)} (top tread ${L(last.z)} above the pitch)`:L(last.z)}</text>`;}
+      +`<text x="${f1(tx)}" y="${f1(ym2)}" font-size="${f1(fs*.7)}" fill="${c}" font-weight="600" text-anchor="middle" transform="rotate(90 ${f1(tx)} ${f1(ym2)})">${NF?`${L(last.z-r0.z)} (top tread ${L(last.z)} above the ${surfLow()})`:L(last.z)}</text>`;}
   // horizontal chain below the bowl: point of focus to the first riser, then the first and second treads
   const yc=NF?r0.z-slabT()-fs*1.4:-(band+fs*1.3),pts=(NF?[r0.x,r0.x+r0.T,r0.x+r0.T+(rs[1]?rs[1].T:0)]:[0,r0.x,r0.x+r0.T,r0.x+r0.T+(rs[1]?rs[1].T:0)]).filter((v,i,a)=>i===0||v>a[i-1]+1);
   s+=ln(pts[0],yc,pts[pts.length-1],yc);
@@ -1488,6 +1490,11 @@ function drawIso(){
   const ground=(poly,fill,d)=>({q:poly.map(([x,y])=>R([x,y,0])),d:d,fill,ground:true});
   const G=rectGeo(P),buf=zoned(P)?(()=>{const t=ZR.T.find(r=>r.tier===0),dd=t?t.x/1000:0,s=G.side;return [[s.L.p[0]-dd,s.T.p[1]-dd],[s.R.p[0]+dd,s.T.p[1]-dd],[s.R.p[0]+dd,s.B.p[1]+dd],[s.L.p[0]-dd,s.B.p[1]+dd]].map(([x,y])=>[x,-y]);})():null;
   const gf=[];if(buf)gf.push(ground(buf,css('--grass2')||'#8EB03E',-1e9));
+  // goal posts, true size (NFL Rule 1-3: crossbar 18'-6" long, top 10 ft up, in the plane of the end line; uprights 35 ft above it;
+  // single standard offset from the end line, 6 ft here). NCAA uprights 30 ft above the crossbar (college range 20-35 ft).
+  if(P.sport==='nfl'||P.sport==='ncaafb'){const F=0.3048,cb=10*F,hw=18.5*F/2,up=(P.sport==='nfl'?35:30)*F,off=6*F,xe=P.L/2;
+    for(const sg of[1,-1]){const x=sg*xe,xb=sg*(xe+off),segs=[[[xb,0,0],[xb,0,cb]],[[xb,0,cb],[x,0,cb]],[[x,-hw,cb],[x,hw,cb]],[[x,-hw,cb],[x,-hw,cb+up]],[[x,hw,cb],[x,hw,cb+up]]];
+      for(const [a,b] of segs){const q=[R(a),R(b)];faces.push({q,d:(q[0][0]+q[0][1]+q[0][2]+q[1][0]+q[1][1]+q[1][2])/2,post:true});}}}
   faces.sort((a,b)=>a.d-b.d);
   const all=[...gf,...faces],pts=all.flatMap(f=>f.q.map(pj)),xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
   const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),pad=(x1-x0)*.04,W=x1-x0+2*pad,H=y1-y0+2*pad,f=v=>v.toFixed(2);
@@ -1498,6 +1505,7 @@ function drawIso(){
   const fieldSvg=`<g transform="matrix(${M.map(v=>v.toFixed(6)).join(' ')} 0 0)">${clip}<g${buf?' clip-path="url(#isoClip)"':''}>${Sp.draw(P,Pen((x1-x0)/700))}</g></g>`;
   let first=true;
   for(const fc of all){if(!fc.ground&&first){svg+=fieldSvg;first=false;}const p=fc.q.map(pj);
+    if(fc.post){const [a,b]=p;svg+=`<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="#F2C200" stroke-width="2.2" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;continue;}
     if(fc.edge){const [a,b]=fc.edge.map(pj);svg+=`<polygon points="${p.map(([x,y])=>f(x)+','+f(y)).join(' ')}" fill="${fc.fill}" stroke="${fc.fill}" stroke-width="0.6" vector-effect="non-scaling-stroke"/><line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="#000000" stroke-width="0.35" vector-effect="non-scaling-stroke"/>`;continue;}
     svg+=`<polygon points="${p.map(([x,y])=>f(x)+','+f(y)).join(' ')}" fill="${fc.fill}" stroke="${fc.fill}" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`;}
   if(first)svg+=fieldSvg;
@@ -1531,28 +1539,28 @@ function drawSpectator(mode,o={}){
   const vdim=(x,z0,z1,lab,right)=>{const ym=(+Y(z0)+ +Y(z1))/2;return ln(x,z0,x,z1)
       +[z0,z1].map(z=>`<line x1="${f1(+X(x)-tk)}" y1="${Y(z)}" x2="${f1(+X(x)+tk)}" y2="${Y(z)}" stroke="${c}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`).join('')
       +`<text x="${f1(+X(x)+(right?fs*.4:-fs*.4))}" y="${f1(ym+fs*.22)}" font-size="${f1(fs*.62)}" fill="${c}" text-anchor="${right?'start':'end'}">${lab}</text>`;};
-  const hdim=(x0,x1,z,lab)=>ln(x0,z,x1,z)+[x0,x1].map(x=>`<line x1="${f1(+X(x)-tk)}" y1="${f1(+Y(z)+tk)}" x2="${f1(+X(x)+tk)}" y2="${f1(+Y(z)-tk)}" stroke="${c}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`).join('')
-      +`<text x="${f1((+X(x0)+ +X(x1))/2)}" y="${f1(+Y(z)+fs*.85)}" font-size="${f1(fs*.62)}" fill="${c}" text-anchor="middle">${lab}</text>`;
-  let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Enlarged ${mode==='stand'?'standing':'sitting'} spectators">`;
+  const hdim=(x0,x1,z,lab,above)=>ln(x0,z,x1,z)+[x0,x1].map(x=>`<line x1="${f1(+X(x)-tk)}" y1="${f1(+Y(z)+tk)}" x2="${f1(+X(x)+tk)}" y2="${f1(+Y(z)-tk)}" stroke="${c}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`).join('')
+      +`<text x="${f1((+X(x0)+ +X(x1))/2)}" y="${f1(+Y(z)+(above?-fs*.3:fs*.85))}" font-size="${f1(fs*.62)}" fill="${c}" text-anchor="middle">${lab}</text>`;
+  let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Enlarged ${mode==='stand'?'standing':'sitting'} spectators">`+gridBg(X0,X1,Z0,Z1,X,Y,rs[0].x,rs[0].z);   // 0,0 at the top of the bottom tread
   s+=`<polygon points="${profileOf(rs,1).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(0)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
   ey.forEach(e=>{s+=`<line x1="${X(e.x)}" y1="${Y(e.z)}" x2="${X(X0)}" y2="${Y(e.z*X0/e.x)}" stroke="var(--sl-ok)" stroke-width="0.9" vector-effect="non-scaling-stroke"/>`;});
   rs.forEach((r,i)=>{const e=ey[i],cy=e.z+4.45*IN-hr;
     s+=`<line x1="${X(e.x)}" y1="${Y(cy-hr)}" x2="${X(e.x)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>`
-      +`<circle cx="${X(e.x)}" cy="${Y(cy)}" r="${hr}" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`
+      +`<circle cx="${X(e.x)}" cy="${Y(cy)}" r="${hr}" fill="none" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(e.x-3.5*IN)}" y1="${Y(e.z+2.25*IN)}" x2="${X(e.x+3.5*IN)}" y2="${Y(e.z+2.25*IN)}" stroke="#FF0000" stroke-width="1" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(IN*.9)}" fill="var(${mode==='stand'?'--eye-stand':'--eye-sit'})" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`
-      +`<text x="${X(r.x+r.T*(mode==='stand'?.62:.3))}" y="${f1(+Y(r.z)-fs*.25)}" font-size="${f1(fs*.55)}" fill="var(--ink)" font-weight="600" text-anchor="middle">Row ${r.row}</text>`;});
+      +`<text x="${X(r.x+r.T*.8)}" y="${f1(+Y(r.z-slabT())+fs*.75)}" font-size="${f1(fs*.55)}" fill="var(--ink)" font-weight="600" text-anchor="middle">Row ${r.row}</text>`;});   // under the tread
   const r0=rs[0],e0=ey[0],m=rs[1],em=ey[1],eT=ey[ey.length-1];
   // eye height and head height on the top spectator, in the open space to its right
   const xe=Math.max(eT.x,last.x+last.T)+9*IN;
   s+=vdim(xe,last.z,eT.z,`${mode==='stand'?'Standing':'Sitting'} eye ${L(mode==='stand'?E.stH:E.sitH)}`,true);
   const xh=xe+fs*8.4;s+=vdim(xh,last.z,eT.z+HEAD,`Head ${L((mode==='stand'?E.stH:E.sitH)+HEAD)}`,true)+ln(eT.x,eT.z+HEAD,xh+tk,eT.z+HEAD,0.5)+ln(last.x+last.T,last.z,xh+tk,last.z,0.5);
   // horizontal eye position and tread depth on the middle row; riser of the back row
-  if(mode==='stand'){const zc=m.z-14*IN;s+=hdim(m.x,em.x,zc,inchText(em.x-m.x))+hdim(em.x,m.x+m.T,zc,inchText(m.x+m.T-em.x))     // chain: front riser, eye line, back riser
+  if(mode==='stand'){const zc=m.z+(em.z-m.z)/2;   // half way between the tread and the eyes+=hdim(m.x,em.x,zc,inchText(em.x-m.x))+hdim(em.x,m.x+m.T,zc,inchText(m.x+m.T-em.x))     // chain: front riser, eye line, back riser
     +ln(em.x,em.z,em.x,zc-tk,0.5);}
-  else s+=hdim(m.x,em.x,m.z-14*IN,`Eye at back riser, ${inchText(m.T)}`);
-  s+=hdim(m.x,m.x+m.T,m.z-30*IN,`Tread ${inchText(m.T)}`);
-  if(last.riser!=null)s+=vdim(last.x-4*IN,m.z,last.z,`Riser ${inchText(last.riser)}`,false);
+  else s+=hdim(m.x,em.x,m.z+(em.z-m.z)/2,`Eye at back riser, ${inchText(m.T)}`);
+  s+=hdim(m.x,m.x+m.T,m.z+1.5*IN,`Tread ${inchText(m.T)}`,true);   // on the tread surface
+  if(last.riser!=null)s+=vdim(last.x+4*IN,m.z,last.z,`Riser ${inchText(last.riser)}`,true);
   // C-value: the back spectator's sightline over the eye of the one in front
   const zl=eT.z*em.x/eT.x;s+=vdim(em.x-5*IN,em.z,zl,`C ${CV(zl-em.z)}`,false);
   return s+'</svg>';
@@ -1674,7 +1682,7 @@ function update(){
   $('cap').innerHTML=`<div><div class="big">${fmt(M.cap)}</div><div class="lbl">Estimated seats</div></div><div><div class="bar"><i class="${ok?'ok':''}" style="width:${pct}%"></i></div><div class="lbl" style="margin-top:5px">${ok?'Meets':'Short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</div></div><div class="cap-side">${M.tierSeats.map((s,i)=>`Tier ${i+1}: ${fmt(s)}`).join('<br>')}</div>`;
   $('zones').innerHTML=zoneTable();
   const hmin=M.heads.length?Math.min(...M.heads.map(h=>h.h)):null;
-  const st=[[ZR[P.sec].length,zoned(P)?`Rows, ${zoneName(P,P.sec,true)}`:'Rows',0],[M.worst?CV(M.worst.C):'n/a','Lowest C-value',M.below>0],[M.steep?M.steep.rake.toFixed(1)+'°':'n/a','Steepest rake',M.over>0],[L(M.vd*1000,'m',0,true),'Farthest viewing distance',M.vd>P.vd],[L(M.height*1000,'m',1,true),'Top row above pitch',0],[hmin==null?'n/a':L(hmin),'Least headroom under a tier',M.lowHead.length>0]];
+  const st=[[ZR[P.sec].length,zoned(P)?`Rows, ${zoneName(P,P.sec,true)}`:'Rows',0],[M.worst?CV(M.worst.C):'n/a','Lowest C-value',M.below>0],[M.steep?M.steep.rake.toFixed(1)+'°':'n/a','Steepest rake',M.over>0],[L(M.vd*1000,'m',0,true),'Farthest viewing distance',M.vd>P.vd],[L(M.height*1000,'m',1,true),`Top row above ${surfLow()}`,0],[hmin==null?'n/a':L(hmin),'Least headroom under a tier',M.lowHead.length>0]];
   $('stats').innerHTML=st.map(([b,l,bad])=>`<div class="stat ${bad?'bad':''}"><b>${b}</b><span>${l}</span></div>`).join('');
   const msg=[],zl=(r)=>`Tier ${r.tier+1} ${zoneName(P,r.zone)}`;
   // count per side so four identical sides don't read as four times the problem
@@ -1708,7 +1716,7 @@ function update(){
     ['Sitting eye, horizontal','Aligned to the back riser'],['Standing eye, horizontal',`${L(P.eye.stOff)} from the front riser`],['Applies to','Chairback and bench seats']].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
   const sh=$('sbHint');if(sh)sh.textContent=setbackText(EDIT.tier,groups(P,EDIT.tier)[EDIT.g][0]);
   $('countTable').innerHTML=countTableHTML();
-  $('lgT1').style.background=tierFill(0);$('lgT2').style.background=tierFill(1);
+  $('lgSurf').textContent=surf();$('lgT1').style.background=tierFill(0);$('lgT2').style.background=tierFill(1);
   {const tab=m=>'<table class="fixed" style="margin-top:6px">'+spectatorInfo(m).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+'</table>';
    $('spect').innerHTML=['sit','stand'].map(m=>`<div><div class="lab"><b>${m==='stand'?'Standing':'Sitting'}</b>, Tier 1 East, rows ${spectatorRows().map(r=>r.row).join('–')}</div>${drawSpectator(m)}${tab(m)}</div>`).join('');}
   $('iso').innerHTML=drawIso();$('isoTitle').textContent=`Isometric view from the ${({SE:'south-east',SW:'south-west',NW:'north-west',NE:'north-east'})[ISOVIEW]}`;
@@ -1949,16 +1957,22 @@ async function exportPdfSet(kind){
     const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'l',unit:'in',format:[draws[0].sheet.w,draws[0].sheet.h]});
     doc.addFileToVFS('DVS.ttf',reg);doc.addFont('DVS.ttf','DVS','normal');doc.addFileToVFS('DVSB.ttf',bold);doc.addFont('DVSB.ttf','DVS','bold');
     const host=document.createElement('div');host.style.cssText='position:fixed;left:-99999px;top:0;width:10px;height:10px;overflow:hidden';document.body.appendChild(host);
+    host.className='pdfhost';
     for(let i=0;i<draws.length;i++){const p=draws[i];if(i)doc.addPage([p.sheet.w,p.sheet.h],'l');
-      host.innerHTML=pdfReadySvg(p.svg);await doc.svg(host.firstElementChild,{x:0,y:0,width:p.sheet.w,height:p.sheet.h});}
+      host.innerHTML=pdfReadySvg(p.svg);{const w=document.createTreeWalker(host,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode()))n.data=capWords(n.data);}await doc.svg(host.firstElementChild,{x:0,y:0,width:p.sheet.w,height:p.sheet.h});}
     host.remove();
-    pdfProjectInfo(doc,port);pdfRowSchedule(doc,port,'T');pdfTables(doc,{...port,fit:true});
+    pdfTitleCase(doc);pdfProjectInfo(doc,port);pdfRowSchedule(doc,port,'T');pdfTables(doc,{...port,fit:true});
     const name=`${SPORTS[P.sport].name}_${slug()}_${kind==='archE'?'ARCH-E':'Tabloid'}.pdf`;offer(name,doc.output('blob'));
     toast(`${name} saved (${doc.getNumberOfPages()} pages).`);
   }catch(e){toast('The project set could not be built: '+e.message);}
   finally{btn.disabled=false;}
 }
 // seat count tables drawn straight into the PDF: 11 x 17 portrait (A3 in metric), one page per tier
+function capWords(str){const parts=String(str).split(/(\s+)/);let prev='';   // PDF: the first letter of every word in capitals
+  return parts.map(t=>{if(/^\s+$/.test(t))return t;const unit=/^(mm|m|ft|in)[.,;:)]*$/i.test(t)&&/\d["'½¼¾⅛⅜⅝⅞)]*$/.test(prev);prev=t;
+    return unit?t:t.replace(/^([^A-Za-z]*)([a-z])/,(m,p,c)=>p+c.toUpperCase());}).join('');}
+function pdfTitleCase(doc){if(doc._tc)return doc;const tx=doc.text.bind(doc);doc._tc=1;
+  doc.text=(t,...a)=>tx(Array.isArray(t)?t.map(v=>capWords(v)):capWords(t),...a);return doc;}
 function pdfHeader(doc,title,sub,m,k){let y=m+0.3*k;doc.setFont('DVS','bold');doc.setFontSize(16*k);doc.setTextColor(0);doc.text(title,m,y);y+=0.28*k;
   doc.setFont('DVS','normal');doc.setFontSize(9*k);doc.setTextColor(60);doc.text(sub,m,y);return y+0.42*k;}
 // Project information: one portrait page of the inputs and results that define the bowl
@@ -1974,13 +1988,13 @@ function pdfProjectInfo(doc,o){const {pw,ph,m}=o,Sp=SPORTS[P.sport],k=Math.min(1
     ['Seats','East and West: '+(SEATS[P.zt[0].z.T.seat]||SEATS.standard).name+' '+inchText(P.zt[0].z.T.seatW)+'; NEZ and SEZ: '+(SEATS[P.zt[0].z.L.seat]||SEATS.standard).name+' '+inchText(P.zt[0].z.L.seatW)],
     ['Tread and riser thickness',inchText(slabT())],['Guard rail at row 1',inchText(P.railH)]]);
   for(let ti=0;ti<P.tierCount;ti++){const z=P.zt[ti].z.T,tr=ZR.T.filter(r=>r.tier===ti);if(!tr.length)continue;
-    sec(`Tier ${ti+1}`,[['Rows',tr.length],['Lowest riser from point of focus',L(tr[0].x)],['Bottom tread above the pitch',L(tr[0].z)],['Top tread above the pitch',L(tr[tr.length-1].z)],
+    sec(`Tier ${ti+1}`,[['Rows',tr.length],['Lowest riser from point of focus',L(tr[0].x)],[`Bottom tread above the ${surfLow()}`,L(tr[0].z)],[`Top tread above the ${surfLow()}`,L(tr[tr.length-1].z)],
       ['Row depth: bottom / typical',`${inchText(z.tread0)} / ${inchText(z.tread)}`],['Risers',`${z.riser==='constant'?'Constant':'Parabolic'}, sized for ${BASIS[z.basis]||'sitting'}`],
-      ['Absolute minimum C-value',`${CV(z.target)} (${cv.src})`]]);}
+      ['Absolute minimum C-value override',`${CV(z.target)} (${cv.src})`]]);}
   sec('Eye sight values',[['Sitting eye',`${L(E.sitH)}, aligned to the back riser`],['Standing eye',`${L(E.stH)}, ${L(E.stOff)} from the front riser`],['Wheelchair eye',L(E.wcH)],['Head height','eye + 2 × 2 ¼"']]);
   sec('Results',[['Seats, all',fmt(seatCount().out.find(o=>o.label==='Total, all seats').t)],[`Seats less aisles and vomitories (${P.loss}%)`,fmt(M.cap)],
     ['Lowest C-value (current mode)',M.worst?CV(M.worst.C):'n/a'],['Steepest rake',M.steep?M.steep.rake.toFixed(1)+'°':'n/a'],
-    ['Top row above the pitch',L(M.height*1000)],['Farthest viewing distance',L(M.vd*1000)],['Checks',$('verdict').textContent]]);}
+    [`Top row above the ${surfLow()}`,L(M.height*1000)],['Farthest viewing distance',L(M.vd*1000)],['Checks',$('verdict').textContent]]);}
 // Row schedule for one side (all tiers), fitted to the page width
 function pdfRowSchedule(doc,o,zone){const {pw,ph,m}=o,Sp=SPORTS[P.sport],rows=ZR[zone];
   const cols0=[['Row',1.5,'left'],['Riser from focus',1.45],['Tread height',1.25],['Tread depth',1.05],['Riser',0.85],['Rake',0.75],['C sitting',1.05],['C standing',1.1]],w0=cols0.reduce((a,c)=>a+c[1],0);
@@ -2047,7 +2061,7 @@ $('cntPrint').onclick=async()=>{const btn=$('cntPrint');btn.disabled=true;toast(
     const [reg,bold]=await Promise.all([loadB64('vendor/fonts/DejaVuSansCondensed.ttf'),loadB64('vendor/fonts/DejaVuSansCondensed-Bold.ttf')]);
     const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'p',unit:'in',format:imperial()?[11,17]:[297/25.4,420/25.4]});
     doc.addFileToVFS('DVS.ttf',reg);doc.addFont('DVS.ttf','DVS','normal');doc.addFileToVFS('DVSB.ttf',bold);doc.addFont('DVSB.ttf','DVS','bold');
-    pdfTables(doc,{m:0.25,fit:true});doc.deletePage(1);                       // one page per tier, fitted to the width
+    pdfTitleCase(doc);pdfTables(doc,{m:0.25,fit:true});doc.deletePage(1);                       // one page per tier, fitted to the width
     offer('C-Value_'+slug()+'.pdf',doc.output('blob'));toast('Seat count PDF saved.');
   }catch(e){toast('The seat count PDF could not be built: '+e.message);}finally{btn.disabled=false;}};
 const cntPrintDialog=()=>{const Sp=SPORTS[P.sport],tmp=document.createElement('div');
@@ -2121,7 +2135,7 @@ function titleCase(str){
       if(UNITS.has(lo))return p;                                       // keep units lowercase
       if(k===0&&!first&&!last&&SMALL.has(lo))return p;
       return p[0].toUpperCase()+p.slice(1);}).join('-');});}
-const SENTENCE='.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p';
+const SENTENCE='.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost';
 function titleize(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
   while((n=w.nextNode())){const el=n.parentElement;if(!el||el.closest(SENTENCE))continue;const t=titleCase(n.data);if(t!==n.data)n.data=t;}}
 new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData'){const el=m.target.parentElement;if(el&&!el.closest(SENTENCE)){const t=titleCase(m.target.data);if(t!==m.target.data)m.target.data=t;}}
