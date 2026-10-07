@@ -776,6 +776,7 @@ const PER_SIDE=['seat','seatW'];                                       // only s
 const SURFACE={nfl:'Field',ncaafb:'Field',mls:'Field',nba:'Court',ncaabb:'Court',fiba:'Court',usta:'Court',itf:'Court',nhl:'Rink',fifa:'Pitch',rugbyu:'Pitch',rugbyl:'Pitch',fih:'Pitch'};
 const surf=()=>SURFACE[P.sport]||'Pitch',surfLow=()=>surf().toLowerCase();   // US football and soccer: field; international football: pitch
 const SPECT_NAMES={sit:'1. Sitting spectators',stand:'2. Standing spectators',wc:'3. Wheelchair eyesight with sitting spectators',plat:'4. Wheelchair eyesight with standing spectators'};
+const RAIL_SET=3*25.4;                                                 // guard rail centreline behind the riser
 const TIER_COL=['#CCCCCC','#999999'];                                  // 20% and 40% grey
 const tierFill=ti=>(P.tierColors&&P.tierColors[ti])||TIER_COL[ti]||TIER_COL[1];
 function zp(o){return Object.assign({on:true,rows:20,seat:'standard',riser:'parabolic',basis:'sit',tread:34*25.4,tread0:36*25.4,treadN:34*25.4,seatW:22*25.4,target:2.25*25.4,D:35*0.3048,Z:8*0.3048,X:null,gap:2.4,rise:3.048,suites:0},o);}
@@ -815,10 +816,10 @@ function solveZone(P,k){
     let j=0;
     while(j<n){
       if(j===0){
-        if(ti===0){prev=mk(0,z.D*1000,z.Z*1000,null,null);prev.railC=prev.ez*prev.x/prev.ex-(prev.z+P.railH);}   // row 1 looks over the guard rail
+        if(ti===0){prev=mk(0,z.D*1000,z.Z*1000,null,null);prev.railC=prev.ez*(prev.x+RAIL_SET)/prev.ex-(prev.z+P.railH);}   // row 1 looks over the guard rail, 3 in behind the riser
         else{const lo0=rows.find(r=>r.tier===ti-1),x0=z.X!=null?z.X*1000:prev.x;      // unset: first riser over the last riser below
           prev=mk(0,Math.max(x0,lo0.x+1000),prev.z+(z.rise+Math.max(0,z.suites)*P.suiteH)*1000,null,null);
-          prev.railC=prev.ez*prev.x/prev.ex-(prev.z+P.railH);}           // front row looks over the guard at the landing edge
+          prev.railC=prev.ez*(prev.x+RAIL_SET)/prev.ex-(prev.z+P.railH);}           // front row looks over the guard, 3 in behind the landing edge
         rows.push(prev);j++;continue;}
       if(z.riser==='constant'){const base=prev,cap=Math.max(step,Math.floor(P.maxRiser/step+1e-9)*step);
         const build=r=>{const g=[];let p=base;for(let q=j;q<n;q++){const row=mk(q,p.x+p.T,p.z+r,p,r);g.push(row);p=row;}return g;};
@@ -856,7 +857,7 @@ function applyEyes(rows){const mode=P.eyeMode==='stand'?'stand':'sit';
     r.sit={ex:r.x+s0,ez:r.z+h0};r.stand={ex:r.x+s1,ez:r.z+h1};const a=r[mode];r.ex=a.ex;r.ez=a.ez;});
   rows.forEach((r,i)=>{const p=rows[i-1];
     if(r.C!=null&&p)r.C=r.ez*p.ex/r.ex-p.ez;
-    if(r.railC!=null)r.railC=r.ez*r.x/r.ex-(r.z+P.railH);});
+    if(r.railC!=null)r.railC=r.ez*(r.x+RAIL_SET)/r.ex-(r.z+P.railH);});
   return rows;}
 const solveAll=P=>Object.fromEntries(zoneKeys(P).map(k=>[k,applyEyes(solveZone(P,k))]));
 // Upper tiers keep an absolute distance from the point of focus (X). Any tier without one takes its current position.
@@ -1086,7 +1087,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.07.10';
+const VERSION='2026.10.07.11';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1264,7 +1265,7 @@ function renderControls(){
     +'<p class="hint">Re-sizes the risers on every tier and side in ½" steps so each row meets its minimum C-value. Sitting and standing also covers standing on its own. Constant risers stop at the maximum riser.</p></section>';
   h+=step(5,'Capacity','Target seats. Rows are sized to reach it.')+slider('capTarget','Target seats (500 seats)',5000,120000,500,'seats')+'<button id="fit" class="primary" style="margin-top:10px;width:100%">Size rows to hit target</button></section>';
   const fixed=[...(P.sport==='nfl'||P.sport==='ncaafb'?[['Football field length',L(360*304.8)],['Football field width',L(160*304.8)]]:[]),
-    ['Round risers up to',L(12.7)],['Maximum riser',L(24*25.4)],['Rows per riser bank','1'],['Guard rail at row 1 of each tier',L(26*25.4)],['Minimum headroom under tiers',L(10*304.8)]];
+    ['Round risers up to',L(12.7)],['Maximum riser',L(24*25.4)],['Rows per riser bank','1'],['Guard rail at row 1 of each tier',`${L(26*25.4)} high, centreline ${L(RAIL_SET)} behind the riser`],['Minimum headroom under tiers',L(10*304.8)]];
   h+='<details><summary>Advanced</summary>'+(P.sport==='nfl'||P.sport==='ncaafb'?'':fieldSliders())
     +slider('maxRake','Maximum rake (1 degree)',25,40,1,'°')+slider('vd','Viewing distance limit (1 foot)',300*0.3048,1000*0.3048,0.3048,'m')
     +slider('loss','Seats lost to aisles and vomitories (1 %)',0,30,1,'%')
@@ -1353,7 +1354,7 @@ function drawSection(rows,o={}){
     s+=`<line x1="${X(cx0)}" y1="${Y(cz)}" x2="${X(cx1)}" y2="${Y(cz)}" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${X(cx0+fs*.3)}" y="${+Y(cz)-fs*.35}" font-size="${fs*.62}" fill="var(--muted)">${ti===1?'Main':'Upper'} concourse</text>`;
 });
   tiers.forEach(ti=>{const f=rows.find(r=>r.tier===ti);                              // 26 in sightline guard rail at row 1 of every tier
-    s+=`<rect x="${X(f.x-25.4)}" y="${Y(f.z+P.railH)}" width="50.8" height="${P.railH.toFixed(1)}" fill="#000000"><title>Guard rail ${L(P.railH)}, 2 in</title></rect>`
+    s+=`<rect x="${X(f.x+RAIL_SET-25.4)}" y="${Y(f.z+P.railH)}" width="50.8" height="${P.railH.toFixed(1)}" fill="#000000"><title>Guard rail ${L(P.railH)}, 2 in</title></rect>`
       +`<text x="${(+X(f.x)-fs*.25).toFixed(0)}" y="${(+Y(f.z+P.railH)-fs*.2).toFixed(0)}" font-size="${(fs*.5).toFixed(0)}" fill="var(--muted)" text-anchor="end">${inchText(P.railH)} guard rail</text>`;});
   rows.forEach(r=>{const tf=Math.min(fs*.28,r.T*.3);                               // row numbers: above their tread, clear of the riser behind
     s+=`<text x="${X(r.x+r.T*.35)}" y="${(+Y(r.z)-tf*.3).toFixed(0)}" font-size="${tf.toFixed(0)}" fill="var(--ink)" opacity=".8" text-anchor="middle" font-weight="600">${r.row}</text>`;});
@@ -1437,7 +1438,7 @@ function drawDetail(all,o={}){
     +`<text x="${f1(+X(0)+bufX/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(fs*.65)}" fill="#fff" font-weight="600" text-anchor="middle">Buffer zone</text>`
     +`<line x1="${X(0)}" y1="${f1(+Y(0)+band)}" x2="${X(0)}" y2="${f1(+Y(0)-fs*1.6)}" stroke="${FOCAL}" stroke-width="1.2" vector-effect="non-scaling-stroke"/><circle cx="${X(0)}" cy="${Y(0)}" r="${f1(fs*.22)}" fill="var(--ink)"/>`;}
   s+=`<polygon points="${profileOf(rs,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
-  s+=`<rect x="${X(r0.x-25.4)}" y="${Y(r0.z+P.railH)}" width="50.8" height="${P.railH.toFixed(1)}" fill="#000000"/>`;   // 26 in guard rail, 2 in thick
+  s+=`<rect x="${X(r0.x+RAIL_SET-25.4)}" y="${Y(r0.z+P.railH)}" width="50.8" height="${P.railH.toFixed(1)}" fill="#000000"/>`;   // 26 in guard rail, 2 in thick, centreline 3 in behind the riser
   // sightlines to the point of focus
   rs.forEach((r,i)=>{const e=ey[i],C=Cs[i],ok=C==null||C>=r.target-0.05;
     const xe=NF?X0:0;s+=`<line x1="${X(e.x)}" y1="${Y(e.z)}" x2="${X(xe)}" y2="${Y(e.z*xe/e.x)}" stroke="var(${ok?'--sl-ok':'--sl-low'})" stroke-width="0.6" opacity=".8" vector-effect="non-scaling-stroke"/>`;});
@@ -1490,7 +1491,7 @@ function drawPlatform(o={}){
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Wheelchair on an accessible platform">`+gridBg(X0,X1,Z0,Z1,X,Y,r0.x,r0.z);
   s+=`<polygon points="${profileOf(rs,1).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(0)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;   /* bowl section unchanged */
   s+=`<polygon points="${[[p1.x,p1.z],[p1.x,zP],[top.x,zP],[top.x,p2.z],[p2.x,p2.z],[p2.x,p1.z]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(1)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;   /* infill over the 2nd and 3rd rows, up to the top tread */
-  s+=`<rect x="${X(railC-25.4)}" y="${Y(zP+P.railH)}" width="50.8" height="${P.railH.toFixed(1)}" fill="#000000"/>`;   /* 26 in guard rail, centreline 2 in behind the platform riser */
+  s+=`<rect x="${X(railC-25.4)}" y="${Y(zP+P.railH)}" width="50.8" height="${P.railH.toFixed(1)}" fill="#000000"/>`;   /* 26 in guard rail, centreline 3 in behind the platform riser */
   const people=[...standers.map(p=>({e:p.e,r:p.r,k:'stand'})),{e:eye,k:'wc'}];
   people.forEach(p=>{s+=`<line x1="${X(p.e.x)}" y1="${Y(p.e.z)}" x2="${X(X0)}" y2="${Y(p.e.z*X0/p.e.x)}" stroke="var(--sl-ok)" stroke-width="0.9" vector-effect="non-scaling-stroke"/>`;});
   people.forEach(p=>{const e=p.e,cy=e.z+4.45*IN-hr,floor=p.k==='wc'?zP:p.r.z;
@@ -1502,7 +1503,7 @@ function drawPlatform(o={}){
   rs.forEach(r=>{s+=`<text x="${X(r.x+r.T/2)}" y="${f1(+Y(r.z-t)+fs*.75)}" font-size="${f1(fs*.55)}" fill="var(--ink)" font-weight="600" text-anchor="middle">Row ${r.row}</text>`;});
   s+=`<text x="${X((p1.x+top.x)/2)}" y="${f1((+Y(zP)+ +Y(p2.z))/2+fs*.2)}" font-size="${f1(fs*.55)}" fill="var(--ink)" font-weight="600" text-anchor="middle">Platform</text>`;
   const rf=railC+25.4,zc=eye.z+HEAD+fs*1.1,zo=zc+fs*1.3;   /* above the head, clear of the wheelchair */   /* riser -> 3 in -> rail inside face -> 36 in -> eye; overall from the riser */
-  s+=hdim(edge,rf,zc,'')+`<text x="${f1(+X(edge)-fs*.3)}" y="${f1(+Y(zc)+fs*.2)}" font-size="${f1(fs*.55)}" fill="${c}" text-anchor="end">${D4(3*25.4)} to rail inside face</text>`
+  s+=hdim(edge,rf,zc,'')+`<text x="${f1(+X(edge)-fs*.3)}" y="${f1(+Y(zc)+fs*.2)}" font-size="${f1(fs*.55)}" fill="${c}" text-anchor="end">${D4(rf-edge)} to rail inside face</text>`
     +hdim(rf,eye.x,zc,D4(eye.x-rf))+hdim(edge,eye.x,zo,`${D4(eye.x-edge)} to eye`)
     +ln(eye.x,eye.z,eye.x,zc-tk,0.5)+ln(rf,zP+P.railH,rf,zc+tk,0.5)+ln(edge,zP,edge,zo+tk,0.5);
   const xe=top.x+top.T+9*IN;s+=vdim(xe,zP,eye.z,`Wheelchair eye ${D4(E.platH)}`,true)+ln(eye.x,eye.z,xe+tk,eye.z,0.5)+ln(top.x+top.T,zP,xe+tk,zP,0.5);
@@ -1589,14 +1590,14 @@ function spectatorInfo(mode){
 // Wheelchair on an accessible platform (ICC A117.1 802.9.2). The bowl section is unchanged; the space above the 2nd and 3rd rows
 // is filled up to the top tread to make a level platform whose edge is the front riser of the 2nd row. Bottom row standing,
 // wheelchair on the platform: front of the space 12 in from the platform edge (the back of the tread in front, 802.9.2.1),
-// eye P.eye.platH (48 in) above the platform and P.eye.wcOff (36 in) behind the rail's inside face (rail 2 in thick, centreline 2 in behind the riser); minimum height from Table 802.9.2.2: H = (2X+34)(Y-2.25)/X + (20.2-Y); 26 in rail on the edge.
+// eye P.eye.platH (48 in) above the platform and P.eye.wcOff (36 in) behind the rail's inside face (rail 2 in thick, centreline 3 in behind the riser); minimum height from Table 802.9.2.2: H = (2X+34)(Y-2.25)/X + (20.2-Y); 26 in rail on the edge.
 function platformGeo(){const rs=spectatorRows(),n=rs.length;if(n<4)return null;const E=P.eye,IN=25.4,sd=rs[n-4],p1=rs[n-3],p2=rs[n-2],top=rs[n-1],front=rs.slice(0,n-3);
-  const zP=top.z,edge=p1.x,railC=edge+2*IN,fws=edge+12*IN,eye={x:railC+25.4+E.wcOff,z:zP+E.platH},st={x:sd.x+E.stOff,z:sd.z+E.stH},standers=front.map(r=>({r,e:{x:r.x+E.stOff,z:r.z+E.stH}}));
+  const zP=top.z,edge=p1.x,railC=edge+RAIL_SET,fws=edge+12*IN,eye={x:railC+25.4+E.wcOff,z:zP+E.platH},st={x:sd.x+E.stOff,z:sd.z+E.stH},standers=front.map(r=>({r,e:{x:r.x+E.stOff,z:r.z+E.stH}}));
   const X=sd.T/IN,Y=(sd.riser??p1.riser??0)/IN,Hreq=(2*X+34)*(Y-2.25)/X+(20.2-Y),H=(zP-sd.z)/IN,C=eye.z*st.x/eye.x-st.z;
   return {rs,sd,p1,p2,top,zP,edge,railC,front:fws,eye,st,standers,X,Y,Hreq,H,C};}
 function platformInfo(){const g=platformGeo();if(!g)return [];const E=P.eye;
-  return [['Platform',`infill over rows ${g.p1.row}–${g.p2.row}, level with row ${g.top.row}; 26" guard rail, centreline 2" behind the riser`],
-    ['Wheelchair eye',`${L(E.platH)} above the platform; ${inchText(E.wcOff)} behind the guard rail inside face, ${inchText(E.wcOff+3*25.4)} behind the riser (the toes stop at the rail)`],['Front of wheelchair space','12" max from the riser (ICC A117.1 802.9.2.1)'],
+  return [['Platform',`infill over rows ${g.p1.row}–${g.p2.row}, level with row ${g.top.row}; 26" guard rail, centreline 3" behind the riser`],
+    ['Wheelchair eye',`${L(E.platH)} above the platform; ${inchText(E.wcOff)} behind the guard rail inside face, ${inchText(E.wcOff+RAIL_SET+25.4)} behind the riser (the toes stop at the rail)`],['Front of wheelchair space','12" max from the riser (ICC A117.1 802.9.2.1)'],
     [`Platform above row ${g.sd.row}`,`${inchText(g.H*25.4)} (A117.1 Table 802.9.2.2 minimum ${inchText(Math.max(0,g.Hreq)*25.4)}: ${g.H>=g.Hreq-0.01?'meets':'below'})`],
     [`C-value over the standing spectator, row ${g.sd.row}`,CV(g.C)],[`Rows ${g.standers.map(p=>p.r.row).join(', ')}`,'standing']];}
 function drawSpectator(mode,o={}){
