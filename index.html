@@ -1086,7 +1086,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.07.6';
+const VERSION='2026.10.07.7';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1499,7 +1499,7 @@ function drawPlatform(o={}){
   const xe=top.x+top.T+9*IN;s+=vdim(xe,zP,eye.z,`Wheelchair eye ${L(E.platH)}`,true)+ln(eye.x,eye.z,xe+tk,eye.z,0.5)+ln(top.x+top.T,zP,xe+tk,zP,0.5);
   s+=vdim(edge-5*IN,sd.z,zP,`Platform ${inchText(zP-sd.z)} (min ${inchText(Math.max(0,g.Hreq)*25.4)})`,false);
   s+=vdim(railC+3*IN,zP,zP+P.railH,'26" rail',true);
-  standers.forEach(p=>{const zz=p.r.z+12*IN;s+=hdim(p.r.x,p.e.x,zz,inchText(p.e.x-p.r.x));});   /* front riser to each standing spectator's eye line */
+  standers.forEach(p=>{const zz=p.r.z+12*IN,xv=p.e.x+5*IN;s+=hdim(p.r.x,p.e.x,zz,inchText(p.e.x-p.r.x))+vdim(xv,p.r.z,p.e.z,L(E.stH),true)+ln(p.e.x,p.e.z,xv+tk,p.e.z,0.5);});   /* front riser to eye line, and eye height, on each standing spectator */
   const zl=eye.z*st.x/eye.x;s+=vdim(st.x-5*IN,st.z,zl,`C ${CV(zl-st.z)}`,false);
   return s+'</svg>';
 }
@@ -1618,6 +1618,10 @@ function drawSpectator(mode,o={}){
   s+=vdim(xe,last.z,eT.z,`${eN} eye ${L(eH)}`,true)+ln(eT.x,eT.z,xe+tk,eT.z,0.5);   // extension line to the eye
   const xh=xe+fs*8.4;s+=vdim(xh,last.z,eT.z+HEAD,`Head ${L(eH+HEAD)}`,true)+ln(eT.x,eT.z+HEAD,xh+tk,eT.z+HEAD,0.5)+ln(last.x+last.T,last.z,xh+tk,last.z,0.5);
   // horizontal eye position and tread depth on the middle row; riser of the back row
+  if(mode==='stand')rs.forEach((r,i)=>{if(r===last)return;const xv=ey[i].x+5*IN;
+    if(r!==m)s+=vdim(xv,r.z,ey[i].z,L(E.stH),true);
+    else{const zt=r.z+(ey[i].z-r.z)*.75;s+=vdim(xv,r.z,ey[i].z,'',true)+`<text x="${f1(+X(xv)+fs*.4)}" y="${f1(+Y(zt)+fs*.22)}" font-size="${f1(fs*.62)}" fill="${c}">${L(E.stH)}</text>`;}   /* clear of the chain at mid-height */
+    s+=ln(ey[i].x,ey[i].z,xv+tk,ey[i].z,0.5);});   /* eye height on each standing spectator */
   if(mode==='stand')rs.forEach((r,i)=>{if(r===m)return;const zz=r.z+12*IN;s+=hdim(r.x,ey[i].x,zz,inchText(ey[i].x-r.x),true)+ln(ey[i].x,zz-tk,ey[i].x,zz+tk*1.5,0.5);});   /* front riser to eye line */
   if(mode==='stand'){const zc=m.z+(em.z-m.z)/2;   /* half way between the tread and the eye; chain: front riser, eye line, back riser */
     s+=hdim(m.x,em.x,zc,inchText(em.x-m.x))+hdim(em.x,m.x+m.T,zc,inchText(m.x+m.T-em.x))
