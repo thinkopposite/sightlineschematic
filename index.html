@@ -288,6 +288,7 @@ button,a.btnlink,select.sel,.sl-val input,.hex,.swatch{border-color:var(--edge)}
     <details id="countBox" open><summary>Seat count and C-value by row</summary>
       <div class="seg" style="margin:8px 0"><button id="cntPrint">Download PDF</button><button id="cntXlsx">Export Excel</button></div>
       <div class="tablewrap" style="max-height:none"><table id="countTable" class="count"></table></div></details>
+    <details id="engBox"><summary>Engineering quantities (preliminary)</summary><div class="tablewrap" style="max-height:none"><table id="engTable"></table></div><p class="hint">Seating slab only (treads, risers, Tier 1 leg wall) at 150 pcf; guard rail at row 1 of each tier. Rakers, columns, beams and foundations are not included.</p></details>
     <details><summary id="schedHead">Row schedule</summary><div class="tablewrap"><table id="table"></table></div></details>
 
     <p class="group">Saved options</p>
@@ -945,6 +946,26 @@ function chainStations(ch){const st=[];
   return st.filter((q,i)=>!i||Math.hypot(q[0]-st[i-1][0],q[1]-st[i-1][1])>1e-9||Math.abs(q[2]-st[i-1][2])>1e-9||Math.abs(q[3]-st[i-1][3])>1e-9);}
 function seatLen(P,CH,r){const d=(r.x+r.T/2)/1000,ch=CH[r.tier][r.zone];
   return ch==='ring'?polyPerim(boundary(P))+2*Math.PI*d:chainLen(ch,d);}
+// ---------- engineering quantities (preliminary) ----------
+// Concrete: the stepped seating slab of each tier (treads, risers, Tier 1 leg wall) = profile area x length along the stand at the
+// profile's centroid (Pappus for curved and chamfered corners). Rakers, columns, beams and foundations are not included.
+// Guard rail: the row-1 rail of each tier, measured along the stand at the rail's position.
+const CONC_PCF=150,CONC_KGM3=2402.8;                                   // normal-weight reinforced concrete
+function lenAt(ch,d){return ch==='ring'?polyPerim(boundary(P))+2*Math.PI*d:chainLen(ch,d);}
+function engQuant(){const out=[];
+  for(let ti=0;ti<P.tierCount;ti++){let V=0,A=0,rail=0,plan=0,rows=0,rMin=Infinity,rMax=0,rkMin=Infinity,rkMax=0,top=0;
+    for(const k of Object.keys(CH[ti]||{})){const tr=ZR[k].filter(r=>r.tier===ti);if(!tr.length)continue;const ch=CH[ti][k];
+      const pr=profileOf(tr,ti);let a=0,cx=0;for(let i=0;i<pr.length;i++){const [x0,y0]=pr[i],[x1,y1]=pr[(i+1)%pr.length],c=x0*y1-x1*y0;a+=c;cx+=(x0+x1)*c;}
+      a/=2;cx/=(6*a);const area=Math.abs(a)/1e6;V+=area*lenAt(ch,cx/1000);A+=area;   // m2 x m
+      const d0=tr[0].x/1000,d1=(tr[tr.length-1].x+tr[tr.length-1].T)/1000;plan+=(d1-d0)*lenAt(ch,(d0+d1)/2);
+      rail+=lenAt(ch,(tr[0].x+RAIL_SET)/1000);rows=Math.max(rows,tr.length);
+      tr.forEach(r=>{if(r.riser!=null){rMin=Math.min(rMin,r.riser);rMax=Math.max(rMax,r.riser);}if(r.rake!=null){rkMin=Math.min(rkMin,r.rake);rkMax=Math.max(rkMax,r.rake);}top=Math.max(top,r.z);});}
+    out.push({ti,V,W:V*CONC_KGM3,rail,plan,rows,rMin,rMax,rkMin,rkMax,top});}
+  return out;}
+const qVol=m3=>imperial()?`${fmt(Math.round(m3*1.30795))} yd³`:`${fmt(Math.round(m3))} m³`;
+const qWt=kg=>imperial()?`${fmt(Math.round(kg*2.20462/2000))} tons`:`${fmt(Math.round(kg/1000))} tonnes`;
+const qLen=m=>imperial()?`${fmt(Math.round(m/0.3048))} ft`:`${fmt(Math.round(m))} m`;
+const qArea=m2=>imperial()?`${fmt(Math.round(m2*10.7639))} ft²`:`${fmt(Math.round(m2))} m²`;
 function metrics(P,ZR,CH){
   const rows=Object.values(ZR).flat();let cap=0;const tierSeats=[],zoneSeats=[];
   rows.forEach(r=>{r.gross=Math.floor(seatLen(P,CH,r)*1000/r.seatW+1e-9);const s=r.gross*(1-P.loss/100);cap+=s;tierSeats[r.tier]=(tierSeats[r.tier]||0)+s;
@@ -1087,7 +1108,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.07.12';
+const VERSION='2026.10.08.1';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1800,6 +1821,10 @@ function update(){
     ['Sitting eye, horizontal','Aligned to the back riser'],['Standing eye, horizontal',`${L(P.eye.stOff)} from the front riser`],['Applies to','Chairback and bench seats']].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
   const sh=$('sbHint');if(sh)sh.textContent=setbackText(EDIT.tier,groups(P,EDIT.tier)[EDIT.g][0]);
   $('countTable').innerHTML=countTableHTML();
+  {const q=engQuant(),tot=q.reduce((a,t)=>({V:a.V+t.V,W:a.W+t.W,rail:a.rail+t.rail,plan:a.plan+t.plan}),{V:0,W:0,rail:0,plan:0});
+   $('engTable').innerHTML='<thead><tr><th>Tier</th><th>Concrete</th><th>Weight</th><th>Guard Rail</th><th>Seating Plan Area</th><th>Risers</th></tr></thead><tbody>'
+     +q.map(t=>`<tr><td>Tier ${t.ti+1}</td><td>${qVol(t.V)}</td><td>${qWt(t.W)}</td><td>${qLen(t.rail)}</td><td>${qArea(t.plan)}</td><td>${inchText(t.rMin)}–${inchText(t.rMax)}</td></tr>`).join('')
+     +`<tr class="tot"><td>Total</td><td>${qVol(tot.V)}</td><td>${qWt(tot.W)}</td><td>${qLen(tot.rail)}</td><td>${qArea(tot.plan)}</td><td></td></tr></tbody>`;}
   $('lgSurf').textContent=surf();$('lgT1').style.background=tierFill(0);$('lgT2').style.background=tierFill(1);
   {const tab=m=>'<table class="fixed" style="margin-top:6px">'+spectatorInfo(m).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+'</table>';
    $('spect').innerHTML=['sit','stand','wc','plat'].map(m=>`<div><div class="lab"><b>${SPECT_NAMES[m]}</b>, Tier 1 East, rows ${spectatorRows().map(r=>r.row).join('–')}</div>${drawSpectator(m)}${tab(m)}</div>`).join('');}
@@ -2054,7 +2079,7 @@ async function exportPdfSet(kind){
 }
 // seat count tables drawn straight into the PDF: 11 x 17 portrait (A3 in metric), one page per tier
 function capWords(str){const parts=String(str).split(/(\s+)/);let prev='';   // PDF: the first letter of every word in capitals
-  return parts.map(t=>{if(/^\s+$/.test(t))return t;const unit=/^(mm|m|ft|in)[.,;:)]*$/i.test(t)&&/\d["'½¼¾⅛⅜⅝⅞)]*$/.test(prev);prev=t;
+  return parts.map(t=>{if(/^\s+$/.test(t))return t;const unit=/^(mm|m|ft|in|yd³|ft²|m³|m²|pcf|psf|plf|lb|kg\/m³)[.,;:)]*$/i.test(t)&&/\d["'½¼¾⅛⅜⅝⅞)]*$/.test(prev);prev=t;
     return unit?t:t.replace(/^([^A-Za-z]*)([a-z])/,(m,p,c)=>p+c.toUpperCase());}).join('');}
 function pdfTitleCase(doc){if(doc._tc)return doc;const tx=doc.text.bind(doc);doc._tc=1;
   doc.text=(t,...a)=>tx(Array.isArray(t)?t.map(v=>capWords(v)):capWords(t),...a);return doc;}
@@ -2063,7 +2088,8 @@ function pdfHeader(doc,title,sub,m,k){let y=m+0.3*k;doc.setFont('DVS','bold');do
 // Project information: one portrait page of the inputs and results that define the bowl
 function pdfProjectInfo(doc,o){const {pw,ph,m}=o,Sp=SPORTS[P.sport],k=Math.min(1.25,(pw-2*m)/8.5),E=P.eye;doc.addPage([pw,ph],'p');
   let y=pdfHeader(doc,'Sightline Schematic: Project Information',`${Sp.name} (${Sp.org}) | ${optName()} | ${new Date().toLocaleString()} | Version ${VERSION}`,m,k);
-  const sec=(t,rows)=>{doc.setFont('DVS','bold');doc.setFontSize(11.5*k);doc.setTextColor(0);doc.text(t,m,y);y+=0.08*k;doc.setDrawColor(0);doc.setLineWidth(0.01);doc.line(m,y,pw-m,y);y+=0.24*k;
+  const sec=(t,rows)=>{if(y+(rows.length+2)*0.24*k>ph-m){doc.addPage([pw,ph],'p');y=m+0.3*k;}   /* next page when a section won't fit */
+    doc.setFont('DVS','bold');doc.setFontSize(11.5*k);doc.setTextColor(0);doc.text(t,m,y);y+=0.08*k;doc.setDrawColor(0);doc.setLineWidth(0.01);doc.line(m,y,pw-m,y);y+=0.24*k;
     doc.setFontSize(9.5*k);rows.forEach(([a,b])=>{doc.setFont('DVS','bold');doc.text(String(a),m,y);doc.setFont('DVS','normal');
       const ls=doc.splitTextToSize(String(b),pw-m-(m+3.2*k));ls.forEach((t,i)=>doc.text(t,m+3.2*k,y+i*0.19*k));y+=0.22*k+(ls.length-1)*0.19*k;});y+=0.16*k;};   // long values wrap
   const t1=ZR.T.filter(r=>r.tier===0),t2=ZR.T.filter(r=>r.tier===1),cv=cvSet(P.sport);
@@ -2076,6 +2102,14 @@ function pdfProjectInfo(doc,o){const {pw,ph,m}=o,Sp=SPORTS[P.sport],k=Math.min(1
     sec(`Tier ${ti+1}`,[['Rows',tr.length],['Lowest riser from point of focus',L(tr[0].x)],[`Bottom tread above the ${surfLow()}`,L(tr[0].z)],[`Top tread above the ${surfLow()}`,L(tr[tr.length-1].z)],
       ['Row depth: bottom / typical',`${inchText(z.tread0)} / ${inchText(z.tread)}`],['Risers',`${z.riser==='constant'?'Constant':'Parabolic'}, sized for ${BASIS[z.basis]||'sitting'}`],
       ['Absolute minimum C-value override',`${CV(z.target)} (${cv.src})`]]);}
+  {const q=engQuant(),tot=q.reduce((a,t)=>({V:a.V+t.V,W:a.W+t.W,rail:a.rail+t.rail,plan:a.plan+t.plan}),{V:0,W:0,rail:0,plan:0});
+   q.forEach(t=>sec(`Engineering, Tier ${t.ti+1} (preliminary)`,[['Seating slab concrete',`${qVol(t.V)} (${qWt(t.W)}, at ${imperial()?CONC_PCF+' pcf':CONC_KGM3.toFixed(0)+' kg/m³'})`],
+     ['Seating plan area',qArea(t.plan)],['Guard rail, row 1',`${qLen(t.rail)} (26" high, on the riser face)`],['Rows / risers',`${t.rows} rows; risers ${inchText(t.rMin)} to ${inchText(t.rMax)}`],
+     ['Rake',`${t.rkMin.toFixed(1)}° to ${t.rkMax.toFixed(1)}°`],[`Top tread above the ${surfLow()}`,L(t.top)],['Slab (tread and riser) thickness',inchText(slabT())]]));
+   sec('Engineering totals and references (preliminary)',[['Seating slab concrete, all tiers',`${qVol(tot.V)} (${qWt(tot.W)})`],['Guard rail, all tiers',qLen(tot.rail)],['Seating plan area, all tiers',qArea(tot.plan)],
+     ['Least headroom under a tier',M.heads&&M.heads.length?L(Math.min(...M.heads.map(h=>h.h))):'n/a'],['Live load reference','Grandstands 100 psf (IBC Table 1607.1); confirm with the structural engineer'],
+     ['Guard load reference','50 plf and 200 lb concentrated (IBC 1607.9.1); confirm with the structural engineer'],
+     ['Not included','rakers, columns, beams, foundations, vomitories, aisle stairs and handrails, rear guards, concourse slabs']]);}
   sec('Eye sight values',[['Sitting eye',`${L(E.sitH)}, aligned to the back riser`],['Standing eye',`${L(E.stH)}, ${L(E.stOff)} from the front riser`],['Wheelchair eye',L(E.wcH)],['Head height','eye + 2 × 2 ¼"']]);
   sec('Results',[['Seats, all',fmt(seatCount().out.find(o=>o.label==='Total, all seats').t)],[`Seats less aisles and vomitories (${P.loss}%)`,fmt(M.cap)],
     ['Lowest C-value (current mode)',M.worst?CV(M.worst.C):'n/a'],['Steepest rake',M.steep?M.steep.rake.toFixed(1)+'°':'n/a'],
@@ -2220,7 +2254,7 @@ function titleCase(str){
       if(UNITS.has(lo))return p;                                       // keep units lowercase
       if(k===0&&!first&&!last&&SMALL.has(lo))return p;
       return p[0].toUpperCase()+p.slice(1);}).join('-');});}
-const SENTENCE='.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost';
+const SENTENCE='.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td';
 function titleize(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
   while((n=w.nextNode())){const el=n.parentElement;if(!el||el.closest(SENTENCE))continue;const t=titleCase(n.data);if(t!==n.data)n.data=t;}}
 new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData'){const el=m.target.parentElement;if(el&&!el.closest(SENTENCE)){const t=titleCase(m.target.data);if(t!==m.target.data)m.target.data=t;}}
