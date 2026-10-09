@@ -429,7 +429,7 @@ function gridiron(o){
       const dir=n<50?-1:1,xb=x+dir*(nGap+nW+6*IN),xa=xb+dir*ah;
       for(const sg of[1,-1]){const y0=sg*(yTop+15*IN),y1=sg*(yTop+33*IN),ym=(y0+y1)/2;
         s+=`<path d="M${g.f(xb)} ${g.f(y0)}L${g.f(xa)} ${g.f(ym)}L${g.f(xb)} ${g.f(y1)}Z" fill="var(--mark)" opacity=".92"/>`;}}
-    {const ez=12*FT/0.72;s+=mirror(sg=>{const cx=sg*(gl+a)/2;return `<text x="${g.f(cx)}" y="${g.f(ez*.36)}" font-size="${g.f(ez)}" fill="var(--mark)" font-weight="800" text-anchor="middle" letter-spacing="${g.f(ez*.1)}" opacity=".95" transform="rotate(${sg*90} ${g.f(cx)} 0)">END ZONE</text>`;});}   // white, reading along the end zone
+    {const ez=12*FT/0.72*.75;s+=mirror(sg=>{const cx=sg*(gl+a)/2;return `<text x="${g.f(cx)}" y="${g.f(ez*.36)}" font-size="${g.f(ez)}" fill="var(--mark)" font-weight="800" text-anchor="middle" letter-spacing="${g.f(ez*.1)}" opacity=".95" transform="rotate(${sg*90} ${g.f(cx)} 0)">END ZONE</text>`;});}   // white, reading along the end zone
     // pylons at the inside corners of each end zone (goal line and end line with the sidelines)
     for(const xx of[-a,-gl,gl,a])for(const yy of[-b,b]){const px=xx+(Math.abs(xx)>gl+1e-6?Math.sign(-xx):Math.sign(xx))*0.2,py=yy-Math.sign(yy)*0.2;
       s+=`<rect x="${g.f(px-0.2)}" y="${g.f(py-0.2)}" width="0.4" height="0.4" fill="#FF6A13"/>`;}
@@ -1116,7 +1116,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.08.5';
+const VERSION='2026.10.08.6';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1557,7 +1557,7 @@ function drawPlatform(o={}){
   K.dim([riserX,p1.z+3*IN],[edge,p1.z+3*IN],{lab:'Setback',val:D4(setback),ea:[riserX,p1.z],eb:[edge,p1.z]});
   K.dim([edge-5*IN,zP],[edge-5*IN,zP+P.railH],{lab:'Guard rail',val:D4(P.railH),eb:[edge-2*IN,zP+P.railH]});
   standers.forEach((p,k)=>{const zz=p.r.z+10*IN;K.dim([p.r.x,zz],[p.e.x,zz],{val:D4(E.stOff),ea:[p.r.x,p.r.z]});
-    K.dim([p.e.x-4*IN,p.r.z],[p.e.x-4*IN,p.e.z],{lab:k?'':'Standing eye',val:D4(E.stH),eb:[p.e.x,p.e.z]});});
+    {const xv=p.r.x+p.r.T-hr-4*IN;K.dim([xv,p.r.z],[xv,p.e.z],{lab:k?'':'Standing eye',val:D4(E.stH),eb:[p.e.x,p.e.z]});}});   /* where the sitting head would be, less 4 in */
   {const zl=eye.z*st.x/eye.x;K.dim([st.x+2*IN,st.z],[st.x+2*IN,zl],{lab:'C standing',val:CV(zl-st.z),side:-1});}
   s+=K.out();
   return s+'</svg>';
@@ -1681,7 +1681,7 @@ function drawSpectator(mode,o={}){
   rs.forEach(r=>K.note(r.x+r.T/2,r.z-t-fs*.8,`Row ${r.row}`,{size:fs*.52}));
   // every row: front riser to the standing eye, then to the sitting eye over the back riser; standing eye height
   rs.forEach((r,i)=>{const z=r.z+10*IN;K.dim([r.x,z],[st[i].x,z],{val:D4(E.stOff),ea:[r.x,r.z]}).dim([st[i].x,z],[r.x+r.T,z],{val:D4(r.T-E.stOff),eb:[r.x+r.T,r.z]});
-    if(r!==last){const nearRail=T2&&i===0,xv=st[i].x+(nearRail?4:-4)*IN;K.dim([xv,r.z],[xv,st[i].z],{lab:i===0?'Standing eye':'',val:D4(E.stH),eb:[st[i].x,st[i].z],side:nearRail?-1:1});}});
+    if(r!==last){const xv=si[i].x-hr-4*IN;K.dim([xv,r.z],[xv,st[i].z],{lab:i===0?'Standing eye':'',val:D4(E.stH),eb:[st[i].x,st[i].z]});}});   /* 4 in left of the sitting head */
   // top row: sitting and standing eye and head heights, stacked to the right
   {const xb=last.x+last.T,sp=fs*2.4;[['Sitting eye',E.sitH,si[n-1].x],['Sitting head',E.sitH+HEAD,si[n-1].x],['Standing eye',E.stH,st[n-1].x],['Standing head',E.stH+HEAD,st[n-1].x]]
     .forEach(([lab,h,ex],k)=>{const x=xb+9*IN+k*sp;K.dim([x,last.z],[x,last.z+h],{lab,val:D4(h),ea:k?null:[xb,last.z],eb:[ex,last.z+h],side:-1});});}
