@@ -429,7 +429,7 @@ function gridiron(o){
       const dir=n<50?-1:1,xb=x+dir*(nGap+nW+6*IN),xa=xb+dir*ah;
       for(const sg of[1,-1]){const y0=sg*(yTop+15*IN),y1=sg*(yTop+33*IN),ym=(y0+y1)/2;
         s+=`<path d="M${g.f(xb)} ${g.f(y0)}L${g.f(xa)} ${g.f(ym)}L${g.f(xb)} ${g.f(y1)}Z" fill="var(--mark)" opacity=".92"/>`;}}
-    {const ez=12*FT/0.72*.75;s+=mirror(sg=>{const cx=sg*(gl+a)/2;return `<text x="${g.f(cx)}" y="${g.f(ez*.36)}" font-size="${g.f(ez)}" fill="var(--mark)" font-weight="800" text-anchor="middle" letter-spacing="${g.f(ez*.1)}" opacity=".95" transform="rotate(${sg*90} ${g.f(cx)} 0)">END ZONE</text>`;});}   // white, reading along the end zone
+    {const ez=12*FT/0.72*.75*.75;s+=mirror(sg=>{const cx=sg*(gl+a)/2;return `<text x="${g.f(cx)}" y="${g.f(ez*.36)}" font-size="${g.f(ez)}" fill="var(--mark)" font-weight="400" text-anchor="middle" letter-spacing="${g.f(ez*.06)}" opacity=".95" transform="rotate(${sg*90} ${g.f(cx)} 0)">END ZONE</text>`;});}   // white, reading along the end zone
     // pylons at the inside corners of each end zone (goal line and end line with the sidelines)
     for(const xx of[-a,-gl,gl,a])for(const yy of[-b,b]){const px=xx+(Math.abs(xx)>gl+1e-6?Math.sign(-xx):Math.sign(xx))*0.2,py=yy-Math.sign(yy)*0.2;
       s+=`<rect x="${g.f(px-0.2)}" y="${g.f(py-0.2)}" width="0.4" height="0.4" fill="#FF6A13"/>`;}
@@ -727,7 +727,7 @@ function dimLabel(d,fs){
 let DIMREG=null;                                                     // plan text boxes already placed (reset per plan)
 function drawDims(list,g,fs){
   const f=g.f;let s='';const reg=DIMREG||[];
-  const txt=(D)=>{const hs=`text-anchor="middle" fill="var(--dim)" paint-order="stroke" stroke="var(--panel)" stroke-width="${f(fs*.22)}" stroke-linejoin="round"${D.rot?` transform="rotate(${f(D.rot)} ${f(D.mx)} ${f(D.my)})"`:''}`;
+  const txt=(D)=>{const hs=`text-anchor="middle" fill="#4D4D4D" paint-order="stroke" stroke="var(--panel)" stroke-width="${f(fs*.22)}" stroke-linejoin="round"${D.rot?` transform="rotate(${f(D.rot)} ${f(D.mx)} ${f(D.my)})"`:''}`;
     if(!D.note)return `<text x="${f(D.mx)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" font-weight="650" ${hs}>${D.lab}</text>`;
     return `<text x="${f(D.mx)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" ${hs}><tspan x="${f(D.mx)}" dy="-0.55em" font-size="${f(fs*.8)}" font-weight="450">${D.note}</tspan><tspan x="${f(D.mx)}" dy="1.15em" font-weight="650">${D.lab}</tspan></text>`;};   // label line, then the value
   const place=D=>{if(D.r)return;const two=!!D.note,side=D.o?D.sg:1;if(two){D.mx+=D.nx*side*fs*.55;D.my+=D.ny*side*fs*.55;}
@@ -735,14 +735,14 @@ function drawDims(list,g,fs){
     for(const k of[0,1,-1,2,-2,3,-3]){const sl=k*(w*.6),x=x0+D.ux*sl,y=y0+D.uy*sl,box=[x-bw/2,y-bh/2,x+bw/2,y+bh/2];
       if(!reg.some(o=>box[0]<o[2]&&box[2]>o[0]&&box[1]<o[3]&&box[3]>o[1])){D.mx=x;D.my=y;reg.push(box);return;}}
     reg.push([x0-bw/2,y0-bh/2,x0+bw/2,y0+bh/2]);};
-  const ln=(x1,y1,x2,y2,w=1)=>`<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="var(--dim)" stroke-width="${f(w*g.k)}"/>`;
+  const DG='#4D4D4D',ln=(x1,y1,x2,y2,w=1)=>`<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="${DG}" stroke-width="${f(w*g.k*.6)}"/>`;   // thin, dark grey
   for(const d of list){const D=dimLabel(d,fs);place(D);
     if(D.r){const ex=d.c[0]+d.r*Math.cos(D.t),ey=d.c[1]+d.r*Math.sin(D.t),ah=fs*.55,bx=ex-Math.cos(D.t)*ah,by=ey-Math.sin(D.t)*ah,px=-Math.sin(D.t)*ah*.35,py=Math.cos(D.t)*ah*.35;
       s+=ln(d.c[0],d.c[1],ex,ey,1.2)+`<path d="M${f(ex)} ${f(ey)}L${f(bx+px)} ${f(by+py)}L${f(bx-px)} ${f(by-py)}Z" fill="var(--dim)"/>`+g.dot(d.c[0],d.c[1],fs*.12,'var(--dim)')+txt(D);continue;}
     const {a,b,ux,uy,nx,ny,o,sg}=D,gap=o?fs*.25:0,ext=fs*.3;
     if(o)s+=ln(d.p[0]+nx*gap*sg,d.p[1]+ny*gap*sg,a[0]+nx*ext*sg,a[1]+ny*ext*sg,.8)+ln(d.q[0]+nx*gap*sg,d.q[1]+ny*gap*sg,b[0]+nx*ext*sg,b[1]+ny*ext*sg,.8);
     s+=ln(a[0],a[1],b[0],b[1],1.1);
-    const tk=fs*.32;for(const p of[a,b])s+=ln(p[0]-(ux+nx)*tk,p[1]-(uy+ny)*tk,p[0]+(ux+nx)*tk,p[1]+(uy+ny)*tk,2);
+    const tk=fs*.28;for(const p of[a,b])s+=ln(p[0]-(ux+nx)*tk,p[1]-(uy+ny)*tk,p[0]+(ux+nx)*tk,p[1]+(uy+ny)*tk,1.1);
     s+=txt(D);
   }
   return s;
@@ -775,6 +775,7 @@ const GEO=['T','R','B','L'],isSide=k=>k==='T'||k==='B',CW={N:'North',E:'East',S:
 const zoned=P=>{const s=SPORTS[P.sport].shape;return s==='rect'||s==='rrect';};
 const zoneKeys=P=>zoned(P)?GEO:['T'];
 function compassOf(P){const i=Math.max(0,GEO.indexOf(P.north)),m={};for(let k=0;k<4;k++)m[GEO[(i+k)%4]]='NESW'[k];return m;}
+const standName=k=>({E:'East',W:'West',N:'North',S:'South'})[zoneName(P,k,true)]||zoneName(P,k,true);   // plan and isometric labels
 function zoneName(P,k,short){if(!zoned(P))return short?'All':'All around';const c=compassOf(P)[k];
   return isSide(k)?(short?c:`${CW[c]} sideline`):(short?c+'EZ':`${CW[c]} end zone`);}
 const LINKS={all:'All four sides match'};
@@ -1116,7 +1117,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.08.6';
+const VERSION='2026.10.08.7';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1610,13 +1611,15 @@ function drawIso(){
   if(first)svg+=fieldSvg;
   svg+=`<polygon points="${bp.map(([x,y])=>pj(R([x,y,0]))).map(([x,y])=>f(x)+','+f(y)).join(' ')}" fill="none" stroke="${FOCAL}" stroke-width="0.9" vector-effect="non-scaling-stroke"/>`;
   // stand labels above the top row, and a north arrow along the model's -X axis
-  const fsz=W/38;
+  const fsz=W/38;let isoN=null;
   if(zoned(P))GEO.forEach(k=>{const zr=ZR[k];if(!zr.length)return;const t=zr[zr.length-1],s0=G.side[k],d=(t.x+t.T)/1000+4,mx=(s0.p[0]+s0.q[0])/2+s0.n[0]*d,my=-((s0.p[1]+s0.q[1])/2+s0.n[1]*d);
-    const [px,py]=pj(R([mx,my,t.z/1000+6]));svg+=`<text x="${f(px)}" y="${f(py)}" font-size="${f(fsz)}" font-weight="800" fill="var(--ink)" text-anchor="middle" paint-order="stroke" stroke="var(--panel)" stroke-width="${f(fsz*.18)}">${zoneName(P,k,true)}</text>`;});
-  if(zoned(P)){const a=pj(R([0,0,0])),b=pj(R([-1,0,0])),ux=b[0]-a[0],uy=b[1]-a[1],ul=Math.hypot(ux,uy),dx=ux/ul,dy=uy/ul,cx=x1-fsz*1.2,cy=y0+fsz*1.4,len=fsz*1.6;
+    const [px,py]=pj(R([mx,my,t.z/1000+6])),A=pj(R([s0.p[0],-s0.p[1],0])),Bq=pj(R([s0.q[0],-s0.q[1],0]));let ang=Math.atan2(Bq[1]-A[1],Bq[0]-A[0])*180/Math.PI;while(ang>90)ang-=180;while(ang<=-90)ang+=180;
+    if(k==='L'||/NEZ/.test(zoneName(P,k,true)))isoN=[px,py,ang];
+    svg+=`<text x="${f(px)}" y="${f(py)}" font-size="${f(fsz)}" font-weight="400" fill="var(--ink)" text-anchor="middle" paint-order="stroke" stroke="var(--panel)" stroke-width="${f(fsz*.18)}" transform="rotate(${f(ang)} ${f(px)} ${f(py)})">${standName(k)}</text>`;});
+  if(zoned(P)){const a=pj(R([0,0,0])),b=pj(R([-1,0,0])),ux=b[0]-a[0],uy=b[1]-a[1],ul=Math.hypot(ux,uy),dx=ux/ul,dy=uy/ul,len=fsz*1.6,cx=isoN?isoN[0]+dx*fsz*1.8+(-dy)*fsz*2.2:x1-fsz*1.2,cy=isoN?isoN[1]-fsz*1.6:y0+fsz*1.4,hw=len*.45*Math.tan(10*Math.PI/180);   // beside the NEZ label; 20 degree head
     svg+=`<line x1="${f(cx-dx*len/2)}" y1="${f(cy-dy*len/2)}" x2="${f(cx+dx*len/2)}" y2="${f(cy+dy*len/2)}" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/>`
-      +`<polygon points="${f(cx+dx*len/2)},${f(cy+dy*len/2)} ${f(cx+dx*len*.2-dy*fsz*.35)},${f(cy+dy*len*.2+dx*fsz*.35)} ${f(cx+dx*len*.2+dy*fsz*.35)},${f(cy+dy*len*.2-dx*fsz*.35)}" fill="var(--ink)"/>`
-      +`<text x="${f(cx+dx*(len/2+fsz*.8))}" y="${f(cy+dy*(len/2+fsz*.8)+fsz*.35)}" font-size="${f(fsz*.9)}" font-weight="800" fill="var(--ink)" text-anchor="middle">N</text>`;}
+      +`<polygon points="${f(cx+dx*len/2)},${f(cy+dy*len/2)} ${f(cx+dx*len*.05-dy*hw)},${f(cy+dy*len*.05+dx*hw)} ${f(cx+dx*len*.05+dy*hw)},${f(cy+dy*len*.05-dx*hw)}" fill="var(--ink)"/>`
+      +`<text x="${f(cx+dx*(len/2+fsz*.8))}" y="${f(cy+dy*(len/2+fsz*.8)+fsz*.35)}" font-size="${f(fsz*.8)}" font-weight="400" fill="var(--ink)" text-anchor="middle">N</text>`;}
   return svg+'</svg>';
 }
 // ---------- enlarged spectators: three Tier 1 rows, sitting or standing, with the eye sight values dimensioned ----------
@@ -1756,7 +1759,7 @@ function drawPlan(o={}){
     if(zoned(P)){const G=rectGeo(P),back=k=>{const zr=ZR[k];if(!zr.length)return 0;const t=zr[zr.length-1];return (t.x+t.T)/1000;};
       const dS=Math.max(back('T'),back('B')),dE=Math.max(back('L'),back('R'));      // same offset on opposite sides keeps W and E level
       GEO.forEach(k=>{const s=G.side[k];if(!ZR[k].length)return;const d=(isSide(k)?dS:dE)+fs*(o.tight?1.25:2.6);
-        labels.push([(s.p[0]+s.q[0])/2+s.n[0]*d,(s.p[1]+s.q[1])/2+s.n[1]*d,zoneName(P,k,true)]);});}
+        labels.push([(s.p[0]+s.q[0])/2+s.n[0]*d,(s.p[1]+s.q[1])/2+s.n[1]*d,standName(k),Math.atan2(s.q[1]-s.p[1],s.q[0]-s.p[0])*180/Math.PI,k]);});}
     const sc=sectionAt(),sw=(x1-x0)/45;grow(sc[0]+sc[2]*(Rmax+1.5)+sc[2]*sw*1.4,sc[1]+sc[3]*(Rmax+1.5)+sc[3]*sw*1.4,sw*1.6);
     labels.forEach(([x,y])=>{const mx=fs*(o.tight?2.6:3),my=fs*(o.tight?1.45:3);x0=Math.min(x0,x-mx);x1=Math.max(x1,x+mx);y0=Math.min(y0,y-my);y1=Math.max(y1,y+my);});   // NEZ needs width more than height
   }else{dims=focalDims(P);
@@ -1778,19 +1781,23 @@ function drawPlan(o={}){
       tr.forEach((r,i)=>{if(!(i===0||i===tr.length-1||(r.row%every===0&&tr.length-1-i>=every&&i>=every*.6)))return;
         const d=(r.x+r.T/2)/1000,[rx,ry]=rotPt(px+nx*d,py+ny*d,t);
         over+=`<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${rf.toFixed(2)}" font-weight="600" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${(rf*.28).toFixed(2)}">${r.row}</text>`;});}
-    over+=labels.map(([x,y,tx])=>{const [rx,ry]=rotPt(x,y,t);return `<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${(lf*1.1).toFixed(2)}" font-weight="700" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle">${tx}</text>`;}).join('');
+    over+=labels.map(([x,y,tx,ang])=>{const [rx,ry]=rotPt(x,y,t);let a=(ang||0)+t;while(a>90)a-=180;while(a<=-90)a+=180;   // parallel to the stand, reading upright
+      return `<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${(lf*1.1).toFixed(2)}" font-weight="400" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle"${a?` transform="rotate(${a.toFixed(1)} ${rx.toFixed(2)} ${ry.toFixed(2)})"`:''}>${tx}</text>`;}).join('');
 
     // north arrow
-    if(zoned(P)){const na=lf*1.6,nxp=vx0+vW-na*1.2,nyp=vy0+na*1.3;
-    over+=`<path d="M${nxp.toFixed(2)} ${(nyp-na*.9).toFixed(2)}L${(nxp+na*.4).toFixed(2)} ${(nyp+na*.5).toFixed(2)}L${nxp.toFixed(2)} ${(nyp+na*.2).toFixed(2)}L${(nxp-na*.4).toFixed(2)} ${(nyp+na*.5).toFixed(2)}Z" fill="var(--ink)" transform="rotate(${t===90?0:-90} ${nxp.toFixed(2)} ${nyp.toFixed(2)})"/><text x="${nxp.toFixed(2)}" y="${(nyp+na*1.2).toFixed(2)}" font-size="${(lf*.9).toFixed(2)}" font-weight="700" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle">N</text>`;}}
+    if(zoned(P)){const nz=labels.find(l=>l[4]&&/NEZ|North/.test(l[2]))||labels[0],na=lf*1.3,[lx0,ly0]=rotPt(nz[0],nz[1],t),vert=t===90;
+      const nxp=lx0+(vert?lf*3.6:0),nyp=ly0+(vert?0:lf*3.6),hw=na*1.4*Math.tan(10*Math.PI/180),f2=v=>v.toFixed(2);   // beside the NEZ label; 20 degree head
+      over+=`<g transform="rotate(${vert?0:-90} ${f2(nxp)} ${f2(nyp)})"><line x1="${f2(nxp)}" y1="${f2(nyp+na*.9)}" x2="${f2(nxp)}" y2="${f2(nyp-na*.5)}" stroke="var(--ink)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`
+        +`<path d="M${f2(nxp)} ${f2(nyp-na*.9)}L${f2(nxp+hw)} ${f2(nyp+na*.5)}L${f2(nxp-hw)} ${f2(nyp+na*.5)}Z" fill="var(--ink)"/></g>`
+        +`<text x="${f2(nxp+(vert?0:-na*1.5))}" y="${f2(nyp+(vert?na*1.6:0))}" font-size="${f2(lf*.8)}" font-weight="400" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle">N</text>`;}}
   else body+=drawDims(dims,g,fs);
-  {const sc=sectionAt(),[sx,sy,nx,ny]=sc,reach=PLAN==='bowl'?Rmax+1.5:Math.max(4,S.pad*.75),inn=PLAN==='bowl'?8:Math.max(3,S.pad*.4),al=(x1-x0)/38,BL='#1E5BD8';
+  {const sc=sectionAt(),[sx,sy,nx,ny]=sc,reach=PLAN==='bowl'?Rmax+1.5:Math.max(4,S.pad*.75),inn=PLAN==='bowl'?8:Math.max(3,S.pad*.4),al=(x1-x0)/40,BL='#1E5BD8',hw=al*.75*Math.tan(10*Math.PI/180);   // 20 degree heads
     const ax=sx-nx*inn,ay=sy-ny*inn,bx=sx+nx*reach,by=sy+ny*reach,vx=ny,vy=-nx,fx=v=>v.toFixed(2);   // cut line from the field out through the stand; v: viewing direction, field on the viewer's left as drawn
     const arrow=(x,y)=>`<line x1="${fx(x)}" y1="${fx(y)}" x2="${fx(x+vx*al*.9)}" y2="${fx(y+vy*al*.9)}" stroke="${BL}" stroke-width="2.2" vector-effect="non-scaling-stroke"/>`
-      +`<path d="M${fx(x+vx*al*1.5)} ${fx(y+vy*al*1.5)}L${fx(x+vx*al*.75+nx*al*.42)} ${fx(y+vy*al*.75+ny*al*.42)}L${fx(x+vx*al*.75-nx*al*.42)} ${fx(y+vy*al*.75-ny*al*.42)}Z" fill="${BL}"/>`;
+      +`<path d="M${fx(x+vx*al*1.5)} ${fx(y+vy*al*1.5)}L${fx(x+vx*al*.75+nx*hw)} ${fx(y+vy*al*.75+ny*hw)}L${fx(x+vx*al*.75-nx*hw)} ${fx(y+vy*al*.75-ny*hw)}Z" fill="${BL}"/>`;
     body+=`<line x1="${fx(ax)}" y1="${fx(ay)}" x2="${fx(bx)}" y2="${fx(by)}" stroke="${BL}" stroke-width="2.2" vector-effect="non-scaling-stroke"/>`+arrow(ax,ay)+arrow(bx,by);   // arrows: the direction the section looks
-    const [lx,ly]=rotPt(bx-vx*al*1.1,by-vy*al*1.1,PLANROT);
-    over+=`<text x="${fx(lx)}" y="${fx(ly)}" font-size="${fx(al*.62)}" fill="${BL}" font-weight="600" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="var(--panel)" stroke-width="${fx(al*.12)}">Section</text>`;}
+    const [lx,ly]=rotPt(bx+vx*al*2.1-nx*al*.9,by+vy*al*2.1-ny*al*.9,PLANROT);   /* past the arrow tip, clear of the stand label */
+    over+=`<text x="${fx(lx)}" y="${fx(ly)}" font-size="${fx(al*.62)}" fill="${BL}" font-weight="400" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="var(--panel)" stroke-width="${fx(al*.12)}">Section</text>`;}
   return s+(t?`<g transform="rotate(${t})">${body}</g>`:body)+over+'</svg>';
 }
 $('planTabs').addEventListener('click',e=>{const b=e.target.closest('[data-plan]');if(!b)return;PLAN=b.dataset.plan;
