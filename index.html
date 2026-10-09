@@ -1005,9 +1005,11 @@ const slabT=()=>Math.max(50,+P.slabT||152.4);
 function underside(tr){const t=slabT(),u=[[tr[0].x,tr[0].z-t]];
   for(let i=1;i<tr.length;i++)u.push([tr[i].x+t,tr[i-1].z-t],[tr[i].x+t,tr[i].z-t]);
   const l=tr[tr.length-1];u.push([l.x+l.T,l.z-t]);return u.map(([x,z])=>[x,Math.max(0,z)]);}
+const LEG2=36*25.4;                                                 // upper-tier front leg wall, from the top of the row 1 tread
 function profileOf(tr,ti){const t=slabT(),pts=[];tr.forEach(r=>{pts.push([r.x,r.z],[r.x+r.T,r.z]);});
   const u=underside(tr).reverse();
   if(ti===0&&tr[0].z-t>1){u.pop();u.push([tr[0].x+t,tr[0].z-t],[tr[0].x+t,0],[tr[0].x,0]);}      // leg wall
+  else if(ti>=1){u.pop();u.push([tr[0].x+t,tr[0].z-t],[tr[0].x+t,tr[0].z-LEG2],[tr[0].x,tr[0].z-LEG2]);}   // upper tiers: leg wall 36 in below the row 1 tread
   pts.push(...u);
   return pts.filter((p,i,a)=>i===0||Math.hypot(p[0]-a[i-1][0],p[1]-a[i-1][1])>0.5);}
 function profiles(P,rows){const out=[];for(let ti=0;ti<P.tierCount;ti++){const tr=rows.filter(r=>r.tier===ti);if(tr.length)out.push(profileOf(tr,ti));}return out;}
@@ -1117,7 +1119,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.08.7';
+const VERSION='2026.10.08.9';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1433,6 +1435,9 @@ function drawSection(rows,o={}){
   const cs=rows.filter(r=>r.C!=null),w=cs.reduce((a,r)=>!a||r.C<a.C?r:a,null);
   if(w){const i=rows.indexOf(w),p=rows[i-1],zl=p.ez+w.C;
     /* lowest-C marker removed: the value is in Results and the tables */}
+  tiers.forEach(ti=>{if(!ti)return;const f=rows.find(r=>r.tier===ti),lb=rows.filter(r=>r.tier===ti-1).pop();if(!f||!lb)return;   // clear height under the leg wall
+    const zb=f.z-LEG2,x=f.x+slabT()+fs*.5,c=zb-lb.z;if(c<=0)return;
+    K.dim([x,lb.z],[x,zb],{lab:'Clearance',val:L(c),ea:[lb.x+lb.T,lb.z],eb:[f.x+slabT(),zb],fill:c<P.minHead?'var(--fail)':null,side:-1});});
   chainDims(rows,tiers,fs*.9,K);s+=K.out();
   s+=`<line x1="${X(0)}" y1="${+Y(0)+band}" x2="${X(0)}" y2="${+Y(0)-fs*1.6}" stroke="${FOCAL}" stroke-width="1.3" vector-effect="non-scaling-stroke"/>`;
   s+=`<circle cx="${X(0)}" cy="${Y(0)}" r="${dot*1.8}" fill="var(--ink)"/><text x="${X(0)}" y="${(+Y(0)+band+fs*1.05).toFixed(0)}" font-size="${fs*.85}" fill="var(--ink)" text-anchor="middle">Point of focus</text></svg>`;
@@ -1472,7 +1477,7 @@ function drawDetail(all,o={}){
   const ey=rs.map(r=>{const e=detEye(r,m);return {x:e.ex,z:e.ez};}),Cs=rs.map((r,i)=>rowC(rs,i,m));
   const cMin=Math.min(...Cs.filter(c=>c!=null));
   const NF=!!o.noFocus,X1=last.x+last.T+4400,X0=NF?rs[0].x-Math.max(2500,(o.fs||300)*15):-Math.max(4500,0.1*X1),W=X1-X0,fs=o.fs||W/110,labels=!o.sparse;   // sparse: rows too tight on paper for per-row text
-  const Z1=Math.max(...ey.map(e=>e.z))+hr*2+fs*2.5,Z0=NF?rs[0].z-slabT()-fs*3.4:-(band+fs*3.2),H=Z1-Z0;   // no focus: frame the tier only
+  const Z1=Math.max(...ey.map(e=>e.z))+hr*2+fs*2.5,Z0=NF?rs[0].z-(ti>=1?LEG2:slabT())-fs*3.6:-(band+fs*3.2),H=Z1-Z0;   // no focus: frame the tier only
   const X=x=>(x-X0).toFixed(1),Y=z=>(Z1-z).toFixed(1),c='var(--dim)',tk=fs*.3,f1=v=>(+v).toFixed(1),K=SecDim(X,Y,fs);
   const tickH=(x,z)=>`<line x1="${f1(+X(x)-tk)}" y1="${Y(z)}" x2="${f1(+X(x)+tk)}" y2="${Y(z)}" stroke="${c}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;
   const tickV=(x,z)=>`<line x1="${X(x)}" y1="${f1(+Y(z)-tk)}" x2="${X(x)}" y2="${f1(+Y(z)+tk)}" stroke="${c}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;
@@ -1509,10 +1514,11 @@ function drawDetail(all,o={}){
   else K.note(r0.x-fs*.4,r0.z-fs*1.1,`Bottom tread ${L(r0.z)} above the ${surfLow()}`,{size:fs*.5,anchor:'end',fill:c,wt:450});
   {const z0=NF?r0.z:0,xo=xd+fs*2.4;K.dim([xo,z0],[xo,last.z],{lab:NF?`Tier ${ti+1} rise`:'Overall',val:L(last.z-z0),ea:[r0.x,z0],eb:[xd,last.z],side:-1});}
   // horizontal chain below the bowl: point of focus to the first riser, the first tread, then the typical tread
-  const yc=NF?r0.z-slabT()-fs*1.4:-(band+fs*1.3),pts=(NF?[r0.x,r0.x+r0.T,r0.x+r0.T+(rs[1]?rs[1].T:0)]:[0,r0.x,r0.x+r0.T,r0.x+r0.T+(rs[1]?rs[1].T:0)]).filter((v,i,a)=>i===0||v>a[i-1]+1);
+  const yc=NF?r0.z-(ti>=1?LEG2:slabT())-fs*1.4:-(band+fs*1.3),pts=(NF?[r0.x,r0.x+r0.T,r0.x+r0.T+(rs[1]?rs[1].T:0)]:[0,r0.x,r0.x+r0.T,r0.x+r0.T+(rs[1]?rs[1].T:0)]).filter((v,i,a)=>i===0||v>a[i-1]+1);
   const zo=x=>NF?r0.z-slabT():-band;
   for(let i=1;i<pts.length;i++){const typ=i===pts.length-1&&i>=2,lab=!NF&&i===1?'Focus to riser':typ?'Tread (TYP.)':'First tread';
     K.dim([pts[i-1],yc],[pts[i],yc],{lab,val:L(pts[i]-pts[i-1]),ea:[pts[i-1],zo(pts[i-1])],eb:[pts[i],zo(pts[i])],side:-1});}
+  if(ti>=1)K.dim([r0.x+slabT()+fs*.9,r0.z-LEG2],[r0.x+slabT()+fs*.9,r0.z],{lab:'Leg wall',val:L(LEG2),ea:[r0.x+slabT(),r0.z-LEG2],side:-1});
   s+=K.out();
   return s+'</svg>';
 }
@@ -1536,7 +1542,7 @@ function drawPlatform(o={}){
   const hdim=(x0,x1,z,lab)=>ln(x0,z,x1,z)+[x0,x1].map(x=>`<line x1="${f1(+X(x)-tk)}" y1="${f1(+Y(z)+tk)}" x2="${f1(+X(x)+tk)}" y2="${f1(+Y(z)-tk)}" stroke="${c}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`).join('')
     +`<text x="${f1((+X(x0)+ +X(x1))/2)}" y="${f1(+Y(z)-fs*.3)}" font-size="${f1(fs*.62)}" fill="${c}" text-anchor="middle">${lab}</text>`;
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Wheelchair on an accessible platform">`+gridBg(X0,X1,Z0,Z1,X,Y,r0.x,r0.z);
-  s+=`<polygon points="${profileOf(rs,1).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(0)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;   /* bowl section unchanged */
+  s+=`<polygon points="${profileOf(rs,-1).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(0)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;   /* bowl section unchanged */
   s+=`<polygon points="${[[edge,p1.z],[edge,zP],[top.x,zP],[top.x,p2.z],[p2.x,p2.z],[p2.x,p1.z]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(1)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;   /* infill over the 2nd and 3rd rows, up to the top tread */
   s+=`<rect x="${X(railC-25.4)}" y="${Y(zP+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"/>`;   /* 26 in guard rail on the riser face, inside face on the platform riser */
   const people=[...standers.map(p=>({e:p.e,r:p.r,k:'stand'})),{e:eye,k:'wc'}];
@@ -1665,10 +1671,10 @@ function drawSpectator(mode,o={}){
   const rs=enlargedRows(mode);if(rs.length<2)return '<p class="empty" style="padding:16px">Needs at least two rows.</p>';
   const IN=25.4,E=P.eye,hr=4.5*IN,t=slabT(),fs=o.fs||110,T2=mode==='t2',r0=rs[0],last=rs[rs.length-1],n=rs.length,m=rs[n-2];
   const si=rs.map(r=>({x:r.x+r.T,z:r.z+E.sitH})),st=rs.map(r=>({x:r.x+E.stOff,z:r.z+E.stH}));
-  const X0=r0.x-fs*(T2?13:7)-300,X1=last.x+last.T+9*IN+fs*10.5,Z0=r0.z-t-(T2?RAIL_DROP:0)-fs*5,Z1=Math.max(...st.map(e=>e.z))+HEAD+fs*2,W=X1-X0,H=Z1-Z0;
+  const X0=r0.x-fs*(T2?13:7)-300,X1=last.x+last.T+9*IN+fs*10.5,Z0=r0.z-(T2?LEG2:t)-fs*5,Z1=Math.max(...st.map(e=>e.z))+HEAD+fs*2,W=X1-X0,H=Z1-Z0;
   const X=x=>(x-X0).toFixed(1),Y=z=>(Z1-z).toFixed(1),f1=v=>(+v).toFixed(1),K=SecDim(X,Y,fs);
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="${SPECT_NAMES[mode]}">`+gridBg(X0,X1,Z0,Z1,X,Y,r0.x,r0.z);   // 0,0 at the top of the bottom tread
-  s+=`<polygon points="${profileOf(rs,1).map(q=>X(q[0])+','+Y(q[1])).join(' ')}" fill="${tierFill(T2?1:0)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  s+=`<polygon points="${profileOf(rs,T2?1:-1).map(q=>X(q[0])+','+Y(q[1])).join(' ')}" fill="${tierFill(T2?1:0)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
   if(T2)s+=`<rect x="${X(r0.x+RAIL_SET-25.4)}" y="${Y(r0.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"/>`;   // guard rail on the row 1 riser face
   // sightlines toward the point of focus: sitting solid, standing dashed; red where row 1 does not clear the rail
   const full=(ZR.T||[]).filter(q=>q.tier===r0.tier);
@@ -1694,6 +1700,7 @@ function drawSpectator(mode,o={}){
   // C-values: the top row's sightline over the eye in front, sitting and standing
   [[si,'C sitting'],[st,'C standing']].forEach(([e,lab])=>{const zl=e[n-1].z*e[n-2].x/e[n-1].x;K.dim([e[n-2].x-2*IN,e[n-2].z],[e[n-2].x-2*IN,zl],{lab,val:CV(zl-e[n-2].z)});});
   if(T2){const xo=r0.x+RAIL_SET-25.4,rt=r0.z+P.railH;   // guard rail height and the row 1 sightlines over it
+    K.dim([r0.x+t+5*IN,r0.z-LEG2],[r0.x+t+5*IN,r0.z],{lab:'Leg wall',val:D4(LEG2),ea:[r0.x+t,r0.z-LEG2],side:-1});
     K.dim([r0.x-9*IN,r0.z],[r0.x-9*IN,rt],{lab:'Guard rail',val:D4(P.railH),eb:[xo,rt]});
     [[si[0],'Over rail, sitting'],[st[0],'Over rail, standing']].forEach(([e,lab],k)=>{const c=railClear(r0,e);K.dim([xo,rt],[xo,rt+c],{lab,val:CV(c),fill:c<0?'var(--sl-low)':null,side:1});});}
   return s+K.out()+'</svg>';
