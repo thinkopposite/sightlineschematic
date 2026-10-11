@@ -47,7 +47,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .switch{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--panel)}
 .switch button{border:0;border-radius:999px;padding:5px 13px;font-weight:600}
 .switch button.on{background:var(--accent);color:#fff}
-.units select{font:inherit;font-size:13.5px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 8px;cursor:pointer}
+.units select{flex:1;min-width:0;font:inherit;font-size:13.5px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 8px;cursor:pointer}
 input[type=range]{width:100%;accent-color:var(--accent);margin:4px 0 0}
 .tier{border-left:3px solid var(--accent);padding:2px 0 2px 10px;margin:12px 0}
 .tier b{font-size:13.5px}
@@ -226,10 +226,6 @@ button,a.btnlink,select.sel,.sl-val input,.hex,.swatch{border-color:var(--edge)}
 <body>
 <header>
   <div class="brand"><h1>Sightline Schematic</h1><p>Shape the bowl with sliders. Every riser is solved to your C-value.</p></div>
-  <div class="units" role="group" aria-label="Units">
-    <div class="switch" id="usys"><button data-sys="metric" aria-pressed="false">Metric</button><button data-sys="imperial" aria-pressed="false">Imperial</button></div>
-    <select id="ufmt" aria-label="Unit format"></select>
-  </div>
   <div class="actions">
     <button id="saveOpt">Save as option</button>
   </div>
@@ -791,7 +787,7 @@ const SPECT_NAMES={both:'1. Sitting and standing spectators',plat:'2. Wheelchair
 const RAIL_SET=-1*25.4,RAIL_DROP=8*25.4;                               // guard rail centreline 1 in in front of the riser (inside face on the riser line); extends 8 in below the tread
 const TIER_COL=['#CCCCCC','#999999'];                                  // 20% and 40% grey
 const tierFill=ti=>(P.tierColors&&P.tierColors[ti])||TIER_COL[ti]||TIER_COL[1];
-function zp(o){return Object.assign({on:true,rows:20,seat:'standard',riser:'parabolic',basis:'sit',tread:34*25.4,tread0:36*25.4,treadN:34*25.4,seatW:22*25.4,target:2.25*25.4,D:35*0.3048,Z:8*0.3048,X:null,gap:2.4,rise:3.048,suites:0},o);}
+function zp(o){return Object.assign({on:true,rows:20,seat:'standard',riser:'parabolic',basis:'sit',tread:34*25.4,tread0:36*25.4,treadN:34*25.4,seatW:22*25.4,target:2.25*25.4,D:35*0.3048,Z:8*0.3048,X:null,gap:2.4,rise:13*0.3048,suites:0},o);}
 function tierDef(rows,link,o={}){return {link,corners:'auto',z:Object.fromEntries(GEO.map(k=>[k,zp(Object.assign({rows},o))]))};}
 // Eye points from the reference sections (heights above the tread the spectator is on):
 // chairback: sitting 3'-8" directly over the back riser; standing 5'-3 1/2", 1'-6" forward of the sitting eye.
@@ -807,7 +803,7 @@ function defaults(){const S=SPORTS.ncaafb,f={};
   return {sport:'ncaafb',L:S.L,W:S.W,lanes:8,fl:330*FT,cf:400*FT,bs:60*FT,north:'L',planOri:'v',sec:'T',tierCount:2,
   zt:[tierDef(20,'all',f),tierDef(20,'all',f),tierDef(20,'all',f)].map(t=>{t.corners='chamfer';                 // E/W chairback, N/S bench
     ['T','B'].forEach(k=>Object.assign(t.z[k],{seat:'standard',seatW:22*25.4}));['L','R'].forEach(k=>Object.assign(t.z[k],{seat:'bench',seatW:18*25.4}));return t;}),
-  eye:eyeDefaults(),eyeRev:EYE_REV,tierColors:['#CCCCCC','#999999'],eyeMode:'sit',slabT:5*25.4,step:12.7,maxRiser:24*25.4,bank:1,maxRake:34,loss:12,vd:700*0.3048,capTarget:30000,railH:26*25.4,minHead:10*304.8,suiteH:4.27};}
+  eye:eyeDefaults(),eyeRev:EYE_REV,tierColors:['#CCCCCC','#999999'],eyeMode:'sit',slabT:5*25.4,step:12.7,maxRiser:24*25.4,bank:1,maxRake:34,loss:12,vd:700*0.3048,capTarget:30000,railH:26*25.4,minHead:10*304.8,suiteH:4.27,riseRev:1};}
 function defaultsPinned(){const d=defaults();d.zt.forEach(t=>GEO.forEach(k=>t.z[k].target=cvDefault(d.sport)));d.cvRev=2;alignUpperTiers(d);return d;}
 // Saved bowls from before zones: one profile for the whole bowl becomes the same profile on every side.
 function migrate(o){if(!o||o.zt)return o;const d=defaults();
@@ -862,7 +858,7 @@ function meetAllC(mode,rt){
   const short=Object.values(ZR).flat().filter(r=>r.Cd!=null&&r.Cd<r.target-0.05),sides=[...new Set(short.map(r=>`Tier ${r.tier+1} ${zoneName(P,r.zone,true)}`))];
   const rs=[];if(rt==='constant')for(let ti=0;ti<P.tierCount;ti++){const r=ZR[P.sec].find(x=>x.tier===ti&&x.riser!=null);if(r)rs.push(`Tier ${ti+1} ${L(r.riser)}`);}
   toast(short.length?`${rt==='constant'?`Constant risers stop at the ${L(P.maxRiser)} maximum: `:''}${sides.join(', ')} still below the ${BASIS[mode]} minimum.`
-    :`Every row meets its ${BASIS[mode]} minimum C with ${rt} risers in ½" steps${rs.length?` (${zoneName(P,P.sec)}: ${rs.join(', ')})`:''}.`);
+    :`Every row meets its ${BASIS[mode]} minimum C with ${rt} risers in ${L(P.step)} steps${rs.length?` (${zoneName(P,P.sec)}: ${rs.join(', ')})`:''}.`);
 }
 function applyEyes(rows){const mode=P.eyeMode==='stand'?'stand':'sit';
   rows.forEach(r=>{const [s0,h0]=eyeAt(P,r.seat,r.T,'sit'),[s1,h1]=eyeAt(P,r.seat,r.T,'stand');
@@ -888,10 +884,12 @@ function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGAC
   if(!Array.isArray(P.tierColors))P.tierColors=TIER_COL.slice();
   if(['#999999','#BFBFBF'].includes((P.tierColors[0]||'').toUpperCase()))P.tierColors[0]='#CCCCCC';if(['#666666','#808080'].includes((P.tierColors[1]||'').toUpperCase()))P.tierColors[1]='#999999';   // earlier default greys move to the current ones
   P.tierColors=TIER_COL.map((c,i)=>/^#[0-9a-f]{6}$/i.test(P.tierColors[i]||'')?P.tierColors[i].toUpperCase():c);
-  P.zt.forEach((t,i)=>GEO.forEach(k=>{const z=t.z[k];if(!z)return;z.tread=Math.max(z.tread,33*25.4);z.tread0=Math.max(z.tread0,33*25.4);
+  P.zt.forEach((t,i)=>GEO.forEach(k=>{const z=t.z[k];if(!z)return;{const tm=REGION_DEF[regionOf(P.sport)].treadMin;z.tread=Math.max(z.tread,tm);z.tread0=Math.max(z.tread0,tm);}
     const Sp=SPORTS[P.sport];if(i===0&&Sp){z.D=Math.max(z.D,Sp.Dmin??0);z.Z=Math.max(z.Z,Sp.Zmin??0);}}));
   if(P.cvRev!==2){P.zt.forEach(t=>GEO.forEach(k=>{if(t.z[k])t.z[k].target=cvDefault(P.sport);}));P.cvRev=2;}   // adopt the sport C-value onceP.tierCount=Math.min(2,Math.max(1,P.tierCount|0||2));
-  Object.assign(P,{step:12.7,maxRiser:24*25.4,bank:1,railH:26*25.4,minHead:10*304.8});             // fixed values
+  {const R=REGION_DEF[regionOf(P.sport)];Object.assign(P,{step:R.step,maxRiser:R.maxRiser,bank:1,railH:26*25.4,minHead:R.minHead});LEG2=R.leg;   // fixed values, by region
+   if(P.riseRev!==1){P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>{if(t.z[k])t.z[k].rise=R.rise;});});
+     if(regionOf(P.sport)==='world')P.zt.forEach(t=>GEO.forEach(k=>{if(t.z[k])Object.assign(t.z[k],{tread:R.tread,tread0:R.tread0,treadN:R.tread});}));P.riseRev=1;}}
   if(P.sport==='nfl'||P.sport==='ncaafb')Object.assign(P,{L:360*0.3048,W:160*0.3048});           // football field 360 ft x 160 ftif(!GEO.includes(P.sec))P.sec='T';
   if(!Array.isArray(P.zt)||P.zt.length<3)P.zt=d.zt;
   P.zt.forEach((t,i)=>{if(i&&P.zt[0].corners)t.corners=P.zt[0].corners;
@@ -994,6 +992,7 @@ function metrics(P,ZR,CH){
         for(let i=1;i<us.length;i++)if(x<=us[i][0])return us[i-1][1]+(us[i][1]-us[i-1][1])*(x-us[i-1][0])/Math.max(1e-9,us[i][0]-us[i-1][0]);return us[us.length-1][1];};
       let h=Infinity;for(const r of Lo)if(r.x+r.T>u0.x){h=Math.min(h,sof(Math.max(r.x,u0.x))-r.z);}
       const lb=Lo[Lo.length-1];if(xb>lb.x+lb.T)h=Math.min(h,sof(Math.max(u0.x,lb.x+lb.T))-lb.z);
+      h=Math.min(h,u0.z-LEG2-lb.z);   /* clear height under the upper-tier leg wall, over the top tread below */
       heads.push({zone:k,tier:ti,h});}}
   const rails=rows.filter(r=>r.railC!=null&&r.railC<0),lowHead=heads.filter(h=>h.h<P.minHead);
   return {cap:Math.round(cap),tierSeats:tierSeats.map(x=>Math.round(x||0)),zoneSeats,worst,steep,rails,heads,lowHead,
@@ -1006,7 +1005,11 @@ const slabT=()=>Math.max(50,+P.slabT||152.4);
 function underside(tr){const t=slabT(),u=[[tr[0].x,tr[0].z-t]];
   for(let i=1;i<tr.length;i++)u.push([tr[i].x+t,tr[i-1].z-t],[tr[i].x+t,tr[i].z-t]);
   const l=tr[tr.length-1];u.push([l.x+l.T,l.z-t]);return u.map(([x,z])=>[x,Math.max(0,z)]);}
-const LEG2=36*25.4;                                                 // upper-tier front leg wall, from the top of the row 1 tread
+/* regional defaults: American sports in inches, international in mm (FIFA Stadium Guidelines 5.2: 800 mm minimum tread, 400 mm clearway) */
+const REGION_DEF={america:{tread:34*25.4,tread0:36*25.4,rise:13*0.3048,leg:36*25.4,step:12.7,maxRiser:24*25.4,minHead:10*304.8,treadMin:33*25.4,treadMax:52*25.4,tread0Max:60*25.4,tStep:25.4},
+  world:{tread:800,tread0:900,rise:4.0,leg:1000,step:10,maxRiser:600,minHead:3000,treadMin:700,treadMax:1300,tread0Max:1500,tStep:10}};
+const regionOf=s=>(SPORTS[s]||{}).region==='world'?'world':'america',RD=()=>REGION_DEF[regionOf(P.sport)];
+let LEG2=36*25.4;                                                 // upper-tier front leg wall, from the top of the row 1 tread
 function profileOf(tr,ti){const t=slabT(),pts=[];tr.forEach(r=>{pts.push([r.x,r.z],[r.x+r.T,r.z]);});
   const u=underside(tr).reverse();
   if(ti===0&&tr[0].z-t>1){u.pop();u.push([tr[0].x+t,tr[0].z-t],[tr[0].x+t,0],[tr[0].x,0]);}      // leg wall
@@ -1120,13 +1123,13 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.10.10';
+const VERSION='2026.10.11.4';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
 // When the defaults change (DREV goes up), each browser starts once from the new default bowl; saved options are kept.
 const DREV=9;let NEWDEF=false;
-try{if((+localStorage.getItem('sightline-defaults-rev')||0)<DREV){NEWDEF=!!P;P=null;localStorage.setItem('sightline-defaults-rev',String(DREV));localStorage.setItem('sightline-units',JSON.stringify({sys:'imperial',metric:'mm',imperial:'ftin-frac'}));}}catch(e){}
+try{if((+localStorage.getItem('sightline-defaults-rev')||0)<DREV){NEWDEF=!!P;P=null;localStorage.setItem('sightline-defaults-rev',String(DREV));localStorage.setItem('sightline-units',JSON.stringify({sys:'imperial',metric:'mm-m',imperial:'arch'}));}}catch(e){}
 if(!P)P=defaultsPinned();
 const $=id=>document.getElementById(id);
 function persist(){try{localStorage.setItem(KEY,JSON.stringify({P,OPTS}))}catch(e){}}
@@ -1135,15 +1138,18 @@ const fmt=n=>Math.round(n).toLocaleString();
 
 // ---------- units (display only; the engine and exports stay metric) ----------
 const UKEY='sightline-units';
-let U={sys:'imperial',metric:'mm',imperial:'ftin-frac'};
+let U={sys:'imperial',metric:'mm-m',imperial:'arch'};
 try{const u=JSON.parse(localStorage.getItem(UKEY));if(u)Object.assign(U,u);}catch(e){}
-const UFMT={metric:[['m-dec','1.0000 m'],['cm','100.00 cm'],['mm','1,000 mm']],
-  imperial:[['ftin-frac','100\'-0 ½"'],['in-frac','1,200 ½"'],['in-dec','1,200.5000"']]};
+const UFMT={metric:[['mm-m','1,000 mm / 12.500 m'],['m-dec','1.0000 m'],['cm','100.00 cm'],['mm','1,000 mm']],
+  imperial:[['arch','100.00" / 12\'-6 ½"'],['ftin-frac','100\'-0 ½"'],['in-frac','1,200 ½"'],['in-dec','1,200.5000"']]};
 // drop formats that no longer exist (remembered from an earlier version)
-if(!UFMT.metric.some(([k])=>k===U.metric))U.metric='mm';
-if(!UFMT.imperial.some(([k])=>k===U.imperial))U.imperial='ftin-frac';
+if(!UFMT.metric.some(([k])=>k===U.metric))U.metric='mm-m';
+if(!UFMT.imperial.some(([k])=>k===U.imperial))U.imperial='arch';
 if(U.sys!=='metric'&&U.sys!=='imperial')U.sys='metric';
 const fmode=()=>U[U.sys];
+/* default units by sport: American sports imperial (2-decimal inches below 10'-0", feet-inches at or above), international sports metric mm */
+function sportUnits(k){const r=(SPORTS[k]||{}).region;U.sys=r==='world'?'metric':'imperial';U.imperial='arch';U.metric='mm-m';try{localStorage.setItem(UKEY,JSON.stringify(U))}catch(e){}}
+try{if((+localStorage.getItem('sightline-units-rev')||0)<2){sportUnits(P&&P.sport);localStorage.setItem('sightline-units-rev','2');}}catch(e){}
 const imperial=()=>U.sys==='imperial';
 const EN=(n,dp=0)=>n.toLocaleString('en-US',{minimumFractionDigits:dp,maximumFractionDigits:dp});
 const VF={'1/2':'½','1/4':'¼','3/4':'¾','1/8':'⅛','3/8':'⅜','5/8':'⅝','7/8':'⅞'},SUP='⁰¹²³⁴⁵⁶⁷⁸⁹',SUB='₀₁₂₃₄₅₆₇₈₉';
@@ -1153,7 +1159,8 @@ function reduceFrac(r,d){while(r&&r%2===0&&d>1){r/=2;d/=2;}const k=r+'/'+d;
 // inches -> imperial text for the current format; den = fraction denominator, dp = decimal places
 function impText(inches,den=16,dp=2){
   const neg=inches<0?'-':'',a=Math.abs(inches),f=fmode();
-  if(f==='ftin-frac'){const n=Math.round(a*den),ft=Math.floor(n/(12*den)),rem=n-ft*12*den,w=Math.floor(rem/den),r=rem%den;
+  if(f==='arch'&&a<120-0.005)return `${neg}${a.toFixed(2)}"`;   /* below 10'-0": decimal inches, 2 places */
+  if(f==='ftin-frac'||f==='arch'){const n=Math.round(a*den),ft=Math.floor(n/(12*den)),rem=n-ft*12*den,w=Math.floor(rem/den),r=rem%den;
     return `${neg}${ft}'-${w}${r?' '+reduceFrac(r,den):''}"`;}
   if(f==='in-frac'){const n=Math.round(a*den),w=Math.floor(n/den),r=n%den;
     return `${neg}${w||!r?EN(w):''}${r?(w?' ':'')+reduceFrac(r,den):''}"`;}
@@ -1169,13 +1176,14 @@ const stepDec=st=>((String(st).split('.')[1]||'').length);
 function plain(mm,coarse=false){
   if(imperial())return impText(mm/25.4,coarse?1:16);
   const f=fmode();
+  if(f==='mm-m')return Math.abs(mm)>=10000-0.5?EN(mm/1000,3)+' m':EN(Math.round(mm))+' mm';   /* below 10 m: mm; at or above: metres to 3 places */
   return f==='m-dec'?EN(mm/1000,4):f==='cm'?EN(mm/10,2):EN(Math.round(mm));
 }
-const unitSuffix=()=>imperial()?'':({'m-dec':' m',cm:' cm',mm:' mm'})[fmode()];
+const unitSuffix=()=>imperial()?'':({'m-dec':' m',cm:' cm',mm:' mm','mm-m':''})[fmode()];
 // value shown inside an editable field (no separators in metric so it re-parses cleanly)
-function wcTxt(mm){if(!imperial())return Math.round(mm)+' mm';return (+(mm/25.4).toFixed(2))+'" ('+L(mm)+')';}
+function wcTxt(mm){if(!imperial())return L(mm);if(fmode()==='arch')return impText(mm/25.4);return (+(mm/25.4).toFixed(2))+'" ('+L(mm)+')';}
 function fieldText(mm,kind,step){
-  if(imperial()&&step&&step<1.5)return (mm/25.4).toFixed(2)+'"';   /* steps finer than 1/16 in: decimal inches */
+  if(imperial()&&step&&(kind==='m'?step*1000:step)<1.5)return (mm/25.4).toFixed(2)+'"';   /* steps finer than 1/16 in: decimal inches */
   return plain(mm);
 }
 const unitLabel=kind=>unitSuffix().trim();
@@ -1197,18 +1205,18 @@ function parseLen(str,kind){
   if(hasFt||hasIn)mm=ft*304.8+v*25.4;
   else if(f==='m-dec')mm=v*1000;
   else if(f==='cm')mm=v*10;
-  else if(f==='mm')mm=v;
+  else if(f==='mm'||f==='mm-m')mm=v;
   else if(f.startsWith('ftin'))mm=v*304.8;
   else mm=v*25.4;
   return neg?-mm:mm;
 }
-function renderUnits(){
+function renderUnits(){if(!$('ufmt'))return;
   document.querySelectorAll('#usys [data-sys]').forEach(b=>{const on=b.dataset.sys===U.sys;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
   $('ufmt').innerHTML=UFMT[U.sys].map(([k,n])=>`<option value="${k}"${k===fmode()?' selected':''}>${n}</option>`).join('');
 }
 function setUnits(){try{localStorage.setItem(UKEY,JSON.stringify(U))}catch(e){}renderUnits();renderControls();update();}
-$('usys').addEventListener('click',e=>{const b=e.target.closest('[data-sys]');if(!b||b.dataset.sys===U.sys)return;U.sys=b.dataset.sys;setUnits();});
-$('ufmt').addEventListener('change',e=>{U[U.sys]=e.target.value;setUnits();});
+document.addEventListener('click',e=>{const b=e.target.closest('#usys [data-sys]');if(!b||b.dataset.sys===U.sys)return;U.sys=b.dataset.sys;setUnits();});   /* the switch lives in step 1, re-rendered with the controls */
+document.addEventListener('change',e=>{if(e.target.id!=='ufmt')return;U[U.sys]=e.target.value;setUnits();});
 
 // ---------- controls ----------
 const META={};let EDIT={tier:0,g:0};
@@ -1224,7 +1232,7 @@ function fieldSliders(){const S=SPORTS[P.sport];
   if(S.shape==='track')return slider('lanes','Lanes',6,10,1,'lanes')+'<p class="hint">Bends, straights and lane width are fixed by the standard track; the bowl wraps the outside lane and the straight chute.</p>';
   if(S.shape==='oval')return slider('L','Boundary rope, end to end',118,165,0.01,'m')+slider('W','Boundary rope, side to side',118,165,0.01,'m');
   return slider('L','Field length',10,200,0.01,'m')+slider('W','Field width',5,130,0.01,'m');}
-function applySport(k){const x=SPORTS[k],g=gapsOf(P);Object.assign(P,{sport:k});P.zt.forEach(t=>GEO.forEach(g=>Object.assign(t.z[g],{D:x.D,Z:x.Z,target:cvDefault(k)})));
+function applySport(k){const x=SPORTS[k],g=gapsOf(P);sportUnits(k);renderUnits();{const R=REGION_DEF[regionOf(k)];if(regionOf(k)!==regionOf(P.sport)){P.zt.forEach((t,i)=>GEO.forEach(q=>{const z=t.z[q];if(!z)return;Object.assign(z,{tread:R.tread,tread0:R.tread0,treadN:R.tread});if(i)z.rise=R.rise;}));}Object.assign(P,{step:R.step,maxRiser:R.maxRiser,minHead:R.minHead});LEG2=R.leg;}   /* a new sport brings its default units */Object.assign(P,{sport:k});P.zt.forEach(t=>GEO.forEach(g=>Object.assign(t.z[g],{D:x.D,Z:x.Z,target:cvDefault(k)})));
   if(x.shape==='fan')Object.assign(P,{fl:x.fl,cf:x.cf,bs:x.bs});else if(x.shape==='track')Object.assign(P,{lanes:x.lanes,L:x.L,W:x.W});else Object.assign(P,{L:x.L,W:x.W});keepGaps(P,g);CUR=null;renderControls();update();}
 // zt.<tier>.<keys>.<param> edits a group of zones together, so linked sides can never drift apart
 function lowerTop(ti,k){const lo=solveZone(Object.assign({},P,{tierCount:Math.max(P.tierCount,ti+1)}),k).filter(r=>r.tier===ti-1);return lo[lo.length-1];}
@@ -1254,8 +1262,8 @@ function zoneEditor(ti,g){
   h+=all4?seatBlock(['T','B'],'East and West sidelines')+seatBlock(['L','R'],'North and South end zones'):seatBlock(g,'');
   h+='<div class="lab">Riser</div><div class="seg">'+[['parabolic','Parabolic riser'],['constant','Constant riser']].map(([k,n])=>`<button data-riser="${k}" data-g="${pre}" class="${(z.riser||'parabolic')===k?'on':''}">${n}</button>`).join('')+'</div>'
     +`<p class="hint">${z.riser==='constant'?`One riser for every row: the smallest ${L(P.step)} step that meets the C-value, up to the ${L(P.maxRiser)} maximum.`:`Each riser sized to meet the C-value, in ${L(P.step)} steps.`} Sized for ${BASIS[z.basis]||'sitting'} spectators.</p>`;
-  h+=slider(pre+'.rows','Rows (1 row)',3,80,1,'rows')+slider(pre+'.tread','Typical row depth (1 inch)',33*25.4,52*25.4,25.4,'mm')
-    +slider(pre+'.tread0','Bottom row depth (1 inch)',33*25.4,60*25.4,25.4,'mm')
+  {const R=RD(),u=imperial()?'1 inch':'10 mm';h+=slider(pre+'.rows','Rows (1 row)',3,80,1,'rows')+slider(pre+'.tread',`Typical row depth (${u})`,R.treadMin,R.treadMax,R.tStep,'mm')
+    +slider(pre+'.tread0',`Bottom row depth (${u})`,R.treadMin,R.tread0Max,R.tStep,'mm')}
     +cvEditor(pre,z,ti);
   const Sp=SPORTS[P.sport],imp=imperial();
   if(ti===0)h+=slider(pre+'.D',`Sideline depth (${imp?'1 foot':'100 mm'})`,Sp.Dmin??0,imp?60*0.3048:18,imp?0.3048:0.1,'m')
@@ -1264,13 +1272,17 @@ function zoneEditor(ti,g){
   else h+=slider(pre+'.X',`Sideline depth (${imperial()?'1 foot':'100 mm'})`,2*0.3048,400*0.3048,imperial()?0.3048:0.1,'m')
     +(z.X==null?'<p class="hint">First riser aligned over the Tier-1 last riser; it follows Tier 1 automatically.</p>'
       :`<p class="hint" id="sbHint">${setbackText(ti,g[0])}</p><button data-realign="${ti}" style="margin:4px 0 6px">Align to Tier-1 last riser</button>`)
-    +slider(pre+'.Zabs',`Tier-2 bottom tread above the ${surfLow()} (4 inch)`,3*0.3048,150*0.3048,0.1016,'m');
+    +slider(pre+'.rise',`Tier-1 top tread to Tier-2 bottom tread (${imperial()?'1 inch':'10 mm'})`,imperial()?8*0.3048:2.5,imperial()?40*0.3048:12,imperial()?0.0254:0.01,'m')
+    +`<p class="hint">Clear height below the Tier-2 leg wall: ${L(z.rise*1000-LEG2)} (leg wall ${L(LEG2)} below the bottom tread; minimum ${L(P.minHead)}).</p>`
+    +slider(pre+'.Zabs',`Tier-2 bottom tread above the ${surfLow()} (${imperial()?'4 inch':'100 mm'})`,3*0.3048,150*0.3048,imperial()?0.1016:0.1,'m');
   h+=`<button data-zreset="${pre}" style="margin-top:10px">Reset</button>`;
   return h;}
 function renderControls(){
   const grp=(r,lab)=>`<optgroup label="${lab}">`+Object.entries(SPORTS).filter(([k,x])=>x.region===r).map(([k,x])=>`<option value="${k}"${P.sport===k?' selected':''}>${x.name} (${x.org})</option>`).join('')+'</optgroup>';
   const step=(n,t,sub)=>`<section class="step"><div class="step-h"><span class="bub">${n}</span><h2>${t}</h2><p>${sub}</p></div>`;
-  let h=step(1,'Field','Sport, governing rules and orientation.')+'<select id="sportSel" class="sel" aria-label="Sport and governing body">'+grp('america','America')+grp('world','World')+'</select>';
+  let h=step(1,'Field','Sport, governing rules, units and orientation.')+'<select id="sportSel" class="sel" aria-label="Sport and governing body">'+grp('america','American sports')+grp('world','International sports')+'</select>';
+  h+=`<div class="lab">Units</div><div class="units" role="group" aria-label="Units"><div class="switch" id="usys"><button data-sys="imperial">Imperial</button><button data-sys="metric">Metric</button></div><select id="ufmt" aria-label="Unit format"></select></div>
+    <p class="hint">American sports default to imperial: inches to 2 decimals below 10'-0", feet and inches at or above. International sports default to metric: mm below 10 m, metres at or above. Choosing a sport sets its default.</p>`;
   if(zoned(P))h+=`<div class="sl"><div class="sl-top"><label for="northSel">Field orientation</label></div><select id="northSel" class="sel">${[['v','Vertical football field, north up'],['h','Landscape football field, north left']].map(([k,n])=>`<option value="${k}"${P.planOri===k?' selected':''}>${n}</option>`).join('')}</select></div>`;
   h+='</section>';
   h+=step(2,'Bowl','Tiers, slab and corners for the whole bowl.')+'<div class="lab" style="margin-top:0">Tiers</div><div class="seg">'+[1,2].map(n=>`<button data-tc="${n}" class="${P.tierCount===n?'on':''}">${n} tier${n>1?'s':''}</button>`).join('')+'</div>';
@@ -1300,7 +1312,7 @@ function renderControls(){
     +'<p class="hint">Re-sizes the risers on every tier and side in ½" steps so each row meets its minimum C-value. Sitting and standing also covers standing on its own. Constant risers stop at the maximum riser.</p></section>';
   h+=step(5,'Capacity','Target seats. Rows are sized to reach it.')+slider('capTarget','Target seats (500 seats)',5000,120000,500,'seats')+'<button id="fit" class="primary" style="margin-top:10px;width:100%">Size rows to hit target</button></section>';
   const fixed=[...(P.sport==='nfl'||P.sport==='ncaafb'?[['Football field length',L(360*304.8)],['Football field width',L(160*304.8)]]:[]),
-    ['Round risers up to',L(12.7)],['Maximum riser',L(24*25.4)],['Rows per riser bank','1'],['Guard rail at row 1 of each tier','26" high, 2" thick, on the riser face (inside face on the riser line), 8" below the tread'],['Minimum headroom under tiers',L(10*304.8)]];
+    ['Round risers up to',L(P.step)],['Maximum riser',L(P.maxRiser)],['Rows per riser bank','1'],['Guard rail at row 1 of each tier',`${inchText(P.railH)} high, ${inchText(2*25.4)} thick, on the riser face (inside face on the riser line), ${inchText(8*25.4)} below the tread`],['Minimum headroom under tiers',L(P.minHead)],['Upper-tier leg wall',`${L(LEG2)} below the bottom tread`]];
   h+='<details><summary>Advanced</summary>'+(P.sport==='nfl'||P.sport==='ncaafb'?'':fieldSliders())
     +slider('maxRake','Maximum rake (1 degree)',25,40,1,'°')+slider('vd','Viewing distance limit (1 foot)',300*0.3048,1000*0.3048,0.3048,'m')
     +slider('loss','Seats lost to aisles and vomitories (1 %)',0,30,1,'%')
@@ -1310,11 +1322,12 @@ function renderControls(){
   const c=$('controls'), open=c.querySelector('details')?.open;
   c.innerHTML=h; if(open)c.querySelector('details').open=true;
   c.querySelectorAll('.eyes input,.eyes .nudge').forEach(i=>{i.disabled=EYELOCK;i.title=EYELOCK?'Unlock to change':'';});
+  renderUnits();
 }
 function syncField(p,el){const mt=META[p],v=get(p);
   document.querySelectorAll(`[data-p="${p}"]`).forEach(x=>{if(x===el)return;
     x.value=x.classList.contains('len')?fieldText(v*(mt.kind==='m'?1000:1),mt.kind,mt.step):v;});}
-function commit(p,v,el){set(p,v);syncField(p,el);CUR=null;update();if(/\.target$/.test(p))renderControls();}   // C-value box shows 4 decimals
+function commit(p,v,el){set(p,v);syncField(p,el);CUR=null;update();if(/\.(target|rise|Zabs)$/.test(p))renderControls();}   // C-value box shows 4 decimals
 $('controls').addEventListener('input',e=>{
   const el=e.target,p=el.dataset.p;if(!p||el.classList.contains('len'))return;
   const v=parseFloat(el.value);if(!isFinite(v))return;commit(p,v,el);
@@ -1324,7 +1337,7 @@ $('controls').addEventListener('change',e=>{
   if(e.target.id==='sportSel'){applySport(e.target.value);return;}
   if(e.target.id==='northSel'){P.planOri=e.target.value;CUR=null;renderControls();update();return;}
   const el=e.target,p=el.dataset.p;if(!p||!el.classList.contains('len'))return;
-  const mt=META[p],k=mt.kind==='m'?1000:1,mm=imperial()&&mt.step<1.5&&/^\s*\d*\.?\d+\s*$/.test(el.value)?+el.value*25.4:parseLen(el.value,mt.kind);   /* decimal-inch boxes: a bare number is inches */
+  const mt=META[p],k=mt.kind==='m'?1000:1,mm=imperial()&&(mt.kind==='m'?mt.step*1000:mt.step)<1.5&&/^\s*\d*\.?\d+\s*$/.test(el.value)?+el.value*25.4:parseLen(el.value,mt.kind);   /* decimal-inch boxes: a bare number is inches */
   if(!isFinite(mm)){toast(imperial()?'Try a length like 12\'-6 1/2" or 150"':'Try a length like 3.8 m or 3800 mm');el.value=fieldText(get(p)*k,mt.kind,mt.step);return;}
   let v=mm/k;let c=Math.min(mt.max,Math.max(mt.min,v));c=Math.min(mt.max,mt.min+Math.round((c-mt.min)/mt.step)*mt.step);c=Math.round(c*1e6)/1e6;
   if(Math.abs(c-v)>mt.step/2)toast(`Kept within ${L(mt.min*k,mt.kind,stepDec(mt.step))} to ${L(mt.max*k,mt.kind,stepDec(mt.step))}`);
@@ -1436,7 +1449,7 @@ function drawSection(rows,o={}){
   const nT=new Set(rows.map(r=>r.tier)).size,band=36*25.4,Z0=-(band+fs*2.4),Z1=maxZ+fs*(3.4+2.3*(nT+1)),H=Z1-Z0;   // 36 in bands below; a dimension per tier and an overall one above the bowl
   const X=x=>(x-X0).toFixed(0),Y=z=>(Z1-z).toFixed(0),K=SecDim(X,Y,fs*.9,[W,H]);
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Bowl section with sightlines">`;
-  const GS=imperial()?20*304.8:5000,gl=g=>imperial()?`${Math.round(g/304.8)}'`:fmode()==='m-dec'?`${Math.round(g/1000)} m`:fmode()==='cm'?`${EN(g/10)} cm`:`${EN(g)} mm`;
+  const GS=imperial()?20*304.8:5000,gl=g=>imperial()?`${Math.round(g/304.8)}'`:fmode()==='m-dec'||fmode()==='mm-m'&&g>=10000?`${Math.round(g/1000)} m`:fmode()==='cm'?`${EN(g/10)} cm`:`${EN(g)} mm`;
   s+=gridBg(X0,X1,Z0,Z1,X,Y);
   for(let g=Math.ceil(X0/GS)*GS;g<=X1;g+=GS)s+=`<line x1="${X(g)}" y1="0" x2="${X(g)}" y2="${H}" stroke="var(--edge)" stroke-width="0.8" opacity=".7" vector-effect="non-scaling-stroke"/><text x="${X(g)}" y="${H-fs*.35}" font-size="${fs*.8}" fill="var(--muted)" text-anchor="middle">${gl(g)}</text>`;
   for(let g=0;g<=Z1;g+=GS)s+=`<line x1="0" y1="${Y(g)}" x2="${W}" y2="${Y(g)}" stroke="var(--edge)" stroke-width="0.8" opacity=".7" vector-effect="non-scaling-stroke"/>${g?`<text x="${fs*.4}" y="${+Y(g)-fs*.3}" font-size="${fs*.8}" fill="var(--muted)">${gl(g)}</text>`:''}`;
@@ -1491,7 +1504,7 @@ const detEye=(r,m)=>m==='stand'?r.stand:r.sit;
 const Cf=v=>v==null?'':L(v).replace(/^(-?)0'-/,'$1').replace(/^(-?)0 (?=\D)/,'$1');                   // C-values in plain inches
 function rowC(rs,i,m){if(i===0||!rs[i]||!rs[i-1])return null;const e=detEye(rs[i],m),p=detEye(rs[i-1],m);return e.ez*p.ex/e.ex-p.ez;}   // C over the row in front
 // inches for detail labels: 14 ½", or mm in metric
-function inchText(v){if(!imperial())return `${Math.round(v)} mm`;const t=Math.round(v/25.4*16),w=Math.floor(t/16),f=t%16,
+function inchText(v){if(!imperial())return fmode()==='mm-m'?plain(v):`${EN(Math.round(v))} mm`;if(fmode()==='arch')return impText(v/25.4);const t=Math.round(v/25.4*16),w=Math.floor(t/16),f=t%16,
   g={2:'⅛',4:'¼',6:'⅜',8:'½',10:'⅝',12:'¾',14:'⅞'}[f]||(f?`${f}/16`:'');return `${w}${g?' '+g:''}"`;}
 function gridBg(X0,X1,Z0,Z1,X,Y,ox=0,oz=0){const mi=imperial()?304.8:1000,ma=imperial()?3048:5000;let a='',b='';   // ox, oz: the grid's 0,0
   for(let g=ox+Math.ceil((X0-ox)/mi)*mi;g<=X1+1e-6;g+=mi){const k=(g-ox)/ma,major=Math.abs(k-Math.round(k))<1e-6,seg=`M${X(g)} ${Y(Z0)}V${Y(Z1)}`;if(major)b+=seg;else a+=seg;}
@@ -1554,7 +1567,7 @@ function drawDetail(all,o={}){
 const WC_FIG={lines:[[[-3,38.7],[-1.6,40],[0,40.3],[1.9,39.8],[3.4,35.6],[2.8,28.8]],[[-3,38.7],[-3.9,25.3],[-17.4,25.3],[-19.6,23.6],[-24,6],[-31.5,6.4],[-28.4,4.6],[-24,6]],
     [[2.9,34.6],[8.5,34.6]],[[2.9,34.6],[2.9,9]],[[-14.4,28.5],[2.9,28.5]],[[-14.4,28.5],[-14.4,9]],[[-14.4,18.8],[2.9,18.8]],[[-19,9],[9.1,9]],[[-15.5,19.4],[-22.6,2.3]]],
   circles:[[2.9,12,11.9],[2.9,12,11],[2.9,12,1],[-13.2,4,3.9],[-13.2,4,3.3],[-13.2,4,0.6]]};
-const D4=v=>imperial()?(v/25.4).toFixed(2)+'"':v.toFixed(2)+' mm';   /* enlarged spectator dimensions: 2 decimals (C-values keep 4) */
+const D4=v=>imperial()?(fmode()==='arch'?impText(v/25.4):(v/25.4).toFixed(2)+'"'):L(v);   /* enlarged spectator dimensions: 2 decimals (C-values keep 4) */
 function wheelchairFigure(ex,floor,X,Y){const IN=25.4,P_=([dx,dz])=>`${X(ex+dx*IN)},${Y(floor+dz*IN)}`,st='fill="none" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-linejoin="round"';
   return WC_FIG.lines.map(l=>`<polyline points="${l.map(P_).join(' ')}" ${st}/>`).join('')
     +WC_FIG.circles.map(([dx,dz,r])=>`<circle cx="${X(ex+dx*IN)}" cy="${Y(floor+dz*IN)}" r="${(r*IN).toFixed(1)}" ${st}/>`).join('');}
@@ -1666,7 +1679,7 @@ function railClear(r,e){const xo=r.x+RAIL_SET-25.4,zl=e.z*xo/e.x;return zl-(r.z+
 function spectatorInfo(mode){
   if(mode==='both'||mode==='t2'){const E=P.eye,rs=enlargedRows(mode),n=rs.length;if(n<2)return [];
     const ci=v=>v==null?'n/a':CV(v),cS=rowC(rs,n-1,'sit'),cT=rowC(rs,n-1,'stand'),tg=rs[n-1].target,base=[['Sitting eye',`${L(E.sitH)} above the tread, over the back riser`],
-      ['Standing eye',`${L(E.stH)} above the tread, ${L(E.stOff)} from the front riser`],['Head height','eye + 2 × 2 ¼"; red line 2 ¼" above the eye']];
+      ['Standing eye',`${L(E.stH)} above the tread, ${L(E.stOff)} from the front riser`],['Head height',`eye + 2 × ${inchText(HEAD/2)}; red line ${inchText(HEAD/2)} above the eye`]];
     if(mode==='t2'){const r0=rs[0],e1={x:r0.x+r0.T,z:r0.z+E.sitH},e2={x:r0.x+E.stOff,z:r0.z+E.stH},c1=rowC(rs,1,'sit'),c2=rowC(rs,1,'stand');
       return [['Guard rail',`${L(P.railH)} above row ${r0.row}, on the riser face`],[`Over the rail, row ${r0.row} sitting`,CV(railClear(r0,e1))],[`Over the rail, row ${r0.row} standing`,CV(railClear(r0,e2))],
         [`C, row ${rs[1].row} over row ${r0.row}`,`sitting ${ci(c1)}, standing ${ci(c2)} (minimum ${ci(rs[1].target)})`],...base];}
@@ -1674,13 +1687,13 @@ function spectatorInfo(mode){
   if(mode==='plat')return platformInfo();
   if(mode==='wc'){const E=P.eye,rs=spectatorRows(),last=rs[rs.length-1],m=rs[rs.length-2];if(!last||!m)return [];
     const e={x:last.x+last.T,z:last.z+E.wcH},p={x:m.x+m.T,z:m.z+E.sitH},C=e.z*p.x/e.x-p.z;
-    return [['Wheelchair eye height',`${wcTxt(E.wcH)} above the tread (average, per A117.1 table basis)`],['Wheelchair eye, horizontal','aligned to the back riser'],['Wheelchair head height',`${wcTxt(E.wcH+HEAD)} (eye + 2 × 2 ¼")`],
-      ['Red line','2 ¼" above the eye'],[`C-value, row ${last.row} (wheelchair) over row ${m.row}`,`${CV(C)} (minimum ${CV(last.target)})`],['Rows in front','sitting spectators']];}const E=P.eye,rs=spectatorRows(),t1=(ZR.T||[]).filter(r=>r.tier===0),i=t1.indexOf(rs[rs.length-1]),C=rowC(t1,i,mode),tg=rs[rs.length-1]?.target,rf=rs[rs.length-2];
+    return [['Wheelchair eye height',`${wcTxt(E.wcH)} above the tread (average, per A117.1 table basis)`],['Wheelchair eye, horizontal','aligned to the back riser'],['Wheelchair head height',`${wcTxt(E.wcH+HEAD)} (eye + 2 × ${inchText(HEAD/2)})`],
+      ['Red line',`${inchText(HEAD/2)} above the eye`],[`C-value, row ${last.row} (wheelchair) over row ${m.row}`,`${CV(C)} (minimum ${CV(last.target)})`],['Rows in front','sitting spectators']];}const E=P.eye,rs=spectatorRows(),t1=(ZR.T||[]).filter(r=>r.tier===0),i=t1.indexOf(rs[rs.length-1]),C=rowC(t1,i,mode),tg=rs[rs.length-1]?.target,rf=rs[rs.length-2];
   const ci=v=>v==null?'n/a':CV(v);
-  return mode==='stand'?[['Standing eye height',`${L(E.stH)} above the tread`],['Standing eye, horizontal',`${L(E.stOff)} back from the front riser`],['Standing head height',`${L(E.stH+HEAD)} (eye + 2 × 2 ¼")`],
-      ['Red line','2 ¼" above the eye'],[`C-value, row ${rs[rs.length-1]?.row} over row ${rf?.row}`,`${ci(C)} (minimum ${ci(tg)})`],['Wheelchair eye height',L(E.wcH)]]
-    :[['Sitting eye height',`${L(E.sitH)} above the tread`],['Sitting eye, horizontal','aligned to the back riser'],['Sitting head height',`${L(E.sitH+HEAD)} (eye + 2 × 2 ¼")`],
-      ['Red line','2 ¼" above the eye'],[`C-value, row ${rs[rs.length-1]?.row} over row ${rf?.row}`,`${ci(C)} (minimum ${ci(tg)})`],['Eye sight values','locked standard, chairback and bench']];}
+  return mode==='stand'?[['Standing eye height',`${L(E.stH)} above the tread`],['Standing eye, horizontal',`${L(E.stOff)} back from the front riser`],['Standing head height',`${L(E.stH+HEAD)} (eye + 2 × ${inchText(HEAD/2)})`],
+      ['Red line',`${inchText(HEAD/2)} above the eye`],[`C-value, row ${rs[rs.length-1]?.row} over row ${rf?.row}`,`${ci(C)} (minimum ${ci(tg)})`],['Wheelchair eye height',L(E.wcH)]]
+    :[['Sitting eye height',`${L(E.sitH)} above the tread`],['Sitting eye, horizontal','aligned to the back riser'],['Sitting head height',`${L(E.sitH+HEAD)} (eye + 2 × ${inchText(HEAD/2)})`],
+      ['Red line',`${inchText(HEAD/2)} above the eye`],[`C-value, row ${rs[rs.length-1]?.row} over row ${rf?.row}`,`${ci(C)} (minimum ${ci(tg)})`],['Eye sight values','locked standard, chairback and bench']];}
 // Wheelchair on an accessible platform (ICC A117.1 802.9.2). The bowl section is unchanged; the space above the 2nd and 3rd rows
 // is filled up to the top tread to make a level platform whose edge is the front riser of the 2nd row. Bottom row standing,
 // wheelchair on the platform: front of the space 12 in from the platform edge (the back of the tread in front, 802.9.2.1),
@@ -1861,7 +1874,7 @@ function zoneTable(){
       return `<td>${zs[k]?fmt(zs[k])+(r&&r.seat==='bench'?' <span class="muted">bench</span>':''):'<span class="muted">open</span>'}</td>`;}).join('')}<td><b>${fmt(M.tierSeats[ti]||0)}</b></td></tr>`;}
   return h+`<tr><td>Total</td>${keys.map(k=>`<td>${fmt(tot(k))}</td>`).join('')}<td><b>${fmt(M.cap)}</b></td></tr></tbody></table>`;}
 function update(){
-  persist();ZR=solveAll(P);if(!zoned(P))P.sec='T';if(!ZR[P.sec].length)P.sec=zoneKeys(P).find(k=>ZR[k].length)||'T';
+  LEG2=RD().leg;persist();ZR=solveAll(P);if(!zoned(P))P.sec='T';if(!ZR[P.sec].length)P.sec=zoneKeys(P).find(k=>ZR[k].length)||'T';
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);
   const pct=Math.min(100,M.cap/P.capTarget*100),ok=M.cap>=P.capTarget;
   $('cap').innerHTML=`<div><div class="big">${fmt(M.cap)}</div><div class="lbl">Estimated seats</div></div><div><div class="bar"><i class="${ok?'ok':''}" style="width:${pct}%"></i></div><div class="lbl" style="margin-top:5px">${ok?'Meets':'Short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</div></div><div class="cap-side">${M.tierSeats.map((s,i)=>`Tier ${i+1}: ${fmt(s)}`).join('<br>')}</div>`;
@@ -1894,7 +1907,7 @@ function update(){
   document.querySelectorAll('#detTabs [data-dm]').forEach(b=>{const on=b.dataset.dm===DETMODE;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});$('plan').innerHTML=drawPlan();
   const Sp=SPORTS[P.sport];$('planTitle').textContent=`${Sp.org}: ${Sp.name}`;
   $('planNote').innerHTML=`<span style="display:inline-block;width:18px;height:3px;background:${FOCAL};vertical-align:middle;margin-right:6px"></span>Point-of-focus boundary, dimensioned. Drawn from ${Sp.rule}. Field ${fieldDesc(P)}. Check against the current edition before issuing drawings.`;
-  const tc=mm=>plain(mm),tu=imperial()?'':` (${unitSuffix().trim()})`;
+  const tc=mm=>plain(mm),tu=imperial()||!unitSuffix().trim()?'':` (${unitSuffix().trim()})`;
   $('schedHead').textContent='Row schedule: '+zoneName(P,P.sec);
   $('table').innerHTML=`<thead><tr><th>Row</th><th>Riser from focus${tu}</th><th>Tread height${tu}</th><th>Riser${tu}</th><th>Rake</th><th>C-value${tu}</th></tr></thead><tbody>`+ZR[P.sec].map(r=>`<tr><td>Tier ${r.tier+1}, row ${r.row}</td><td>${tc(r.x)}</td><td>${tc(r.z)}</td><td class="${r.riser>P.maxRiser+0.01?'steep':''}">${r.riser==null?'':tc(r.riser)}</td><td class="${r.rake>P.maxRake?'steep':''}">${r.rake==null?'':r.rake.toFixed(1)+'°'}</td><td class="${status(r)}">${r.C!=null?CV(r.C):r.railC!=null?'guard '+(r.railC>=0?'+':'')+CV(r.railC):'front row'}</td></tr>`).join('')+'</tbody>';
   const ed=$('eyeDerived');if(ed)ed.innerHTML=[['Sitting head height',L(P.eye.sitH+HEAD)],['Standing head height',L(P.eye.stH+HEAD)],['Wheelchair head height',wcTxt(P.eye.wcH+HEAD)],['Wheelchair eye on platform',`${wcTxt(P.eye.wcH)} high, ${L(P.eye.wcOff)} behind the platform riser`],
@@ -2010,7 +2023,7 @@ const REVIT_STD=[[1/2,'1/2" = 1\'-0"'],[3/8,'3/8" = 1\'-0"'],[1/4,'1/4" = 1\'-0"
   [1/64,'1/64" = 1\'-0"'],[1/100,'1" = 100\'-0"'],[1/200,'1" = 200\'-0"']];
 const REVIT_ENLARGED=[[3,'3" = 1\'-0"'],[1.5,'1 1/2" = 1\'-0"'],[1,'1" = 1\'-0"'],[3/4,'3/4" = 1\'-0"']];   // Revit's larger scales, for enlarged details only
 const DETAIL_SCALES=()=>imperial()?[...REVIT_ENLARGED,...REVIT_STD].map(([v,t])=>({ratio:12/v,label:t})):[5,10,20,25,50,100].map(r=>({ratio:r,label:`1:${r}`}));
-const PLOT_SCALES=()=>imperial()?REVIT_STD.map(([v,t])=>({ratio:12/v,label:t})):[20,25,50,100,200,250,500,1000,2000,5000].map(r=>({ratio:r,label:`1:${r}`}));
+const PLOT_SCALES=()=>imperial()?REVIT_STD.map(([v,t])=>({ratio:12/v,label:t})):[20,25,50,100,200,250,500,750,1000,1250,1500,2000,2500,5000].map(r=>({ratio:r,label:`1:${r}`}));   /* metric: ISO series plus the common intermediates 1:750, 1:1250, 1:1500, 1:2500 */
 function trueStrokes(svg,unitPerIn){                           // screen-pixel line weights become paper weights (1 px = 1/96 in)
   return svg.replace(/stroke-width="([\d.]+)"( stroke-dasharray="[^"]*")?( opacity="[^"]*")? vector-effect="non-scaling-stroke"/g,(m,w,d,o)=>`stroke-width="${(Math.max(+w,0.5)/96*unitPerIn).toFixed(4)}"${d?d.replace(/"([\d. ]+)"/,(q,v)=>'"'+v.split(' ').map(n=>(+n/96*unitPerIn).toFixed(3)).join(' ')+'"'):''}${o||''}`);}
 // One drawing per landscape sheet at the largest standard scale that fits inside the border; graphic scale at the lower left.
@@ -2223,8 +2236,8 @@ function refList(){const E=P.eye,Sp=SPORTS[P.sport],cv=cvSet(P.sport),z=P.zt[0].
     pof:{...R.pof,cite:`${Sp.rule} (field of play); point of focus by sport per the ${GG} and BS EN 13200-1:2019.`},
     sit:{...R.sit,cite:`Project design criterion (input). The ${GG} and BS EN 13200-1 set the sightline method; eye position is a project assumption.`},
     stand:{...R.stand,cite:'Project design criterion (input); applies where spectators are expected to stand.'},
-    tread:{...R.tread,type:'ind',basis:'Front riser to back riser of a row. The Green Guide recommends a minimum row depth with a minimum clear seatway between the seat (tipped up) and the back of the row in front; clearway width increases with row length.',
-      cite:`${GG}, seated accommodation (row depth and seatway width); BS EN 13200-1:2019. Verify the figures against the current edition.`},
+    tread:{...R.tread,type:'ind',basis:'Front riser to back riser of a row. FIFA recommends a tread depth of 800 mm minimum for general admission seating, seat centres of 500 mm minimum and a clearway of 400 mm minimum between the seat and the row in front; premium seating usually takes a deeper tread. The app defaults to 800 mm typical and 900 mm for the bottom row.',
+      cite:`FIFA Football Stadiums Guidelines, 5.2 Seating and standing areas; ${GG}, seated accommodation (row depth and seatway width); BS EN 13200-1:2019.`},
     wceye:{...R.wceye,type:'des',basis:'Seated eye height of a wheelchair user, used for the sightline over standing spectators. No UK or European standard sets a value; this app keeps the US average (A117.1 table basis) as the default. Test lower values for shorter users.',
       cite:'Project design criterion (input). SGSA Accessible Stadia guide and the Green Guide (accessible viewing); value basis: US v. Ellerbe Becket consent order 1998, Exhibit B.'},
     wcplat:{...R.wcplat,type:'ind',basis:'UK guidance asks that wheelchair users can see over spectators who stand in front of them, typically by raising the viewing position. No UK or European formula exists, so the app uses the ICC A117.1 Table 802.9.2.2 formula as a comparative check: H = (2X + 34)(Y − 2.25) / X + (20.2 − Y), X tread and Y riser in inches.',
@@ -2270,7 +2283,7 @@ function pdfProjectInfo(doc,o){const {pw,ph,m}=o,Sp=SPORTS[P.sport],k=Math.min(1
     doc.setFontSize(9.5*k);rows.forEach(([a,b])=>{doc.setFont('DVS','bold');doc.text(String(a),m,y);doc.setFont('DVS','normal');
       const ls=doc.splitTextToSize(String(b),pw-m-(m+3.2*k));ls.forEach((t,i)=>doc.text(t,m+3.2*k,y+i*0.19*k));y+=0.22*k+(ls.length-1)*0.19*k;});y+=0.16*k;};   // long values wrap
   const t1=ZR.T.filter(r=>r.tier===0),t2=ZR.T.filter(r=>r.tier===1),cv=cvSet(P.sport);
-  sec('Project',[['Sport and governing rules',`${Sp.name} (${Sp.org}), ${Sp.rule}`],['Option',optName()],['Units',imperial()?'Imperial (feet and inches)':'Metric'],
+  sec('Project',[['Sport and governing rules',`${Sp.name} (${Sp.org}), ${Sp.rule}`],['Option',optName()],['Units',imperial()?fmode()==='arch'?'Imperial (inches to 2 decimals below 10\'-0"; feet and inches at or above)':'Imperial (feet and inches)':fmode()==='mm-m'?'Metric (millimetres below 10 m; metres at or above; 1000 mm = 1 m)':fmode()==='mm'?'Metric (millimetres; 1000 mm = 1 m)':'Metric'],
     ['Field orientation',P.planOri==='h'?'Landscape, north left':'Vertical, north up'],['Field',fieldDesc(P)]]);
   sec('Bowl',[['Tiers',P.tierCount],['Side profiles','All four sides match'],['Corners',({chamfer:'Chamfered',round:'Round'})[P.zt[0].corners]||P.zt[0].corners],
     ['Seats','East and West: '+(SEATS[P.zt[0].z.T.seat]||SEATS.standard).name+' '+inchText(P.zt[0].z.T.seatW)+'; NEZ and SEZ: '+(SEATS[P.zt[0].z.L.seat]||SEATS.standard).name+' '+inchText(P.zt[0].z.L.seatW)],
@@ -2281,13 +2294,13 @@ function pdfProjectInfo(doc,o){const {pw,ph,m}=o,Sp=SPORTS[P.sport],k=Math.min(1
       ['Absolute minimum C-value override',`${CV(z.target)} (${cv.src})`]]);}
   {const q=engQuant(),tot=q.reduce((a,t)=>({V:a.V+t.V,W:a.W+t.W,rail:a.rail+t.rail,plan:a.plan+t.plan}),{V:0,W:0,rail:0,plan:0});
    q.forEach(t=>sec(`Engineering, Tier ${t.ti+1} (preliminary)`,[['Seating slab concrete',`${qVol(t.V)} (${qWt(t.W)}, at ${imperial()?CONC_PCF+' pcf':CONC_KGM3.toFixed(0)+' kg/m³'})`],
-     ['Seating plan area',qArea(t.plan)],['Guard rail, row 1',`${qLen(t.rail)} (26" high, on the riser face)`],['Rows / risers',`${t.rows} rows; risers ${inchText(t.rMin)} to ${inchText(t.rMax)}`],
+     ['Seating plan area',qArea(t.plan)],['Guard rail, row 1',`${qLen(t.rail)} (${inchText(P.railH)} high, on the riser face)`],['Rows / risers',`${t.rows} rows; risers ${inchText(t.rMin)} to ${inchText(t.rMax)}`],
      ['Rake',`${t.rkMin.toFixed(1)}° to ${t.rkMax.toFixed(1)}°`],[`Top tread above the ${surfLow()}`,L(t.top)],['Slab (tread and riser) thickness',inchText(slabT())]]));
    sec('Engineering totals and references (preliminary)',[['Seating slab concrete, all tiers',`${qVol(tot.V)} (${qWt(tot.W)})`],['Guard rail, all tiers',qLen(tot.rail)],['Seating plan area, all tiers',qArea(tot.plan)],
      ['Least headroom under a tier',M.heads&&M.heads.length?L(Math.min(...M.heads.map(h=>h.h))):'n/a'],['Live load reference','Grandstands 100 psf (IBC Table 1607.1); confirm with the structural engineer'],
      ['Guard load reference','50 plf and 200 lb concentrated (IBC 1607.9.1); confirm with the structural engineer'],
      ['Not included','rakers, columns, beams, foundations, vomitories, aisle stairs and handrails, rear guards, concourse slabs']]);}
-  sec('Eye sight values',[['Sitting eye',`${L(E.sitH)}, aligned to the back riser`],['Standing eye',`${L(E.stH)}, ${L(E.stOff)} from the front riser`],['Wheelchair eye',wcTxt(E.wcH)+' (average, per A117.1 table basis)'],['Head height','eye + 2 × 2 ¼"']]);
+  sec('Eye sight values',[['Sitting eye',`${L(E.sitH)}, aligned to the back riser`],['Standing eye',`${L(E.stH)}, ${L(E.stOff)} from the front riser`],['Wheelchair eye',wcTxt(E.wcH)+' (average, per A117.1 table basis)'],['Head height',`eye + 2 × ${inchText(HEAD/2)}`]]);
   sec('Results',[['Seats, all',fmt(seatCount().out.find(o=>o.label==='Total, all seats').t)],[`Seats less aisles and vomitories (${P.loss}%)`,fmt(M.cap)],
     ['Lowest C-value (current mode)',M.worst?CV(M.worst.C):'n/a'],['Steepest rake',M.steep?M.steep.rake.toFixed(1)+'°':'n/a'],
     [`Top row above the ${surfLow()}`,L(M.height*1000)],['Farthest viewing distance',L(M.vd*1000)],['Checks',$('verdict').textContent]]);}
