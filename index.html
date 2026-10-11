@@ -796,7 +796,7 @@ function tierDef(rows,link,o={}){return {link,corners:'auto',z:Object.fromEntrie
 // bench: sitting 2'-10", standing 5'-6", both 1'-0" back from the front edge of the tread.
 // Eye sight values: one standard for chairback and bench seats (heights above the tread the spectator is on).
 // Sitting eye over the back riser; standing eye 8 in back from the front riser. Head = eye + 2 x 2 1/4 in.
-const HEAD=2*2.25*25.4,EYE_REV=3,eyeDefaults=()=>({sitH:44*25.4,stH:63.5*25.4,wcH:48*25.4,stOff:8*25.4,wcOff:36*25.4,platH:48*25.4});   /* platform: eye 48 in above it, 36 in behind the inside face of the guard rail */   /* wheelchair: eye 48 in high, 3'-0" behind the front of the space (Joseph's reference) */
+const HEAD=2*2.25*25.4,EYE_REV=3,eyeDefaults=()=>({sitH:44*25.4,stH:63.5*25.4,wcH:47.45*25.4,stOff:8*25.4,wcOff:36*25.4});   /* platform: eye 48 in above it, 36 in behind the inside face of the guard rail */   /* wheelchair: eye 48 in high, 3'-0" behind the front of the space (Joseph's reference) */
 let EYELOCK=true;                                                        // eye sight values can only be edited once unlocked
 const isBench=seat=>seat==='bench';
 // eye position for a row: [distance back from the row's front riser, height above its tread]
@@ -880,8 +880,7 @@ function alignUpperTiers(P){P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>t.z[k].X=nu
 function keepGaps(P,g){for(let ti=1;ti<3;ti++)for(const k of GEO)Object.assign(P.zt[ti].z[k],{X:null,gap:g[k][ti]});pinUpperTiers(P);}
 function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';const d=defaults();
   if(P.eyeRev!==EYE_REV){P.eye=eyeDefaults();P.eyeRev=EYE_REV;}P.eye=Object.assign(eyeDefaults(),P.eye||{});delete P.eye.bnFront;if(P.eyeMode!=='stand')P.eyeMode='sit';
-  if(Math.abs((P.eye.platH||0)-44*25.4)<0.01)P.eye.platH=48*25.4;   /* the 44 in default was corrected to 48 in */
-  if(!P.eyeWc2){if(Math.abs(P.eye.wcH-47.5*25.4)<0.01)P.eye.wcH=48*25.4;P.eyeWc2=1;}
+  if(!P.eyeWc3){if([47.5,48].some(v=>Math.abs(P.eye.wcH-v*25.4)<0.01))P.eye.wcH=47.45*25.4;P.eyeWc3=1;}delete P.eye.wcH;   /* one wheelchair eye: 47.45 in, A117.1 table basis */
   for(const k of['fl','cf','bs','L','W','lanes','railH','minHead','suiteH','maxRiser','step','slabT'])if(!(P[k]>0))P[k]=d[k];
   P.north='L';if(P.planOri!=='h')P.planOri='v';
   if(!Array.isArray(P.tierColors))P.tierColors=TIER_COL.slice();
@@ -1119,7 +1118,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.08.9';
+const VERSION='2026.10.10.1';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1172,7 +1171,9 @@ function plain(mm,coarse=false){
 }
 const unitSuffix=()=>imperial()?'':({'m-dec':' m',cm:' cm',mm:' mm'})[fmode()];
 // value shown inside an editable field (no separators in metric so it re-parses cleanly)
+function wcTxt(mm){if(!imperial())return Math.round(mm)+' mm';return (+(mm/25.4).toFixed(2))+'" ('+L(mm)+')';}
 function fieldText(mm,kind,step){
+  if(imperial()&&step&&step<1.5)return (mm/25.4).toFixed(2)+'"';   /* steps finer than 1/16 in: decimal inches */
   return plain(mm);
 }
 const unitLabel=kind=>unitSuffix().trim();
@@ -1288,8 +1289,8 @@ function renderControls(){
   h+=`<p class="zhead">${groupName(P,ti,G[EDIT.g])}</p>`+zoneEditor(ti,G[EDIT.g])+'</div></section>';
   h+=step(4,'Sightline standard','Locked eye sight values, then solve every riser to the C-value.')+`<div class="eyes"><div class="lab" style="margin-top:0;color:var(--accent-deep)"><b>Eye sight values (do not change)</b></div><div class="seg"><button id="eyeLock" aria-pressed="${!EYELOCK}" class="${EYELOCK?'on':''}">${EYELOCK?'🔒 Locked':'🔓 Unlocked'}</button><button id="eyeReset">Reset</button></div>`
     +slider('eye.sitH','Sitting eye height (1/2 inch)',24*25.4,84*25.4,12.7,'mm')+slider('eye.stH','Standing eye height (1/2 inch)',24*25.4,84*25.4,12.7,'mm')
-    +slider('eye.wcH','Wheelchair eye height (1/2 inch)',24*25.4,84*25.4,12.7,'mm')
-    +slider('eye.platH','Wheelchair eye above accessible platform (1/2 inch)',24*25.4,84*25.4,12.7,'mm')
+    +slider('eye.wcH','Wheelchair eye height, average per A117.1 table basis (0.05 inch)',36*25.4,60*25.4,1.27,'mm')
+    +'<p class="hint" style="margin-top:2px">47.45" is the average eye height built into A117.1 Table 802.9.2.2, not a code minimum. Test a lower eye height to check shorter users.</p>'
     +slider('eye.wcOff','Wheelchair eye behind platform riser (1/2 inch)',0,60*25.4,12.7,'mm')
     +'<table class="fixed" id="eyeDerived"></table>'+'</div>';
   h+='<div class="lab" style="margin-top:16px"><b style="color:var(--ink)">All C-values meet minimum</b></div>'+[['parabolic','Parabolic risers'],['constant','Constant risers']].map(([k,n])=>`<div class="lab">${n}</div><div class="seg">`
@@ -1559,7 +1560,7 @@ function drawPlatform(o={}){
   K.note((edge+top.x)/2,(zP+p2.z)/2-fs*.2,'Platform',{size:fs*.52});
   K.reserve(eye.x-31.5*IN,zP,eye.x+15*IN,zP+41*IN);                                     // the wheelchair figure
   K.dim([edge,eye.z+HEAD+fs*1.4],[eye.x,eye.z+HEAD+fs*1.4],{lab:'Platform riser to eye',val:D4(eye.x-edge),ea:[edge,zP+P.railH],eb:[eye.x,eye.z]});
-  {const xe=top.x+top.T+9*IN;K.dim([xe,zP],[xe,eye.z],{lab:'Wheelchair eye',val:D4(E.platH),ea:[top.x+top.T,zP],eb:[eye.x,eye.z],side:-1});}
+  {const xe=top.x+top.T+9*IN;K.dim([xe,zP],[xe,eye.z],{lab:'Wheelchair eye',val:D4(E.wcH),ea:[top.x+top.T,zP],eb:[eye.x,eye.z],side:-1});}
   K.dim([riserX-12*IN,sd.z],[riserX-12*IN,zP],{lab:`Platform, min ${D4(Math.max(0,g.Hreq)*25.4)}`,val:D4(zP-sd.z),eb:[edge,zP]});
   K.dim([riserX,p1.z+3*IN],[edge,p1.z+3*IN],{lab:'Setback',val:D4(setback),ea:[riserX,p1.z],eb:[edge,p1.z]});
   K.dim([edge-5*IN,zP],[edge-5*IN,zP+P.railH],{lab:'Guard rail',val:D4(P.railH),eb:[edge-2*IN,zP+P.railH]});
@@ -1646,7 +1647,7 @@ function spectatorInfo(mode){
   if(mode==='plat')return platformInfo();
   if(mode==='wc'){const E=P.eye,rs=spectatorRows(),last=rs[rs.length-1],m=rs[rs.length-2];if(!last||!m)return [];
     const e={x:last.x+last.T,z:last.z+E.wcH},p={x:m.x+m.T,z:m.z+E.sitH},C=e.z*p.x/e.x-p.z;
-    return [['Wheelchair eye height',`${L(E.wcH)} above the tread`],['Wheelchair eye, horizontal','aligned to the back riser'],['Wheelchair head height',`${L(E.wcH+HEAD)} (eye + 2 × 2 ¼")`],
+    return [['Wheelchair eye height',`${wcTxt(E.wcH)} above the tread (average, per A117.1 table basis)`],['Wheelchair eye, horizontal','aligned to the back riser'],['Wheelchair head height',`${wcTxt(E.wcH+HEAD)} (eye + 2 × 2 ¼")`],
       ['Red line','2 ¼" above the eye'],[`C-value, row ${last.row} (wheelchair) over row ${m.row}`,`${CV(C)} (minimum ${CV(last.target)})`],['Rows in front','sitting spectators']];}const E=P.eye,rs=spectatorRows(),t1=(ZR.T||[]).filter(r=>r.tier===0),i=t1.indexOf(rs[rs.length-1]),C=rowC(t1,i,mode),tg=rs[rs.length-1]?.target,rf=rs[rs.length-2];
   const ci=v=>v==null?'n/a':CV(v);
   return mode==='stand'?[['Standing eye height',`${L(E.stH)} above the tread`],['Standing eye, horizontal',`${L(E.stOff)} back from the front riser`],['Standing head height',`${L(E.stH+HEAD)} (eye + 2 × 2 ¼")`],
@@ -1656,14 +1657,14 @@ function spectatorInfo(mode){
 // Wheelchair on an accessible platform (ICC A117.1 802.9.2). The bowl section is unchanged; the space above the 2nd and 3rd rows
 // is filled up to the top tread to make a level platform whose edge is the front riser of the 2nd row. Bottom row standing,
 // wheelchair on the platform: front of the space 12 in from the platform edge (the back of the tread in front, 802.9.2.1),
-// eye P.eye.platH (48 in) above the platform and P.eye.wcOff (36 in) behind the platform riser (the rail sits on the riser face, inside face on the riser line); minimum height from Table 802.9.2.2: H = (2X+34)(Y-2.25)/X + (20.2-Y); 26 in rail on the edge.
+// eye P.eye.wcH (47.45 in, A117.1 table basis average) above the platform and P.eye.wcOff (36 in) behind the platform riser (the rail sits on the riser face, inside face on the riser line); minimum height from Table 802.9.2.2: H = (2X+34)(Y-2.25)/X + (20.2-Y); 26 in rail on the edge.
 function platformGeo(){const rs=spectatorRows(),n=rs.length;if(n<4)return null;const E=P.eye,IN=25.4,sd=rs[n-4],p1=rs[n-3],p2=rs[n-2],top=rs[n-1],front=rs.slice(0,n-3);
-  const SETBACK=6*IN,riserX=p1.x,zP=top.z,edge=p1.x+SETBACK,railC=edge+RAIL_SET,   /* infill face set back 6 in from the row riser */fws=edge+12*IN,eye={x:edge+E.wcOff,z:zP+E.platH},st={x:sd.x+E.stOff,z:sd.z+E.stH},standers=front.map(r=>({r,e:{x:r.x+E.stOff,z:r.z+E.stH}}));
+  const SETBACK=6*IN,riserX=p1.x,zP=top.z,edge=p1.x+SETBACK,railC=edge+RAIL_SET,   /* infill face set back 6 in from the row riser */fws=edge+12*IN,eye={x:edge+E.wcOff,z:zP+E.wcH},st={x:sd.x+E.stOff,z:sd.z+E.stH},standers=front.map(r=>({r,e:{x:r.x+E.stOff,z:r.z+E.stH}}));
   const X=sd.T/IN,Y=(sd.riser??p1.riser??0)/IN,Hreq=(2*X+34)*(Y-2.25)/X+(20.2-Y),H=(zP-sd.z)/IN,C=eye.z*st.x/eye.x-st.z;
   return {rs,sd,p1,p2,top,zP,edge,riserX,setback:SETBACK,railC,front:fws,eye,st,standers,X,Y,Hreq,H,C};}
 function platformInfo(){const g=platformGeo();if(!g)return [];const E=P.eye;
   return [['Platform',`infill over rows ${g.p1.row}–${g.p2.row}, level with row ${g.top.row}; front face set back ${inchText(g.setback)} from the row ${g.p1.row} riser; 26" guard rail on that face`],
-    ['Wheelchair eye',`${L(E.platH)} above the platform; ${inchText(E.wcOff)} behind the platform riser, which is also the guard rail's inside face`],['Front of wheelchair space','12" max from the riser (ICC A117.1 802.9.2.1)'],
+    ['Wheelchair eye',`${wcTxt(E.wcH)} above the platform (average, per A117.1 table basis); ${inchText(E.wcOff)} behind the platform riser, which is also the guard rail's inside face`],['Front of wheelchair space','12" max from the riser (ICC A117.1 802.9.2.1)'],
     [`Platform above row ${g.sd.row}`,`${inchText(g.H*25.4)} (A117.1 Table 802.9.2.2 minimum ${inchText(Math.max(0,g.Hreq)*25.4)}: ${g.H>=g.Hreq-0.01?'meets':'below'})`],
     [`C-value over the standing spectator, row ${g.sd.row}`,CV(g.C)],[`Rows ${g.standers.map(p=>p.r.row).join(', ')}`,'standing']];}
 function drawSpectator(mode,o={}){
@@ -1867,7 +1868,7 @@ function update(){
   const tc=mm=>plain(mm),tu=imperial()?'':` (${unitSuffix().trim()})`;
   $('schedHead').textContent='Row schedule: '+zoneName(P,P.sec);
   $('table').innerHTML=`<thead><tr><th>Row</th><th>Riser from focus${tu}</th><th>Tread height${tu}</th><th>Riser${tu}</th><th>Rake</th><th>C-value${tu}</th></tr></thead><tbody>`+ZR[P.sec].map(r=>`<tr><td>Tier ${r.tier+1}, row ${r.row}</td><td>${tc(r.x)}</td><td>${tc(r.z)}</td><td class="${r.riser>P.maxRiser+0.01?'steep':''}">${r.riser==null?'':tc(r.riser)}</td><td class="${r.rake>P.maxRake?'steep':''}">${r.rake==null?'':r.rake.toFixed(1)+'°'}</td><td class="${status(r)}">${r.C!=null?CV(r.C):r.railC!=null?'guard '+(r.railC>=0?'+':'')+CV(r.railC):'front row'}</td></tr>`).join('')+'</tbody>';
-  const ed=$('eyeDerived');if(ed)ed.innerHTML=[['Sitting head height',L(P.eye.sitH+HEAD)],['Standing head height',L(P.eye.stH+HEAD)],['Wheelchair head height',L(P.eye.wcH+HEAD)],['Wheelchair eye on platform',`${L(P.eye.platH)} high, ${L(P.eye.wcOff)} behind the platform riser`],
+  const ed=$('eyeDerived');if(ed)ed.innerHTML=[['Sitting head height',L(P.eye.sitH+HEAD)],['Standing head height',L(P.eye.stH+HEAD)],['Wheelchair head height',wcTxt(P.eye.wcH+HEAD)],['Wheelchair eye on platform',`${wcTxt(P.eye.wcH)} high, ${L(P.eye.wcOff)} behind the platform riser`],
     ['Sitting eye, horizontal','Aligned to the back riser'],['Standing eye, horizontal',`${L(P.eye.stOff)} from the front riser`],['Applies to','Chairback and bench seats']].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
   const sh=$('sbHint');if(sh)sh.textContent=setbackText(EDIT.tier,groups(P,EDIT.tier)[EDIT.g][0]);
   $('countTable').innerHTML=countTableHTML();
@@ -2163,7 +2164,7 @@ function pdfProjectInfo(doc,o){const {pw,ph,m}=o,Sp=SPORTS[P.sport],k=Math.min(1
      ['Least headroom under a tier',M.heads&&M.heads.length?L(Math.min(...M.heads.map(h=>h.h))):'n/a'],['Live load reference','Grandstands 100 psf (IBC Table 1607.1); confirm with the structural engineer'],
      ['Guard load reference','50 plf and 200 lb concentrated (IBC 1607.9.1); confirm with the structural engineer'],
      ['Not included','rakers, columns, beams, foundations, vomitories, aisle stairs and handrails, rear guards, concourse slabs']]);}
-  sec('Eye sight values',[['Sitting eye',`${L(E.sitH)}, aligned to the back riser`],['Standing eye',`${L(E.stH)}, ${L(E.stOff)} from the front riser`],['Wheelchair eye',L(E.wcH)],['Head height','eye + 2 × 2 ¼"']]);
+  sec('Eye sight values',[['Sitting eye',`${L(E.sitH)}, aligned to the back riser`],['Standing eye',`${L(E.stH)}, ${L(E.stOff)} from the front riser`],['Wheelchair eye',wcTxt(E.wcH)+' (average, per A117.1 table basis)'],['Head height','eye + 2 × 2 ¼"']]);
   sec('Results',[['Seats, all',fmt(seatCount().out.find(o=>o.label==='Total, all seats').t)],[`Seats less aisles and vomitories (${P.loss}%)`,fmt(M.cap)],
     ['Lowest C-value (current mode)',M.worst?CV(M.worst.C):'n/a'],['Steepest rake',M.steep?M.steep.rake.toFixed(1)+'°':'n/a'],
     [`Top row above the ${surfLow()}`,L(M.height*1000)],['Farthest viewing distance',L(M.vd*1000)],['Checks',$('verdict').textContent]]);}
