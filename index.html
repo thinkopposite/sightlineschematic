@@ -714,7 +714,7 @@ function dimLabel(d,fs){
   if(d.r){const t=d.ang*Math.PI/180;let rot=upright(d.ang);
     const lab='R '+L(d.r*1000);return {r:true,t,mx:d.c[0]+d.r*.55*Math.cos(t)-Math.sin(t)*fs*.7,my:d.c[1]+d.r*.55*Math.sin(t)+Math.cos(t)*fs*.7,rot,lab,note:d.note,below:true,tw:lab.length*.58*fs};}
   const [x1,y1]=d.p,[x2,y2]=d.q,dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1e-9,ux=dx/len,uy=dy/len,nx=uy,ny=-ux,o=d.off||0,sg=o>=0?1:-1;
-  const a=[x1+nx*o,y1+ny*o],b=[x2+nx*o,y2+ny*o],lab=L(len*1000),tw=Math.max(lab.length*.58,d.note?(d.note.length*.8*.52):0)*fs;
+  const a=[x1+nx*o,y1+ny*o],b=[x2+nx*o,y2+ny*o],lab=L(len*1000),tw=(lab.length*.58+(d.note?d.note.length*.8*.52+.5:0))*fs;
   let rot=upright(Math.atan2(uy,ux)*180/Math.PI);
   const side=o?sg:1,ox=nx*fs*.75*side,oy=ny*fs*.75*side;
   let mx=(a[0]+b[0])/2+ox,my=(a[1]+b[1])/2+oy;
@@ -726,9 +726,10 @@ let DIMREG=null;                                                     // plan tex
 function drawDims(list,g,fs){
   const f=g.f;let s='';const reg=DIMREG||[];
   const txt=(D)=>{const hs=`text-anchor="middle" fill="#4D4D4D" paint-order="stroke" stroke="var(--panel)" stroke-width="${f(fs*.22)}" stroke-linejoin="round"${D.rot?` transform="rotate(${f(D.rot)} ${f(D.mx)} ${f(D.my)})"`:''}`;
-    if(!D.note)return `<text x="${f(D.mx)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" font-weight="650" ${hs}>${D.lab}</text>`;
-    return `<text x="${f(D.mx)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" ${hs}><tspan x="${f(D.mx)}" dy="-0.55em" font-size="${f(fs*.8)}" font-weight="450">${D.note}</tspan><tspan x="${f(D.mx)}" dy="1.15em" font-weight="650">${D.lab}</tspan></text>`;};   // label line, then the value
-  const place=D=>{if(D.r)return;const two=!!D.note,side=D.o?D.sg:1;if(two){D.mx+=D.nx*side*fs*.55;D.my+=D.ny*side*fs*.55;}
+    if(!D.note)return `<text x="${f(D.mx)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" font-weight="400" ${hs}>${D.lab}</text>`;
+    const nw=D.note.length*.8*.52*fs,cx=D.mx-D.tw/2+nw,hs2=a=>hs.replace('text-anchor="middle"',`text-anchor="${a}"`);   /* one line: label, then the value */
+    return `<text x="${f(cx)}" y="${f(D.my)}" font-size="${f(fs*.8)}" dominant-baseline="middle" font-weight="400" ${hs2('end')}>${D.note}</text><text x="${f(cx+fs*.5)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" font-weight="400" ${hs2('start')}>${D.lab}</text>`;};
+  const place=D=>{if(D.r)return;const two=false;
     const vert=Math.abs(Math.cos(D.rot*Math.PI/180))<.5,w=D.tw+fs*.4,h=(two?2.3:1.2)*fs,bw=vert?h:w,bh=vert?w:h,x0=D.mx,y0=D.my;
     for(const k of[0,1,-1,2,-2,3,-3]){const sl=k*(w*.6),x=x0+D.ux*sl,y=y0+D.uy*sl,box=[x-bw/2,y-bh/2,x+bw/2,y+bh/2];
       if(!reg.some(o=>box[0]<o[2]&&box[2]>o[0]&&box[1]<o[3]&&box[3]>o[1])){D.mx=x;D.my=y;reg.push(box);return;}}
@@ -1123,7 +1124,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.11.6';
+const VERSION='2026.10.11.7';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1425,6 +1426,7 @@ function SecDim(X,Y,fs,frame){   /* frame [W,H]: text never leaves the drawing *
       const KS=[0,1,-1,2,-2,3,-3,4,-4,5,-5];
       /* order: one row between the ticks; one row slid out on a leader; two rows clear of everything; two rows wherever is least bad */
       if(lines.length===2&&W1<=len-tk*3){const c1=place(W1,H1,[0]);if(!hit(c1.box)){best=c1;Wt=W1;body=one(c1);}}
+      if(!best&&lines.length===2){const c1=place(W1,H1,KS);best=c1;Wt=W1;body=one(c1);}   /* always one line: slide out on a leader if it must */
       if(!best&&lines.length===2){const c1=place(W1,H1,KS);if(!hit(c1.box)){best=c1;Wt=W1;body=one(c1);}}
       let two=null;if(!best){two=place(W2,Ht,KS);if(!hit(two.box)){best=two;Wt=W2;}}
       if(!best){best=two;Wt=W2;}
