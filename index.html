@@ -1123,7 +1123,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.11.4';
+const VERSION='2026.10.11.5';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1140,8 +1140,7 @@ const fmt=n=>Math.round(n).toLocaleString();
 const UKEY='sightline-units';
 let U={sys:'imperial',metric:'mm-m',imperial:'arch'};
 try{const u=JSON.parse(localStorage.getItem(UKEY));if(u)Object.assign(U,u);}catch(e){}
-const UFMT={metric:[['mm-m','1,000 mm / 12.500 m'],['m-dec','1.0000 m'],['cm','100.00 cm'],['mm','1,000 mm']],
-  imperial:[['arch','100.00" / 12\'-6 ½"'],['ftin-frac','100\'-0 ½"'],['in-frac','1,200 ½"'],['in-dec','1,200.5000"']]};
+const UFMT={metric:[['mm-m','1,000 mm / 12.500 m']],imperial:[['arch','100.00" / 12\'-6 ½"']]};   /* one format per system: the regional defaults */
 // drop formats that no longer exist (remembered from an earlier version)
 if(!UFMT.metric.some(([k])=>k===U.metric))U.metric='mm-m';
 if(!UFMT.imperial.some(([k])=>k===U.imperial))U.imperial='arch';
@@ -1210,13 +1209,12 @@ function parseLen(str,kind){
   else mm=v*25.4;
   return neg?-mm:mm;
 }
-function renderUnits(){if(!$('ufmt'))return;
+function renderUnits(){if(!$('usys'))return;
   document.querySelectorAll('#usys [data-sys]').forEach(b=>{const on=b.dataset.sys===U.sys;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
-  $('ufmt').innerHTML=UFMT[U.sys].map(([k,n])=>`<option value="${k}"${k===fmode()?' selected':''}>${n}</option>`).join('');
 }
 function setUnits(){try{localStorage.setItem(UKEY,JSON.stringify(U))}catch(e){}renderUnits();renderControls();update();}
 document.addEventListener('click',e=>{const b=e.target.closest('#usys [data-sys]');if(!b||b.dataset.sys===U.sys)return;U.sys=b.dataset.sys;setUnits();});   /* the switch lives in step 1, re-rendered with the controls */
-document.addEventListener('change',e=>{if(e.target.id!=='ufmt')return;U[U.sys]=e.target.value;setUnits();});
+
 
 // ---------- controls ----------
 const META={};let EDIT={tier:0,g:0};
@@ -1281,7 +1279,7 @@ function renderControls(){
   const grp=(r,lab)=>`<optgroup label="${lab}">`+Object.entries(SPORTS).filter(([k,x])=>x.region===r).map(([k,x])=>`<option value="${k}"${P.sport===k?' selected':''}>${x.name} (${x.org})</option>`).join('')+'</optgroup>';
   const step=(n,t,sub)=>`<section class="step"><div class="step-h"><span class="bub">${n}</span><h2>${t}</h2><p>${sub}</p></div>`;
   let h=step(1,'Field','Sport, governing rules, units and orientation.')+'<select id="sportSel" class="sel" aria-label="Sport and governing body">'+grp('america','American sports')+grp('world','International sports')+'</select>';
-  h+=`<div class="lab">Units</div><div class="units" role="group" aria-label="Units"><div class="switch" id="usys"><button data-sys="imperial">Imperial</button><button data-sys="metric">Metric</button></div><select id="ufmt" aria-label="Unit format"></select></div>
+  h+=`<div class="lab">Units</div><div class="units" role="group" aria-label="Units"><div class="switch" id="usys"><button data-sys="imperial">Imperial</button><button data-sys="metric">Metric</button></div></div>
     <p class="hint">American sports default to imperial: inches to 2 decimals below 10'-0", feet and inches at or above. International sports default to metric: mm below 10 m, metres at or above. Choosing a sport sets its default.</p>`;
   if(zoned(P))h+=`<div class="sl"><div class="sl-top"><label for="northSel">Field orientation</label></div><select id="northSel" class="sel">${[['v','Vertical football field, north up'],['h','Landscape football field, north left']].map(([k,n])=>`<option value="${k}"${P.planOri===k?' selected':''}>${n}</option>`).join('')}</select></div>`;
   h+='</section>';
