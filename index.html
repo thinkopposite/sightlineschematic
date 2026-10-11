@@ -882,7 +882,7 @@ function alignUpperTiers(P){P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>t.z[k].X=nu
 function keepGaps(P,g){for(let ti=1;ti<3;ti++)for(const k of GEO)Object.assign(P.zt[ti].z[k],{X:null,gap:g[k][ti]});pinUpperTiers(P);}
 function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';const d=defaults();
   if(P.eyeRev!==EYE_REV){P.eye=eyeDefaults();P.eyeRev=EYE_REV;}P.eye=Object.assign(eyeDefaults(),P.eye||{});delete P.eye.bnFront;if(P.eyeMode!=='stand')P.eyeMode='sit';
-  if(!P.eyeWc3){if([47.5,48].some(v=>Math.abs(P.eye.wcH-v*25.4)<0.01))P.eye.wcH=47.45*25.4;P.eyeWc3=1;}delete P.eye.wcH;   /* one wheelchair eye: 47.45 in, A117.1 table basis */
+  if(!P.eyeWc3){if([47.5,48].some(v=>Math.abs(P.eye.wcH-v*25.4)<0.01))P.eye.wcH=47.45*25.4;P.eyeWc3=1;}if(!(P.eye.wcH>0))P.eye.wcH=(P.eye.platH>0?P.eye.platH:47.45*25.4);delete P.eye.platH;   /* one wheelchair eye: 47.45 in, A117.1 table basis */
   for(const k of['fl','cf','bs','L','W','lanes','railH','minHead','suiteH','maxRiser','step','slabT'])if(!(P[k]>0))P[k]=d[k];
   P.north='L';if(P.planOri!=='h')P.planOri='v';
   if(!Array.isArray(P.tierColors))P.tierColors=TIER_COL.slice();
@@ -1120,7 +1120,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.10.8';
+const VERSION='2026.10.10.9';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1324,7 +1324,7 @@ $('controls').addEventListener('change',e=>{
   if(e.target.id==='sportSel'){applySport(e.target.value);return;}
   if(e.target.id==='northSel'){P.planOri=e.target.value;CUR=null;renderControls();update();return;}
   const el=e.target,p=el.dataset.p;if(!p||!el.classList.contains('len'))return;
-  const mt=META[p],k=mt.kind==='m'?1000:1,mm=parseLen(el.value,mt.kind);
+  const mt=META[p],k=mt.kind==='m'?1000:1,mm=imperial()&&mt.step<1.5&&/^\s*\d*\.?\d+\s*$/.test(el.value)?+el.value*25.4:parseLen(el.value,mt.kind);   /* decimal-inch boxes: a bare number is inches */
   if(!isFinite(mm)){toast(imperial()?'Try a length like 12\'-6 1/2" or 150"':'Try a length like 3.8 m or 3800 mm');el.value=fieldText(get(p)*k,mt.kind,mt.step);return;}
   let v=mm/k;let c=Math.min(mt.max,Math.max(mt.min,v));c=Math.min(mt.max,mt.min+Math.round((c-mt.min)/mt.step)*mt.step);c=Math.round(c*1e6)/1e6;
   if(Math.abs(c-v)>mt.step/2)toast(`Kept within ${L(mt.min*k,mt.kind,stepDec(mt.step))} to ${L(mt.max*k,mt.kind,stepDec(mt.step))}`);
