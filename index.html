@@ -1157,7 +1157,8 @@ function cornerPlates(P,ZR,CH){const out=[],t=slabT(),k=1000;
   return out;}
 function fitCapacity(P){
   const base=[];P.zt.slice(0,P.tierCount).forEach(t=>GEO.forEach(k=>base.push([t.z[k],t.z[k].rows])));let lo=0.1,hi=6;
-  let apply=f=>base.forEach(([z,b])=>z.rows=Math.max(3,Math.min(80,Math.round(b*f))));
+  let apply=f=>{if(P.tierCount===2)GEO.forEach(k=>{const a=P.zt[0].z[k],b=P.zt[1].z[k],N=Math.max(6,Math.min(160,Math.round((base.find(x=>x[0]===a)[1]+base.find(x=>x[0]===b)[1])*f)));a.rows=Math.ceil(N/2);b.rows=N-a.rows;});   /* two tiers: equal rows, Tier 1 takes the odd one */
+    else base.forEach(([z,b])=>z.rows=Math.max(3,Math.min(80,Math.round(b*f))));};
   const a0=apply;apply=f=>{a0(f);alignUpperTiers(P);};                          // upper tier bottom riser over the top riser below
   const cap=()=>{const ZR=solveAll(P);return metrics(P,ZR,chains(P,ZR)).cap;};
   for(let it=0;it<40;it++){const f=(lo+hi)/2;apply(f);if(cap()>=P.capTarget)hi=f;else lo=f;}
@@ -1205,7 +1206,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.11.17';
+const VERSION='2026.10.11.18';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1333,7 +1334,7 @@ function cvEditor(pre,z,ti){const set=cvSet(P.sport),p=pre+'.target';META[p]={mi
   return `<div class="sl"><div class="sl-top"><label for="n_${p}">Absolute minimum C-value override</label><span class="sl-val"><input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="len" id="n_${p}" data-p="${p}" value="${CV(z.target).replace(/"/g,'&quot;')}" title="Type a value to override, e.g. 2.5&quot; or 64 mm"></span></div>`
     +`<div class="hint" style="margin:2px 0 6px">${set.src}</div><div class="seg stack">`
     +set.opts.map(([n,mm])=>`<button data-cv="${mm}" data-g="${pre}" class="${Math.abs(z.target-mm)<0.01?'on':''}" title="${n}">${n}: ${lab(mm)}</button>`).join('')
-    +`<button data-cvreset="${pre}">Reset</button></div></div>`;}
+    +`</div></div>`;}
 function setbackText(ti,k){const zr=solveZone(P,k),lo=zr.filter(r=>r.tier===ti-1),up=zr.find(r=>r.tier===ti);if(!lo.length||!up)return '';
   const sb=up.x-(lo[lo.length-1].x+lo[lo.length-1].T);return sb<0?`Overhangs the tier below by ${L(-sb)}.`:`${L(sb)} behind the top row of the tier below.`;}
 function zoneEditor(ti,g){
@@ -1358,7 +1359,6 @@ function zoneEditor(ti,g){
     +slider(pre+'.rise',`Tier-1 top tread to Tier-2 bottom tread (${imperial()?'1 foot; 10\'-0" to 16\'-0"':'250 mm; 3,000 to 5,000 mm'})`,imperial()?10*0.3048:3.0,imperial()?16*0.3048:5.0,imperial()?0.3048:0.25,'m')
     +`<p class="hint">Clear height below the Tier-2 leg wall: ${L(z.rise*1000-LEG2)} (leg wall ${L(LEG2)} below the bottom tread; minimum ${L(P.minHead)}).</p>`
     +slider(pre+'.Zabs',`Tier-2 bottom tread above the ${surfLow()} (${imperial()?'4 inch':'100 mm'})`,3*0.3048,150*0.3048,imperial()?0.1016:0.1,'m');
-  h+=`<button data-zreset="${pre}" style="margin-top:10px">Reset</button>`;
   return h;}
 function renderControls(){
   const grp=(r,lab)=>`<optgroup label="${lab}">`+Object.entries(SPORTS).filter(([k,x])=>x.region===r).map(([k,x])=>`<option value="${k}"${P.sport===k?' selected':''}>${x.name} (${x.org})</option>`).join('')+'</optgroup>';
@@ -1375,7 +1375,7 @@ function renderControls(){
   h+='<div class="lab">Bowl colours (HEX)</div>'+[0,1].map(i=>`<div class="colrow"><label for="tcol${i}">Tier ${i+1}</label>`
     +`<input type="color" class="swatch" data-tcolpick="${i}" value="${tierFill(i)}" aria-label="Pick the Tier ${i+1} colour">`
     +`<input type="text" class="hex" id="tcol${i}" data-tcol="${i}" value="${tierFill(i)}" maxlength="7" spellcheck="false" autocomplete="off"></div>`).join('')
-    +'<button id="tcolReset" style="margin-top:6px">Reset colours</button>';
+;
   h+='</section>';
   EDIT.tier=Math.min(EDIT.tier,P.tierCount-1);const ti=EDIT.tier,T=P.zt[ti];
   h+=step(3,'Tiers','Seats, rows, depths and C-value, tier by tier.')+'<div class="tabs" role="tablist">'+Array.from({length:P.tierCount},(_,i)=>`<button role="tab" data-et="${i}" class="${i===ti?'on':''}" aria-selected="${i===ti}">Tier ${i+1}</button>`).join('')+'</div>';
@@ -1383,7 +1383,7 @@ function renderControls(){
   const G=groups(P,ti);EDIT.g=Math.min(EDIT.g,G.length-1);
   if(G.length>1)h+='<div class="tabs sub" role="tablist">'+G.map((g,i)=>`<button role="tab" data-eg="${i}" class="${i===EDIT.g?'on':''}" aria-selected="${i===EDIT.g}">${groupName(P,ti,g).replace(/ \(.*\)/,'')}</button>`).join('')+'</div>';
   h+=`<p class="zhead">${groupName(P,ti,G[EDIT.g])}</p>`+zoneEditor(ti,G[EDIT.g])+'</div></section>';
-  h+=step(4,'Sightline standard','Locked eye sight values, then solve every riser to the C-value.')+`<div class="eyes"><div class="lab" style="margin-top:0;color:var(--accent-deep)"><b>Eye sight values (do not change)</b></div><div class="seg"><button id="eyeLock" aria-pressed="${!EYELOCK}" class="${EYELOCK?'on':''}">${EYELOCK?'🔒 Locked':'🔓 Unlocked'}</button><button id="eyeReset">Reset</button></div>`
+  h+=step(4,'Sightline standard','Locked eye sight values, then solve every riser to the C-value.')+`<div class="eyes"><div class="lab" style="margin-top:0;color:var(--accent-deep)"><b>Eye sight values (do not change)</b></div><div class="seg"><button id="eyeLock" aria-pressed="${!EYELOCK}" class="${EYELOCK?'on':''}">${EYELOCK?'🔒 Locked':'🔓 Unlocked'}</button></div>`
     +slider('eye.sitH','Sitting eye height (1/2 inch)',24*25.4,84*25.4,12.7,'mm')+slider('eye.stH','Standing eye height (1/2 inch)',24*25.4,84*25.4,12.7,'mm')
     +slider('eye.wcH','Wheelchair eye height, average 47.45" (1205 mm) per A117.1 table basis',36*25.4,60*25.4,1.27,'mm')
     +'<p class="hint" style="margin-top:2px">47.45" is the average eye height built into A117.1 Table 802.9.2.2, not a code minimum. Test a lower eye height to check shorter users.</p>'
@@ -1402,7 +1402,7 @@ function renderControls(){
     +slider('loss','Seats lost to aisles and vomitories (1 %)',0,30,1,'%')
     +'<div class="lab">Fixed values</div><table class="fixed">'+fixed.map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+'</table>'
     +'<p class="hint">Where neighbouring sides differ, the corner is left open for vomitories, boards or access. Matching sides wrap round the corner.</p>'
-    +'<div class="seg" style="margin-top:10px"><button id="advReset">Reset</button><button id="reset">Reset all</button></div></details>';
+    +'</details><button id="reset" class="primary" style="margin-top:14px;width:100%">Reset all to defaults</button>';
   const c=$('controls'), open=c.querySelector('details')?.open;
   c.innerHTML=h; if(open)c.querySelector('details').open=true;
   c.querySelectorAll('.eyes input,.eyes .nudge').forEach(i=>{i.disabled=EYELOCK;i.title=EYELOCK?'Unlock to change':'';});
@@ -1451,7 +1451,7 @@ $('controls').addEventListener('click',e=>{
   else if(b.id==='eyeLock'){EYELOCK=!EYELOCK;renderControls();return;}
   else if(b.id==='eyeReset'){P.eye=eyeDefaults();toast('Eye sight values reset to the standard.');}
   else if(b.dataset.on){set(b.dataset.on+'.on',!get(b.dataset.on+'.on'));}
-  else if(b.dataset.tc){P.tierCount=+b.dataset.tc;}
+  else if(b.dataset.tc){const n=+b.dataset.tc;if(n===2&&P.tierCount!==2)GEO.forEach(k=>{const a=P.zt[0].z[k],c=P.zt[1].z[k];if(!a||!c)return;const N=a.rows+c.rows;a.rows=Math.ceil(N/2);c.rows=N-a.rows;});P.tierCount=n;}
   else if(b.dataset.slab){P.slabT=+b.dataset.slab*25.4;}
   else if(b.dataset.et){EDIT={tier:+b.dataset.et,g:0};renderControls();return;}
   else if(b.dataset.eg){EDIT.g=+b.dataset.eg;renderControls();return;}
@@ -1459,7 +1459,8 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.corner){P.zt.forEach(t=>t.corners=b.dataset.corner);}
   else if(b.dataset.meet){const [rt,m]=b.dataset.meet.split(':');meetAllC(m,rt);return;}
   else if(b.id==='fit'){const ok=fitCapacity(P);toast(ok?'Rows sized to hit the target':'Target is out of reach within 80 rows per tier. Add a tier.');}
-  else if(b.id==='reset'){P=defaultsPinned();EDIT={tier:0,g:0};}
+  else if(b.id==='reset'){if(!confirm('Reset every value to its default? The sport stays as selected.'))return;const sp=P.sport;P=defaultsPinned();EDIT={tier:0,g:0};EYELOCK=true;CUR=null;
+    if(sp!==P.sport){applySport(sp);toast('All values reset to the defaults.');return;}clampCap(P);toast('All values reset to the defaults.');}
   else return;
   CUR=null;renderControls();update();
 });
