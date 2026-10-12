@@ -847,7 +847,7 @@ const CAP_LIM={
   rugbyu:[10000,90000,'Club grounds 10,000-30,000; test venues 50,000-82,000 (Allianz Stadium Twickenham 82,000, Stade de France 80,000, Principality Stadium 74,500)','FNB Stadium about 94,700 and Wembley 90,000 are football grounds used occasionally: excluded'],
   rugbyl:[10000,90000,'Super League 10,000-25,000; NRL 20,000-45,000; Accor Stadium 82,500 for the Grand Final','MCG 100,024 (State of Origin) and Wembley 90,000 (Challenge Cup) are multi-sport grounds: excluded']};
 const capLim=k=>CAP_LIM[k]||[5000,120000,'',''];
-function clampCap(P){const [lo,hi]=capLim(P.sport);P.capTarget=Math.min(hi,Math.max(lo,Math.round((P.capTarget||30000)/500)*500));}
+function clampCap(P){const [lo,hi]=capLim(P.sport);P.capTarget=Math.min(hi,Math.max(lo,Math.round((P.capTarget||30000)/1000)*1000));}
 // ---------- zones: four sides per tier on rectangular fields ----------
 // Geometric keys, clockwise on screen: T top sideline, R right end, B bottom sideline, L left end.
 const GEO=['T','R','B','L'],isSide=k=>k==='T'||k==='B',CW={N:'North',E:'East',S:'South',W:'West'};
@@ -1204,7 +1204,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.11.14';
+const VERSION='2026.10.11.16';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1345,8 +1345,8 @@ function zoneEditor(ti,g){
   h+='<div class="lab">Riser</div><div class="seg">'+[['parabolic','Parabolic riser'],['constant','Constant riser']].map(([k,n])=>`<button data-riser="${k}" data-g="${pre}" class="${(z.riser||'parabolic')===k?'on':''}">${n}</button>`).join('')+'</div>'
     +`<p class="hint">${z.riser==='constant'?`One riser for every row: the smallest ${L(P.step)} step that meets the C-value, up to the ${L(P.maxRiser)} maximum.`:`Each riser sized to meet the C-value, in ${L(P.step)} steps.`} Sized for ${BASIS[z.basis]||'sitting'} spectators.</p>`;
   {const R=RD(),u=imperial()?'1 inch':'10 mm';h+=slider(pre+'.rows','Rows (1 row)',3,80,1,'rows')+slider(pre+'.tread',`Typical row depth (${u})`,R.treadMin,R.treadMax,R.tStep,'mm')
-    +slider(pre+'.tread0',`Bottom row depth (${u})`,R.treadMin,R.tread0Max,R.tStep,'mm')}
-    +cvEditor(pre,z,ti);
+    +slider(pre+'.tread0',`Bottom row depth (${u})`,R.treadMin,R.tread0Max,R.tStep,'mm')
+    +cvEditor(pre,z,ti);}
   const Sp=SPORTS[P.sport],imp=imperial();
   if(ti===0)h+=slider(pre+'.D',`Sideline depth (${imp?'1 foot':'100 mm'})`,Sp.Dmin??0,imp?60*0.3048:18,imp?0.3048:0.1,'m')
     +slider(pre+'.Z',`Tier-1 bottom tread above the ${surfLow()} (${imp?'4 inch':'100 mm'})`,Sp.Zmin??0,imp?20*0.3048:6,imp?0.1016:0.1,'m')
@@ -1391,7 +1391,7 @@ function renderControls(){
   h+='<div class="lab" style="margin-top:16px"><b style="color:var(--ink)">All C-values meet minimum</b></div>'+[['parabolic','Parabolic risers'],['constant','Constant risers']].map(([k,n])=>`<div class="lab">${n}</div><div class="seg">`
       +[['sit','Sitting'],['both','Sitting and standing']].map(([m,t])=>`<button data-meet="${k}:${m}" class="${meetNow()===k+':'+m?'on':''}" aria-pressed="${meetNow()===k+':'+m}">${t}</button>`).join('')+'</div>').join('')
     +'<p class="hint">Re-sizes the risers on every tier and side in ½" steps so each row meets its minimum C-value. Sitting and standing also covers standing on its own. Constant risers stop at the maximum riser.</p></section>';
-  h+=step(5,'Capacity','Target seats. Rows are sized to reach it.')+(()=>{const [lo,hi,typ,out]=capLim(P.sport),Sp=SPORTS[P.sport];return slider('capTarget',`Target seats (500 seats; ${Sp.org} ${fmt(lo)} to ${fmt(hi)})`,lo,hi,500,'seats')
+  h+=step(5,'Capacity','Target seats. Rows are sized to reach it.')+(()=>{const [lo,hi,typ,out]=capLim(P.sport),Sp=SPORTS[P.sport];return slider('capTarget',`Target seats (1,000 seats; ${Sp.org} ${fmt(lo)} to ${fmt(hi)})`,lo,hi,1000,'seats')
     +`<p class="hint">Typical: ${typ}. Outliers: ${out}.</p><details class="capguide"><summary>Capacity guide, all sports</summary>`
     +Object.entries(CAP_LIM).map(([k,[a,b,t,o]])=>`<p class="hint" style="margin:8px 0"><b style="color:var(--ink)">${SPORTS[k]?SPORTS[k].name+' ('+SPORTS[k].org+')':k}: ${fmt(a)} to ${fmt(b)}</b><br>Typical: ${t}.<br>Outliers: ${o}.</p>`).join('')+'</details>';})()+'<button id="fit" class="primary" style="margin-top:10px;width:100%">Size rows to hit target</button></section>';
   const fixed=[...(P.sport==='nfl'||P.sport==='ncaafb'?[['Football field length',L(360*304.8)],['Football field width',L(160*304.8)]]:[]),
@@ -1419,8 +1419,8 @@ $('controls').addEventListener('input',e=>{
 $('controls').addEventListener('change',e=>{
   if(e.target.id==='sportSel'){applySport(e.target.value);return;}
   if(e.target.id==='northSel'){P.planOri=e.target.value;CUR=null;renderControls();update();return;}
-  {const el=e.target,p=el.dataset.p,mt=p&&META[p];if(mt&&el.type==='number'){let v=parseFloat(el.value);if(!isFinite(v))v=get(p);const c=Math.min(mt.max,Math.max(mt.min,v));
-    if(c!==v)toast(`Kept within ${fmt(mt.min)} to ${fmt(mt.max)}`);el.value=c;commit(p,c,el);return;}}   // number boxes: clamp to the slider range
+  {const el=e.target,p=el.dataset.p,mt=p&&META[p];if(mt&&el.type==='number'){let v=parseFloat(el.value);if(!isFinite(v))v=get(p);const c=Math.min(mt.max,Math.max(mt.min,mt.step>=1?Math.round(v/mt.step)*mt.step:v));   /* whole steps (1,000 seats) */
+    if(c!==v)toast(`Set to ${fmt(c)} (${fmt(mt.min)} to ${fmt(mt.max)}, in steps of ${fmt(mt.step)})`);el.value=c;commit(p,c,el);return;}}   // number boxes: clamp to the slider range
   const el=e.target,p=el.dataset.p;if(!p||!el.classList.contains('len'))return;
   const mt=META[p],k=mt.kind==='m'?1000:1,mm=imperial()&&(mt.kind==='m'?mt.step*1000:mt.step)<1.5&&/^\s*\d*\.?\d+\s*$/.test(el.value)?+el.value*25.4:parseLen(el.value,mt.kind);   /* decimal-inch boxes: a bare number is inches */
   if(!isFinite(mm)){toast(imperial()?'Try a length like 12\'-6 1/2" or 150"':'Try a length like 3.8 m or 3800 mm');el.value=fieldText(get(p)*k,mt.kind,mt.step);return;}
