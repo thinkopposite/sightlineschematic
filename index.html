@@ -889,7 +889,7 @@ function defaults(){const S=SPORTS.ncaafb,f={};
   return {sport:'ncaafb',L:S.L,W:S.W,lanes:8,fl:330*FT,cf:400*FT,bs:60*FT,north:'L',planOri:'v',sec:'T',tierCount:2,
   zt:[tierDef(20,'all',f),tierDef(20,'all',f),tierDef(20,'all',f)].map(t=>{t.corners='chamfer';                 // chairback on every side
     ['T','B'].forEach(k=>Object.assign(t.z[k],{seat:'standard',seatW:22*25.4}));['L','R'].forEach(k=>Object.assign(t.z[k],{seat:'standard',seatW:22*25.4}));return t;}),   /* 22 in chairback on every side */
-  eye:eyeDefaults(),eyeRev:EYE_REV,tierColors:['#CCCCCC','#999999'],eyeMode:'sit',slabT:5*25.4,step:12.7,maxRiser:24*25.4,bank:1,maxRake:34,loss:12,vd:700*0.3048,capTarget:30000,railH:26*25.4,minHead:10*304.8,suiteH:4.27,};}
+  eye:eyeDefaults(),eyeRev:EYE_REV,tierColors:['#CCCCCC','#999999'],eyeMode:'sit',slabT:5*25.4,step:12.7,maxRiser:24*25.4,bank:1,maxRake:34,loss:12,vd:700*0.3048,capTarget:30000,railH:26*25.4,minHead:7*304.8,suiteH:4.27,};}
 function defaultsPinned(){const d=Object.assign(defaults(),{riseRev:1,seatRev:1,seatRev3:1});   /* fresh bowls skip the one-time migrations */d.zt.forEach(t=>GEO.forEach(k=>t.z[k].target=cvDefault(d.sport)));d.cvRev=2;alignUpperTiers(d);return d;}
 // Saved bowls from before zones: one profile for the whole bowl becomes the same profile on every side.
 function migrate(o){if(!o||o.zt)return o;const d=defaults();
@@ -1095,8 +1095,8 @@ function underside(tr){const t=slabT(),u=[[tr[0].x,tr[0].z-t]];
   for(let i=1;i<tr.length;i++)u.push([tr[i].x+t,tr[i-1].z-t],[tr[i].x+t,tr[i].z-t]);
   const l=tr[tr.length-1];u.push([l.x+l.T,l.z-t]);return u.map(([x,z])=>[x,Math.max(0,z)]);}
 /* regional defaults: American sports in inches, international in mm (FIFA Stadium Guidelines 5.2: 800 mm minimum tread, 400 mm clearway) */
-const REGION_DEF={america:{tread:34*25.4,tread0:36*25.4,rise:13*0.3048,leg:36*25.4,step:12.7,maxRiser:24*25.4,minHead:10*304.8,treadMin:33*25.4,treadMax:52*25.4,tread0Max:60*25.4,tStep:25.4},
-  world:{tread:800,tread0:900,rise:4.0,leg:1000,step:10,maxRiser:600,minHead:3000,treadMin:700,treadMax:1300,tread0Max:1500,tStep:10}};
+const REGION_DEF={america:{tread:34*25.4,tread0:36*25.4,rise:13*0.3048,riseMin:10*0.3048,leg:36*25.4,step:12.7,maxRiser:24*25.4,minHead:7*304.8,treadMin:33*25.4,treadMax:52*25.4,tread0Max:60*25.4,tStep:25.4},
+  world:{tread:800,tread0:900,rise:4.0,riseMin:3.0,leg:1000,step:10,maxRiser:600,minHead:2000,treadMin:700,treadMax:1300,tread0Max:1500,tStep:10}};
 const regionOf=s=>(SPORTS[s]||{}).region==='world'?'world':'america',RD=()=>REGION_DEF[regionOf(P.sport)];
 let LEG2=36*25.4;                                                 // upper-tier front leg wall, from the top of the row 1 tread
 function profileOf(tr,ti){const t=slabT(),pts=[];tr.forEach(r=>{pts.push([r.x,r.z],[r.x+r.T,r.z]);});
@@ -1213,7 +1213,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.11.21';
+const VERSION='2026.10.11.22';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1403,7 +1403,7 @@ function renderControls(){
     +`<p class="hint">Typical: ${typ}. Outliers: ${out}.</p><details class="capguide"><summary>Capacity guide, all sports</summary>`
     +Object.entries(CAP_LIM).map(([k,[a,b,t,o]])=>`<p class="hint" style="margin:8px 0"><b style="color:var(--ink)">${SPORTS[k]?SPORTS[k].name+' ('+SPORTS[k].org+')':k}: ${fmt(a)} to ${fmt(b)}</b><br>Typical: ${t}.<br>Outliers: ${o}.</p>`).join('')+'</details>';})()+'<button id="fit" class="primary" style="margin-top:10px;width:100%">Size rows to hit target</button></section>';
   const fixed=[...(P.sport==='nfl'||P.sport==='ncaafb'?[['Football field length',L(360*304.8)],['Football field width',L(160*304.8)]]:[]),
-    ['Round risers up to',L(P.step)],['Maximum riser',L(P.maxRiser)],['Rows per riser bank','1'],['Guard rail at row 1 of each tier',`${inchText(P.railH)} high, ${inchText(2*25.4)} thick, on the riser face (inside face on the riser line), ${inchText(8*25.4)} below the tread`],['Minimum headroom under tiers',L(P.minHead)],['Upper-tier leg wall',`${L(LEG2)} below the bottom tread`]];
+    ['Round risers up to',L(P.step)],['Maximum riser',L(P.maxRiser)],['Rows per riser bank','1'],['Guard rail at row 1 of each tier',`${inchText(P.railH)} high, ${inchText(2*25.4)} thick, on the riser face (inside face on the riser line), ${inchText(8*25.4)} below the tread`],['Minimum Tier-1 top tread to Tier-2 bottom tread',L(RD().riseMin*1000)],['Minimum clear height below the Tier-2 front riser leg',L(P.minHead)],['Upper-tier leg wall',`${L(LEG2)} below the bottom tread`]];
   h+='<details><summary>Advanced</summary>'+(P.sport==='nfl'||P.sport==='ncaafb'?'':fieldSliders())
     +slider('maxRake','Maximum rake (1 degree)',25,40,1,'°')+slider('vd','Viewing distance limit (1 foot)',300*0.3048,1000*0.3048,0.3048,'m')
     +slider('loss','Seats lost to aisles and vomitories (1 %)',0,30,1,'%')
@@ -2393,8 +2393,8 @@ function refList(){const E=P.eye,Sp=SPORTS[P.sport],cv=cvSet(P.sport),z=P.zt[0].
     leg:{item:'Leg wall at the lowest row of an upper tier',val:inchText(LEG2)+' from the top of the tread',type:'des',
       basis:'Depth of the upper-tier front leg wall below the first tread; sets the clearance over the tier below.',
       cite:'Project design criterion.'},
-    headroom:{item:'Clearance under an upper tier',val:`${L(P.minHead)} minimum (project); least found ${M.heads&&M.heads.length?L(Math.min(...M.heads.map(h=>h.h))):'n/a'}`,type:'code',
-      basis:'Measured from the top tread of the tier below to the underside of the upper tier leg wall. The project minimum exceeds the code minimum.',
+    headroom:{item:'Clearance under an upper tier',val:`Tier-1 top tread to Tier-2 bottom tread ${L(RD().riseMin*1000)} minimum (now ${P.tierCount>1?L(P.zt[1].z.T.rise*1000):'n/a'}); clear height below the Tier-2 front riser leg ${L(P.minHead)} minimum; least found ${M.heads&&M.heads.length?L(Math.min(...M.heads.map(h=>h.h))):'n/a'}`,type:'code',
+      basis:`Two project minimums: the height from the Tier 1 top tread to the Tier 2 bottom tread (${L(RD().riseMin*1000)}), and the clear height from the Tier 1 top tread to the underside of the Tier 2 front riser leg (${L(P.minHead)}), which is that height less the ${L(LEG2)} leg wall. Both meet the code headroom minimum.`,
       cite:'IBC 2024 §1003.2 (ceiling height in means of egress, 7\'-6" minimum) and §1003.3.1 (headroom, 80" minimum); project minimum set by the design team.'}};
   if(!imperial()){const GG='Guide to Safety at Sports Grounds (Green Guide), 6th ed., SGSA 2018';Object.assign(R,{   /* metric: UK and European references */
     cval:{...R.cval,cite:`${GG}, seated viewing standards and C-value method; BS EN 13200-1:2019 Spectator facilities, viewing area (sightline method); FIFA Football Stadiums Guidelines for football venues. C targets: ${cv.src}.`},
@@ -2411,7 +2411,7 @@ function refList(){const E=P.eye,Sp=SPORTS[P.sport],cv=cvSet(P.sport),z=P.zt[0].
     wcoff:{...R.wcoff,basis:'Horizontal eye position of the wheelchair user inside the space.',cite:'Project design criterion (input); wheelchair space size per BS 8300-2:2018 (spectator seating, wheelchair spaces) and the SGSA Accessible Stadia guide.'},
     guard:{...R.guard,basis:`Barrier in front of the first row of seats. UK guidance gives a minimum barrier height in front of fixed seating (800 mm, BS 6180) and higher barriers elsewhere; the app's ${inchText(P.railH)} should be checked against it. Barrier loads per BS EN 1991-1-1 and its UK National Annex.`,
       cite:`${GG}, barriers; BS 6180:2011 Barriers in and about buildings; BS EN 13200-3:2018 Separating elements; BS EN 1991-1-1 and UK NA.`},
-    headroom:{...R.headroom,basis:'Measured from the top tread of the tier below to the underside of the upper tier leg wall. The project minimum exceeds the regulatory headroom.',
+    headroom:{...R.headroom,
       cite:'Approved Document K (headroom on stairs and ramps, 2.0 m) and Approved Document B (means of escape), England; project minimum set by the design team. Use the national regulations for the project location.'}});}
   return REF_KEYS.map((k,i)=>({no:i+1,key:k,...R[k],typeName:T[R[k].type]}));}
 function refTableHTML(){return '<thead><tr><th>Ref.</th><th>Dimension</th><th>Current value</th><th>Basis</th><th>Source</th></tr></thead><tbody>'
