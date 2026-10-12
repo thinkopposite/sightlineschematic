@@ -221,6 +221,8 @@ button,a.btnlink,select.sel,.sl-val input,.hex,.swatch{border-color:var(--edge)}
 .seg>button.on,button.on,button.primary{border-color:var(--accent)}
 :focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
 .refb{display:inline-grid;place-items:center;width:1.6em;height:1.6em;border:1.5px solid var(--ref);border-radius:50%;color:var(--ref);font-weight:700;font-size:.85em}.reft{font-size:.8em;color:var(--muted)}table.refs th{text-align:left}table.refs td{vertical-align:top;text-align:left;white-space:normal;min-width:7em}table.refs td:nth-child(4),table.refs td:nth-child(5){min-width:16em}
+main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main g.ctl.hl tspan,main g.ctl.hl text.dv{fill:#E8590C;font-weight:700}main g.ctl.hl line{stroke:#E8590C;stroke-width:2.4px}
+.ctlmark{color:#B4531A;font-size:.8em}.sl.hl{background:var(--accent-soft);box-shadow:0 0 0 2px #E8590C;border-radius:6px}.sl.flash{animation:ctlflash 1.2s}@keyframes ctlflash{0%{box-shadow:0 0 0 4px #E8590C}100%{box-shadow:0 0 0 0 transparent}}
 </style>
 </head>
 <body>
@@ -245,6 +247,7 @@ button,a.btnlink,select.sel,.sl-val input,.hex,.swatch{border-color:var(--edge)}
     <div class="tablewrap" id="zones"></div>
 
     <p class="group">Sightlines</p>
+    <p class="hint" id="ctlHint" style="margin:-4px 0 10px"><span class="ctlmark">●</span> Orange dimensions are set by a control on the left. Hover a dimension or a control to see the pair; click a dimension to jump to its control.</p>
     <div class="planhead"><span class="bub">A</span><h3 id="secTitle">Section</h3>
       <p class="capt">Through the middle of the chosen side, true to scale. Every riser is solved to the C-value.</p>
       <div><div class="seg" id="secTabs" role="group" aria-label="Section through"></div><div class="seg" id="modeTabs" role="group" aria-label="Sightline mode"><button data-mode="sit" class="on" aria-pressed="true">Sitting</button><button data-mode="stand" aria-pressed="false">Standing</button></div></div></div>
@@ -787,23 +790,23 @@ let DIMREG=null;                                                     // plan tex
 function drawDims(list,g,fs){
   const f=g.f;let s='';const reg=DIMREG||[];
   const txt=(D)=>{const hs=`text-anchor="middle" fill="#4D4D4D" paint-order="stroke" stroke="var(--panel)" stroke-width="${f(fs*.22)}" stroke-linejoin="round"${D.rot?` transform="rotate(${f(D.rot)} ${f(D.mx)} ${f(D.my)})"`:''}`;
-    if(!D.note)return `<text x="${f(D.mx)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" font-weight="400" ${hs}>${D.lab}</text>`;
+    if(!D.note)return `<text class="dv" x="${f(D.mx)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" font-weight="400" ${hs}>${D.lab}</text>`;
     const nw=D.note.length*.8*.52*fs,cx=D.mx-D.tw/2+nw,hs2=a=>hs.replace('text-anchor="middle"',`text-anchor="${a}"`);   /* one line: label, then the value */
-    return `<text x="${f(cx)}" y="${f(D.my)}" font-size="${f(fs*.8)}" dominant-baseline="middle" font-weight="400" ${hs2('end')}>${D.note}</text><text x="${f(cx+fs*.5)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" font-weight="400" ${hs2('start')}>${D.lab}</text>`;};
+    return `<text x="${f(cx)}" y="${f(D.my)}" font-size="${f(fs*.8)}" dominant-baseline="middle" font-weight="400" ${hs2('end')}>${D.note}</text><text class="dv" x="${f(cx+fs*.5)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" font-weight="400" ${hs2('start')}>${D.lab}</text>`;};
   const place=D=>{if(D.r)return;const two=false;
     const vert=Math.abs(Math.cos(D.rot*Math.PI/180))<.5,w=D.tw+fs*.4,h=(two?2.3:1.2)*fs,bw=vert?h:w,bh=vert?w:h,x0=D.mx,y0=D.my;
     for(const k of[0,1,-1,2,-2,3,-3]){const sl=k*(w*.6),x=x0+D.ux*sl,y=y0+D.uy*sl,box=[x-bw/2,y-bh/2,x+bw/2,y+bh/2];
       if(!reg.some(o=>box[0]<o[2]&&box[2]>o[0]&&box[1]<o[3]&&box[3]>o[1])){D.mx=x;D.my=y;reg.push(box);return;}}
     reg.push([x0-bw/2,y0-bh/2,x0+bw/2,y0+bh/2]);};
   const DG='#4D4D4D',ln=(x1,y1,x2,y2,w=1)=>`<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="${DG}" stroke-width="${f(w*g.k*.6)}"/>`;   // thin, dark grey
-  for(const d of list){const D=dimLabel(d,fs);place(D);
+  for(const d of list){const s0=s.length,W=()=>{if(d.ctl)s=s.slice(0,s0)+`<g class="ctl" data-ctl="${d.ctl}">`+s.slice(s0)+'</g>';};const D=dimLabel(d,fs);place(D);
     if(D.r){const ex=d.c[0]+d.r*Math.cos(D.t),ey=d.c[1]+d.r*Math.sin(D.t),ah=fs*.55,bx=ex-Math.cos(D.t)*ah,by=ey-Math.sin(D.t)*ah,px=-Math.sin(D.t)*ah*.35,py=Math.cos(D.t)*ah*.35;
-      s+=ln(d.c[0],d.c[1],ex,ey,1.2)+`<path d="M${f(ex)} ${f(ey)}L${f(bx+px)} ${f(by+py)}L${f(bx-px)} ${f(by-py)}Z" fill="var(--dim)"/>`+g.dot(d.c[0],d.c[1],fs*.12,'var(--dim)')+txt(D);continue;}
+      s+=ln(d.c[0],d.c[1],ex,ey,1.2)+`<path d="M${f(ex)} ${f(ey)}L${f(bx+px)} ${f(by+py)}L${f(bx-px)} ${f(by-py)}Z" fill="var(--dim)"/>`+g.dot(d.c[0],d.c[1],fs*.12,'var(--dim)')+txt(D);W();continue;}
     const {a,b,ux,uy,nx,ny,o,sg}=D,gap=o?fs*.25:0,ext=fs*.3;
     if(o)s+=ln(d.p[0]+nx*gap*sg,d.p[1]+ny*gap*sg,a[0]+nx*ext*sg,a[1]+ny*ext*sg,.8)+ln(d.q[0]+nx*gap*sg,d.q[1]+ny*gap*sg,b[0]+nx*ext*sg,b[1]+ny*ext*sg,.8);
     s+=ln(a[0],a[1],b[0],b[1],1.1);
     const tk=fs*.28;for(const p of[a,b])s+=ln(p[0]-(ux+nx)*tk,p[1]-(uy+ny)*tk,p[0]+(ux+nx)*tk,p[1]+(uy+ny)*tk,1.1);
-    s+=txt(D);
+    s+=txt(D);W();
   }
   return s;
 }
@@ -1213,7 +1216,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.11.22';
+const VERSION='2026.10.11.23';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1309,11 +1312,15 @@ function setUnits(){try{localStorage.setItem(UKEY,JSON.stringify(U))}catch(e){}r
 
 // ---------- controls ----------
 const META={};let EDIT={tier:0,g:0};
+function ctlKey(path){const E={'eye.sitH':'SIT','eye.stH':'STAND','eye.stOff':'STOFF','eye.wcH':'WCH','eye.wcOff':'WCOFF',L:'L',W:'W'};if(E[path])return E[path];
+  const m=String(path).match(/^zt\.(\d+)\.[A-Z]+\.(\w+)$/);if(!m)return null;return ({D:'D',Z:'Z',tread:'T',tread0:'T0',rise:'RISE',Zabs:'RISE',X:'X',target:'CV'})[m[2]]?({D:'D',Z:'Z',tread:'T',tread0:'T0',rise:'RISE',Zabs:'RISE',X:'X',target:'CV'})[m[2]]+':'+m[1]:null;}
+const CTLMARK='<span class="ctlmark" title="Set on the drawings: hover to see the dimension">●</span> ';
 function slider(path,label,min,max,step,unit){
   const v=get(path),kind=(unit==='m'||unit==='mm')?unit:null;META[path]={min,max,step,kind};
   const box=kind?`<input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="len" id="n_${path}" data-p="${path}" value="${fieldText(v*(kind==='m'?1000:1),kind,step).replace(/"/g,'&quot;')}">${unitLabel(kind)}`
     :`<input type="number" id="n_${path}" data-p="${path}" min="${min}" max="${max}" step="${step}" value="${v}">${unit}`;
-  return `<div class="sl"><div class="sl-top"><label for="n_${path}">${label}</label><span class="sl-val">${box}</span></div>
+  const ck=ctlKey(path);
+  return `<div class="sl"${ck?` data-ctl="${ck}"`:''}><div class="sl-top"><label for="n_${path}">${ck?CTLMARK:''}${label}</label><span class="sl-val">${box}</span></div>
   <div class="rng"><button class="nudge" data-nudge="-1" data-np="${path}" aria-label="${label}: down one step">◀</button><input type="range" data-p="${path}" min="${min}" max="${max}" step="${step}" value="${v}" aria-label="${label}"><button class="nudge" data-nudge="1" data-np="${path}" aria-label="${label}: up one step">▶</button></div></div>`;
 }
 function fieldSliders(){const S=SPORTS[P.sport];
@@ -1338,7 +1345,7 @@ function set(path,v){if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.')
 const CV=v=>v==null?'':imperial()?(v/25.4).toFixed(4)+'"':v.toFixed(4)+' mm';   // every C-value: 4 decimals, e.g. 2.5000" or 60.0000 mm
 function cvEditor(pre,z,ti){const set=cvSet(P.sport),p=pre+'.target';META[p]={min:25.4,max:10*25.4,step:1e-6,kind:'mm'};
   const lab=mm=>imperial()?`${(mm/25.4).toFixed(4)}" (${mm.toFixed(4)} mm)`:`${mm.toFixed(4)} mm (${(mm/25.4).toFixed(4)}")`;
-  return `<div class="sl"><div class="sl-top"><label for="n_${p}">Absolute minimum C-value override</label><span class="sl-val"><input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="len" id="n_${p}" data-p="${p}" value="${CV(z.target).replace(/"/g,'&quot;')}" title="Type a value to override, e.g. 2.5&quot; or 64 mm"></span></div>`
+  return `<div class="sl" data-ctl="CV:${ti}"><div class="sl-top"><label for="n_${p}">${CTLMARK}Absolute minimum C-value override</label><span class="sl-val"><input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="len" id="n_${p}" data-p="${p}" value="${CV(z.target).replace(/"/g,'&quot;')}" title="Type a value to override, e.g. 2.5&quot; or 64 mm"></span></div>`
     +`<div class="hint" style="margin:2px 0 6px">${set.src}</div><div class="seg stack">`
     +set.opts.map(([n,mm])=>`<button data-cv="${mm}" data-g="${pre}" class="${Math.abs(z.target-mm)<0.01?'on':''}" title="${n}">${n}: ${lab(mm)}</button>`).join('')
     +`</div></div>`;}
@@ -1497,7 +1504,10 @@ function SecDim(X,Y,fs,frame){   /* frame [W,H]: text never leaves the drawing *
       if(o.ref){const rn=refNo(o.ref),rr=sz*.56,bx=x0+W+sz*.3+rr,by=cy-sz*.36;boxes.push([bx-rr,by-rr,bx+rr,by+rr]);   /* reference bubble after the note */
         t+=`<circle cx="${f1(bx)}" cy="${f1(by)}" r="${f1(rr)}" fill="var(--panel)" stroke="var(--ref)" stroke-width="0.8" vector-effect="non-scaling-stroke"/><text x="${f1(bx)}" y="${f1(by+rr*.4)}" text-anchor="middle" font-size="${f1(rr*1.2)}" font-weight="400" fill="var(--ref)">${rn}</text>`;}
       return K;},
-    dim(a,b,o={}){
+    dim(a,b,o={}){const g0=g.length,t0=t.length;K.dim0(a,b,o);   /* a dimension set by a control carries data-ctl, for hover and click */
+      if(o.ctl&&!(K.noCtl)){const at=`class="ctl" data-ctl="${o.ctl}"`;g=g.slice(0,g0)+`<g ${at}>`+g.slice(g0)+'</g>';t=t.slice(0,t0)+`<g ${at}>`+t.slice(t0)+'</g>';}
+      return K;},
+    dim0(a,b,o={}){
       const A=[+X(a[0]),+Y(a[1])],B=[+X(b[0]),+Y(b[1])];let ux=B[0]-A[0],uy=B[1]-A[1];const len=Math.hypot(ux,uy);if(len<1e-6)return K;ux/=len;uy/=len;
       let rx=ux,ry=uy;if(rx<-1e-6||(Math.abs(rx)<1e-6&&ry>0)){rx=-rx;ry=-ry;}          // reads left to right, or bottom to top
       const ang=Math.atan2(ry,rx)*180/Math.PI,nx=ry,ny=-rx,vert=Math.abs(rx)<.5;
@@ -1572,7 +1582,7 @@ function drawSection(rows,o={}){
     /* lowest-C marker removed: the value is in Results and the tables */}
   tiers.forEach(ti=>{if(!ti)return;const f=rows.find(r=>r.tier===ti),lb=rows.filter(r=>r.tier===ti-1).pop();if(!f||!lb)return;   // clear height under the leg wall
     const zb=f.z-LEG2,x=f.x+slabT()+fs*.5,c=zb-lb.z;if(c<=0)return;
-    K.dim([x,lb.z],[x,zb],{lab:'Clearance',val:L(c),ref:'headroom',ea:[lb.x+lb.T,lb.z],eb:[f.x+slabT(),zb],fill:c<P.minHead?'var(--fail)':null,side:-1});});
+    K.dim([x,lb.z],[x,zb],{lab:'Clearance',val:L(c),ref:'headroom',ctl:'RISE:'+ti,ea:[lb.x+lb.T,lb.z],eb:[f.x+slabT(),zb],fill:c<P.minHead?'var(--fail)':null,side:-1});});
   chainDims(rows,tiers,fs*.9,K);s+=K.out();
   s+=`<line x1="${X(0)}" y1="${+Y(0)+band}" x2="${X(0)}" y2="${+Y(0)-fs*1.6}" stroke="${FOCAL}" stroke-width="1.3" vector-effect="non-scaling-stroke"/>`;
   s+=`<circle cx="${X(0)}" cy="${Y(0)}" r="${dot*1.8}" fill="var(--ink)"/><text x="${X(0)}" y="${(+Y(0)+band+fs*1.05).toFixed(0)}" font-size="${fs*.85}" fill="var(--ink)" text-anchor="middle">Point of focus</text></svg>`;
@@ -1583,12 +1593,12 @@ function drawSection(rows,o={}){
 function chainDims(rows,tiers,fs,K){
   const firsts=tiers.map(ti=>rows.find(r=>r.tier===ti)),lasts=tiers.map(ti=>rows.filter(r=>r.tier===ti).pop()),zTop=Math.max(...rows.map(r=>r.ez)),sp=fs*2.5;
   // horizontal: point of focus to the front riser of each tier, stacked above the section (Tier 1 lowest), then the overall
-  firsts.forEach((r,i)=>{const z=zTop+fs*1.8+sp*i;K.dim([0,z],[r.x,z],{lab:`Tier ${r.tier+1}`,val:L(r.x),ea:[0,0],eb:[r.x,r.z]});});
+  firsts.forEach((r,i)=>{const z=zTop+fs*1.8+sp*i;K.dim([0,z],[r.x,z],{lab:`Tier ${r.tier+1}`,val:L(r.x),ea:[0,0],eb:[r.x,r.z],ctl:r.tier?'X:'+r.tier:'D:0'});});
   const r0=firsts[0],rN=lasts[lasts.length-1],zo=zTop+fs*1.8+sp*firsts.length;
   K.dim([r0.x,zo],[rN.x,zo],{lab:'Overall',val:L(rN.x-r0.x),ea:[r0.x,r0.z],eb:[rN.x,rN.z]});
   // vertical chain left of the point of focus: lowest and top tread of every tier, then the overall
-  const xd=-fs*2.6,vp=[{x:0,z:0}];tiers.forEach((ti,i)=>{vp.push({x:firsts[i].x,z:firsts[i].z});if(lasts[i]!==firsts[i])vp.push({x:lasts[i].x,z:lasts[i].z});});
-  for(let i=1;i<vp.length;i++)K.dim([xd,vp[i-1].z],[xd,vp[i].z],{val:L(vp[i].z-vp[i-1].z),ea:i===1?[vp[0].x,vp[0].z]:null,eb:[vp[i].x,vp[i].z]});
+  const xd=-fs*2.6,vp=[{x:0,z:0}];tiers.forEach((ti,i)=>{vp.push({x:firsts[i].x,z:firsts[i].z,tier:ti});if(lasts[i]!==firsts[i])vp.push({x:lasts[i].x,z:lasts[i].z,tier:ti});});
+  for(let i=1;i<vp.length;i++){const ctl=i===1?'Z:0':(vp[i-1].tier!=null&&vp[i].tier!=null&&vp[i].tier>vp[i-1].tier)?'RISE:'+vp[i].tier:null;K.dim([xd,vp[i-1].z],[xd,vp[i].z],{val:L(vp[i].z-vp[i-1].z),ea:i===1?[vp[0].x,vp[0].z]:null,eb:[vp[i].x,vp[i].z],ctl});}
   const xo=xd-sp;K.dim([xo,0],[xo,rN.z],{lab:'Overall',val:L(rN.z),ea:[xd,0],eb:[xd,rN.z]});
 }
 // Sightline detail: the whole Tier 1 bowl on the section side, one spectator per row, sitting or standing (its own toggle).
@@ -1643,16 +1653,16 @@ function drawDetail(all,o={}){
     K.reserve(e.x-hr,cy-hr,e.x+hr,cy+hr);});
   // top spectator: eye (sitting) or head (standing) height, right of the bowl
   const eT=ey[ey.length-1],xd=last.x+last.T+fs*3.6,zTop=m==='stand'?last.z+E.stH+HEAD:eT.z;
-  K.dim([xd,last.z],[xd,zTop],{lab:m==='stand'?'Standing head':'Sitting eye',val:L(m==='stand'?E.stH+HEAD:E.sitH),ref:m==='stand'?'head':'sit',ea:[last.x+last.T,last.z],eb:[eT.x,zTop],side:-1});
+  K.dim([xd,last.z],[xd,zTop],{lab:m==='stand'?'Standing head':'Sitting eye',val:L(m==='stand'?E.stH+HEAD:E.sitH),ref:m==='stand'?'head':'sit',ctl:m==='stand'?'STAND':'SIT',ea:[last.x+last.T,last.z],eb:[eT.x,zTop],side:-1});
   // vertical: bottom tread above the field, one tread in front of the leg wall; overall to the top tread, right of the bowl
-  if(!NF)K.dim([r0.x-r0.T,0],[r0.x-r0.T,r0.z],{lab:'Bottom tread',val:L(r0.z),eb:[r0.x,r0.z]});
+  if(!NF)K.dim([r0.x-r0.T,0],[r0.x-r0.T,r0.z],{lab:'Bottom tread',val:L(r0.z),eb:[r0.x,r0.z],ctl:'Z:0'});
   else K.note(r0.x-fs*.4,r0.z-fs*1.1,`Bottom tread ${L(r0.z)} above the ${surfLow()}`,{size:fs*.5,anchor:'end',fill:c,wt:450});
   {const z0=NF?r0.z:0,xo=xd+fs*2.4;K.dim([xo,z0],[xo,last.z],{lab:NF?`Tier ${ti+1} rise`:'Overall',val:L(last.z-z0),ea:[r0.x,z0],eb:[xd,last.z],side:-1});}
   // horizontal chain below the bowl: point of focus to the first riser, the first tread, then the typical tread
   const yc=NF?r0.z-(ti>=1?LEG2:slabT())-fs*1.4:-(band+fs*1.3),pts=(NF?[r0.x,r0.x+r0.T,r0.x+r0.T+(rs[1]?rs[1].T:0)]:[0,r0.x,r0.x+r0.T,r0.x+r0.T+(rs[1]?rs[1].T:0)]).filter((v,i,a)=>i===0||v>a[i-1]+1);
   const zo=x=>NF?r0.z-slabT():-band;
   for(let i=1;i<pts.length;i++){const typ=i===pts.length-1&&i>=2,lab=!NF&&i===1?'Focus to riser':typ?'Tread (TYP.)':'First tread';
-    K.dim([pts[i-1],yc],[pts[i],yc],{lab,val:L(pts[i]-pts[i-1]),ea:[pts[i-1],zo(pts[i-1])],eb:[pts[i],zo(pts[i])],side:-1});}
+    K.dim([pts[i-1],yc],[pts[i],yc],{lab,val:L(pts[i]-pts[i-1]),ea:[pts[i-1],zo(pts[i-1])],eb:[pts[i],zo(pts[i])],side:-1,ctl:!NF&&i===1?'D:0':typ?'T:'+ti:'T0:'+ti});}
   if(ti>=1)K.dim([r0.x+slabT()+fs*.9,r0.z-LEG2],[r0.x+slabT()+fs*.9,r0.z],{lab:'Leg wall',val:L(LEG2),ref:'leg',ea:[r0.x+slabT(),r0.z-LEG2],side:-1});
   s+=K.out();
   return s+'</svg>';
@@ -1694,14 +1704,14 @@ function drawPlatform(o={}){
   rs.forEach(r=>K.note(r.x+r.T/2,r.z-t-fs*.8,`Row ${r.row}`,{size:fs*.52}));
   K.note((edge+top.x)/2,(zP+p2.z)/2-fs*.2,'Platform',{size:fs*.52});
   K.reserve(eye.x-31.5*IN,zP,eye.x+15*IN,zP+41*IN);                                     // the wheelchair figure
-  K.dim([edge,eye.z+HEAD+fs*1.4],[eye.x,eye.z+HEAD+fs*1.4],{lab:'Platform riser to eye',val:D4(eye.x-edge),ref:'wcoff',ea:[edge,zP+P.railH],eb:[eye.x,eye.z]});
-  {const xe=top.x+top.T+9*IN;K.dim([xe,zP],[xe,eye.z],{lab:'Wheelchair eye',val:D4(E.wcH),ref:'wceye',ea:[top.x+top.T,zP],eb:[eye.x,eye.z],side:-1});}
+  K.dim([edge,eye.z+HEAD+fs*1.4],[eye.x,eye.z+HEAD+fs*1.4],{lab:'Platform riser to eye',val:D4(eye.x-edge),ref:'wcoff',ctl:'WCOFF',ea:[edge,zP+P.railH],eb:[eye.x,eye.z]});
+  {const xe=top.x+top.T+9*IN;K.dim([xe,zP],[xe,eye.z],{lab:'Wheelchair eye',val:D4(E.wcH),ref:'wceye',ctl:'WCH',ea:[top.x+top.T,zP],eb:[eye.x,eye.z],side:-1});}
   K.dim([riserX-12*IN,sd.z],[riserX-12*IN,zP],{lab:`Platform, min ${D4(Math.max(0,g.Hreq)*25.4)}`,val:D4(zP-sd.z),ref:'wcplat',eb:[edge,zP]});
   K.dim([riserX,p1.z+3*IN],[edge,p1.z+3*IN],{lab:'Setback',val:D4(setback),ref:'setback',ea:[riserX,p1.z],eb:[edge,p1.z]});
   K.dim([edge-5*IN,zP],[edge-5*IN,zP+P.railH],{lab:'Guard rail',val:D4(P.railH),ref:'guard',eb:[edge-2*IN,zP+P.railH]});
-  standers.forEach((p,k)=>{const zz=p.r.z+10*IN;K.dim([p.r.x,zz],[p.e.x,zz],{val:D4(E.stOff),ref:k===0?'stand':null,ea:[p.r.x,p.r.z]});
-    {const xv=p.r.x+p.r.T-hr-4*IN;K.dim([xv,p.r.z],[xv,p.e.z],{lab:k?'':'Standing eye',val:D4(E.stH),ref:k?null:'stand',eb:[p.e.x,p.e.z]});}});   /* where the sitting head would be, less 4 in */
-  {const zl=eye.z*st.x/eye.x;K.dim([st.x+2*IN,st.z],[st.x+2*IN,zl],{lab:'C standing',val:CV(zl-st.z),ref:'wcplat',side:-1});}
+  standers.forEach((p,k)=>{const zz=p.r.z+10*IN;K.dim([p.r.x,zz],[p.e.x,zz],{val:D4(E.stOff),ref:k===0?'stand':null,ea:[p.r.x,p.r.z],ctl:'STOFF'});
+    {const xv=p.r.x+p.r.T-hr-4*IN;K.dim([xv,p.r.z],[xv,p.e.z],{lab:k?'':'Standing eye',val:D4(E.stH),ref:k?null:'stand',ctl:'STAND',eb:[p.e.x,p.e.z]});}});   /* where the sitting head would be, less 4 in */
+  {const zl=eye.z*st.x/eye.x;K.dim([st.x+2*IN,st.z],[st.x+2*IN,zl],{lab:'C standing',val:CV(zl-st.z),ref:'wcplat',ctl:'CV:0',side:-1});}
   s+=K.out();
   return s+'</svg>';
 }
@@ -1897,16 +1907,16 @@ function drawSpectator(mode,o={}){
     K.reserve(e.x-hr-IN,cy-hr-IN,e.x+hr+IN,cy+hr+IN).avoid(e.x,cy-hr,e.x,r.z);}));   /* head with 1 in clearance; the dashed body line */
   rs.forEach(r=>K.note(r.x+r.T/2,r.z-t-fs*.8,`Row ${r.row}`,{size:fs*.52}));
   // every row: front riser to the standing eye, then to the sitting eye over the back riser; standing eye height
-  rs.forEach((r,i)=>{const z=r.z+10*IN;K.dim([r.x,z],[st[i].x,z],{val:D4(E.stOff),ref:i===0?'stand':null,ea:[r.x,r.z]}).dim([st[i].x,z],[r.x+r.T,z],{val:D4(r.T-E.stOff),eb:[r.x+r.T,r.z]});
-    if(r!==last){const xv=si[i].x-hr-4*IN;K.dim([xv,r.z],[xv,st[i].z],{lab:i===0?'Standing eye':'',val:D4(E.stH),ref:i===0?'stand':null,eb:[st[i].x,st[i].z]});}});   /* 4 in left of the sitting head */
+  rs.forEach((r,i)=>{const z=r.z+10*IN;K.dim([r.x,z],[st[i].x,z],{val:D4(E.stOff),ref:i===0?'stand':null,ea:[r.x,r.z],ctl:'STOFF'}).dim([st[i].x,z],[r.x+r.T,z],{val:D4(r.T-E.stOff),eb:[r.x+r.T,r.z]});
+    if(r!==last){const xv=si[i].x-hr-4*IN;K.dim([xv,r.z],[xv,st[i].z],{lab:i===0?'Standing eye':'',val:D4(E.stH),ref:i===0?'stand':null,ctl:'STAND',eb:[st[i].x,st[i].z]});}});   /* 4 in left of the sitting head */
   // top row: sitting and standing eye and head heights, stacked to the right
   {const xb=last.x+last.T,sp=fs*2.4;[['Sitting eye',E.sitH,si[n-1].x],['Sitting head',E.sitH+HEAD,si[n-1].x],['Standing eye',E.stH,st[n-1].x],['Standing head',E.stH+HEAD,st[n-1].x]]
-    .forEach(([lab,h,ex],k)=>{const x=xb+9*IN+k*sp;K.dim([x,last.z],[x,last.z+h],{lab,val:D4(h),ref:['sit','head','stand','head'][k],ea:k?null:[xb,last.z],eb:[ex,last.z+h],side:-1});});}
+    .forEach(([lab,h,ex],k)=>{const x=xb+9*IN+k*sp;K.dim([x,last.z],[x,last.z+h],{lab,val:D4(h),ref:['sit','head','stand','head'][k],ctl:k<2?'SIT':'STAND',ea:k?null:[xb,last.z],eb:[ex,last.z+h],side:-1});});}
   // tread and riser
-  K.dim([m.x,m.z-t-fs*2.4],[m.x+m.T,m.z-t-fs*2.4],{lab:'Tread',val:D4(m.T),ref:'tread',ea:[m.x,m.z-t],eb:[m.x+m.T,m.z-t],side:-1});
-  if(last.riser!=null)K.dim([m.x+m.T-3*IN,m.z],[m.x+m.T-3*IN,last.z],{lab:'Riser',val:D4(last.riser),ref:'cval',eb:[last.x,last.z]});
+  K.dim([m.x,m.z-t-fs*2.4],[m.x+m.T,m.z-t-fs*2.4],{lab:'Tread',val:D4(m.T),ref:'tread',ctl:'T:'+r0.tier,ea:[m.x,m.z-t],eb:[m.x+m.T,m.z-t],side:-1});
+  if(last.riser!=null)K.dim([m.x+m.T-3*IN,m.z],[m.x+m.T-3*IN,last.z],{lab:'Riser',val:D4(last.riser),ref:'cval',ctl:'CV:'+r0.tier,eb:[last.x,last.z]});
   // C-values: the top row's sightline over the eye in front, sitting and standing
-  [[si,'C sitting'],[st,'C standing']].forEach(([e,lab])=>{const zl=e[n-1].z*e[n-2].x/e[n-1].x;K.dim([e[n-2].x-2*IN,e[n-2].z],[e[n-2].x-2*IN,zl],{lab,val:CV(zl-e[n-2].z),ref:'cval'});});
+  [[si,'C sitting'],[st,'C standing']].forEach(([e,lab])=>{const zl=e[n-1].z*e[n-2].x/e[n-1].x;K.dim([e[n-2].x-2*IN,e[n-2].z],[e[n-2].x-2*IN,zl],{lab,val:CV(zl-e[n-2].z),ref:'cval',ctl:'CV:'+r0.tier});});
   if(T2){const xo=r0.x+RAIL_SET-25.4,rt=r0.z+P.railH;   // guard rail height and the row 1 sightlines over it
     K.dim([r0.x+t+5*IN,r0.z-LEG2],[r0.x+t+5*IN,r0.z],{lab:'Leg wall',val:D4(LEG2),ref:'leg',ea:[r0.x+t,r0.z-LEG2],side:-1});
     K.dim([r0.x-9*IN,r0.z],[r0.x-9*IN,rt],{lab:'Guard rail',val:D4(P.railH),ref:'guard',eb:[xo,rt]});
@@ -1939,7 +1949,7 @@ function sectionAt(){if(!zoned(P))return secStation(SPORTS[P.sport],stations(bou
 // Bowl plan dimensions: buffer depth (red line to the Tier 1 front riser) on each side, and at each corner on the diagonal.
 function bufferDims(){if(!zoned(P))return [];const G=rectGeo(P),out=[];
   GEO.forEach((k,i)=>{const r=ZR[k].find(r=>r.tier===0);if(!r)return;const d=r.x/1000,s=G.side[k],f=0.68,p=[s.p[0]+(s.q[0]-s.p[0])*f,s.p[1]+(s.q[1]-s.p[1])*f];
-    out.push({p,q:[p[0]+s.n[0]*d,p[1]+s.n[1]*d],off:0});
+    out.push({p,q:[p[0]+s.n[0]*d,p[1]+s.n[1]*d],off:0,ctl:'D:0'});
     const nk=GEO[(i+1)%4],n2=G.side[nk].n,u=[(s.q[0]-s.p[0]),(s.q[1]-s.p[1])],ul=Math.hypot(...u),fc=[s.q[0]+u[0]/ul*G.R,s.q[1]+u[1]/ul*G.R];
     const dg=[(s.n[0]+n2[0])/Math.SQRT2,(s.n[1]+n2[1])/Math.SQRT2],rc=G.R*(Math.SQRT2-1);
     const c0=[fc[0]-dg[0]*rc,fc[1]-dg[1]*rc];out.push({p:c0,q:[c0[0]+dg[0]*d,c0[1]+dg[1]*d],off:0});});
@@ -2005,7 +2015,7 @@ function drawPlan(o={}){
       over+=`<g transform="rotate(${vert?0:-90} ${f2(nxp)} ${f2(nyp)})"><line x1="${f2(nxp)}" y1="${f2(nyp+na*.9)}" x2="${f2(nxp)}" y2="${f2(nyp-na*.5)}" stroke="var(--ink)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`
         +`<path d="M${f2(nxp)} ${f2(nyp-na*.9)}L${f2(nxp+hw)} ${f2(nyp+na*.5)}L${f2(nxp-hw)} ${f2(nyp+na*.5)}Z" fill="var(--ink)"/></g>`
         +`<text x="${f2(nxp+(vert?0:-na*1.5))}" y="${f2(nyp+(vert?na*1.6:0))}" font-size="${f2(lf*.8)}" font-weight="400" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle">N</text>`;}}
-  else body+=drawDims(dims,g,fs);
+  else{if(P.sport!=='nfl'&&P.sport!=='ncaafb'&&S.shape!=='fan'&&S.shape!=='track'&&dims.length>1){dims[0].ctl='L';dims[1].ctl='W';}body+=drawDims(dims,g,fs);}
   {const sc=sectionAt(),[sx,sy,nx,ny]=sc,reach=PLAN==='bowl'?Rmax+1.5:Math.max(4,S.pad*.75),inn=PLAN==='bowl'?8:Math.max(3,S.pad*.4),al=(x1-x0)/40,BL='#1E5BD8',hw=al*.75*Math.tan(10*Math.PI/180);   // 20 degree heads
     const ax=sx-nx*inn,ay=sy-ny*inn,bx=sx+nx*reach,by=sy+ny*reach,vx=ny,vy=-nx,fx=v=>v.toFixed(2);   // cut line from the field out through the stand; v: viewing direction, field on the viewer's left as drawn
     const arrow=(x,y)=>`<line x1="${fx(x)}" y1="${fx(y)}" x2="${fx(x+vx*al*.9)}" y2="${fx(y+vy*al*.9)}" stroke="${BL}" stroke-width="2.2" vector-effect="non-scaling-stroke"/>`
@@ -2550,6 +2560,18 @@ const cntPrintDialog=()=>{const Sp=SPORTS[P.sport],tmp=document.createElement('d
   const doc=fr.contentDocument;doc.open();doc.write(html);doc.close();setTimeout(()=>{try{fr.contentWindow.focus();fr.contentWindow.print();}catch(e){toast('Printing is blocked in this browser.');}},250);
   toast('Choose "Save as PDF" in the print dialog.');};
 
+// ---------- control and dimension pairing: hover highlights both, click a dimension to edit it ----------
+function ctlHL(k,on){document.querySelectorAll(`[data-ctl="${k}"]`).forEach(e=>e.classList.toggle('hl',on));}
+document.addEventListener('mouseover',e=>{const el=e.target.closest&&e.target.closest('[data-ctl]');if(el)ctlHL(el.dataset.ctl,true);});
+document.addEventListener('mouseout',e=>{const el=e.target.closest&&e.target.closest('[data-ctl]');if(el&&!el.contains(e.relatedTarget))ctlHL(el.dataset.ctl,false);});
+document.addEventListener('focusin',e=>{const el=e.target.closest&&e.target.closest('#controls [data-ctl]');if(el)ctlHL(el.dataset.ctl,true);});
+document.addEventListener('focusout',e=>{const el=e.target.closest&&e.target.closest('#controls [data-ctl]');if(el)ctlHL(el.dataset.ctl,false);});
+document.addEventListener('click',e=>{const el=e.target.closest&&e.target.closest('main g.ctl');if(!el)return;const k=el.dataset.ctl,ti=+(k.split(':')[1]);
+  ctlHL(k,false);if(!isNaN(ti)&&ti!==EDIT.tier){EDIT={tier:ti,g:0};renderControls();}
+  const c=document.querySelector(`#controls .sl[data-ctl="${k}"]`);if(!c){toast('No control sets this dimension directly: it is a fixed standard or follows from other values.');return;}
+  const det=c.closest('details');if(det)det.open=true;c.scrollIntoView({behavior:'smooth',block:'center'});
+  c.classList.remove('flash');void c.offsetWidth;c.classList.add('flash');ctlHL(k,true);setTimeout(()=>ctlHL(k,false),1500);
+  const inp=c.querySelector('input.len,input[type=number]');if(inp){if(inp.disabled)toast('Unlock the eye sight values to change this.');else setTimeout(()=>inp.focus({preventScroll:true}),350);}});
 // ---------- exports ----------
 const optName=()=>CUR!=null&&OPTS[CUR]?OPTS[CUR].name:'Current bowl';
 const slug=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;};   // YYYYMMDD_hhmmss
