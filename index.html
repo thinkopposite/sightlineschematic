@@ -976,6 +976,7 @@ function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGAC
   P.zt.forEach((t,i)=>{if(i&&P.zt[0].corners)t.corners=P.zt[0].corners;
     GEO.forEach(k=>{if(t.z[k]&&t.z.T){t.z[k].on=true;t.z[k].D=t.z.T.D;}});
     if(t.link!=='all'){t.link='all';GEO.forEach(k=>{if(k==='T'||!t.z.T||!t.z[k])return;const keep={};PER_SIDE.forEach(p=>keep[p]=t.z[k][p]);t.z[k]=Object.assign(JSON.parse(JSON.stringify(t.z.T)),keep);});}if(t.corners==='auto')t.corners='round';if(!['chamfer','round'].includes(t.corners))t.corners='chamfer';GEO.forEach(k=>{const o=t.z[k]||{};if(o.tread0==null)o.tread0=o.tread;if(o.treadN==null)o.treadN=o.tread;if(!SEATS[o.seat])o.seat='standard';o.suites=0;t.z[k]=zp(o);});});
+  {const im=regionOf(P.sport)!=='world',lo=im?10*0.3048:3.0,hi=im?16*0.3048:5.0,st=im?0.3048:0.25;P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>{const z=t.z[k];if(z)z.rise=Math.min(hi,Math.max(lo,lo+Math.round((z.rise-lo)/st)*st));});});}   // tier gap in whole steps
   clampCap(P);pinUpperTiers(P);return P;}
 function status(r){if(r.railC!=null)return r.railC>=0?'pass':'fail';if(r.C==null)return'front';
   if(r.C>=r.target-0.05)return'pass';if(r.C>=r.target*2/3)return'reduced';return'fail';}
@@ -1204,7 +1205,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.11.16';
+const VERSION='2026.10.11.17';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
@@ -1354,7 +1355,7 @@ function zoneEditor(ti,g){
   else h+=slider(pre+'.X',`Sideline depth (${imperial()?'1 foot':'100 mm'})`,2*0.3048,400*0.3048,imperial()?0.3048:0.1,'m')
     +(z.X==null?'<p class="hint">First riser aligned over the Tier-1 last riser; it follows Tier 1 automatically.</p>'
       :`<p class="hint" id="sbHint">${setbackText(ti,g[0])}</p><button data-realign="${ti}" style="margin:4px 0 6px">Align to Tier-1 last riser</button>`)
-    +slider(pre+'.rise',`Tier-1 top tread to Tier-2 bottom tread (${imperial()?'1 inch':'10 mm'})`,imperial()?8*0.3048:2.5,imperial()?40*0.3048:12,imperial()?0.0254:0.01,'m')
+    +slider(pre+'.rise',`Tier-1 top tread to Tier-2 bottom tread (${imperial()?'1 foot; 10\'-0" to 16\'-0"':'250 mm; 3,000 to 5,000 mm'})`,imperial()?10*0.3048:3.0,imperial()?16*0.3048:5.0,imperial()?0.3048:0.25,'m')
     +`<p class="hint">Clear height below the Tier-2 leg wall: ${L(z.rise*1000-LEG2)} (leg wall ${L(LEG2)} below the bottom tread; minimum ${L(P.minHead)}).</p>`
     +slider(pre+'.Zabs',`Tier-2 bottom tread above the ${surfLow()} (${imperial()?'4 inch':'100 mm'})`,3*0.3048,150*0.3048,imperial()?0.1016:0.1,'m');
   h+=`<button data-zreset="${pre}" style="margin-top:10px">Reset</button>`;
