@@ -1079,16 +1079,16 @@ const qArea=m2=>imperial()?`${fmt(Math.round(m2*10.7639))} ft²`:`${fmt(Math.rou
 const IBC_SMOKE=[[5000,.2,.15],[10000,.13,.1],[15000,.096,.07],[20000,.076,.056],[25000,.06,.044]];   // IBC 2024 Table 1030.6.2: seats, stepped (handrails within 30 in), level; inches per seat
 const INDOOR={nba:1,ncaabb:1,ncaawbb:1,fiba:1,nhl:1};
 const GG_FLOW={step:66,level:82,min:8};                                // Green Guide rates of passage (persons per metre per minute) and egress time (minutes)
-const aisDefaults=r=>r==='world'?{mode:'layout',nmax:28,w:1200,vomW:2400,vomEvery:2,vomH:2000,basis:'gg',vom:[1,1],vomRow:[11,11],prem:21000}
-  :{mode:'layout',nmax:28,w:48*25.4,vomW:8*304.8,vomEvery:2,vomH:90*25.4,basis:'auto',vom:[1,1],vomRow:[11,11],prem:60*304.8};
+const aisDefaults=r=>r==='world'?{mode:'layout',nmax:28,w:1200,vomW:2400,vomEvery:2,vomH:2000,basis:'gg',vom:[1,1],vomRow:[11,11],prem:21000,gap:100}
+  :{mode:'layout',nmax:28,w:48*25.4,vomW:8*304.8,vomEvery:2,vomH:90*25.4,basis:'auto',vom:[1,1],vomRow:[11,11],prem:60*304.8,gap:4*25.4};
 const vomWall=()=>imperial()?8*25.4:200;
-function AIS(Q){Q=Q||P;if(!Q.ais)Q.ais=aisDefaults(regionOf(Q.sport));const A=Q.ais;if(!A.vom)A.vom=[1,1];if(!A.vomRow)A.vomRow=[11,11];return A;}
+function AIS(Q){Q=Q||P;if(!Q.ais)Q.ais=aisDefaults(regionOf(Q.sport));const A=Q.ais;if(A.gap==null)A.gap=regionOf(Q.sport)==='world'?100:4*25.4;if(!A.vom)A.vom=[1,1];if(!A.vomRow)A.vomRow=[11,11];return A;}
 function segLen(g,d){return g.t==='LINE'?Math.hypot(g.q[0]-g.p[0],g.q[1]-g.p[1]):g.t==='CHAM'?Math.hypot(g.b[0]+g.nb[0]*d-g.a[0]-g.na[0]*d,g.b[1]+g.nb[1]*d-g.a[1]-g.na[1]*d):Math.max(0,g.r+d)*g.sw*Math.PI/180;}
 function segPt(g,f,d){if(g.t==='LINE')return [g.p[0]+(g.q[0]-g.p[0])*f+g.n[0]*d,g.p[1]+(g.q[1]-g.p[1])*f+g.n[1]*d];
   if(g.t==='CHAM'){const a=[g.a[0]+g.na[0]*d,g.a[1]+g.na[1]*d],b=[g.b[0]+g.nb[0]*d,g.b[1]+g.nb[1]*d];return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f];}
   const t=(g.a0+g.sw*f)*Math.PI/180;return [g.c[0]+(g.r+d)*Math.cos(t),g.c[1]+(g.r+d)*Math.sin(t)];}
 function chainAt(ch,s,d){let acc=0;for(let i=0;i<ch.length;i++){const l=segLen(ch[i],d);if(s<=acc+l+1e-9||i===ch.length-1)return {i,f:l>1e-9?Math.min(1,Math.max(0,(s-acc)/l)):0};acc+=l;}return {i:0,f:0};}
-function chainS(ch,a,d){let acc=0;for(let i=0;i<a.i;i++)acc+=segLen(ch[i],d);return acc+a.f*segLen(ch[a.i],d);}
+function chainS(ch,a,d){let acc=0;for(let i=0;i<a.i;i++)acc+=segLen(ch[i],d);const l=segLen(ch[a.i],d);return acc+(a.t!=null?l/2+a.t:a.e!=null?(a.from?l-a.e:a.e):a.f*l);}   // t: fixed offset from the middle of a straight row (an aisle square to it)
 const chainPtS=(ch,s,d)=>{const a=chainAt(ch,s,d);return segPt(ch[a.i],a.f,d);};
 // layout of one tier: per stand the aisle positions (segment, fraction at the back row), which aisles carry a vomitory, and the vomitory rows
 // Aisles: fixed on the centreline of every wrapped corner (the chamfer diagonal or the middle of a round corner), then filled
@@ -1098,23 +1098,37 @@ const chainPtS=(ch,s,d)=>{const a=chainAt(ch,s,d);return segPt(ch[a.i],a.f,d);};
 const premDef=k=>{const S=SPORTS[k]||{};if(k==='nfl'||k==='ncaafb')return 20*3*304.8;const v=0.2*(S.L||100)*1000;return regionOf(k)==='world'?Math.round(v/500)*500:Math.round(v/304.8)*304.8;};
 const segStraight=g=>g.t==='LINE'||(g.t==='CHAM'&&Math.hypot(g.na[0]-g.nb[0],g.na[1]-g.nb[1])<1e-9);
 const segDiag=g=>g.t==='CHAM'&&Math.hypot(g.a[0]-g.b[0],g.a[1]-g.b[1])<1e-9&&Math.abs(Math.hypot(...g.na)-Math.hypot(...g.nb))<1e-9&&Math.hypot(g.na[0]-g.nb[0],g.na[1]-g.nb[1])>1e-9;
+const MITER=1/Math.sin(67.5*Math.PI/180);                            // aisle on a 45 degree bend: along-row cut for the same clear width
+const cutW=(a,w)=>a&&a.miter?w*MITER:w;
+// fill between fixed aisles and stand ends at offset d so no section exceeds cap (a stand end takes a half section)
+function fillAisles(ch,fixed,d,cap,dF,cw){const L=chainLen(ch,d),bd=[{s:0,end:true},...fixed.map(a=>({s:chainS(ch,a,d),a})).sort((x,y)=>x.s-y.s),{s:L,end:true}],out=fixed.map(a=>({s:chainS(ch,a,d),a}));
+  for(let b=1;b<bd.length;b++){const A0=bd[b-1],B0=bd[b],S=B0.s-A0.s;if(S<=1e-9)continue;let ps=[];
+    if(A0.end&&B0.end){const n=Math.max(1,Math.ceil(S/cap-1e-9));for(let j=0;j<n;j++)ps.push(A0.s+(j+0.5)*S/n);}
+    else if(!A0.end&&!B0.end){const n=Math.max(1,Math.ceil(S/cap-1e-9));for(let j=1;j<n;j++)ps.push(A0.s+j*S/n);}
+    else{const n=Math.max(0,Math.ceil(S/cap-0.5-1e-9)),g=S/(n+0.5);for(let j=1;j<=n;j++)ps.push(A0.end?B0.s-j*g:A0.s+j*g);}
+    ps.forEach(q=>{const a=squareUp(ch,chainAt(ch,q,d),d,dF,cw);const s2=chainS(ch,a,d);if(!out.some(o=>Math.abs(o.s-s2)<0.3))out.push({s:s2,a});});}
+  return out.sort((x,y)=>x.s-y.s);}
+// added aisles stay square to their rows: on a chamfer diagonal a fixed offset from its middle; in the short run between a stand
+// and the bend, moved to the stand's end line (square to the stand's rows)
+const segWedge=g=>g.t==='CHAM'&&!segStraight(g)&&!segDiag(g);
+function squareUp(ch,a,d,dF,cw){const g=ch[a.i];if(segDiag(g))return {i:a.i,t:(a.f-0.5)*segLen(g,d)};
+  if(segWedge(g)){const from=Math.abs(Math.hypot(...g.na)-1)<1e-9?0:1,l=segLen(g,d),e=from?(1-a.f)*l:a.f*l;   /* square to the stand rows it continues, kept inside the front row */
+    return {i:a.i,from,e:Math.max(0,Math.min(e,segLen(g,dF??d)-(cw||0)))};}return a;}
+const sameChain=(a,b)=>a&&b&&a!=='ring'&&b!=='ring'&&a.length===b.length&&a.every((g,i)=>g.t===b[i].t);
 function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;const out=[];
   for(let ti=0;ti<Q.tierCount;ti++){const T={};out.push(T);const c=CH[ti]||{};
     for(const k of Object.keys(c)){const ch=c[k];if(ch==='ring')continue;const tr=ZR[k].filter(r=>r.tier===ti);if(!tr.length)continue;
-      const last=tr[tr.length-1],dB=(last.x+last.T/2)/1000,Lb=chainLen(ch,dB),sw=last.seatW/1000,wA=A.w/1000,cap=Math.max(2,A.nmax)*sw+wA;
-      // corner centrelines (always square to the rows there)
-      const anchors=[];ch.forEach((g,i)=>{if(segDiag(g)||g.t==='ARC'){const a={i,f:0.5,corner:true};anchors.push({s:chainS(ch,a,dB),a});}});
-      const bd=[{s:0,end:true},...anchors,{s:Lb,end:true}],pos=[];
-      for(let b=1;b<bd.length;b++){const A0=bd[b-1],B0=bd[b],S=B0.s-A0.s;if(S<=1e-9)continue;
-        if(A0.end&&B0.end){const n=Math.max(1,Math.ceil(S/cap-1e-9));for(let j=0;j<n;j++)pos.push(A0.s+(j+0.5)*S/n);}
-        else if(!A0.end&&!B0.end){const n=Math.max(1,Math.ceil(S/cap-1e-9));for(let j=1;j<n;j++)pos.push(A0.s+j*S/n);}
-        else{const n=Math.max(0,Math.ceil(S/cap-0.5-1e-9)),g=S/(n+0.5);for(let j=1;j<=n;j++)pos.push(A0.end?B0.s-j*g:A0.s+j*g);}}
-      const all=pos.map(s=>({s,a:chainAt(ch,s,dB)})).concat(anchors).sort((x,y)=>x.s-y.s),ais=all.map(x=>x.a),n=ais.length;
+      const last=tr[tr.length-1],dB=(last.x+last.T/2)/1000,Lb=chainLen(ch,dB),sw=last.seatW/1000,wA=A.w/1000,cap=Math.max(2,A.nmax)*sw+wA+2*(A.gap||0)/1000;
+      // fixed aisles: Tier 1 on the bends of each chamfer and on every corner centreline; upper tiers carry every Tier 1 aisle up
+      let fixed=[];const below=ti>0&&out[0][k];
+      if(below&&sameChain(below.ch,ch))fixed=below.ais.map(a=>Object.assign({},a));
+      else ch.forEach((g,i)=>{if(segDiag(g))fixed.push({i,f:0,miter:true},{i,f:0.5,corner:true},{i,f:1,miter:true});else if(g.t==='ARC')fixed.push({i,f:0.5,corner:true});});
+      const all=fillAisles(ch,fixed,dB,cap,tr[0].x/1000,wA/2+(A.gap||0)/1000+sw),ais=all.map(x=>x.a),n=ais.length;
       // vomitories
       const von=!!A.vom[ti]&&tr.length>=3,ev=Math.max(1,Math.round(A.vomEvery)||1),vom=ais.map(a=>von&&!!a.corner);
       if(von){const gi=ch.reduce((b,g,i)=>g.t==='LINE'&&(b<0||segLen(g,0)>segLen(ch[b],0))?i:b,-1);
         if(gi>=0){const mid=chainS(ch,{i:gi,f:0.5},dB),wC=(A.vomW+2*vomWall())/1000+2*wA,half=isSide(k)?(A.prem||0)/2000:0;
-          const ok=j=>segStraight(ch[ais[j].i])&&!ais[j].corner&&Math.abs(all[j].s-mid)-wC/2>=half-1e-6;
+          const ok=j=>segStraight(ch[ais[j].i])&&!ais[j].corner&&!ais[j].miter&&Math.abs(all[j].s-mid)-wC/2>=half-1e-6;
           const lft=[],rgt=[];all.forEach((x,j)=>{if(x.s<mid-1e-6)lft.push(j);else if(x.s>mid+1e-6)rgt.push(j);else if(!isSide(k)&&ok(j))vom[j]=true;});
           const ctr=all.some((x,j)=>Math.abs(x.s-mid)<=1e-6&&vom[j]);
           [lft.reverse(),rgt].forEach(L=>{let first=L.findIndex(ok);if(first<0)return;if(ctr)first=Math.max(first,ev-1);for(let m=first;m<L.length;m+=ev)if(ok(L[m]))vom[L[m]]=true;});}}
@@ -1124,10 +1138,10 @@ function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;co
       T[k]={ch,tr,n,ais,vom,vr,Lb,k,ti};}}
   return out;}
 // seats in one row: sections between the aisle cuts (vomitory rows cut wider on vomitory aisles)
-function rowSections(Lz,j){const A=AIS(),r=Lz.tr[j],d=(r.x+r.T/2)/1000,Ld=chainLen(Lz.ch,d),sw=r.seatW/1000,wA=A.w/1000,inV=Lz.vr&&Lz.vr.rows.includes(j),wV=(A.vomW+2*vomWall())/1000+2*wA;
-  let prev=0;const secs=[],cuts=[];
-  Lz.ais.forEach((a,i)=>{const s=chainS(Lz.ch,a,d),w=inV&&Lz.vom[i]?wV:wA;secs.push(Math.max(0,Math.floor((s-w/2-prev)/sw+1e-9)));cuts.push([s,w]);prev=s+w/2;});
-  secs.push(Math.max(0,Math.floor((Ld-prev)/sw+1e-9)));return {secs,cuts,seats:secs.reduce((a,b)=>a+b,0),d,Ld};}
+function rowSections(Lz,j){const A=AIS(),r=Lz.tr[j],d=(r.x+r.T/2)/1000,Ld=chainLen(Lz.ch,d),sw=r.seatW/1000,wA=A.w/1000,gp=(A.gap||0)/1000,inV=Lz.vr&&Lz.vr.rows.includes(j),wV=(A.vomW+2*vomWall())/1000+2*wA;
+  let prev=0,cut=false;const secs=[],cuts=[];                            // each row end at an aisle keeps the end-seat space (construction tolerance)
+  Lz.ais.forEach((a,i)=>{const s=chainS(Lz.ch,a,d),w=inV&&Lz.vom[i]?wV:cutW(a,wA);secs.push(Math.max(0,Math.floor((s-w/2-prev-gp*(cut?2:1))/sw+1e-9)));cuts.push([s,w]);prev=s+w/2;cut=true;});
+  secs.push(Math.max(0,Math.floor((Ld-prev-gp)/sw+1e-9)));return {secs,cuts,seats:secs.reduce((a,b)=>a+b,0),d,Ld};}
 const egBasis=()=>{if(!imperial())return 'gg';const b=AIS().basis;return b==='auto'||b==='gg'||!b?(INDOOR[P.sport]?'smoke':'open'):b;};
 const EG_NAMES={open:'Open-air seating, IBC 1030.6.3',smoke:'Smoke-protected seating, IBC Table 1030.6.2',std:'Not smoke-protected, IBC 1030.6.1',gg:'Green Guide rates of passage, 8-minute egress'};
 function smokeFactor(seats,col){const t=IBC_SMOKE;if(seats<=t[0][0])return t[0][col];if(seats>=t[t.length-1][0])return t[t.length-1][col];
@@ -1169,7 +1183,7 @@ function aisleSvg(){const AL=M.AL;if(!AL||PLAN!=='bowl')return '';const A=AIS(),
   const strip=(Lz,i,j0,j1,w,lo,hi)=>{const L=[],R=[];for(let j=j0;j<=j1;j++){const r=Lz.tr[j];for(const d of [(lo&&j===j0?lo:r.x)/1000,(hi&&j===j1?hi:r.x+r.T)/1000]){const s=chainS(Lz.ch,Lz.ais[i],d);L.push(chainPtS(Lz.ch,s-w/2,d));R.push(chainPtS(Lz.ch,s+w/2,d));}}
     return 'M'+L.concat(R.reverse()).map(p=>f(p[0])+' '+f(p[1])).join('L')+'Z';};
   for(const T of AL)for(const Lz of Object.values(T)){const last=Lz.tr.length-1;
-    Lz.ais.forEach((_,i)=>{a+=strip(Lz,i,0,last,wA);
+    Lz.ais.forEach((ai,i)=>{a+=strip(Lz,i,0,last,cutW(ai,wA));
       if(Lz.vom[i]&&Lz.vr&&Lz.vr.rows.length){const j0=Lz.vr.rows[0],j1=Lz.vr.rows[Lz.vr.rows.length-1];a+=strip(Lz,i,j0,j1,wV);v+=strip(Lz,i,j0,j1,vc+2*vomWall()/1000);
         if(j1<last)tun+=strip(Lz,i,j1+1,last,vc);}});}
   return `<g class="aisles"><path d="${a}" fill="#FFFFFF" fill-rule="nonzero" stroke="var(--ink)" stroke-width="0.35" vector-effect="non-scaling-stroke"/>`
@@ -1180,6 +1194,7 @@ function aisEditor(){const A=AIS(),imp=imperial(),lay=A.mode==='layout';
   if(!lay)return h+slider('loss','Seats lost to aisles and vomitories (1 %)',0,30,1,'%')+'<p class="hint">A flat allowance off every row. Switch to the computed layout to draw the aisles and vomitories on the plan and check egress.</p>';
   const maxRows=i=>Math.max(3,...GEO.map(k=>(P.zt[i].z[k]||{}).rows||3));
   h+=slider('ais.nmax',`Maximum seats between aisles (1 seat; ${imp?'IBC 1030.13.2.1 allows up to 100':'Green Guide 28'})`,10,imp?100:28,1,'seats')
+    +slider('ais.gap',`Space between end seat and aisle (${imp?'1/2 inch; 2.00" minimum, 4.00" ideal':'10 mm; 50 mm minimum, 100 mm ideal'})`,imp?2*25.4:50,imp?6*25.4:150,imp?12.7:10,'mm')
     +slider('ais.w',`Aisle clear width (${imp?'1 inch; IBC minimum 48"':'50 mm; Green Guide 1,200 mm'})`,imp?36*25.4:900,imp?96*25.4:2400,imp?25.4:50,'mm')
     +'<div class="lab">Vomitories</div><div class="seg">'+Array.from({length:P.tierCount},(_,i)=>`<button data-vomt="${i}" class="${A.vom[i]?'on':''}" aria-pressed="${!!A.vom[i]}">Tier ${i+1}${A.vom[i]?'':': none'}</button>`).join('')+'</div>';
   if(A.vom.slice(0,P.tierCount).some(Boolean))h+=slider('ais.vomEvery','Vomitory on every nth aisle (1 aisle)',1,6,1,'aisles')
@@ -1189,7 +1204,7 @@ function aisEditor(){const A=AIS(),imp=imperial(),lay=A.mode==='layout';
     +Array.from({length:P.tierCount},(_,i)=>A.vom[i]?slider(`ais.vomRow.${i}`,`Tier ${i+1} vomitory portal at row (1 row)`,2,maxRows(i),1,'row'):'').join('');
   if(imp)h+='<div class="lab">Egress width basis</div><div class="seg stack">'+[['auto',`By sport: ${INDOOR[P.sport]?'smoke-protected arena':'open-air stadium'}`],['open','Open-air seating (IBC 1030.6.3)'],['smoke','Smoke-protected (IBC Table 1030.6.2)'],['std','Not smoke-protected (IBC 1030.6.1)']]
     .map(([k,n])=>`<button data-egb="${k}" class="${(A.basis||'auto')===k?'on':''}" aria-pressed="${(A.basis||'auto')===k}">${n}</button>`).join('')+'</div>';
-  return h+`<p class="hint">Each corner has a vomitory on its centreline; the others sit on the straight runs, square to the rows, every nth aisle out from the middle, with none in the midfield premium zone. Aisles are spaced evenly between them. Each vomitory removes its width, two ${L(vomWall())} walls and an aisle on each side, from the portal row up to the first row whose underside clears ${L(A.vomH)}; the tunnel runs on below the seats behind.${imp?'':' Egress widths use the Green Guide rates of passage over 8 minutes.'}</p>`;}
+  return h+`<p class="hint">Each chamfered corner has an aisle on both bends and a vomitory on its centreline; Tier 2 carries every Tier 1 aisle up, adding aisles only where its longer corner rows need them. Every row end at an aisle keeps the end-seat space for construction tolerance. The other vomitories sit on the straight runs, square to the rows, every nth aisle out from the middle, with none in the midfield premium zone. Aisles are spaced evenly between them. Each vomitory removes its width, two ${L(vomWall())} walls and an aisle on each side, from the portal row up to the first row whose underside clears ${L(A.vomH)}; the tunnel runs on below the seats behind.${imp?'':' Egress widths use the Green Guide rates of passage over 8 minutes.'}</p>`;}
 // egress table for the web page and the PDF set: rows of [label, value, pass/fail or null]
 function egressRows(){const e=egress();if(!e)return null;const imp=imperial(),rows=[],pct=(a,b)=>b?` (${(a/b*100).toFixed(1)}%)`:'';
   const gross=ROWS.reduce((a,r)=>a+r.gross,0);
@@ -1359,7 +1374,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.12.4';
+const VERSION='2026.10.12.6';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2563,7 +2578,7 @@ function refList(){const E=P.eye,Sp=SPORTS[P.sport],cv=cvSet(P.sport),z=P.zt[0].
     rowseats:{item:'Seats in a row between aisles',val:`${AIS().nmax} maximum between aisles; half that at an open row end${M.AL?` (most found ${egress().secMax} and ${egress().endMax})`:''}`,type:'code',
       basis:'Rows served by an aisle at each end may hold up to 100 seats, with the clear width between rows growing 0.3" per seat over 14 (to 22"). A row served at one end only grows 0.6" per seat over 7. The app spaces aisles so no section exceeds the maximum set here.',
       cite:'IBC 2024 §1030.13.2.1 dual access and §1030.13.2.2 single access (IBC 2021 §1029.13.2); smoke-protected and open-air seating per Table 1030.13.2.1.'},
-    aisle:{item:'Aisle width',val:`${L(AIS().w)} clear`,type:'code',
+    aisle:{item:'Aisle width',val:`${L(AIS().w)} clear; ${L(AIS().gap||0)} space between the end seat and the aisle (construction tolerance)`,type:'code',
       basis:'Stepped aisles with seating on both sides: 48" minimum, or 36" where the aisle serves fewer than 50 seats. The width must also carry the seats it serves at the width per person of the egress basis.',
       cite:'IBC 2024 §1030.9.1 minimum aisle width and §1030.6 aisle capacity (IBC 2021 §1029.9.1, §1029.6).'},
     vom:{item:'Vomitory',val:`${L(AIS().vomW)} clear wide, ${L(AIS().vomH)} clear high; every ${AIS().vomEvery>1?AIS().vomEvery+(AIS().vomEvery===2?'nd':AIS().vomEvery===3?'rd':'th')+' ':''}aisle`,type:'code',
