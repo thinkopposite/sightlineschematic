@@ -234,7 +234,7 @@ main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main 
 </header>
 <div class="layout">
   <aside><div id="controls"></div>
-    <section class="step deliver"><div class="step-h"><span class="bub">6</span><h2>Deliver</h2><p>Drawings, schedules and models for the team.</p></div>
+    <section class="step deliver"><div class="step-h"><span class="bub">7</span><h2>Deliver</h2><p>Drawings, schedules and models for the team.</p></div>
       <div class="seg"><button id="dlTab" class="primary">Download project set (Tabloid)</button><button id="dlArch" class="primary">Download project set (ARCH E)</button></div>
       <p class="sub2">Models</p>
       <div class="seg"><button id="exRevit">Export for Revit (.xlsx)</button><button id="exSku">Export for SketchUp</button><a class="btnlink" href="dynamo/Sightline_BowlMass_R2024.dyn" download>Revit graph (.dyn)</a></div>
@@ -245,6 +245,7 @@ main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main 
     <p class="verdict" id="verdict"></p>
     <div class="stats" id="stats"></div>
     <div class="tablewrap" id="zones"></div>
+    <details id="egrBox" open><summary>Aisles, vomitories and egress</summary><div class="tablewrap" style="max-height:none"><table id="egrTable" class="fixed"></table></div><p class="hint" id="egrHint"></p></details>
 
     <p class="group">Sightlines</p>
     <p class="hint" id="ctlHint" style="margin:-4px 0 10px"><span class="ctlmark">●</span> Orange dimensions are set by a control on the left. Hover a dimension or a control to see the pair; click a dimension to jump to its control.</p>
@@ -894,7 +895,7 @@ function defaults(){const S=SPORTS.ncaafb,f={};
   return {sport:'ncaafb',L:S.L,W:S.W,lanes:8,fl:330*FT,cf:400*FT,bs:60*FT,north:'L',planOri:'v',sec:'T',tierCount:2,
   zt:[tierDef(20,'all',f),tierDef(20,'all',f),tierDef(20,'all',f)].map(t=>{t.corners='chamfer';                 // chairback on every side
     ['T','B'].forEach(k=>Object.assign(t.z[k],{seat:'standard',seatW:22*25.4}));['L','R'].forEach(k=>Object.assign(t.z[k],{seat:'standard',seatW:22*25.4}));return t;}),   /* 22 in chairback on every side */
-  eye:eyeDefaults(),eyeRev:EYE_REV,tierColors:['#CCCCCC','#999999'],eyeMode:'sit',slabT:5*25.4,step:12.7,maxRiser:24*25.4,bank:1,maxRake:34,loss:12,vd:700*0.3048,capTarget:30000,railH:26*25.4,minHead:7*304.8,suiteH:4.27,};}
+  eye:eyeDefaults(),eyeRev:EYE_REV,tierColors:['#CCCCCC','#999999'],eyeMode:'sit',slabT:5*25.4,step:12.7,maxRiser:24*25.4,bank:1,maxRake:34,loss:12,vd:700*0.3048,capTarget:30000,railH:26*25.4,minHead:7*304.8,suiteH:4.27,ais:aisDefaults('america')};}
 function defaultsPinned(){const d=Object.assign(defaults(),{riseRev:1,riseRev2:1,seatRev:1,seatRev3:1});   /* fresh bowls skip the one-time migrations */d.zt.forEach(t=>GEO.forEach(k=>t.z[k].target=cvDefault(d.sport)));d.cvRev=2;alignUpperTiers(d);return d;}
 // Saved bowls from before zones: one profile for the whole bowl becomes the same profile on every side.
 function migrate(o){if(!o||o.zt)return o;const d=defaults();
@@ -1069,9 +1070,148 @@ const qVol=m3=>imperial()?`${fmt(Math.round(m3*1.30795))} yd³`:`${fmt(Math.roun
 const qWt=kg=>imperial()?`${fmt(Math.round(kg*2.20462/2000))} tons`:`${fmt(Math.round(kg/1000))} tonnes`;
 const qLen=m=>imperial()?`${fmt(Math.round(m/0.3048))} ft`:`${fmt(Math.round(m))} m`;
 const qArea=m2=>imperial()?`${fmt(Math.round(m2*10.7639))} ft²`:`${fmt(Math.round(m2))} m²`;
+// ---------- aisles and vomitories: computed layout and egress check ----------
+// Aisles run radially through every stand at equal spacing, set at the back row so no section holds more than the maximum seats
+// between aisles. Each stand ends in a half section, so where stands wrap a corner the two halves make one section with an aisle at
+// each end, and at an open corner the half section has a single aisle (half the seats). A vomitory sits on every nth aisle: its
+// portal opens at the chosen row, its floor level with the tread in front, and seats are removed (vomitory, two walls and an aisle
+// each side) up to the first row whose underside clears the vomitory clear height. Behind that the tunnel runs on under the seats.
+const IBC_SMOKE=[[5000,.2,.15],[10000,.13,.1],[15000,.096,.07],[20000,.076,.056],[25000,.06,.044]];   // IBC 2024 Table 1030.6.2: seats, stepped (handrails within 30 in), level; inches per seat
+const INDOOR={nba:1,ncaabb:1,ncaawbb:1,fiba:1,nhl:1};
+const GG_FLOW={step:66,level:82,min:8};                                // Green Guide rates of passage (persons per metre per minute) and egress time (minutes)
+const aisDefaults=r=>r==='world'?{mode:'layout',nmax:28,w:1200,vomW:2400,vomEvery:2,vomH:2000,basis:'gg',vom:[1,1],vomRow:[11,11],prem:21000}
+  :{mode:'layout',nmax:28,w:48*25.4,vomW:8*304.8,vomEvery:2,vomH:90*25.4,basis:'auto',vom:[1,1],vomRow:[11,11],prem:60*304.8};
+const vomWall=()=>imperial()?8*25.4:200;
+function AIS(Q){Q=Q||P;if(!Q.ais)Q.ais=aisDefaults(regionOf(Q.sport));const A=Q.ais;if(!A.vom)A.vom=[1,1];if(!A.vomRow)A.vomRow=[11,11];return A;}
+function segLen(g,d){return g.t==='LINE'?Math.hypot(g.q[0]-g.p[0],g.q[1]-g.p[1]):g.t==='CHAM'?Math.hypot(g.b[0]+g.nb[0]*d-g.a[0]-g.na[0]*d,g.b[1]+g.nb[1]*d-g.a[1]-g.na[1]*d):Math.max(0,g.r+d)*g.sw*Math.PI/180;}
+function segPt(g,f,d){if(g.t==='LINE')return [g.p[0]+(g.q[0]-g.p[0])*f+g.n[0]*d,g.p[1]+(g.q[1]-g.p[1])*f+g.n[1]*d];
+  if(g.t==='CHAM'){const a=[g.a[0]+g.na[0]*d,g.a[1]+g.na[1]*d],b=[g.b[0]+g.nb[0]*d,g.b[1]+g.nb[1]*d];return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f];}
+  const t=(g.a0+g.sw*f)*Math.PI/180;return [g.c[0]+(g.r+d)*Math.cos(t),g.c[1]+(g.r+d)*Math.sin(t)];}
+function chainAt(ch,s,d){let acc=0;for(let i=0;i<ch.length;i++){const l=segLen(ch[i],d);if(s<=acc+l+1e-9||i===ch.length-1)return {i,f:l>1e-9?Math.min(1,Math.max(0,(s-acc)/l)):0};acc+=l;}return {i:0,f:0};}
+function chainS(ch,a,d){let acc=0;for(let i=0;i<a.i;i++)acc+=segLen(ch[i],d);return acc+a.f*segLen(ch[a.i],d);}
+const chainPtS=(ch,s,d)=>{const a=chainAt(ch,s,d);return segPt(ch[a.i],a.f,d);};
+// layout of one tier: per stand the aisle positions (segment, fraction at the back row), which aisles carry a vomitory, and the vomitory rows
+// Aisles: fixed on the centreline of every wrapped corner (the chamfer diagonal or the middle of a round corner), then filled
+// evenly between those and the stand ends so no section exceeds the maximum seats; each stand end takes a half section.
+// Vomitories: one on each corner centreline, and on the straight runs only, square to the rows, set out from the middle of each
+// run every nth aisle. Sidelines keep a premium zone at midfield clear of vomitories.
+const premDef=k=>{const S=SPORTS[k]||{};if(k==='nfl'||k==='ncaafb')return 20*3*304.8;const v=0.2*(S.L||100)*1000;return regionOf(k)==='world'?Math.round(v/500)*500:Math.round(v/304.8)*304.8;};
+const segStraight=g=>g.t==='LINE'||(g.t==='CHAM'&&Math.hypot(g.na[0]-g.nb[0],g.na[1]-g.nb[1])<1e-9);
+const segDiag=g=>g.t==='CHAM'&&Math.hypot(g.a[0]-g.b[0],g.a[1]-g.b[1])<1e-9&&Math.abs(Math.hypot(...g.na)-Math.hypot(...g.nb))<1e-9&&Math.hypot(g.na[0]-g.nb[0],g.na[1]-g.nb[1])>1e-9;
+function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;const out=[];
+  for(let ti=0;ti<Q.tierCount;ti++){const T={};out.push(T);const c=CH[ti]||{};
+    for(const k of Object.keys(c)){const ch=c[k];if(ch==='ring')continue;const tr=ZR[k].filter(r=>r.tier===ti);if(!tr.length)continue;
+      const last=tr[tr.length-1],dB=(last.x+last.T/2)/1000,Lb=chainLen(ch,dB),sw=last.seatW/1000,wA=A.w/1000,cap=Math.max(2,A.nmax)*sw+wA;
+      // corner centrelines (always square to the rows there)
+      const anchors=[];ch.forEach((g,i)=>{if(segDiag(g)||g.t==='ARC'){const a={i,f:0.5,corner:true};anchors.push({s:chainS(ch,a,dB),a});}});
+      const bd=[{s:0,end:true},...anchors,{s:Lb,end:true}],pos=[];
+      for(let b=1;b<bd.length;b++){const A0=bd[b-1],B0=bd[b],S=B0.s-A0.s;if(S<=1e-9)continue;
+        if(A0.end&&B0.end){const n=Math.max(1,Math.ceil(S/cap-1e-9));for(let j=0;j<n;j++)pos.push(A0.s+(j+0.5)*S/n);}
+        else if(!A0.end&&!B0.end){const n=Math.max(1,Math.ceil(S/cap-1e-9));for(let j=1;j<n;j++)pos.push(A0.s+j*S/n);}
+        else{const n=Math.max(0,Math.ceil(S/cap-0.5-1e-9)),g=S/(n+0.5);for(let j=1;j<=n;j++)pos.push(A0.end?B0.s-j*g:A0.s+j*g);}}
+      const all=pos.map(s=>({s,a:chainAt(ch,s,dB)})).concat(anchors).sort((x,y)=>x.s-y.s),ais=all.map(x=>x.a),n=ais.length;
+      // vomitories
+      const von=!!A.vom[ti]&&tr.length>=3,ev=Math.max(1,Math.round(A.vomEvery)||1),vom=ais.map(a=>von&&!!a.corner);
+      if(von){const gi=ch.reduce((b,g,i)=>g.t==='LINE'&&(b<0||segLen(g,0)>segLen(ch[b],0))?i:b,-1);
+        if(gi>=0){const mid=chainS(ch,{i:gi,f:0.5},dB),wC=(A.vomW+2*vomWall())/1000+2*wA,half=isSide(k)?(A.prem||0)/2000:0;
+          const ok=j=>segStraight(ch[ais[j].i])&&!ais[j].corner&&Math.abs(all[j].s-mid)-wC/2>=half-1e-6;
+          const lft=[],rgt=[];all.forEach((x,j)=>{if(x.s<mid-1e-6)lft.push(j);else if(x.s>mid+1e-6)rgt.push(j);else if(!isSide(k)&&ok(j))vom[j]=true;});
+          const ctr=all.some((x,j)=>Math.abs(x.s-mid)<=1e-6&&vom[j]);
+          [lft.reverse(),rgt].forEach(L=>{let first=L.findIndex(ok);if(first<0)return;if(ctr)first=Math.max(first,ev-1);for(let m=first;m<L.length;m+=ev)if(ok(L[m]))vom[L[m]]=true;});}}
+      let vr=null;if(von){const pr=Math.min(tr.length,Math.max(2,Math.round(A.vomRow[ti]||11))),zf=tr[pr-2].z,t=slabT(),rows=[];let j=pr-1;
+        while(j<tr.length&&tr[j].z-t-zf<A.vomH-1e-6){rows.push(j);j++;}
+        vr={pr,zf,rows,open:j>=tr.length,clear:j<tr.length?tr[j].z-t-zf:null};}
+      T[k]={ch,tr,n,ais,vom,vr,Lb,k,ti};}}
+  return out;}
+// seats in one row: sections between the aisle cuts (vomitory rows cut wider on vomitory aisles)
+function rowSections(Lz,j){const A=AIS(),r=Lz.tr[j],d=(r.x+r.T/2)/1000,Ld=chainLen(Lz.ch,d),sw=r.seatW/1000,wA=A.w/1000,inV=Lz.vr&&Lz.vr.rows.includes(j),wV=(A.vomW+2*vomWall())/1000+2*wA;
+  let prev=0;const secs=[],cuts=[];
+  Lz.ais.forEach((a,i)=>{const s=chainS(Lz.ch,a,d),w=inV&&Lz.vom[i]?wV:wA;secs.push(Math.max(0,Math.floor((s-w/2-prev)/sw+1e-9)));cuts.push([s,w]);prev=s+w/2;});
+  secs.push(Math.max(0,Math.floor((Ld-prev)/sw+1e-9)));return {secs,cuts,seats:secs.reduce((a,b)=>a+b,0),d,Ld};}
+const egBasis=()=>{if(!imperial())return 'gg';const b=AIS().basis;return b==='auto'||b==='gg'||!b?(INDOOR[P.sport]?'smoke':'open'):b;};
+const EG_NAMES={open:'Open-air seating, IBC 1030.6.3',smoke:'Smoke-protected seating, IBC Table 1030.6.2',std:'Not smoke-protected, IBC 1030.6.1',gg:'Green Guide rates of passage, 8-minute egress'};
+function smokeFactor(seats,col){const t=IBC_SMOKE;if(seats<=t[0][0])return t[0][col];if(seats>=t[t.length-1][0])return t[t.length-1][col];
+  for(let i=1;i<t.length;i++)if(seats<=t[i][0]){const f=(seats-t[i-1][0])/(t[i][0]-t[i-1][0]);return t[i-1][col]+(t[i][col]-t[i-1][col])*f;}return t[t.length-1][col];}
+// egress width per person in mm, stepped aisle or level (vomitory)
+function egFactor(level,seats){const b=egBasis();
+  if(b==='gg')return 1000/((level?GG_FLOW.level:GG_FLOW.step)*GG_FLOW.min);
+  if(b==='std')return (level?0.2:0.3)*25.4;
+  const sm=smokeFactor(seats,level?2:1);return (b==='open'?Math.min(level?0.06:0.08,sm):sm)*25.4;}   // open-air may use the table where it permits less
+// egress check for the whole bowl: aisle loads, vomitory loads, clearway and travel
+function egress(){const AL=M.AL;if(!AL)return null;const A=AIS(),seats=M.cap,fS=egFactor(false,seats),fL=egFactor(true,seats),imp=imperial(),out={tiers:[],fS,fL,basis:egBasis()};
+  for(let ti=0;ti<AL.length;ti++){const t={ti,aisles:0,voms:0,lostA:0,lostV:0,vomRows:null,aMax:null,vMax:null,secMax:0,endMax:0,travel:0,rear:0,vr:null};
+    for(const Lz of Object.values(AL[ti])){t.aisles+=Lz.n;t.voms+=Lz.vom.filter(Boolean).length;if(Lz.vr){t.vr=Lz.vr;}
+      const load=Lz.ais.map(()=>0),secLen=Lz.ais.map(()=>0);let gross=0,net=0,netA=0;
+      Lz.tr.forEach((r,j)=>{const S=rowSections(Lz,j),n=S.secs.length-1;gross+=r.gross;net+=S.seats;
+        S.secs.forEach((q,m)=>{if(m===0){load[0]+=q;t.endMax=Math.max(t.endMax,q);}else if(m===n){load[n-1]+=q;t.endMax=Math.max(t.endMax,q);}
+          else{load[m-1]+=q/2;load[m]+=q/2;t.secMax=Math.max(t.secMax,q);}});
+        // seats lost to aisles alone in this row: the same row without vomitories
+        if(Lz.vr&&Lz.vr.rows.includes(j)){const v=Object.assign({},Lz,{vr:null});netA+=rowSections(v,j).seats;}else netA+=S.seats;});
+      t.lostA+=gross-netA;t.lostV+=netA-net;
+      // aisles to vomitories: nearest vomitory aisle in the stand; with none, out at the back of the tier
+      const vi=Lz.vom.map((v,i)=>v?i:-1).filter(i=>i>=0),vload=vi.map(()=>0);
+      load.forEach((q,i)=>{const w=A.w,req=Math.max(imp?(q<50?36:48)*25.4:0,q*fS);if(!t.aMax||req/w>t.aMax.req/w)t.aMax={q:Math.round(q),req,w,k:Lz.k};
+        if(vi.length){let b=0;vi.forEach((v,m)=>{if(Math.abs(v-i)<Math.abs(vi[b]-i))b=m;});vload[b]+=q;
+          // travel: farthest row to the portal along the aisle, plus along the row to the aisle, plus along the cross aisle to the vomitory
+          const tr=Lz.tr,pr=Lz.vr.pr-1,path=(a,b)=>{let s=0;for(let j=Math.min(a,b);j<Math.max(a,b);j++)s+=Math.hypot((tr[j+1].x-tr[j].x)/1000,(tr[j+1].z-tr[j].z)/1000);return s;};
+          [0,tr.length-1].forEach(j=>{const S=rowSections(Lz,j),half=Math.max(...S.secs)*tr[j].seatW/1000/2,dp=(tr[pr].x+tr[pr].T/2)/1000,lat=Math.abs(chainS(Lz.ch,Lz.ais[i],dp)-chainS(Lz.ch,Lz.ais[vi[b]],dp));
+            t.travel=Math.max(t.travel,half+path(j,pr)+lat);});}
+        else t.rear+=q;});
+      vload.forEach(q=>{const req=q*fL;if(!t.vMax||req>t.vMax.req)t.vMax={q:Math.round(q),req,w:A.vomW,k:Lz.k};});}
+    t.lostA=Math.round(t.lostA);t.lostV=Math.round(t.lostV);t.rear=Math.round(t.rear);out.tiers.push(t);}
+  // clearway between rows: IBC 1030.13.2 (dual access 12 in + 0.3 in per seat over 14; single access + 0.6 in per seat over 7; 22 in cap); Green Guide / FIFA 400 mm
+  const sm=Math.max(...out.tiers.map(t=>t.secMax)),em=Math.max(...out.tiers.map(t=>t.endMax));
+  out.secMax=sm;out.endMax=em;out.clear=imp?Math.max(Math.min(22,12+0.3*Math.max(0,sm-14)),Math.min(22,12+0.6*Math.max(0,em-7)))*25.4:400;
+  out.travelLim=out.basis==='smoke'?200*0.3048:null;   // IBC 1030.7.1: 200 ft to the nearest vomitory or concourse entrance
+  return out;}
+// plan: aisles as white strips through the rows, vomitories dark from the portal to the first clear row, the tunnel dashed beyond
+function aisleSvg(){const AL=M.AL;if(!AL||PLAN!=='bowl')return '';const A=AIS(),wA=A.w/1000,wV=(A.vomW+2*vomWall())/1000+2*wA,vc=A.vomW/1000,f=v=>v.toFixed(3);let a='',v='',tun='';
+  const strip=(Lz,i,j0,j1,w,lo,hi)=>{const L=[],R=[];for(let j=j0;j<=j1;j++){const r=Lz.tr[j];for(const d of [(lo&&j===j0?lo:r.x)/1000,(hi&&j===j1?hi:r.x+r.T)/1000]){const s=chainS(Lz.ch,Lz.ais[i],d);L.push(chainPtS(Lz.ch,s-w/2,d));R.push(chainPtS(Lz.ch,s+w/2,d));}}
+    return 'M'+L.concat(R.reverse()).map(p=>f(p[0])+' '+f(p[1])).join('L')+'Z';};
+  for(const T of AL)for(const Lz of Object.values(T)){const last=Lz.tr.length-1;
+    Lz.ais.forEach((_,i)=>{a+=strip(Lz,i,0,last,wA);
+      if(Lz.vom[i]&&Lz.vr&&Lz.vr.rows.length){const j0=Lz.vr.rows[0],j1=Lz.vr.rows[Lz.vr.rows.length-1];a+=strip(Lz,i,j0,j1,wV);v+=strip(Lz,i,j0,j1,vc+2*vomWall()/1000);
+        if(j1<last)tun+=strip(Lz,i,j1+1,last,vc);}});}
+  return `<g class="aisles"><path d="${a}" fill="#FFFFFF" fill-rule="nonzero" stroke="var(--ink)" stroke-width="0.35" vector-effect="non-scaling-stroke"/>`
+    +`<path d="${v}" fill="#3C3C3C" stroke="var(--ink)" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
+    +`<path d="${tun}" fill="none" stroke="#3C3C3C" stroke-width="0.8" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/></g>`;}
+function aisEditor(){const A=AIS(),imp=imperial(),lay=A.mode==='layout';
+  let h='<div class="seg" style="margin-top:0">'+[['layout','Computed layout'],['loss','Percentage allowance']].map(([k,n])=>`<button data-aismode="${k}" class="${A.mode===k?'on':''}" aria-pressed="${A.mode===k}">${n}</button>`).join('')+'</div>';
+  if(!lay)return h+slider('loss','Seats lost to aisles and vomitories (1 %)',0,30,1,'%')+'<p class="hint">A flat allowance off every row. Switch to the computed layout to draw the aisles and vomitories on the plan and check egress.</p>';
+  const maxRows=i=>Math.max(3,...GEO.map(k=>(P.zt[i].z[k]||{}).rows||3));
+  h+=slider('ais.nmax',`Maximum seats between aisles (1 seat; ${imp?'IBC 1030.13.2.1 allows up to 100':'Green Guide 28'})`,10,imp?100:28,1,'seats')
+    +slider('ais.w',`Aisle clear width (${imp?'1 inch; IBC minimum 48"':'50 mm; Green Guide 1,200 mm'})`,imp?36*25.4:900,imp?96*25.4:2400,imp?25.4:50,'mm')
+    +'<div class="lab">Vomitories</div><div class="seg">'+Array.from({length:P.tierCount},(_,i)=>`<button data-vomt="${i}" class="${A.vom[i]?'on':''}" aria-pressed="${!!A.vom[i]}">Tier ${i+1}${A.vom[i]?'':': none'}</button>`).join('')+'</div>';
+  if(A.vom.slice(0,P.tierCount).some(Boolean))h+=slider('ais.vomEvery','Vomitory on every nth aisle (1 aisle)',1,6,1,'aisles')
+    +slider('ais.prem',`Premium zone at midfield, no vomitories (${imp?'1 foot':'500 mm'}${P.sport==='nfl'||P.sport==='ncaafb'?'; 60\'-0" = between the 40-yard lines':''})`,0,imp?200*304.8:60000,imp?304.8:500,'mm')
+    +slider('ais.vomW',`Vomitory clear width (${imp?'6 inch':'100 mm'})`,imp?4*304.8:1200,imp?20*304.8:6000,imp?152.4:100,'mm')
+    +slider('ais.vomH',`Vomitory clear height (${imp?'1 inch; IBC 1003.2 minimum 7\'-6"':'50 mm; 2,000 mm minimum headroom'})`,imp?80*25.4:2000,imp?144*25.4:3600,imp?25.4:50,'mm')
+    +Array.from({length:P.tierCount},(_,i)=>A.vom[i]?slider(`ais.vomRow.${i}`,`Tier ${i+1} vomitory portal at row (1 row)`,2,maxRows(i),1,'row'):'').join('');
+  if(imp)h+='<div class="lab">Egress width basis</div><div class="seg stack">'+[['auto',`By sport: ${INDOOR[P.sport]?'smoke-protected arena':'open-air stadium'}`],['open','Open-air seating (IBC 1030.6.3)'],['smoke','Smoke-protected (IBC Table 1030.6.2)'],['std','Not smoke-protected (IBC 1030.6.1)']]
+    .map(([k,n])=>`<button data-egb="${k}" class="${(A.basis||'auto')===k?'on':''}" aria-pressed="${(A.basis||'auto')===k}">${n}</button>`).join('')+'</div>';
+  return h+`<p class="hint">Each corner has a vomitory on its centreline; the others sit on the straight runs, square to the rows, every nth aisle out from the middle, with none in the midfield premium zone. Aisles are spaced evenly between them. Each vomitory removes its width, two ${L(vomWall())} walls and an aisle on each side, from the portal row up to the first row whose underside clears ${L(A.vomH)}; the tunnel runs on below the seats behind.${imp?'':' Egress widths use the Green Guide rates of passage over 8 minutes.'}</p>`;}
+// egress table for the web page and the PDF set: rows of [label, value, pass/fail or null]
+function egressRows(){const e=egress();if(!e)return null;const imp=imperial(),rows=[],pct=(a,b)=>b?` (${(a/b*100).toFixed(1)}%)`:'';
+  const gross=ROWS.reduce((a,r)=>a+r.gross,0);
+  rows.push(['Egress width basis',EG_NAMES[e.basis],null]);
+  rows.push(['Width per person',imp?`${(e.fS/25.4).toFixed(3)}" stepped aisle, ${(e.fL/25.4).toFixed(3)}" level (vomitory)`:`${e.fS.toFixed(2)} mm stepped (${GG_FLOW.step}/m/min), ${e.fL.toFixed(2)} mm level (${GG_FLOW.level}/m/min) over ${GG_FLOW.min} min`,null]);
+  e.tiers.forEach(t=>{const n=`Tier ${t.ti+1}`;
+    rows.push([`${n}: aisles, vomitories`,`${t.aisles} aisles, ${t.voms} vomitories${t.vr?`, portal at row ${t.vr.pr}, ${t.vr.rows.length} row${t.vr.rows.length===1?'':'s'} cut`:''}`,null]);
+    rows.push([`${n}: seats lost`,`${fmt(t.lostA)} to aisles, ${fmt(t.lostV)} to vomitories`,null]);
+    if(t.aMax)rows.push([`${n}: busiest aisle`,`${fmt(t.aMax.q)} seats need ${L(t.aMax.req)}; ${L(t.aMax.w)} provided`,t.aMax.w>=t.aMax.req-0.5]);
+    if(t.vMax)rows.push([`${n}: busiest vomitory`,`${fmt(t.vMax.q)} seats need ${L(t.vMax.req)}; ${L(t.vMax.w)} provided`,t.vMax.w>=t.vMax.req-0.5]);
+    if(t.rear)rows.push([`${n}: exit at back of tier`,`${fmt(t.rear)} seats with no vomitory in their stand`,null]);
+    if(t.travel)rows.push([`${n}: travel to vomitory`,`${L(t.travel*1000)}${e.travelLim?`; ${L(e.travelLim*1000)} maximum`:''}`,e.travelLim?t.travel<=e.travelLim:null]);});
+  rows.push(['Most seats between aisles',`${e.secMax} with an aisle at each end; ${e.endMax} at an open row end (one aisle)`,imp?null:e.secMax<=28&&e.endMax<=14]);
+  rows.push(['Clear width between rows',imp?`${L(e.clear)} (IBC 1030.13.2: 12" + 0.3" per seat over 14, or + 0.6" per seat over 7 with one aisle; 22" maximum)`:`${L(e.clear)} minimum seatway clearway (FIFA, Green Guide)`,null]);
+  rows.push(['Seats after aisles and vomitories',`${fmt(M.cap)} of ${fmt(gross)} (${gross?((gross-M.cap)/gross*100).toFixed(1):0}% lost)`,null]);
+  return rows;}
+function egressHTML(){const r=egressRows();if(!r)return '<tbody><tr><td>Percentage allowance: '+P.loss+'% off every row. Choose the computed layout under Aisles and vomitories to check egress.</td></tr></tbody>';
+  return '<tbody>'+r.map(([k,v,ok])=>`<tr><td>${k}</td><td class="${ok===false?'fail':ok?'pass':''}">${v}${ok===false?' — short':ok?' — meets':''}</td></tr>`).join('')+'</tbody>';}
+const lossTxt=()=>M.AL?'computed aisles and vomitories':P.loss+'%';
 function metrics(P,ZR,CH){
   const rows=Object.values(ZR).flat();let cap=0;const tierSeats=[],zoneSeats=[];
-  rows.forEach(r=>{r.gross=Math.floor(seatLen(P,CH,r)*1000/r.seatW+1e-9);const s=r.gross*(1-P.loss/100);cap+=s;tierSeats[r.tier]=(tierSeats[r.tier]||0)+s;
+  const AL=aisleLayout(P,ZR,CH);rows.forEach(r=>{r.gross=Math.floor(seatLen(P,CH,r)*1000/r.seatW+1e-9);const Lz=AL&&AL[r.tier]&&AL[r.tier][r.zone];r.net=Lz?rowSections(Lz,Lz.tr.indexOf(r)).seats:null;const s=Lz?r.net:r.gross*(1-P.loss/100);cap+=s;tierSeats[r.tier]=(tierSeats[r.tier]||0)+s;
     (zoneSeats[r.tier]=zoneSeats[r.tier]||{})[r.zone]=(zoneSeats[r.tier][r.zone]||0)+s;});
   const cs=rows.filter(r=>r.C!=null),worst=cs.reduce((a,r)=>!a||r.C<a.C?r:a,null);
   const rk=rows.filter(r=>r.rake!=null),steep=rk.reduce((a,r)=>!a||r.rake>a.rake?r:a,null);
@@ -1090,7 +1230,7 @@ function metrics(P,ZR,CH){
       h=Math.min(h,u0.z-LEG2-lb.z);   /* clear height under the upper-tier leg wall, over the top tread below */
       heads.push({zone:k,tier:ti,h});}}
   const rails=rows.filter(r=>r.railC!=null&&r.railC<0),lowHead=heads.filter(h=>h.h<P.minHead);
-  return {cap:Math.round(cap),tierSeats:tierSeats.map(x=>Math.round(x||0)),zoneSeats,worst,steep,rails,heads,lowHead,
+  return {AL,cap:Math.round(cap),tierSeats:tierSeats.map(x=>Math.round(x||0)),zoneSeats,worst,steep,rails,heads,lowHead,
     below:cs.filter(r=>status(r)!=='pass').length,over:rk.filter(r=>r.rake>P.maxRake).length,height,depth,vd,rows:rows.length};
 }
 // Closed tier profile: treads and risers of one consistent thickness t (4, 5 or 6 in), like precast seating units.
@@ -1219,10 +1359,10 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.12.2';
+const VERSION='2026.10.12.4';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
-try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));OPTS=s.OPTS||[];}}catch(e){}
+try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
 // When the defaults change (DREV goes up), each browser starts once from the new default bowl; saved options are kept.
 const DREV=9;let NEWDEF=false;
 try{if((+localStorage.getItem('sightline-defaults-rev')||0)<DREV){NEWDEF=!!P;P=null;localStorage.setItem('sightline-defaults-rev',String(DREV));localStorage.setItem('sightline-units',JSON.stringify({sys:'imperial',metric:'mm-m',imperial:'arch'}));}}catch(e){}
@@ -1333,7 +1473,7 @@ function fieldSliders(){const S=SPORTS[P.sport];
   if(S.law){const imp=imperial();return slider('L',`Touchline length (${imp?'1 yard':'0.5 m'}; Law 1 international ${imp?'110–120 yd':'100–110 m'})`,imp?110*YD:100,imp?120*YD:110,imp?YD:0.5,'m')
     +slider('W',`Goal line length (${imp?'1 yard':'0.5 m'}; Law 1 international ${imp?'70–80 yd':'64–75 m'})`,imp?70*YD:64,imp?80*YD:75,imp?YD:0.5,'m');}
   return slider('L','Field length',10,200,0.01,'m')+slider('W','Field width',5,130,0.01,'m');}
-function applySport(k){const x=SPORTS[k],g=gapsOf(P);sportUnits(k);renderUnits();{const R=REGION_DEF[regionOf(k)];if(regionOf(k)!==regionOf(P.sport)){P.zt.forEach((t,i)=>GEO.forEach(q=>{const z=t.z[q];if(!z)return;Object.assign(z,{tread:R.tread,tread0:R.tread0,treadN:R.tread,seatW:seatSpec(z.seat,k).def});if(i)z.rise=R.rise;}));P.eye=eyeFor(regionOf(k));P.slabT=slabDef(regionOf(k));}Object.assign(P,{step:R.step,maxRiser:R.maxRiser,minHead:R.minHead});LEG2=R.leg;}   /* a new sport brings its default units */Object.assign(P,{sport:k});clampCap(P);P.zt.forEach(t=>GEO.forEach(g=>Object.assign(t.z[g],{D:x.D,Z:x.Z,target:cvDefault(k)})));
+function applySport(k){const x=SPORTS[k],g=gapsOf(P);sportUnits(k);renderUnits();{const R=REGION_DEF[regionOf(k)];if(regionOf(k)!==regionOf(P.sport)){P.zt.forEach((t,i)=>GEO.forEach(q=>{const z=t.z[q];if(!z)return;Object.assign(z,{tread:R.tread,tread0:R.tread0,treadN:R.tread,seatW:seatSpec(z.seat,k).def});if(i)z.rise=R.rise;}));P.eye=eyeFor(regionOf(k));P.slabT=slabDef(regionOf(k));P.ais=Object.assign(aisDefaults(regionOf(k)),{mode:AIS().mode});}AIS().prem=premDef(k);Object.assign(P,{step:R.step,maxRiser:R.maxRiser,minHead:R.minHead});LEG2=R.leg;}   /* a new sport brings its default units */Object.assign(P,{sport:k});clampCap(P);P.zt.forEach(t=>GEO.forEach(g=>Object.assign(t.z[g],{D:x.D,Z:x.Z,target:cvDefault(k)})));
   if(x.shape==='fan')Object.assign(P,{fl:x.fl,cf:x.cf,bs:x.bs});else if(x.shape==='track')Object.assign(P,{lanes:x.lanes,L:x.L,W:x.W});else Object.assign(P,{L:x.L,W:x.W});keepGaps(P,g);CUR=null;renderControls();update();}
 // zt.<tier>.<keys>.<param> edits a group of zones together, so linked sides can never drift apart
 function lowerTop(ti,k){const lo=solveZone(Object.assign({},P,{tierCount:Math.max(P.tierCount,ti+1)}),k).filter(r=>r.tier===ti-1);return lo[lo.length-1];}
@@ -1409,14 +1549,14 @@ function renderControls(){
   h+='<div class="lab" style="margin-top:16px"><b style="color:var(--ink)">All C-values meet minimum</b></div>'+[['parabolic','Parabolic risers'],['constant','Constant risers']].map(([k,n])=>`<div class="lab">${n}</div><div class="seg">`
       +[['sit','Sitting'],['both','Sitting and standing']].map(([m,t])=>`<button data-meet="${k}:${m}" class="${meetNow()===k+':'+m?'on':''}" aria-pressed="${meetNow()===k+':'+m}">${t}</button>`).join('')+'</div>').join('')
     +'<p class="hint">Re-sizes the risers on every tier and side in ½" steps so each row meets its minimum C-value. Sitting and standing also covers standing on its own. Constant risers stop at the maximum riser.</p></section>';
-  h+=step(5,'Capacity','Target seats. Rows are sized to reach it.')+(()=>{const [lo,hi,typ,out]=capLim(P.sport),Sp=SPORTS[P.sport];return slider('capTarget',`Target seats (1,000 seats; ${Sp.org} ${fmt(lo)} to ${fmt(hi)})`,lo,hi,1000,'seats')
+  h+=step(5,'Aisles and vomitories','Aisle spacing, vomitories and the egress check.')+aisEditor()+'</section>';
+  h+=step(6,'Capacity','Target seats. Rows are sized to reach it.')+(()=>{const [lo,hi,typ,out]=capLim(P.sport),Sp=SPORTS[P.sport];return slider('capTarget',`Target seats (1,000 seats; ${Sp.org} ${fmt(lo)} to ${fmt(hi)})`,lo,hi,1000,'seats')
     +`<p class="hint">Typical: ${typ}. Outliers: ${out}.</p><details class="capguide"><summary>Capacity guide, all sports</summary>`
     +Object.entries(CAP_LIM).map(([k,[a,b,t,o]])=>`<p class="hint" style="margin:8px 0"><b style="color:var(--ink)">${SPORTS[k]?SPORTS[k].name+' ('+SPORTS[k].org+')':k}: ${fmt(a)} to ${fmt(b)}</b><br>Typical: ${t}.<br>Outliers: ${o}.</p>`).join('')+'</details>';})()+'<button id="fit" class="primary" style="margin-top:10px;width:100%">Size rows to hit target</button></section>';
   const fixed=[...(P.sport==='nfl'||P.sport==='ncaafb'?[['Football field length',L(360*304.8)],['Football field width',L(160*304.8)]]:[]),
     ['Round risers up to',L(P.step)],['Maximum riser',L(P.maxRiser)],['Rows per riser bank','1'],['Guard rail at row 1 of each tier',`${inchText(P.railH)} high, ${inchText(2*25.4)} thick, on the riser face (inside face on the riser line), ${inchText(8*25.4)} below the tread`],['Minimum Tier-1 top tread to Tier-2 bottom tread',L(RD().riseMin*1000)],['Minimum clear height below the Tier-2 front riser leg',L(P.minHead)],['Upper-tier leg wall',`${L(LEG2)} below the bottom tread`]];
   h+='<details><summary>Advanced</summary>'+(P.sport==='nfl'||P.sport==='ncaafb'?'':fieldSliders())
     +slider('maxRake','Maximum rake (1 degree)',25,40,1,'°')+slider('vd','Viewing distance limit (1 foot)',300*0.3048,1000*0.3048,0.3048,'m')
-    +slider('loss','Seats lost to aisles and vomitories (1 %)',0,30,1,'%')
     +'<div class="lab">Fixed values</div><table class="fixed">'+fixed.map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+'</table>'
     +'<p class="hint">Where neighbouring sides differ, the corner is left open for vomitories, boards or access. Matching sides wrap round the corner.</p>'
     +'</details><button id="reset" class="primary" style="margin-top:14px;width:100%">Reset all to defaults</button>';
@@ -1470,6 +1610,9 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.on){set(b.dataset.on+'.on',!get(b.dataset.on+'.on'));}
   else if(b.dataset.tc){const n=+b.dataset.tc;if(n===2&&P.tierCount!==2)GEO.forEach(k=>{const a=P.zt[0].z[k],c=P.zt[1].z[k];if(!a||!c)return;const N=a.rows+c.rows;a.rows=Math.ceil(N/2);c.rows=N-a.rows;});P.tierCount=n;}
   else if(b.dataset.slab){P.slabT=+b.dataset.slab;}
+  else if(b.dataset.aismode){AIS().mode=b.dataset.aismode;}
+  else if(b.dataset.vomt){const A=AIS(),i=+b.dataset.vomt;A.vom[i]=A.vom[i]?0:1;}
+  else if(b.dataset.egb){AIS().basis=b.dataset.egb;}
   else if(b.dataset.et){EDIT={tier:+b.dataset.et,g:0};renderControls();return;}
   else if(b.dataset.eg){EDIT.g=+b.dataset.eg;renderControls();return;}
   else if(b.dataset.link){relink(EDIT.tier,b.dataset.link);}
@@ -1970,6 +2113,10 @@ function bufferFill(){if(PLAN!=='bowl')return '';
   const G=rectGeo(P),d=k=>{const r=ZR[k].find(r=>r.tier===0);return r?r.x/1000:0;},s=G.side;
   const x0=s.L.p[0]-d('L'),x1=s.R.p[0]+d('R'),y0=s.T.p[1]-d('T'),y1=s.B.p[1]+d('B');
   return `<rect x="${x0.toFixed(2)}" y="${y0.toFixed(2)}" width="${(x1-x0).toFixed(2)}" height="${(y1-y0).toFixed(2)}" fill="var(--grass2)"/>`;}
+// row numbers sit in the middle of a seating section, clear of the aisles: the section on the stand's straight run nearest the default spot
+function labMid(k,ti,px,py){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz||!zoned(P))return null;const gi=Lz.ch.findIndex(g=>g.t==='LINE');if(gi<0)return null;const g=Lz.ch[gi];
+  const ux=g.q[0]-g.p[0],uy=g.q[1]-g.p[1],l2=ux*ux+uy*uy;if(l2<1e-9)return null;const f=((px-g.p[0])*ux+(py-g.p[1])*uy)/l2;
+  const fs=[0,...Lz.ais.filter(a=>a.i===gi).map(a=>a.f),1].sort((a,b)=>a-b);for(let i=1;i<fs.length;i++)if(f<=fs[i]){const m=(fs[i-1]+fs[i])/2;return [g.p[0]+ux*m,g.p[1]+uy*m];}return null;}
 function drawPlan(o={}){
   PLANROT=planRot();DIMREG=[];
   const S=SPORTS[P.sport],bnd=boundary(P),st=stations(bnd),xs=bnd.map(p=>p[0]),ys=bnd.map(p=>p[1]);
@@ -2001,12 +2148,12 @@ function drawPlan(o={}){
   const cs=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]].map(([x,y])=>rotPt(x,y,t)),vx0=Math.min(...cs.map(c=>c[0])),vy0=Math.min(...cs.map(c=>c[1])),
     vW=Math.max(...cs.map(c=>c[0]))-vx0,vH=Math.max(...cs.map(c=>c[1]))-vy0;
   let s=`<svg viewBox="${vx0.toFixed(2)} ${vy0.toFixed(2)} ${vW.toFixed(2)} ${vH.toFixed(2)}"${vH>vW*1.05?' class="portrait"':''} role="img" aria-label="${S.org} ${S.name} ${PLAN==='field'?'field layout':'bowl plan'}, north up">`;
-  let body=(PLAN==='bowl'?planGrid():'')+bufferFill()+S.draw(P,g)+rings+rowLines+(PLAN==='bowl'?drawDims(bufferDims(),g,fs*.8):'')+`<path d="${ptsPath(bnd)}" fill="none" stroke="${FOCAL}" stroke-width="${(1.7*g.k).toFixed(3)}" stroke-linejoin="round"/>`+((P.sport==='nfl'||P.sport==='ncaafb')?pylons(P).map(([cx,cy,h])=>`<rect x="${g.f(cx-h)}" y="${g.f(cy-h)}" width="${g.f(2*h)}" height="${g.f(2*h)}" fill="${COL_PYLON}"/>`).join(''):''),over='';
+  let body=(PLAN==='bowl'?planGrid():'')+bufferFill()+S.draw(P,g)+rings+rowLines+aisleSvg()+(PLAN==='bowl'?drawDims(bufferDims(),g,fs*.8):'')+`<path d="${ptsPath(bnd)}" fill="none" stroke="${FOCAL}" stroke-width="${(1.7*g.k).toFixed(3)}" stroke-linejoin="round"/>`+((P.sport==='nfl'||P.sport==='ncaafb')?pylons(P).map(([cx,cy,h])=>`<rect x="${g.f(cx-h)}" y="${g.f(cy-h)}" width="${g.f(2*h)}" height="${g.f(2*h)}" fill="${COL_PYLON}"/>`).join(''):''),over='';
   if(PLAN==='bowl'){const sec=sectionAt(),ex=sec[0]+sec[2]*(Rmax+1.5),ey=sec[1]+sec[3]*(Rmax+1.5),lf=W/45;
     const rf=W/105;                                                  // row-number text height (plan metres)
     const at=zoned(P)?GEO.map(k=>{const sd=rectGeo(P).side[k],f=isSide(k)?0.22:0.3;return [k,[sd.p[0]+(sd.q[0]-sd.p[0])*f,sd.p[1]+(sd.q[1]-sd.p[1])*f,sd.n[0],sd.n[1],(sd.q[0]-sd.p[0])/Math.hypot(sd.q[0]-sd.p[0],sd.q[1]-sd.p[1]),(sd.q[1]-sd.p[1])/Math.hypot(sd.q[0]-sd.p[0],sd.q[1]-sd.p[1])]];})
       :[[1,0],[0,1],[-1,0],[0,-1]].map(dv=>{const q=secStation({sec:dv},st),ux=-q[3],uy=q[2];return ['T',[q[0]+ux*rf*3.5,q[1]+uy*rf*3.5,q[2],q[3],ux,uy]];});   // beside the section marker
-    for(const [k,[px0,py0,nx,ny,ux,uy]] of at)for(let ti=0;ti<P.tierCount;ti++){const px=px0+ux*rf*2.2*ti,py=py0+uy*rf*2.2*ti;/* each tier's column a little further along */const tr=ZR[k].filter(r=>r.tier===ti);if(!tr.length)continue;
+    for(const [k,[px0,py0,nx,ny,ux,uy]] of at)for(let ti=0;ti<P.tierCount;ti++){let px=px0+ux*rf*2.2*ti,py=py0+uy*rf*2.2*ti;{const mid=labMid(k,ti,px0,py0);if(mid){px=mid[0]+ux*rf*2.2*ti;py=mid[1]+uy*rf*2.2*ti;}}/* each tier's column a little further along */const tr=ZR[k].filter(r=>r.tier===ti);if(!tr.length)continue;
       const T=tr[1]?tr[1].T/1000:tr[0].T/1000,every=[1,2,5,10].find(e=>e*T>=rf*1.35)||10;
       tr.forEach((r,i)=>{if(!(i===0||i===tr.length-1||(r.row%every===0&&tr.length-1-i>=every&&i>=every*.6)))return;
         const d=(r.x+r.T/2)/1000,[rx,ry]=rotPt(px+nx*d,py+ny*d,t);
@@ -2071,6 +2218,7 @@ function update(){
   if(M.vd>P.vd)msg.push(`back row beyond the ${L(P.vd*1000,'m',0,true)} viewing distance limit`);
   M.rails.forEach(r=>msg.push(`${zl(r)} front row can't see the point of focus over the ${L(P.railH)} guard`));
   M.lowHead.forEach(h=>msg.push(`${L(h.h)} headroom under ${zl(h)}`));
+  {const er=egressRows();if(er)er.filter(r=>r[2]===false).forEach(r=>msg.push(r[0].replace(/^Tier (\d): /,'Tier $1 ')+' short of the egress requirement'));}
   const v=$('verdict');v.className='verdict '+(msg.length?'bad':'ok');
   v.textContent=msg.length?msg.join('; ')+'.':`All rows meet their C-value targets, within ${P.maxRake}° and ${L(P.vd*1000,'m',0,true)}; upper-tier front rows clear the guard.`;
   $('secTabs').innerHTML=zoned(P)?GEO.map(k=>`<button data-sec="${k}" class="${P.sec===k?'on':''}" aria-pressed="${P.sec===k}"${ZR[k].length?'':' disabled'}>${zoneName(P,k,true)}</button>`).join(''):'';
@@ -2086,7 +2234,7 @@ function update(){
   $('detTitle').textContent=`Sightline detail: Tier 1, ${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'}`;
   document.querySelectorAll('#detTabs [data-dm]').forEach(b=>{const on=b.dataset.dm===DETMODE;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});$('plan').innerHTML=drawPlan();
   const Sp=SPORTS[P.sport];$('planTitle').textContent=`${Sp.org}: ${Sp.name}`;
-  $('planNote').innerHTML=`<span style="display:inline-block;width:18px;height:3px;background:${FOCAL};vertical-align:middle;margin-right:6px"></span>Point-of-focus boundary, dimensioned. Drawn from ${Sp.rule}. Field ${fieldDesc(P)}. Check against the current edition before issuing drawings.`;
+  $('planNote').innerHTML=`<span style="display:inline-block;width:18px;height:3px;background:${FOCAL};vertical-align:middle;margin-right:6px"></span>Point-of-focus boundary, dimensioned. Drawn from ${Sp.rule}. Field ${fieldDesc(P)}. Check against the current edition before issuing drawings.`+(M.AL?` <br><span style="display:inline-block;width:14px;height:9px;background:#FFFFFF;border:1px solid var(--ink);vertical-align:middle;margin-right:5px"></span>Aisles <span style="display:inline-block;width:14px;height:9px;background:#3C3C3C;vertical-align:middle;margin:0 5px 0 10px"></span>Vomitory portal <span style="display:inline-block;width:16px;border-top:2px dashed #3C3C3C;vertical-align:middle;margin:0 5px 0 10px"></span>Vomitory tunnel below the seats`:'');
   const tc=mm=>plain(mm),tu=imperial()||!unitSuffix().trim()?'':` (${unitSuffix().trim()})`;
   $('schedHead').textContent='Row schedule: '+zoneName(P,P.sec);
   $('table').innerHTML=`<thead><tr><th>Row</th><th>Riser from focus${tu}</th><th>Tread height${tu}</th><th>Riser${tu}</th><th>Rake</th><th>C-value${tu}</th></tr></thead><tbody>`+ZR[P.sec].map(r=>`<tr><td>Tier ${r.tier+1}, row ${r.row}</td><td>${tc(r.x)}</td><td>${tc(r.z)}</td><td class="${r.riser>P.maxRiser+0.01?'steep':''}">${r.riser==null?'':tc(r.riser)}</td><td class="${r.rake>P.maxRake?'steep':''}">${r.rake==null?'':r.rake.toFixed(1)+'°'}</td><td class="${status(r)}">${r.C!=null?CV(r.C):r.railC!=null?'guard '+(r.railC>=0?'+':'')+CV(r.railC):'front row'}</td></tr>`).join('')+'</tbody>';
@@ -2094,6 +2242,7 @@ function update(){
     ['Sitting eye, horizontal','Aligned to the back riser'],['Standing eye, horizontal',`${L(P.eye.stOff)} from the front riser`],['Applies to','Chairback and bench seats']].map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
   const sh=$('sbHint');if(sh)sh.textContent=setbackText(EDIT.tier,groups(P,EDIT.tier)[EDIT.g][0]);
   $('countTable').innerHTML=countTableHTML();
+  $('egrTable').innerHTML=egressHTML();$('egrHint').textContent=M.AL?(imperial()?'Preliminary check: each aisle carries the seats on both sides; each vomitory takes the aisles nearest to it in its stand. Confirm with a full egress analysis (IBC 2024 §1030, NFPA 101 life safety evaluation where smoke-protected widths are used).':'Preliminary check: each gangway carries the seats on both sides; each vomitory takes the gangways nearest to it in its stand. Confirm with a full egress analysis to the Green Guide (chapter 10) and the national regulations.'):'';
   {const q=engQuant(),tot=q.reduce((a,t)=>({V:a.V+t.V,W:a.W+t.W,rail:a.rail+t.rail,plan:a.plan+t.plan}),{V:0,W:0,rail:0,plan:0});
    {const rt=$('refTable');if(rt){rt.innerHTML=refTableHTML();$('refHint').textContent='Each bubble on a drawing points to the row with the same number. '+(imperial()?'US codes: IBC 2024 and ICC A117.1-2017; confirm against the adopted editions.':'Metric units: UK and European references (Green Guide, BS EN 13200, BS 8300-2, BS 6180); confirm the national standards for the project location.');}}
    $('engTable').innerHTML='<thead><tr><th>Tier</th><th>Concrete</th><th>Weight</th><th>Guard Rail</th><th>Seating Plan Area</th><th>Risers</th></tr></thead><tbody>'
@@ -2112,7 +2261,7 @@ function renderOpts(){
 }
 $('opts').addEventListener('click',e=>{
   const d=e.target.closest('[data-del]');if(d){OPTS.splice(+d.dataset.del,1);CUR=null;persist();renderOpts();return;}
-  const o=e.target.closest('[data-o]');if(!o)return;const i=+o.dataset.o;P=fixP(Object.assign(defaults(),migrate(JSON.parse(JSON.stringify(OPTS[i].P)))));EDIT={tier:0,g:0};renderControls();update();CUR=i;renderOpts();
+  const o=e.target.closest('[data-o]');if(!o)return;const i=+o.dataset.o;P=fixP(Object.assign(defaults(),migrate(JSON.parse(JSON.stringify(OPTS[i].P)))));if(!OPTS[i].P.ais)P.ais=Object.assign(aisDefaults(regionOf(P.sport)),{mode:'loss'});EDIT={tier:0,g:0};renderControls();update();CUR=i;renderOpts();
 });
 $('opts').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.dataset.o!=null)e.target.click();});
 $('saveOpt').onclick=()=>{
@@ -2299,7 +2448,7 @@ function tablePages(){const {head,out}=seatCount(),Sp=SPORTS[P.sport],pages=[];
   out.forEach((o,i)=>{cur.push(trs[i]);if(o.kind==='sub'){ti++;if(ti<P.tierCount){pages.push({tier:ti,rows:cur});cur=[];}}});
   pages.push({tier:ti,rows:cur});
   return pages.map(p=>{const tmp=document.createElement('div');
-    tmp.innerHTML=`<h1>Sightline Schematic: seat count, Tier ${p.tier}</h1><p>${Sp.name} (${Sp.org}) | ${optName()} | seats lost to aisles and vomitories ${P.loss}% | C-values: lowest blue, below the minimum red | ${new Date().toLocaleString()}</p><table>${thead}<tbody>${p.rows.join('')}</tbody></table>`;
+    tmp.innerHTML=`<h1>Sightline Schematic: seat count, Tier ${p.tier}</h1><p>${Sp.name} (${Sp.org}) | ${optName()} | seats lost to ${lossTxt()} | C-values: lowest blue, below the minimum red | ${new Date().toLocaleString()}</p><table>${thead}<tbody>${p.rows.join('')}</tbody></table>`;
     titleize(tmp);return tmp.innerHTML;});}
 function printPlanDetail(){
   const sheets=PLOT_SHEETS(),big=sheets[1],small=sheets[0];
@@ -2364,7 +2513,7 @@ function pdfHeader(doc,title,sub,m,k){let y=m+0.3*k;doc.setFont('DVS','bold');do
   doc.setFont('DVS','normal');doc.setFontSize(9*k);doc.setTextColor(60);doc.text(sub,m,y);return y+0.42*k;}
 // ---------- references: every critical dimension carries a numbered bubble that points to its basis here ----------
 // Section numbers: IBC 2024 and ICC A117.1-2017 (the edition IBC 2024 references). Confirm against the edition the AHJ has adopted.
-const REF_KEYS=['cval','pof','sit','stand','head','tread','wceye','wcplat','wcfront','wcoff','setback','guard','leg','headroom'];
+const REF_KEYS=['cval','pof','sit','stand','head','tread','wceye','wcplat','wcfront','wcoff','setback','guard','leg','headroom','rowseats','aisle','vom','egress'];
 const refNo=k=>REF_KEYS.indexOf(k)+1;
 function refList(){const E=P.eye,Sp=SPORTS[P.sport],cv=cvSet(P.sport),z=P.zt[0].z.T,g=typeof platformGeo==='function'?platformGeo():null;
   const T={code:'Code requirement',avg:'Code basis (average)',ind:'Industry standard',des:'Design criterion'};
@@ -2410,7 +2559,19 @@ function refList(){const E=P.eye,Sp=SPORTS[P.sport],cv=cvSet(P.sport),z=P.zt[0].
       cite:'Project design criterion.'},
     headroom:{item:'Clearance under an upper tier',val:`Tier-1 top tread to Tier-2 bottom tread ${L(RD().riseMin*1000)} minimum (now ${P.tierCount>1?L(P.zt[1].z.T.rise*1000):'n/a'}); clear height below the Tier-2 front riser leg ${L(P.minHead)} minimum; least found ${M.heads&&M.heads.length?L(Math.min(...M.heads.map(h=>h.h))):'n/a'}`,type:'code',
       basis:`Two project minimums: the height from the Tier 1 top tread to the Tier 2 bottom tread (${L(RD().riseMin*1000)}), and the clear height from the Tier 1 top tread to the underside of the Tier 2 front riser leg (${L(P.minHead)}), which is that height less the ${L(LEG2)} leg wall. Both meet the code headroom minimum.`,
-      cite:'IBC 2024 §1003.2 (ceiling height in means of egress, 7\'-6" minimum) and §1003.3.1 (headroom, 80" minimum); project minimum set by the design team.'}};
+      cite:'IBC 2024 §1003.2 (ceiling height in means of egress, 7\'-6" minimum) and §1003.3.1 (headroom, 80" minimum); project minimum set by the design team.'},
+    rowseats:{item:'Seats in a row between aisles',val:`${AIS().nmax} maximum between aisles; half that at an open row end${M.AL?` (most found ${egress().secMax} and ${egress().endMax})`:''}`,type:'code',
+      basis:'Rows served by an aisle at each end may hold up to 100 seats, with the clear width between rows growing 0.3" per seat over 14 (to 22"). A row served at one end only grows 0.6" per seat over 7. The app spaces aisles so no section exceeds the maximum set here.',
+      cite:'IBC 2024 §1030.13.2.1 dual access and §1030.13.2.2 single access (IBC 2021 §1029.13.2); smoke-protected and open-air seating per Table 1030.13.2.1.'},
+    aisle:{item:'Aisle width',val:`${L(AIS().w)} clear`,type:'code',
+      basis:'Stepped aisles with seating on both sides: 48" minimum, or 36" where the aisle serves fewer than 50 seats. The width must also carry the seats it serves at the width per person of the egress basis.',
+      cite:'IBC 2024 §1030.9.1 minimum aisle width and §1030.6 aisle capacity (IBC 2021 §1029.9.1, §1029.6).'},
+    vom:{item:'Vomitory',val:`${L(AIS().vomW)} clear wide, ${L(AIS().vomH)} clear high; every ${AIS().vomEvery>1?AIS().vomEvery+(AIS().vomEvery===2?'nd':AIS().vomEvery===3?'rd':'th')+' ':''}aisle`,type:'code',
+      basis:'A passage through the seating to the concourse, square to the rows it passes through: one on the centreline of each corner, the rest on the straight runs, with none in the premium zone at midfield. Its clear height is a means of egress ceiling height, and its width carries the seats it serves at the level width per person. Seats are removed from the portal row up to the first row whose underside clears the vomitory.',
+      cite:'IBC 2024 §1003.2 ceiling height (7\'-6" minimum) and §1030.6 capacity; vomitory travel limits for smoke-protected seating per §1030.7.1.'},
+    egress:{item:'Egress width per person',val:M.AL?EG_NAMES[egBasis()]:'Percentage allowance (no check)',type:'code',
+      basis:'Open-air seating: 0.08" per seat on stepped aisles, 0.06" level, or the smoke-protected table where it allows less. Smoke-protected: Table 1030.6.2 by total seats (0.200" to 0.060" stepped). Otherwise 0.3" stepped and 0.2" level. Smoke-protected travel: 200 ft to a vomitory or concourse entrance.',
+      cite:'IBC 2024 §1030.6.1, Table 1030.6.2, §1030.6.3, §1030.7 (IBC 2021 §1029.6, §1029.7); NFPA 101 life safety evaluation where Table 1030.6.2 is used.'}};
   if(!imperial()){const GG='Guide to Safety at Sports Grounds (Green Guide), 6th ed., SGSA 2018';Object.assign(R,{   /* metric: UK and European references */
     cval:{...R.cval,cite:`${GG}, seated viewing standards and C-value method; BS EN 13200-1:2019 Spectator facilities, viewing area (sightline method); FIFA Football Stadiums Guidelines for football venues. C targets: ${cv.src}.`},
     pof:{...R.pof,cite:`${Sp.rule} (field of play); point of focus by sport per the ${GG} and BS EN 13200-1:2019.`},
@@ -2426,6 +2587,10 @@ function refList(){const E=P.eye,Sp=SPORTS[P.sport],cv=cvSet(P.sport),z=P.zt[0].
     wcoff:{...R.wcoff,basis:'Horizontal eye position of the wheelchair user inside the space.',cite:'Project design criterion (input); wheelchair space size per BS 8300-2:2018 (spectator seating, wheelchair spaces) and the SGSA Accessible Stadia guide.'},
     guard:{...R.guard,basis:`Barrier in front of the first row of seats. UK guidance gives a minimum barrier height in front of fixed seating (800 mm, BS 6180) and higher barriers elsewhere; the app's ${inchText(P.railH)} should be checked against it. Barrier loads per BS EN 1991-1-1 and its UK National Annex.`,
       cite:`${GG}, barriers; BS 6180:2011 Barriers in and about buildings; BS EN 13200-3:2018 Separating elements; BS EN 1991-1-1 and UK NA.`},
+    rowseats:{...R.rowseats,type:'ind',basis:'The Green Guide limits a row to 28 seats between gangways, and 14 where a row has a gangway at one end only, with a clear seatway of at least 400 mm (FIFA).',cite:`${GG}, seated accommodation (number of seats in rows); FIFA Football Stadiums Guidelines 5.2.`},
+    aisle:{...R.aisle,type:'ind',basis:'Radial gangways sized for the people they serve at the Green Guide rate of passage on stepped surfaces (66 persons per metre per minute) within the egress time; 1,200 mm used as the minimum, the recommended minimum exit route width for new construction.',cite:`${GG}, chapter 10 (rates of passage, egress time) and chapter 12 (gangways); Northern Ireland / IFA ground criteria (1.2 m new exit routes).`},
+    vom:{...R.vom,type:'ind',basis:'Vomitory width carries the people it serves at the level rate of passage (82 persons per metre per minute) within the egress time; clear headroom 2.0 m minimum on escape routes.',cite:`${GG}, chapter 9 (vomitories) and chapter 10; Approved Document B (England), escape route headroom.`},
+    egress:{...R.egress,type:'ind',basis:'Egress capacity = width x rate of passage x egress time: 66 persons per metre per minute on stepped gangways, 82 on level routes, over 8 minutes (Zone 2 egress time for normal conditions).',cite:`${GG}, chapter 10 (10.6 rates of passage, 10.7 egress time); fire risk assessment sets the emergency evacuation time.`},
     headroom:{...R.headroom,
       cite:'Approved Document K (headroom on stairs and ramps, 2.0 m) and Approved Document B (means of escape), England; project minimum set by the design team. Use the national regulations for the project location.'}});}
   return REF_KEYS.map((k,i)=>({no:i+1,key:k,...R[k],typeName:T[R[k].type]}));}
@@ -2481,9 +2646,10 @@ function pdfProjectInfo(doc,o){const {pw,ph,m}=o,Sp=SPORTS[P.sport],k=Math.min(1
      ['Guard load reference','50 plf and 200 lb concentrated (IBC 1607.9.1); confirm with the structural engineer'],
      ['Not included','rakers, columns, beams, foundations, vomitories, aisle stairs and handrails, rear guards, concourse slabs']]);}
   sec('Eye sight values',[['Sitting eye',`${L(E.sitH)}, aligned to the back riser`],['Standing eye',`${L(E.stH)}, ${L(E.stOff)} from the front riser`],['Wheelchair eye',wcTxt(E.wcH)+' (average, per A117.1 table basis)'],['Head height',`eye + 2 × ${inchText(HEAD/2)}`]]);
-  sec('Results',[['Seats, all',fmt(seatCount().out.find(o=>o.label==='Total, all seats').t)],[`Seats less aisles and vomitories (${P.loss}%)`,fmt(M.cap)],
+  sec('Results',[['Seats, all',fmt(seatCount().out.find(o=>o.label==='Total, all seats').t)],[`Seats less ${lossTxt()}`,fmt(M.cap)],
     ['Lowest C-value (current mode)',M.worst?CV(M.worst.C):'n/a'],['Steepest rake',M.steep?M.steep.rake.toFixed(1)+'°':'n/a'],
-    [`Top row above the ${surfLow()}`,L(M.height*1000)],['Farthest viewing distance',L(M.vd*1000)],['Checks',$('verdict').textContent]]);}
+    [`Top row above the ${surfLow()}`,L(M.height*1000)],['Farthest viewing distance',L(M.vd*1000)],['Checks',$('verdict').textContent]]);
+  {const er=egressRows();if(er)sec('Aisles, Vomitories and Egress (Preliminary)',er.map(([k,v,ok])=>[k,v+(ok===false?' (short)':ok?' (meets)':'')]));}}
 // Row schedule for one side (all tiers), fitted to the page width
 function pdfRowSchedule(doc,o,zone){const {pw,ph,m}=o,Sp=SPORTS[P.sport],rows=ZR[zone];
   const cols0=[['Row',1.5,'left'],['Riser from focus',1.45],['Tread height',1.25],['Tread depth',1.05],['Riser',0.85],['Rake',0.75],['C sitting',1.05],['C standing',1.1]],w0=cols0.reduce((a,c)=>a+c[1],0);
@@ -2506,7 +2672,7 @@ function pdfTables(doc,o={}){
   groups.forEach((g,gi)=>{doc.addPage([pw,ph],'p');let y=m+0.3*k;
     doc.setFont('DVS','bold');doc.setFontSize(16*k);doc.setTextColor(0);doc.text(`Sightline Schematic: Seat Count, Tier ${gi+1}`,m,y);y+=0.28*k;
     doc.setFont('DVS','normal');doc.setFontSize(9*k);doc.setTextColor(60);
-    doc.text(`${Sp.name} (${Sp.org}) | ${optName()} | Seats Lost to Aisles and Vomitories ${P.loss}% | C-Values: Lowest Blue, Below the Minimum Red | ${new Date().toLocaleString()}`,m,y);y+=0.42*k;
+    doc.text(`${Sp.name} (${Sp.org}) | ${optName()} | Seats Lost to ${titleCase(lossTxt())} | C-Values: Lowest Blue, Below the Minimum Red | ${new Date().toLocaleString()}`,m,y);y+=0.42*k;
     const cell=(vals,bold,fill,colors)=>{if(fill){doc.setFillColor(238,242,248);doc.rect(m,y-rh*.72,pw-2*m,rh,'F');}
       let x=m;doc.setFont('DVS',bold?'bold':'normal');doc.setFontSize(fz);
       cols.forEach(([n,w,al],i)=>{const c=(colors&&colors[i])||[0,0,0];doc.setTextColor(...c);
@@ -2532,7 +2698,8 @@ function seatCount(){
     out.push({kind:'sub',label:`Tier ${ti+1} total`,v:zt,t:sT});gT+=sT;}
   const zAll=keys.map((k,i)=>out.filter(o=>o.kind==='sub').reduce((a,o)=>a+o.v[i],0));
   out.push({kind:'tot',label:'Total, all seats',v:zAll,t:gT});
-  out.push({kind:'tot',label:`Total less aisles and vomitories (${P.loss}%)`,v:zAll.map(x=>Math.round(x*f)),t:Math.round(gT*f)});
+  if(M.AL){const zn=keys.map(k=>ZR[k].filter(r=>r.tier<P.tierCount).reduce((a,r)=>a+(r.net??r.gross),0));out.push({kind:'tot',label:'Total less aisles and vomitories (computed layout)',v:zn,t:zn.reduce((a,b)=>a+b,0)});}
+  else out.push({kind:'tot',label:`Total less aisles and vomitories (${P.loss}%)`,v:zAll.map(x=>Math.round(x*f)),t:Math.round(gT*f)});
   return {head,out};}
 function countTableHTML(){const {head,out}=seatCount();
   const rows=out.filter(o=>o.kind==='row'),mins=['cs','ct'].map(k=>Math.min(...rows.map(o=>o[k]).filter(v=>v!=null)));
@@ -2541,7 +2708,7 @@ function countTableHTML(){const {head,out}=seatCount();
   return `<thead><tr><th>Row</th><th>C sitting</th><th>C standing</th>${head.map(h=>`<th>${h}</th>`).join('')}<th>Row total</th></tr></thead><tbody>`
     +out.map(o=>`<tr class="${o.kind==='row'?'':o.kind}"><td>${o.label}</td>${o.kind==='row'?cv(o,'cs',0)+cv(o,'ct',1):'<td></td><td></td>'}${o.v.map(x=>`<td>${fmt(x)}</td>`).join('')}<td>${fmt(o.t)}</td></tr>`).join('')+'</tbody>';}
 $('cntXlsx').onclick=()=>{const {head,out}=seatCount(),Sp=SPORTS[P.sport];
-  const rows=[['Sightline Schematic: seat count by row'],['Sport',`${Sp.name} (${Sp.org})`],['Option',optName()],['Seats lost to aisles and vomitories (%)',P.loss],[],
+  const rows=[['Sightline Schematic: seat count by row'],['Sport',`${Sp.name} (${Sp.org})`],['Option',optName()],['Seats lost to aisles and vomitories',lossTxt()],[],
     ['Row','C sitting (in)','C standing (in)',...head,'Row total'],...out.map(o=>[o.label,o.cs==null?'':+(o.cs/25.4).toFixed(4),o.ct==null?'':+(o.ct/25.4).toFixed(4),...o.v,o.t])];
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:44},{wch:14},{wch:15},...head.map(()=>({wch:10})),{wch:12}];
   XLSX.utils.book_append_sheet(wb,ws,'Seat count');offer('C-Value_'+slug()+'.xlsx',new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})]));};
@@ -2554,7 +2721,7 @@ $('cntPrint').onclick=async()=>{const btn=$('cntPrint');btn.disabled=true;toast(
     offer('C-Value_'+slug()+'.pdf',doc.output('blob'));toast('Seat count PDF saved.');
   }catch(e){toast('The seat count PDF could not be built: '+e.message);}finally{btn.disabled=false;}};
 const cntPrintDialog=()=>{const Sp=SPORTS[P.sport],tmp=document.createElement('div');
-  tmp.innerHTML=`<h1>Sightline Schematic: seat count by row</h1><p>${Sp.name} (${Sp.org}) | ${optName()} | ${P.tierCount} tier${P.tierCount>1?'s':''} | seats lost to aisles and vomitories ${P.loss}% | ${new Date().toLocaleString()}</p><table>${countTableHTML()}</table>`;
+  tmp.innerHTML=`<h1>Sightline Schematic: seat count by row</h1><p>${Sp.name} (${Sp.org}) | ${optName()} | ${P.tierCount} tier${P.tierCount>1?'s':''} | seats lost to ${lossTxt()} | ${new Date().toLocaleString()}</p><table>${countTableHTML()}</table>`;
   titleize(tmp);
   const html=`<!doctype html><html><head><meta charset="utf-8"><title>${slug()}</title><style>@page{size:8.5in 11in;margin:.5in}body{font:10pt Archivo,'Arial Narrow',Arial,sans-serif;color:#000}
     h1{font-size:15pt;margin:0 0 4pt}p{margin:0 0 10pt;color:#333}table{border-collapse:collapse;width:100%}th,td{padding:3pt 8pt;text-align:right;border-bottom:.5pt solid #bbb}
@@ -2636,7 +2803,7 @@ function titleCase(str){
       if(UNITS.has(lo))return p;                                       // keep units lowercase
       if(k===0&&!first&&!last&&SMALL.has(lo))return p;
       return p[0].toUpperCase()+p.slice(1);}).join('-');});}
-const SENTENCE='.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td';
+const SENTENCE='.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td';
 function titleize(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
   while((n=w.nextNode())){const el=n.parentElement;if(!el||el.closest(SENTENCE))continue;const t=titleCase(n.data);if(t!==n.data)n.data=t;}}
 new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData'){const el=m.target.parentElement;if(el&&!el.closest(SENTENCE)){const t=titleCase(m.target.data);if(t!==m.target.data)m.target.data=t;}}
