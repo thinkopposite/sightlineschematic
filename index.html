@@ -1456,7 +1456,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.14.7';
+const VERSION='2026.10.14.8';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2317,6 +2317,15 @@ function plotEnlarged(sh){const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(sh.w)}in" height="${f(sh.h)}in" viewBox="0 0 ${f(sh.w)} ${f(sh.h)}" font-family="Archivo, 'Arial Narrow', Arial, sans-serif"><rect width="${f(sh.w)}" height="${f(sh.h)}" fill="#fff"/>`
     +trueStrokes(fit.svg,fit.u).replace('<svg ',`<svg x="${f(x)}" y="${f(y)}" width="${f(fit.w)}" height="${f(fit.h)}" preserveAspectRatio="xMidYMid meet" `)+g+tb+'</svg>';
   const tmp=document.createElement('div');tmp.innerHTML=svg;titleize(tmp);return {svg:tmp.innerHTML,scale:fit.sc.label,sheet:sh,what:'enlarged'};}
+// rows whose section holds more seats than the IBC maximum per row (Irwin 14 in seat: 47 at 20 in clear) shaded light red, usually at the corners
+function overRowsSvg(){if(!M.AL||PLAN!=='bowl'||!imperial())return '';let p='';const f=v=>v.toFixed(3);
+  for(let ti=0;ti<M.AL.length;ti++){const T=M.AL[ti],zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)continue;
+    const lim=Math.min(...zs.map(Lz=>ibcRow(P.zt[ti].z[Lz.k]).n)),nr=Math.max(...zs.map(z=>z.tr.length));
+    for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{if(sc.n<=lim)return;
+      sc.pieces.forEach(pc=>{const r=pc.Lz.tr[j];if(!r||pc.b-pc.a<1e-3)return;const d0=r.x/1000,d1=(r.x+r.T)/1000,N=12,F=[],B=[];
+        for(let q=0;q<=N;q++){const a=chainAt(pc.Lz.ch,pc.a+(pc.b-pc.a)*q/N,pc.d),g=pc.Lz.ch[a.i];F.push(segPt(g,a.f,d0));B.push(segPt(g,a.f,d1));}
+        p+='M'+F.concat(B.reverse()).map(q=>f(q[0])+' '+f(q[1])).join('L')+'Z';});});}
+  return p?`<path d="${p}" fill="#FF8A8A" fill-opacity=".6" stroke="none"><title>Rows over the IBC maximum seats per row</title></path>`:'';}
 function drawPlan(o={}){
   PLANROT=planRot();DIMREG=[];
   const S=SPORTS[P.sport],bnd=boundary(P),st=stations(bnd),xs=bnd.map(p=>p[0]),ys=bnd.map(p=>p[1]);
@@ -2348,7 +2357,7 @@ function drawPlan(o={}){
   const cs=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]].map(([x,y])=>rotPt(x,y,t)),vx0=Math.min(...cs.map(c=>c[0])),vy0=Math.min(...cs.map(c=>c[1])),
     vW=Math.max(...cs.map(c=>c[0]))-vx0,vH=Math.max(...cs.map(c=>c[1]))-vy0;
   let s=`<svg viewBox="${vx0.toFixed(2)} ${vy0.toFixed(2)} ${vW.toFixed(2)} ${vH.toFixed(2)}"${vH>vW*1.05?' class="portrait"':''} role="img" aria-label="${S.org} ${S.name} ${PLAN==='field'?'field layout':'bowl plan'}, north up">`;
-  let body=(PLAN==='bowl'?planGrid():'')+bufferFill()+S.draw(P,g)+rings+rowLines+aisleSvg()+seatsSvg()+(PLAN==='bowl'?drawDims(bufferDims(),g,fs*.8):'')+`<path d="${ptsPath(bnd)}" fill="none" stroke="${FOCAL}" stroke-width="${(1.7*g.k).toFixed(3)}" stroke-linejoin="round"/>`+((P.sport==='nfl'||P.sport==='ncaafb')?pylons(P).map(([cx,cy,h])=>`<rect x="${g.f(cx-h)}" y="${g.f(cy-h)}" width="${g.f(2*h)}" height="${g.f(2*h)}" fill="${COL_PYLON}"/>`).join(''):''),over='';
+  let body=(PLAN==='bowl'?planGrid():'')+bufferFill()+S.draw(P,g)+rings+overRowsSvg()+rowLines+aisleSvg()+seatsSvg()+(PLAN==='bowl'?drawDims(bufferDims(),g,fs*.8):'')+`<path d="${ptsPath(bnd)}" fill="none" stroke="${FOCAL}" stroke-width="${(1.7*g.k).toFixed(3)}" stroke-linejoin="round"/>`+((P.sport==='nfl'||P.sport==='ncaafb')?pylons(P).map(([cx,cy,h])=>`<rect x="${g.f(cx-h)}" y="${g.f(cy-h)}" width="${g.f(2*h)}" height="${g.f(2*h)}" fill="${COL_PYLON}"/>`).join(''):''),over='';
   if(PLAN==='bowl'){const sec=sectionAt(),ex=sec[0]+sec[2]*(Rmax+1.5),ey=sec[1]+sec[3]*(Rmax+1.5),lf=W/45;
     const rf=W/105;                                                  // row-number text height (plan metres)
     const at=zoned(P)?GEO.map(k=>{const sd=rectGeo(P).side[k],f=isSide(k)?0.22:0.3;return [k,[sd.p[0]+(sd.q[0]-sd.p[0])*f,sd.p[1]+(sd.q[1]-sd.p[1])*f,sd.n[0],sd.n[1],(sd.q[0]-sd.p[0])/Math.hypot(sd.q[0]-sd.p[0],sd.q[1]-sd.p[1]),(sd.q[1]-sd.p[1])/Math.hypot(sd.q[0]-sd.p[0],sd.q[1]-sd.p[1])]];})
@@ -2437,7 +2446,7 @@ function update(){
   $('detTitle').textContent=`Sightline detail: Tier 1, ${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'}`;
   document.querySelectorAll('#detTabs [data-dm]').forEach(b=>{const on=b.dataset.dm===DETMODE;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});$('plan').innerHTML=drawPlan();
   const Sp=SPORTS[P.sport];$('planTitle').textContent=`${Sp.org}: ${Sp.name}`;
-  $('planNote').innerHTML=`<span style="display:inline-block;width:18px;height:3px;background:${FOCAL};vertical-align:middle;margin-right:6px"></span>Point-of-focus boundary, dimensioned. Drawn from ${Sp.rule}. Field ${fieldDesc(P)}. Check against the current edition before issuing drawings.`+(M.AL?` <br><span style="display:inline-block;width:14px;height:9px;background:#FFFFFF;border:1px solid var(--ink);vertical-align:middle;margin-right:5px"></span>Aisles`:'');
+  $('planNote').innerHTML=`<span style="display:inline-block;width:18px;height:3px;background:${FOCAL};vertical-align:middle;margin-right:6px"></span>Point-of-focus boundary, dimensioned. Drawn from ${Sp.rule}. Field ${fieldDesc(P)}. Check against the current edition before issuing drawings.`+(M.AL?` <br><span style="display:inline-block;width:14px;height:9px;background:#FFFFFF;border:1px solid var(--ink);vertical-align:middle;margin-right:5px"></span>Aisles`+(imperial()?` <span style="display:inline-block;width:14px;height:9px;background:#FF8A8A;vertical-align:middle;margin:0 5px 0 10px"></span>Row over the IBC maximum of ${ibcRow(P.zt[0].z.T).n} seats per row (${L(ibcRow(P.zt[0].z.T).C)} clear, ${L(AIS().chairD||14*25.4)} seat)`:''):'');
   const tc=mm=>plain(mm),tu=imperial()||!unitSuffix().trim()?'':` (${unitSuffix().trim()})`;
   $('schedHead').textContent='Row schedule: '+zoneName(P,P.sec);
   $('table').innerHTML=`<thead><tr><th>Row</th><th>Riser from focus${tu}</th><th>Tread height${tu}</th><th>Riser${tu}</th><th>Rake</th><th>C-value${tu}</th></tr></thead><tbody>`+ZR[P.sec].map(r=>`<tr><td>Tier ${r.tier+1}, row ${r.row}</td><td>${tc(r.x)}</td><td>${tc(r.z)}</td><td class="${r.riser>P.maxRiser+0.01?'steep':''}">${r.riser==null?'':tc(r.riser)}</td><td class="${r.rake>P.maxRake?'steep':''}">${r.rake==null?'':r.rake.toFixed(1)+'°'}</td><td class="${status(r)}">${r.C!=null?CV(r.C):r.railC!=null?'guard '+(r.railC>=0?'+':'')+CV(r.railC):'front row'}</td></tr>`).join('')+'</tbody>';
