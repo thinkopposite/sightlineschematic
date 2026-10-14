@@ -790,7 +790,7 @@ function dimLabel(d,fs){
 let DIMREG=null;                                                     // plan text boxes already placed (reset per plan)
 function drawDims(list,g,fs){
   const f=g.f;let s='';const reg=DIMREG||[];
-  const txt=(D)=>{const hs=`text-anchor="middle" fill="#4D4D4D" paint-order="stroke" stroke="var(--panel)" stroke-width="${f(fs*.22)}" stroke-linejoin="round"${D.rot?` transform="rotate(${f(D.rot)} ${f(D.mx)} ${f(D.my)})"`:''}`;
+  const txt=(D)=>{const hs=`text-anchor="middle" fill="#4D4D4D" paint-order="stroke" stroke="var(--panel)" stroke-width="${f(fs*.09)}" stroke-linejoin="round"${D.rot?` transform="rotate(${f(D.rot)} ${f(D.mx)} ${f(D.my)})"`:''}`;
     if(!D.note)return `<text class="dv" x="${f(D.mx)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" font-weight="400" ${hs}>${D.lab}</text>`;
     const nw=D.note.length*.8*.52*fs,cx=D.mx-D.tw/2+nw,hs2=a=>hs.replace('text-anchor="middle"',`text-anchor="${a}"`);   /* one line: label, then the value */
     return `<text x="${f(cx)}" y="${f(D.my)}" font-size="${f(fs*.8)}" dominant-baseline="middle" font-weight="400" ${hs2('end')}>${D.note}</text><text class="dv" x="${f(cx+fs*.5)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" font-weight="400" ${hs2('start')}>${D.lab}</text>`;};
@@ -1076,9 +1076,9 @@ const IBC_SMOKE=[[5000,.2,.15],[10000,.13,.1],[15000,.096,.07],[20000,.076,.056]
 const INDOOR={nba:1,ncaabb:1,ncaawbb:1,fiba:1,nhl:1};
 const GG_FLOW={step:66,level:82,min:8};                                // Green Guide rates of passage (persons per metre per minute) and egress time (minutes)
 const aisDefaults=r=>r==='world'?{mode:'layout',nmax:28,w:1200,vomW:2400,vomEvery:2,vomH:2000,basis:'gg',vom:[0,0],vomRow:[11,11],prem:21000,gap:100}
-  :{mode:'layout',nmax:28,w:48*25.4,vomW:8*304.8,vomEvery:2,vomH:90*25.4,basis:'auto',vom:[0,0],vomRow:[11,11],prem:60*304.8,gap:4*25.4,chairD:15*25.4,smid:40,styp:40,smin:36,smax:44,nSL:5,nEZ:3,smaxMid:38,ctolp:50};
+  :{mode:'layout',nmax:28,w:48*25.4,vomW:8*304.8,vomEvery:2,vomH:90*25.4,basis:'auto',vom:[0,0],vomRow:[11,11],prem:60*304.8,gap:4*25.4,chairD:14*25.4,chairBack:2*25.4,chairDown:24*25.4,smid:40,styp:40,smin:36,smax:44,nSL:5,nEZ:3,smaxMid:38,ctolp:50};
 const vomWall=()=>imperial()?8*25.4:200;
-function AIS(Q){Q=Q||P;if(!Q.ais)Q.ais=aisDefaults(regionOf(Q.sport));const A=Q.ais;if(A.gap==null)A.gap=regionOf(Q.sport)==='world'?100:4*25.4;if(A.chairD==null)A.chairD=15*25.4;if(A.smid==null)Object.assign(A,{smid:40,styp:40,smin:36,smax:44,chairD:15*25.4});if(A.styp==null)Object.assign(A,{smid:40,styp:40});if(A.ctolp==null)A.ctolp=50;if(A.nSL==null)Object.assign(A,{nSL:5,nEZ:3,smaxMid:38});if(!VOM_ON)A.vom=[0,0];if(!A.vom)A.vom=[1,1];if(!A.vomRow)A.vomRow=[11,11];return A;}
+function AIS(Q){Q=Q||P;if(!Q.ais)Q.ais=aisDefaults(regionOf(Q.sport));const A=Q.ais;if(A.gap==null)A.gap=regionOf(Q.sport)==='world'?100:4*25.4;if(A.chairD==null)A.chairD=15*25.4;if(A.smid==null)Object.assign(A,{smid:40,styp:40,smin:36,smax:44,chairD:15*25.4});if(A.styp==null)Object.assign(A,{smid:40,styp:40});if(A.ctolp==null)A.ctolp=50;if(A.chairBack==null)Object.assign(A,{chairD:14*25.4,chairBack:2*25.4,chairDown:24*25.4});if(A.nSL==null)Object.assign(A,{nSL:5,nEZ:3,smaxMid:38});if(!VOM_ON)A.vom=[0,0];if(!A.vom)A.vom=[1,1];if(!A.vomRow)A.vomRow=[11,11];return A;}
 function segLen(g,d){return g.t==='LINE'?Math.hypot(g.q[0]-g.p[0],g.q[1]-g.p[1]):g.t==='CHAM'?Math.hypot(g.b[0]+g.nb[0]*d-g.a[0]-g.na[0]*d,g.b[1]+g.nb[1]*d-g.a[1]-g.na[1]*d):Math.max(0,g.r+d)*g.sw*Math.PI/180;}
 function segPt(g,f,d){if(g.t==='LINE')return [g.p[0]+(g.q[0]-g.p[0])*f+g.n[0]*d,g.p[1]+(g.q[1]-g.p[1])*f+g.n[1]*d];
   if(g.t==='CHAM'){const a=[g.a[0]+g.na[0]*d,g.a[1]+g.na[1]*d],b=[g.b[0]+g.nb[0]*d,g.b[1]+g.nb[1]*d];return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f];}
@@ -1236,8 +1236,8 @@ function aisEditor(){const A=AIS(),imp=imperial(),lay=A.mode==='layout';
     const seen={},lines=[];zs.forEach(([ti,k,z])=>{const r=ibcRow(z),key=[z.seat,z.tread,z.seatW].join('|');if(seen[key])return;seen[key]=1;
       lines.push(`${r.back?'Chairback (with backrest)':'Bench (no backrest)'} ${L(z.seatW)} wide, ${L(z.tread)} row: ${L(r.C)} clear (row less ${r.back?'the chair with its seat raised':'the bench'}, ${L(r.dep)}) → <b>${r.n<1?'clear width under 12" — not allowed':r.n+' seats'}</b> between two aisles`);});
     const b=rowBase(true),tb=egBasis()==='open'||egBasis()==='smoke';
-    h+=slider('ais.chairD','Chairback depth, seat raised (1/8 inch; self-rising seat)',12*25.4,24*25.4,3.175,'mm')
-      +`<p class="hint" style="margin-top:2px">Self-rising seats are measured raised (IBC 1030.13.2). Default 15": Camatic Quantum, as at Allegiant Stadium. ${tb?`Open-air or smoke-protected, ${fmt(P.capTarget)} seats: Table 1030.13.2.1 allows ${b} seats at 12" clear`:'IBC 1030.13.2.1: 14 seats at 12" clear'}, plus one seat per 0.3" more; 22" allows 100. Benches count at 18" per person (IBC 1004.6).<br>${lines.join('<br>')}</p>`
+    h+=slider('ais.chairD','Chair depth, seat tip (raised) to seat back (1/8 inch)',10*25.4,24*25.4,3.175,'mm')+slider('ais.chairBack','Seat back behind the riser (1/8 inch)',0,6*25.4,3.175,'mm')+slider('ais.chairDown','Chair depth, seat down (1/2 inch; drawing only)',14*25.4,32*25.4,12.7,'mm')
+      +`<p class="hint" style="margin-top:2px">Self-rising seats are measured raised (IBC 1030.13.2). Default 14" seat tip to seat back (Irwin slim profile): 12" in front of the riser, 2" behind it, so clear width = row depth less 14". ${tb?`Open-air or smoke-protected, ${fmt(P.capTarget)} seats: Table 1030.13.2.1 allows ${b} seats at 12" clear`:'IBC 1030.13.2.1: 14 seats at 12" clear'}, plus one seat per 0.3" more; 22" allows 100. Benches count at 18" per person (IBC 1004.6).<br>${lines.join('<br>')}</p>`
       +slider('ais.nSL','Equal middle sections, West and East sidelines (1 section)',1,9,1,'sections')
       +slider('ais.nEZ','Equal middle sections, North and South end zones (1 section)',1,9,1,'sections')
       +slider('ais.smaxMid','Most seats in a middle section (1 seat)',20,44,1,'seats')+slider('ais.ctolp','Top rows where corner seats over the limit are left out (5 %)',0,50,5,'%')+slider('ais.smax','Most seats in a section (1 seat; code limit above)',20,100,1,'seats');}
@@ -1456,7 +1456,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.13.4';
+const VERSION='2026.10.14.7';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2189,7 +2189,11 @@ function focalDims(P){
 function secStation(S,st){const sd=S.sec,dot=q=>q[2]*sd[0]+q[3]*sd[1],mx=Math.max(...st.map(dot)),best=st.filter(q=>dot(q)>=mx-1e-6);
   const x=best.reduce((a,q)=>a+q[0],0)/best.length,y=best.reduce((a,q)=>a+q[1],0)/best.length;return [x,y,best[0][2],best[0][3]];}   // middle of the stand
 function sectionAt(){if(!zoned(P))return secStation(SPORTS[P.sport],stations(boundary(P)));const s=rectGeo(P).side[P.sec];
-  return [(s.p[0]+s.q[0])/2,(s.p[1]+s.q[1])/2,s.n[0],s.n[1]];}
+  // the cut runs through the section next to the middle one, clear of the middle section, its labels and the buffer dimension
+  let f=0.5;const Lz=M&&M.AL&&M.AL[0]&&M.AL[0][P.sec];
+  if(Lz){const gi=Lz.ch.findIndex(g=>g.t==='LINE'),fs=gi<0?[]:Lz.ais.filter(a=>a.i===gi&&a.f!=null).map(a=>a.f).sort((a,b)=>a-b),r=fs.map(v=>v<0.5-1e-9).lastIndexOf(true);   /* the section before the middle one, a fifth of the way in from the shared aisle */
+    if(r>=0)f=r>0?fs[r]-(fs[r]-fs[r-1])*0.2:Math.max(0.03,fs[r]-0.03);}
+  return [s.p[0]+(s.q[0]-s.p[0])*f,s.p[1]+(s.q[1]-s.p[1])*f,s.n[0],s.n[1]];}
 // Buffer zone in plan: from the field out to the front riser of Tier 1 on every side, in the buffer green.
 // Bowl plan dimensions: buffer depth (red line to the Tier 1 front riser) on each side, and at each corner on the diagonal.
 function bufferDims(){if(!zoned(P))return [];const G=rectGeo(P),out=[];
@@ -2211,28 +2215,41 @@ function bufferFill(){if(PLAN!=='bowl')return '';
   const x0=s.L.p[0]-d('L'),x1=s.R.p[0]+d('R'),y0=s.T.p[1]-d('T'),y1=s.B.p[1]+d('B');
   return `<rect x="${x0.toFixed(2)}" y="${y0.toFixed(2)}" width="${(x1-x0).toFixed(2)}" height="${(y1-y0).toFixed(2)}" fill="var(--grass2)"/>`;}
 // row numbers sit in the middle of a seating section, clear of the aisles: the section on the stand's straight run nearest the default spot
-function labMid(k,ti,px,py){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz||!zoned(P))return null;const gi=Lz.ch.findIndex(g=>g.t==='LINE');if(gi<0)return null;const g=Lz.ch[gi];
+function labMid(k,ti,px,py,rf){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz||!zoned(P))return null;const gi=Lz.ch.findIndex(g=>g.t==='LINE');if(gi<0)return null;const g=Lz.ch[gi];
   const ux=g.q[0]-g.p[0],uy=g.q[1]-g.p[1],l2=ux*ux+uy*uy;if(l2<1e-9)return null;const f=0.4999;   /* the middle section of the side */
-  const fs=[0,...Lz.ais.filter(a=>a.i===gi).map(a=>a.f),1].sort((a,b)=>a-b);for(let i=1;i<fs.length;i++)if(f<=fs[i]){const m=Math.min(fs[i-1]+(AIS().w/2000+2.2)/Math.sqrt(l2),(fs[i-1]+fs[i])/2);   /* just clear of the aisle, leaving the middle for the section seat count */return [g.p[0]+ux*m,g.p[1]+uy*m];}return null;}
+  const fs=[0,...Lz.ais.filter(a=>a.i===gi).map(a=>a.f),1].sort((a,b)=>a-b);for(let i=1;i<fs.length;i++)if(f<=fs[i]){const off=(AIS().w/2000+(rf||1.5)*1.1)/Math.sqrt(l2),m=ti%2?Math.max(fs[i]-off,(fs[i-1]+fs[i])/2):i<fs.length-1?Math.min(fs[i]+off,(fs[i]+fs[i+1])/2):Math.min(fs[i-1]+off,(fs[i-1]+fs[i])/2);   /* Tier 1 just past the middle section's aisle, Tier 2 just inside it: the two columns never meet */   /* row numbers just past the middle section, clear of its labels and of the section cut on the other side */   /* just clear of the aisle, leaving the middle for the section seat count */return [g.p[0]+ux*m,g.p[1]+uy*m];}return null;}
 // typical seats per row in each section, written in the middle of the section at the tier's middle row (a range where rows differ)
-function sectLabels(rf,t){if(!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>v.toFixed(2),fz=rf*1.3;
-  for(let ti=0;ti<M.AL.length;ti++){const T=M.AL[ti],zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)continue;
-    const nr=Math.max(...zs.map(z=>z.tr.length)),jm=Math.floor((nr-1)/2),st={};
-    const lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{sc.n=Math.min(sc.n,lim);const k=sc.l+'_'+sc.r,q=st[k]||(st[k]={lo:Infinity,hi:0,mid:null});q.lo=Math.min(q.lo,sc.n);q.hi=Math.max(q.hi,sc.n);if(j===jm)q.mid=sc;});
-    Object.values(st).forEach(q=>{const sc=q.mid;if(!sc||!sc.pieces.length||q.hi<1)return;const pc=sc.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a),[x,y]=chainPtS(pc.Lz.ch,pc.a+(pc.b-pc.a)*0.64,pc.d),[rx,ry]=rotPt(x,y,t);
-      o+=`<text x="${f(rx)}" y="${f(ry)}" font-size="${f(fz)}" font-weight="700" fill="#1E5BD8" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.3)}"><title>Tier ${ti+1} section: ${q.lo===q.hi?q.lo:q.lo+' to '+q.hi} seats per row</title>${q.lo===q.hi?q.lo:q.lo+'–'+q.hi}</text>`;});}
+// Sections of a tier, numbered clockwise in plan from the middle section of the north end zone: Tier 1 101, 102 ...; Tier 2 201 ...
+// Each: typical seats per row (a range where rows differ), the label point (middle row, a little off-centre) and the number.
+function sectionList(ti){const T=M.AL&&M.AL[ti];if(!T)return [];const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return [];
+  const nr=Math.max(...zs.map(z=>z.tr.length)),jm=Math.floor((nr-1)/2),st={},lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
+  for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{sc.n=Math.min(sc.n,lim);const k=sc.l+'_'+sc.r,q=st[k]||(st[k]={key:k,lo:Infinity,hi:0,mid:null});q.lo=Math.min(q.lo,sc.n);q.hi=Math.max(q.hi,sc.n);if(j===jm)q.mid=sc;});
+  const out=Object.values(st).filter(q=>q.mid&&q.mid.pieces.length&&q.hi>0).map(q=>{const pc=q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a);
+    q.pt=chainPtS(pc.Lz.ch,(pc.a+pc.b)/2,pc.d);q.mpt=chainPtS(pc.Lz.ch,(pc.a+pc.b)/2,pc.d);q.th=Math.atan2(q.mpt[1],q.mpt[0]);return q;});
+  // start: the section on the north end zone's centre line
+  const nk=GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='N'),Lz=nk&&T[nk];let th0=out.length?out[0].th:0;
+  if(Lz){const gi=Lz.ch.findIndex(g=>g.t==='LINE');if(gi>=0){const r=Lz.tr[Math.min(jm,Lz.tr.length-1)],d=(r.x+r.T/2)/1000,pm=segPt(Lz.ch[gi],0.5,d);th0=Math.atan2(pm[1],pm[0]);}}
+  const TAU=2*Math.PI,rel=q=>((q.th-th0)%TAU+TAU+1e-6)%TAU;   // clockwise on the drawing (y down): increasing angle
+  const c=out.reduce((a,q)=>!a||Math.min(rel(q),TAU-rel(q))<Math.min(rel(a),TAU-rel(a))?q:a,null),tc=c?c.th:th0,rel2=q=>((q.th-tc)%TAU+TAU+1e-6)%TAU;
+  out.sort((a,b)=>rel2(a)-rel2(b)).forEach((q,i)=>q.no=(ti+1)*100+i+1);
+  return out;}
+const SECNO={};
+function sectLabels(rf,t){if(!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>v.toFixed(2),fz=rf*1.3,fn=rf*1.15;
+  for(let ti=0;ti<M.AL.length;ti++)sectionList(ti).forEach(q=>{SECNO[ti+':'+q.key]=q.no;const [rx,ry]=rotPt(q.pt[0],q.pt[1],t),cnt=q.lo===q.hi?q.lo:q.lo+'–'+q.hi;
+    o+=`<g><title>Section ${q.no}: ${q.lo===q.hi?q.lo:q.lo+' to '+q.hi} seats per row</title><text x="${f(rx)}" y="${f(ry-fz*.62)}" font-size="${f(fn)}" font-weight="800" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fn*.12)}">${q.no}</text>`
+      +`<text x="${f(rx)}" y="${f(ry+fz*.55)}" font-size="${f(fz)}" font-weight="700" fill="#1E5BD8" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.12)}">${cnt}</text></g>`;});
   return o;}
 // ---------- enlarged plan of a typical section: every seat at its true width ----------
-let ENL={tier:0,side:'T'},SHOWSEATS=false;
+let ENL={tier:0,side:null},SHOWSEATS=false;const eastKey=()=>GEO.find(k=>isSide(k)&&compassOf(P)[k]==='E')||'T',enlSide=()=>ENL.side||eastKey();
 function enlargedData(ti,k){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz)return null;const gi=Lz.ch.findIndex(g=>g.t==='LINE');if(gi<0)return null;
   const fs=Lz.ais.map((a,i)=>({a,i})).filter(x=>x.a.i===gi&&x.a.f!=null).sort((p,q)=>p.a.f-q.a.f);let L0=null,R0=null;
   for(let j=1;j<fs.length;j++)if(fs[j-1].a.f<=0.5+1e-9&&fs[j].a.f>=0.5-1e-9){L0=fs[j-1];R0=fs[j];break;}   // the middle section of the side
   if(!L0)return null;return {Lz,gi,L0,R0};}
-function drawEnlarged(o={}){const ti=Math.min(ENL.tier,P.tierCount-1),k=ENL.side,E=enlargedData(ti,k);
+function drawEnlarged(o={}){const ti=Math.min(ENL.tier,P.tierCount-1),k=enlSide(),E=enlargedData(ti,k);
   if(!E)return '<p class="empty" style="padding:16px">Choose the computed aisle layout to see a typical section.</p>';
-  const {Lz,L0,R0}=E,A=AIS(),tr=Lz.tr,x0=tr[0].x,d=1,sa=chainS(Lz.ch,L0.a,d),sb=chainS(Lz.ch,R0.a,d),span=(sb-sa)*1000,wA=A.w,gp=A.gap||0,cd=A.chairD||15*25.4;
+  const {Lz,L0,R0}=E,A=AIS(),tr=Lz.tr,x0=tr[0].x,d=1,sa=chainS(Lz.ch,L0.a,d),sb=chainS(Lz.ch,R0.a,d),span=(sb-sa)*1000,wA=A.w,gp=A.gap||0,cd=A.chairD||14*25.4,cb=A.chairBack??2*25.4,cdn=A.chairDown||24*25.4,cf=cd-cb;   /* cf: raised seat tip in front of the riser; cb: back behind it */
   const sw=tr[0].seatW,lastR=tr[tr.length-1],depth=lastR.x+lastR.T-x0,side=wA/2+2*sw;      // two neighbouring seats each side, light
-  const fs0=o.fs||(span+2*side)/62,U0=-side-1200,U1=span+side+fs0*13,V0=-fs0*7.5,fs=fs0,V1=depth+fs*6,W=U1-U0,H=V1-V0+fs*9;
+  const fs0=o.fs||(span+2*side)/62,MI=8,cd0=AIS().chairD||14*25.4,U0=-side-1200,U1=span+side+fs0*4+2*tr[0].seatW*MI+fs0*14,V0=-fs0*7.5,fs=fs0,V1=depth+fs*6,W=U1-U0,H=V1-V0+fs*9;
   const X=u=>(u-U0).toFixed(1),Y=v=>(V1-v).toFixed(1),K=SecDim(X,Y,fs*.9,[W,H]),f=v=>(+v).toFixed(1);
   let g='',seats='',nb='';
   // treads and risers, aisle strips
@@ -2243,9 +2260,10 @@ function drawEnlarged(o={}){const ti=Math.min(ENL.tier,P.tierCount-1),k=ENL.side
   // seats: chair at the back of each tread, seat raised (envelope), clear width in front
   const iL=Lz.ais.indexOf(L0.a)+1,counts=[];
   tr.forEach((r,j)=>{const S=rowSections(Lz,j),n=S.secs[iL]||0,v=r.x-x0;counts.push(n);
-    for(let q=0;q<n;q++){const u=wA/2+gp+q*r.seatW;seats+=`<rect x="${X(u)}" y="${Y(v+r.T)}" width="${f(r.seatW)}" height="${f(cd)}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="0.45" vector-effect="non-scaling-stroke"/>`
-      +`<line x1="${X(u)}" y1="${Y(v+r.T-cd*.18)}" x2="${X(u+r.seatW)}" y2="${Y(v+r.T-cd*.18)}" stroke="var(--ink)" stroke-width="0.35" vector-effect="non-scaling-stroke"/>`;}   // seat back
-    for(const s of [-1,1])for(let q=0;q<2;q++){const u=s<0?-wA/2-gp-(q+1)*r.seatW:span+wA/2+gp+q*r.seatW;nb+=`<rect x="${X(u)}" y="${Y(v+r.T)}" width="${f(r.seatW)}" height="${f(cd)}" fill="none" stroke="var(--muted)" stroke-width="0.4" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/>`;}});
+    for(let q=0;q<n;q++){const u=wA/2+gp+q*r.seatW,yb=v+r.T+cb;   // seat down (solid), raised seat tip (dashed), back 2 in behind the riser
+      seats+=`<rect x="${X(u)}" y="${Y(yb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="${tierFill(ti)}" fill-opacity=".55" stroke="var(--ink)" stroke-width="0.45" vector-effect="non-scaling-stroke"/>`
+      +`<line x1="${X(u)}" y1="${Y(v+r.T-cf)}" x2="${X(u+r.seatW)}" y2="${Y(v+r.T-cf)}" stroke="var(--ink)" stroke-width="0.5" stroke-dasharray="2.5 1.5" vector-effect="non-scaling-stroke"/>`;}
+    for(const s of [-1,1])for(let q=0;q<2;q++){const u=s<0?-wA/2-gp-(q+1)*r.seatW:span+wA/2+gp+q*r.seatW;nb+=`<rect x="${X(u)}" y="${Y(v+r.T+cb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="none" stroke="var(--muted)" stroke-width="0.4" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/>`;}});
   // row numbers in the left aisle
   let rn='';tr.forEach(r=>{const v=r.x-x0;rn+=`<text x="${X(0)}" y="${Y(v+r.T/2)}" font-size="${f(fs*.85)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${r.row}</text>`;});
   // dimensions: along the front, one row below the next
@@ -2257,17 +2275,28 @@ function drawEnlarged(o={}){const ti=Math.min(ENL.tier,P.tierCount-1),k=ENL.side
    .dim([wA/2+gp+sec,lo],[span-wA/2,lo],{val:L(span-wA/2-wA/2-gp-sec),ea:[wA/2+gp+sec,0],eb:[span-wA/2,0]})
    .dim([0,lo2],[span,lo2],{lab:'Aisle centre to aisle centre',val:L(span),ea:[0,lo],eb:[span,lo]});
   // row depth, chair and clear width at a typical row (row 2), on the right
-  const r2=tr[Math.min(1,tr.length-1)],v2=r2.x-x0,ux=span+side+fs*1.2;
-  K.dim([ux,v2],[ux,v2+r2.T-cd],{lab:'Clear width',val:L(r2.T-cd),ea:[span+side,v2],ref:'tread'})
-   .dim([ux,v2+r2.T-cd],[ux,v2+r2.T],{lab:'Chair, seat raised',val:L(cd)})
-   .dim([ux+fs*3.2,v2],[ux+fs*3.2,v2+r2.T],{lab:'Row depth',val:L(r2.T),eb:[span+side,v2+r2.T]});
+  // row detail at 4x: two typical rows, seat down (solid), seat raised (dashed), back behind the riser, clear width
+  let det='';{const r2=tr[Math.min(1,tr.length-1)],T=r2.T,sw2=r2.seatW,ox=span+side+fs*4,oy=Math.max(fs*3,depth-2*T*MI-fs*2),Xd=u=>(ox-U0+u*MI).toFixed(1),Yd=v=>(V1-oy-v*MI).toFixed(1),K2=SecDim(Xd,Yd,fs*.9,[W,H]);
+    for(const v of [0,T,2*T])det+=`<line x1="${Xd(0)}" y1="${Yd(v)}" x2="${Xd(2*sw2)}" y2="${Yd(v)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;
+    for(const base of [T,2*T])for(let q=0;q<2;q++){const u=q*sw2;det+=`<rect x="${Xd(u)}" y="${Yd(base+cb)}" width="${f(sw2*MI)}" height="${f(cdn*MI)}" fill="${tierFill(ti)}" fill-opacity=".55" stroke="var(--ink)" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
+      +`<line x1="${Xd(u)}" y1="${Yd(base-cf)}" x2="${Xd(u+sw2)}" y2="${Yd(base-cf)}" stroke="var(--ink)" stroke-width="0.8" stroke-dasharray="4 2.5" vector-effect="non-scaling-stroke"/>`;}
+    det+=`<text x="${Xd(0)}" y="${f(+Yd(2*T+cb)-fs*1.2)}" font-size="${f(fs*.95)}" font-weight="700" fill="var(--ink)">Typical rows, enlarged ×${MI}</text>`
+      +`<text x="${Xd(2*sw2)}" y="${f(+Yd(T/2))}" font-size="${f(fs*.7)}" fill="var(--muted)" dominant-baseline="middle" dx="${f(fs*.4)}">riser</text>`;
+    const ux=2*sw2+fs*0.9/MI*1.6;
+    K2.avoid(0,T,2*sw2,T).avoid(0,2*T,2*sw2,2*T)
+      .dim([ux,T],[ux,T+cb],{lab:'Back of row ahead',val:L(cb),ea:[2*sw2,T]})
+      .dim([ux,T+cb],[ux,2*T-cf],{lab:'Clear width',val:L(T-cd),ref:'tread'})
+      .dim([ux,2*T-cf],[ux,2*T],{lab:'Seat raised',val:L(cf),eb:[2*sw2,2*T]})
+      .dim([ux+fs*3/MI,T],[ux+fs*3/MI,2*T],{lab:'Row depth',val:L(T)})
+      .dim([-fs*1.6/MI,2*T+cb-cdn],[-fs*1.6/MI,2*T+cb],{lab:'Seat down',val:L(cdn),ea:[0,2*T+cb-cdn],eb:[0,2*T+cb]});
+    det+=K2.out();}
   const lo3=Math.min(...counts),hi3=Math.max(...counts);
   const cap=`<text x="${X(span/2)}" y="${Y(depth)-fs*1.4}" font-size="${f(fs*1.15)}" font-weight="700" text-anchor="middle" fill="#1E5BD8">${lo3===hi3?lo3:lo3+'–'+hi3} seats per row, ${tr.length} rows: ${fmt(counts.reduce((a,b)=>a+b,0))} seats</text>`;
-  return `<svg viewBox="0 0 ${f(W)} ${f(H)}" role="img" aria-label="Enlarged plan of a typical section">`+g+nb+seats+rn+K.out()+cap+'</svg>';}
-function enlargedTitle(){const ti=Math.min(ENL.tier,P.tierCount-1);return `Enlarged plan: typical section, Tier ${ti+1} ${zoneName(P,ENL.side)} (middle section)`;}
+  return `<svg viewBox="0 0 ${f(W)} ${f(H)}" role="img" aria-label="Enlarged plan of a typical section">`+g+nb+seats+rn+K.out()+det+cap+'</svg>';}
+function enlargedTitle(){const ti=Math.min(ENL.tier,P.tierCount-1),E=enlargedData(ti,enlSide()),no=E?(sectionList(ti).find(q=>q.key===E.L0.a.id+'_'+E.R0.a.id)||{}).no:null;return `Enlarged plan: typical section${no?' '+no:''}, Tier ${ti+1} ${zoneName(P,enlSide())} (middle section)`;}
 // plan overlay: every seat at its true width (on screen, on request)
-function seatsSvg(){if(!SHOWSEATS||!M.AL||PLAN!=='bowl')return '';const A=AIS(),gp=(A.gap||0)/1000,cd=(A.chairD||15*25.4)/1000,f=v=>v.toFixed(3);let p='';
-  for(const T of M.AL)for(const Lz of Object.values(T))Lz.tr.forEach((r,j)=>{const S=rowSections(Lz,j),sw=r.seatW/1000,d1=(r.x+r.T)/1000-cd,d2=(r.x+r.T)/1000;
+function seatsSvg(){if(!SHOWSEATS||!M.AL||PLAN!=='bowl')return '';const A=AIS(),gp=(A.gap||0)/1000,cb=(A.chairBack??2*25.4)/1000,cd=(A.chairDown||24*25.4)/1000,f=v=>v.toFixed(3);let p='';
+  for(const T of M.AL)for(const Lz of Object.values(T))Lz.tr.forEach((r,j)=>{const S=rowSections(Lz,j),sw=r.seatW/1000,d1=(r.x+r.T)/1000+cb-cd,d2=(r.x+r.T)/1000+cb;
     S.secs.forEach((n,m)=>{const a=m?S.cuts[m-1][0]+S.cuts[m-1][1]/2+gp:0;
       for(let q=0;q<n;q++){const s0=a+q*sw,s1=s0+sw,P1=chainPtS(Lz.ch,s0,d1),P2=chainPtS(Lz.ch,s1,d1),P3=chainPtS(Lz.ch,s1,d2),P4=chainPtS(Lz.ch,s0,d2);
         p+=`M${f(P1[0])} ${f(P1[1])}L${f(P2[0])} ${f(P2[1])}L${f(P3[0])} ${f(P3[1])}L${f(P4[0])} ${f(P4[1])}Z`;}});});
@@ -2308,7 +2337,7 @@ function drawPlan(o={}){
       const dS=Math.max(back('T'),back('B')),dE=Math.max(back('L'),back('R'));      // same offset on opposite sides keeps W and E level
       GEO.forEach(k=>{const s=G.side[k];if(!ZR[k].length)return;const d=(isSide(k)?dS:dE)+fs*(o.tight?1.25:2.6);
         labels.push([(s.p[0]+s.q[0])/2+s.n[0]*d,(s.p[1]+s.q[1])/2+s.n[1]*d,standName(k),Math.atan2(s.q[1]-s.p[1],s.q[0]-s.p[0])*180/Math.PI,k]);});}
-    const sc=sectionAt(),sw=(x1-x0)/45;grow(sc[0]+sc[2]*(Rmax+1.5)+sc[2]*sw*1.4,sc[1]+sc[3]*(Rmax+1.5)+sc[3]*sw*1.4,sw*1.6);
+    const sc=sectionAt(),sw=(x1-x0)/45;grow(sc[0]+sc[2]*(Rmax+1.5)+sc[2]*sw*1.4,sc[1]+sc[3]*(Rmax+1.5)+sc[3]*sw*1.4,sw*3.4);   /* room for the label beside the cut mark */
     labels.forEach(([x,y])=>{const mx=fs*(o.tight?2.6:3),my=fs*(o.tight?1.45:3);x0=Math.min(x0,x-mx);x1=Math.max(x1,x+mx);y0=Math.min(y0,y-my);y1=Math.max(y1,y+my);});   // NEZ needs width more than height
   }else{dims=focalDims(P);
     for(const d of dims){const D=dimLabel(d,fs);if(d.r)grow(d.c[0],d.c[1]);else{grow(D.a[0],D.a[1],fs);grow(D.b[0],D.b[1],fs);}
@@ -2324,11 +2353,11 @@ function drawPlan(o={}){
     const rf=W/105;                                                  // row-number text height (plan metres)
     const at=zoned(P)?GEO.map(k=>{const sd=rectGeo(P).side[k],f=isSide(k)?0.22:0.3;return [k,[sd.p[0]+(sd.q[0]-sd.p[0])*f,sd.p[1]+(sd.q[1]-sd.p[1])*f,sd.n[0],sd.n[1],(sd.q[0]-sd.p[0])/Math.hypot(sd.q[0]-sd.p[0],sd.q[1]-sd.p[1]),(sd.q[1]-sd.p[1])/Math.hypot(sd.q[0]-sd.p[0],sd.q[1]-sd.p[1])]];})
       :[[1,0],[0,1],[-1,0],[0,-1]].map(dv=>{const q=secStation({sec:dv},st),ux=-q[3],uy=q[2];return ['T',[q[0]+ux*rf*3.5,q[1]+uy*rf*3.5,q[2],q[3],ux,uy]];});   // beside the section marker
-    for(const [k,[px0,py0,nx,ny,ux,uy]] of at)for(let ti=0;ti<P.tierCount;ti++){let px=px0+ux*rf*2.2*ti,py=py0+uy*rf*2.2*ti;{const mid=labMid(k,ti,px0,py0);if(mid){px=mid[0]+ux*rf*1.4*ti;py=mid[1]+uy*rf*1.4*ti;}}/* each tier's column a little further along */const tr=ZR[k].filter(r=>r.tier===ti);if(!tr.length)continue;
+    for(const [k,[px0,py0,nx,ny,ux,uy]] of at)for(let ti=0;ti<P.tierCount;ti++){let px=px0+ux*rf*2.2*ti,py=py0+uy*rf*2.2*ti;{const mid=labMid(k,ti,px0,py0,rf);if(mid){px=mid[0];py=mid[1];}}/* each tier's column a little further along */const tr=ZR[k].filter(r=>r.tier===ti);if(!tr.length)continue;
       const T=tr[1]?tr[1].T/1000:tr[0].T/1000,every=[1,2,5,10].find(e=>e*T>=rf*1.35)||10;
       tr.forEach((r,i)=>{if(!(i===0||i===tr.length-1||(r.row%every===0&&tr.length-1-i>=every&&i>=every*.6)))return;
         const d=(r.x+r.T/2)/1000,[rx,ry]=rotPt(px+nx*d,py+ny*d,t);
-        over+=`<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${rf.toFixed(2)}" font-weight="600" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${(rf*.28).toFixed(2)}">${r.row}</text>`;});}
+        over+=`<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${rf.toFixed(2)}" font-weight="600" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${(rf*.12).toFixed(2)}">${r.row}</text>`;});}
     over+=sectLabels(rf,t);
     over+=labels.map(([x,y,tx,ang])=>{const [rx,ry]=rotPt(x,y,t);let a=(ang||0)+t;while(a>90)a-=180;while(a<=-90)a+=180;   // parallel to the stand, reading upright
       return `<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${(lf*1.1).toFixed(2)}" font-weight="400" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle"${a?` transform="rotate(${a.toFixed(1)} ${rx.toFixed(2)} ${ry.toFixed(2)})"`:''}>${tx}</text>`;}).join('');
@@ -2345,8 +2374,8 @@ function drawPlan(o={}){
     const arrow=(x,y)=>`<line x1="${fx(x)}" y1="${fx(y)}" x2="${fx(x+vx*al*.9)}" y2="${fx(y+vy*al*.9)}" stroke="${BL}" stroke-width="2.2" vector-effect="non-scaling-stroke"/>`
       +`<path d="M${fx(x+vx*al*1.5)} ${fx(y+vy*al*1.5)}L${fx(x+vx*al*.75+nx*hw)} ${fx(y+vy*al*.75+ny*hw)}L${fx(x+vx*al*.75-nx*hw)} ${fx(y+vy*al*.75-ny*hw)}Z" fill="${BL}"/>`;
     body+=`<line x1="${fx(ax)}" y1="${fx(ay)}" x2="${fx(bx)}" y2="${fx(by)}" stroke="${BL}" stroke-width="2.2" vector-effect="non-scaling-stroke"/>`+arrow(ax,ay)+arrow(bx,by);   // arrows: the direction the section looks
-    const [lx,ly]=rotPt(bx+vx*al*2.1-nx*al*.9,by+vy*al*2.1-ny*al*.9,PLANROT);   /* past the arrow tip, clear of the stand label */
-    over+=`<text x="${fx(lx)}" y="${fx(ly)}" font-size="${fx(al*.62)}" fill="${BL}" font-weight="400" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="var(--panel)" stroke-width="${fx(al*.12)}">Section</text>`;}
+    const E=rotPt(bx,by,PLANROT),Tp=rotPt(bx+vx*al*1.5,by+vy*al*1.5,PLANROT),lx=Math.max(E[0],Tp[0])+al*.45,ly=(E[1]+Tp[1])/2+al*.2;   /* to the right of the cut mark */
+    over+=`<text x="${fx(lx)}" y="${fx(ly)}" font-size="${fx(al*.62)}" fill="${BL}" font-weight="400" text-anchor="start" dominant-baseline="middle" paint-order="stroke" stroke="var(--panel)" stroke-width="${fx(al*.12)}">Section</text>`;}
   return s+(t?`<g transform="rotate(${t})">${body}</g>`:body)+over+'</svg>';
 }
 $('planTabs').addEventListener('click',e=>{const b=e.target.closest('[data-plan]');if(!b)return;PLAN=b.dataset.plan;
@@ -2427,7 +2456,7 @@ function update(){
    $('spect').innerHTML=SPECT_MODES.map(m=>`<div><div class="lab"><b>${SPECT_NAMES[m]}</b>, ${enlargedWhere(m)}</div>${drawSpectator(m)}${tab(m)}</div>`).join('');}
   {const ok=!!M.AL&&zoned(P);$('enl').innerHTML=drawEnlarged();$('enlTitle').textContent=ok?enlargedTitle():'Enlarged plan: typical section';
    $('enlTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlt="${i}" class="${Math.min(ENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
-     +['T','R'].map(k=>`<button data-enls="${k}" class="${ENL.side===k?'on':''}">${isSide(k)?'Sideline':'End zone'}</button>`).join(''):'';}
+     +[eastKey(),GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='S')||'R'].map(k=>`<button data-enls="${k}" class="${enlSide()===k?'on':''}">${zoneName(P,k)}</button>`).join(''):'';}
   $('iso').innerHTML=drawIso();$('isoTitle').textContent=`Isometric view from the ${({SE:'south-east',SW:'south-west',NW:'north-west',NE:'north-east'})[ISOVIEW]}`;
   renderOpts();
 }
@@ -2664,7 +2693,7 @@ async function exportPdfSet(kind){
     const [reg,bold]=await Promise.all([loadB64('vendor/fonts/DejaVuSansCondensed.ttf'),loadB64('vendor/fonts/DejaVuSansCondensed-Bold.ttf')]);
     const sheets=PLOT_SHEETS(),small=sheets[0],big=kind==='archE'?sheets[1]:sheets[0];
     const t1=plotTier(big,0),tiers=[t1,...Array.from({length:P.tierCount-1},(_,i)=>plotTier(big,i+1,t1&&t1.sc))];   // Tier 2 at the Tier 1 scale
-    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,plotOne(big,'plan'),...(M.AL&&zoned(P)?[plotEnlarged(big)].filter(Boolean):[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
+    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,plotOne(big,'plan'),...(M.AL&&zoned(P)?(()=>{const e=ENL;ENL={tier:0,side:eastKey()};const r=plotEnlarged(big);ENL=e;return [r].filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
     if(draws.some(p=>!p))throw new Error('A drawing does not fit its sheet at any standard scale.');
     const port={pw:small.h,ph:small.w,m:0.25};                                             // 11 x 17 (A3) portrait pages
     const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'l',unit:'in',format:[draws[0].sheet.w,draws[0].sheet.h]});
