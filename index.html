@@ -1135,7 +1135,7 @@ function ringAt(R,d){let s=0;const cs=[],seg=[];R.forEach((z,zi)=>{cs.push(s);z.
 // the straight-run aisles in line from tier to tier. At each corner: no aisle where the section round the corner stays within smax;
 // otherwise one on the corner centreline, plus one at the end of a straight run where the corner section would still be too long
 // (two short sections are evened out rather than leaving a sliver).
-function sectAisles(R,RG,runs,posOf,toA,A,align,prevN){const wA=A.w/1000,gp=(A.gap||0)/1000,L=RG.L,sides=[],flags=[],ALN=new Set(),SECN={};align=align||[];prevN=prevN||{};
+function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti){const wA=A.w/1000,gp=(A.gap||0)/1000,L=RG.L,sides=[],flags=[],ALN=new Set(),SECN={};align=align||[];prevN=prevN||{};
   R.forEach((z,zi)=>{const gi=z.ch.findIndex(g=>g.t==='LINE');if(gi<0)return;const sc=posOf(zi,{i:gi,f:0.5}),sw=z.z.seatW/1000,P=n=>n*sw+2*gp+wA;
     const run=runs.find(r=>r.a<=sc+1e-6&&sc<=r.b+1e-6);if(!run){sides.miss=1;return;}
     // equal middle sections: 5 on each sideline, 3 on each end zone, as large as the straight run allows up to the middle-section maximum;
@@ -1153,8 +1153,8 @@ function sectAisles(R,RG,runs,posOf,toA,A,align,prevN){const wA=A.w/1000,gp=(A.g
     const Ea=S.run.b,Eb=N.run.a+wrap;let a=S.rt[S.rt.length-1],b=N.lt[N.lt.length-1]+wrap;
     if(seats(b-a,sw)<=A.smax)return;                                  // the section round the corner is within the limit: no corner aisle
     const c=corners.find(c=>{const cs=c.s<S.sc?c.s+L:c.s;return cs>Ea-1e-6&&cs<Eb+1e-6;})||corners.find(c=>c.s+L>Ea-1e-6&&c.s+L<Eb+1e-6);if(!c)return;
-    const C0=c.s<Ea-1e-6?c.s+L:c.s,sg=RG.seg.find(q=>q.zi===c.zi&&q.i===c.a.i),bends=sg&&segDiag(sg.g),hl=bends?sg.l/2:0;
-    // the corner: three aisles on a chamfer (one on each bend, mitred, and one on its centreline); one on the centreline of a curved corner
+    const C0=c.s<Ea-1e-6?c.s+L:c.s,sg=RG.seg.find(q=>q.zi===c.zi&&q.i===c.a.i),bends=ti>0&&sg&&segDiag(sg.g),hl=bends?sg.l/2:0;
+    // the corner: Tier 1 one aisle on its centreline; upper tiers three on a chamfer (one on each bend, mitred, and one on the centreline, in line with Tier 1)
     extra.push({s:C0,zi:c.zi,a:c.a});if(bends)extra.push({s:C0-hl,zi:c.zi,a:{i:c.a.i,f:0,miter:true,corner:true}},{s:C0+hl,zi:c.zi,a:{i:c.a.i,f:1,miter:true,corner:true}});
     // each side of the corner aisle(s): an aisle at the end of the straight run if the corner section is still too long
     [[S.rt,Ea,1,0,C0-hl],[N.lt,Eb,-1,wrap,C0+hl]].forEach(([list,E,dir,off,C])=>{const last=list[list.length-1]+off;if(seats(Math.abs(C-last),sw)<=A.smax)return;
@@ -1193,7 +1193,7 @@ function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;co
     let fixed=[];const below=ti>0&&out[0].__ring;
     if(!imperial()&&below&&R.every((z,zi)=>sameChain(below[zi].ch,z.ch)))fixed=below.list.map(x=>({s:posOf(x.zi,x.a),zi:x.zi,a:Object.assign({},x.a)}));
     else RG.seg.forEach(q=>{if(segDiag(q.g)||q.g.t==='ARC'){const a={i:q.i,f:0.5,corner:true};fixed.push({s:posOf(q.zi,a),zi:q.zi,a});}});
-    let sect=null;if(imperial()){const b0=ti>0&&out[0].__ring,al=b0&&R.every((z,zi)=>sameChain(b0[zi].ch,z.ch))?b0.list.map(x=>posOf(x.zi,x.a)):[];sect=sectAisles(R,RG,runs,posOf,toA,A,al,ti>0&&out[0].__secN||{});if(sect){fixed=sect;Object.defineProperty(T,'__secN',{enumerable:false,value:sect.secN,configurable:true});}}
+    let sect=null;if(imperial()){const b0=ti>0&&out[0].__ring,al=b0&&R.every((z,zi)=>sameChain(b0[zi].ch,z.ch))?b0.list.map(x=>posOf(x.zi,x.a)):[];sect=sectAisles(R,RG,runs,posOf,toA,A,al,ti>0&&out[0].__secN||{},ti);if(sect){fixed=sect;Object.defineProperty(T,'__secN',{enumerable:false,value:sect.secN,configurable:true});}}
     fixed.sort((x,y)=>x.s-y.s);
     const added=[],place=(A0,B0)=>{const S=B0-A0;if(S<=Math.min(capAt(A0+1e-6),capAt(B0-1e-6))+1e-9)return;
       const run=runs.map(r=>({a:Math.max(r.a,A0),b:Math.min(r.b,B0),len:Math.min(r.b,B0)-Math.max(r.a,A0)}))
@@ -1274,7 +1274,8 @@ function chainKinks(ch,d,T){const segs=[];let acc=0;ch.forEach(g=>{const l=segLe
   return out;}
 // seat positions along a piece of row, skipping the knee space at bends; from the start, or from the end when the aisle is there
 // seats line up 4 in from the aisle square to the rows; the leftover space falls at a mitred (bend) aisle
-function seatsFromEnd(T,sc){const m=id=>{if(id==null)return false;const f=findAisle(T,id);return !!(f&&f.a.miter);};return m(sc.l)&&!m(sc.r);}
+function seatsFromEnd(T,sc){const g=id=>id==null?null:findAisle(T,id),m=id=>{const f=g(id);return !!(f&&f.a.miter);},c=id=>{const f=g(id);return !!(f&&f.a.corner);};
+  if(m(sc.l)!==m(sc.r))return m(sc.l);return c(sc.r)&&!c(sc.l);}   // both square to the rows: line up on the corner aisle
 function placeSeats(a,b,sw,K,fromEnd){const out=[],zones=K.map(k=>[k.s-k.e,k.s+k.e]);
   if(!fromEnd){let s=a;while(s+sw<=b+1e-6){const z=zones.find(z=>s<z[1]-1e-6&&s+sw>z[0]+1e-6);if(z){s=z[1];continue;}out.push(s);s+=sw;}}
   else{let s=b;while(s-sw>=a-1e-6){const z=zones.find(z=>s-sw<z[1]-1e-6&&s>z[0]+1e-6);if(z){s=z[0];continue;}out.push(s-sw);s-=sw;}out.reverse();}
@@ -1472,7 +1473,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.14.14';
+const VERSION='2026.10.14.15';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
