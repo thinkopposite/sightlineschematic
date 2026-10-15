@@ -1490,7 +1490,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.14.23';
+const VERSION='2026.10.14.24';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2266,10 +2266,10 @@ function sectionList(ti){const T=M.AL&&M.AL[ti];if(!T)return [];const zs=GEO.map
   out.sort((a,b)=>rel2(a)-rel2(b)).forEach((q,i)=>q.no=(ti+1)*100+i+1);
   return out;}
 const SECNO={};
-function sectLabels(rf,t){if(!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>v.toFixed(2),fz=rf*1.05,fn=rf*.95;
+function sectLabels(rf,t,plain){if(!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>v.toFixed(2),fz=rf*1.05,fn=rf*.95;
   for(let ti=0;ti<M.AL.length;ti++)sectionList(ti).forEach(q=>{SECNO[ti+':'+q.key]=q.no;const [rx,ry]=rotPt(q.pt[0],q.pt[1],t),cnt=q.lo===q.hi?q.lo:q.lo+'–'+q.hi;
-    o+=`<g><title>Section ${q.no}: ${q.lo===q.hi?q.lo:q.lo+' to '+q.hi} seats per row</title><text x="${f(rx)}" y="${f(ry-fn*.6)}" font-size="${f(fn)}" font-weight="800" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fn*.12)}">${q.no}</text>`
-      +`<text x="${f(rx)}" y="${f(ry+fz*.6)}" font-size="${f(fz)}" font-weight="700" fill="#1E5BD8" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.12)}">${cnt}</text></g>`;});
+    o+=`<g><title>Section ${q.no}: ${q.lo===q.hi?q.lo:q.lo+' to '+q.hi} seats per row</title><text x="${f(rx)}" y="${f(ry-fn*.6)}" font-size="${f(fn)}" font-weight="${plain?400:800}" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fn*.12)}">${q.no}</text>`
+      +`<text x="${f(rx)}" y="${f(ry+fz*.6)}" font-size="${f(fz)}" font-weight="${plain?400:700}" fill="#1E5BD8" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.12)}">${cnt}</text></g>`;});
   return o;}
 // ---------- enlarged plan of a typical section: every seat at its true width ----------
 let ENL={tier:0,side:null},CENL={tier:0,corner:'NW'},SHOWSEATS=false;const eastKey=()=>GEO.find(k=>isSide(k)&&compassOf(P)[k]==='E')||'T',westKey=()=>GEO.find(k=>isSide(k)&&compassOf(P)[k]==='W')||'B',enlSide=()=>ENL.side||westKey();
@@ -2494,7 +2494,7 @@ function drawPlan(o={}){
       tr.forEach((r,i)=>{if(!(i===0||i===tr.length-1||(r.row%every===0&&tr.length-1-i>=every&&i>=every*.6)))return;
         const d=(r.x+r.T/2)/1000,[rx,ry]=rotPt(px+nx*d,py+ny*d,t);
         over+=`<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${rf.toFixed(2)}" font-weight="600" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${(rf*.12).toFixed(2)}">${r.row}</text>`;});}
-    over+=sectLabels(o.tight?rf*1.45:rf,t);   // the PDF sheets read at paper size: larger than on screen
+    over+=sectLabels(o.tight?rf*1.2:rf,t,!!o.tight);   // the PDF sheets read at paper size: a little larger than on screen, in plain (regular) text
     over+=labels.map(([x,y,tx,ang])=>{const [rx,ry]=rotPt(x,y,t);let a=(ang||0)+t;while(a>90)a-=180;while(a<=-90)a+=180;   // parallel to the stand, reading upright
       return `<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${(lf*.7).toFixed(2)}" font-weight="400" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle"${a?` transform="rotate(${a.toFixed(1)} ${rx.toFixed(2)} ${ry.toFixed(2)})"`:''}>${tx}</text>`;}).join('');
 
