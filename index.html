@@ -288,7 +288,7 @@ main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main 
       <div><div class="seg" id="enlTabs" role="group" aria-label="Enlarged section"></div></div></div>
     <div class="panel" id="enl"></div>
     <div class="planhead"><span class="bub" id="bubEnlC">H</span><h3 id="enlcTitle">Enlarged plan: typical corner</h3>
-      <p class="capt">The sections round one corner at true seat width, with seat numbers. North-west by default.</p>
+      <p class="capt">The sections round one corner at true seat width, with seat numbers. North-west by default. Every tier is drawn at the same scale.</p>
       <div><div class="seg" id="enlcTabs" role="group" aria-label="Enlarged corner"></div></div></div>
     <div class="panel" id="enlc"></div>
     <p class="hint" id="planNote"></p>
@@ -1477,7 +1477,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.14.16';
+const VERSION='2026.10.14.17';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2358,7 +2358,7 @@ function cornerData(ti,cn){cn=cn||enlCorner();const T=M.AL&&M.AL[ti];if(!T||!zon
   const ids=cs.filter(a=>a.i===ca.i).map(a=>a.id);   // one corner aisle, or the two on its bends
   return {T,Lz,ca,cid:ca.id,ids,di:ca.i};}
 function findAisle(T,id){for(const Lz of Object.values(T)){const a=Lz.ais.find(x=>x.id===id);if(a)return {Lz,a};}return null;}
-function drawCornerEnlarged(o={}){const ti=Math.min(CENL.tier,P.tierCount-1),C=cornerData(ti);
+function drawCornerEnlarged(o={}){const ti=Math.min(o.tier??CENL.tier,P.tierCount-1),C=cornerData(ti);
   if(!C)return '<p class="empty" style="padding:16px">Choose the computed aisle layout with a corner aisle to see a corner section.</p>';
   const {T,Lz,ca,cid,ids,di}=C,inC=id=>ids.includes(id),A=AIS(),wA=A.w/1000,gp=(A.gap||0)/1000,cb=(A.chairBack??2*25.4)/1000,cdn=(A.chairDown||24*25.4)/1000,cf=((A.chairD||14*25.4)-(A.chairBack??2*25.4))/1000;
   const zs=GEO.map(k=>T[k]).filter(Boolean),nr=Math.max(...zs.map(z=>z.tr.length)),cap=Math.min(...zs.map(z=>nmaxZone(P.zt[ti].z[z.k]))),ibc=imperial()?Math.min(...zs.map(z=>ibcRow(P.zt[ti].z[z.k]).n)):cap;
@@ -2395,8 +2395,11 @@ function drawCornerEnlarged(o={}){const ti=Math.min(CENL.tier,P.tierCount-1),C=c
       else seatSvg+=`<path d="${d}" fill="${tierFill(ti)}" fill-opacity=".6" stroke="var(--ink)" stroke-width="0.4" vector-effect="non-scaling-stroke"/><path d="M${F(q[4][0])} ${F(q[4][1])}L${F(q[5][0])} ${F(q[5][1])}" stroke="var(--ink)" stroke-width="0.45" stroke-dasharray="2.5 1.5" vector-effect="non-scaling-stroke"/>`
         +(()=>{const c=[(q[0][0]+q[1][0]+q[2][0]+q[3][0])/4,(q[0][1]+q[1][1]+q[2][1]+q[3][1])/4],w=Math.hypot(q[1][0]-q[0][0],q[1][1]-q[0][1]);return `<text x="${F(c[0])}" y="${F(c[1])}" font-size="${F(w*.42)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${num[i]}</text>`;})();});}));
   if(!pts.length)return '<p class="empty" style="padding:16px">No corner section on this tier.</p>';
-  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),fs=o.fs||(x1-x0)/58,m=fs*7;
-  const VX=x0-m,VY=y0-fs*5,W=x1-x0+2*m,H=y1-y0+fs*5+fs*8;
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  if(o.measure)return {w:x1-x0,h:y1-y0};
+  // one frame for every tier, the largest corner's, so Tier 1 and Tier 2 draw at the same scale (web and PDF)
+  let Wc=x1-x0,Hc=y1-y0;for(let t=0;t<P.tierCount;t++){if(t===ti)continue;const b=drawCornerEnlarged({measure:true,tier:t});if(b&&b.w){Wc=Math.max(Wc,b.w);Hc=Math.max(Hc,b.h);}}
+  const fs=o.fs||Wc/58,m=fs*7,VX=(x0+x1)/2-Wc/2-m,VY=y1-Hc-fs*5,W=Wc+2*m,H=Hc+fs*5+fs*8;   // centred across, front rows on a common line
   // row numbers in the corner aisle; seats per row beside each outer aisle
   const ftx=(p,t,sz,an='middle',col='var(--ink)',fw=400)=>`<text x="${F(p[0])}" y="${F(p[1])}" font-size="${F(sz)}" font-weight="${fw}" fill="${col}" text-anchor="${an}" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${F(sz*.12)}">${t}</text>`;
   Lz.tr.forEach(r=>{const d=(r.x+r.T/2)/1000;txt+=ftx(loc(chainPtS(Lz.ch,chainS(Lz.ch,ca,d),d)),r.row,fs*.62);});
