@@ -1153,9 +1153,11 @@ function sectAisles(R,RG,runs,posOf,toA,A,align,prevN){const wA=A.w/1000,gp=(A.g
     const Ea=S.run.b,Eb=N.run.a+wrap;let a=S.rt[S.rt.length-1],b=N.lt[N.lt.length-1]+wrap;
     if(seats(b-a,sw)<=A.smax)return;                                  // the section round the corner is within the limit: no corner aisle
     const c=corners.find(c=>{const cs=c.s<S.sc?c.s+L:c.s;return cs>Ea-1e-6&&cs<Eb+1e-6;})||corners.find(c=>c.s+L>Ea-1e-6&&c.s+L<Eb+1e-6);if(!c)return;
-    const C=c.s<Ea-1e-6?c.s+L:c.s;extra.push({s:C,zi:c.zi,a:c.a});
-    // each side of the corner aisle: an aisle at the end of the straight run if the corner section is still too long
-    [[S.rt,Ea,1,0],[N.lt,Eb,-1,wrap]].forEach(([list,E,dir,off])=>{const last=list[list.length-1]+off;if(seats(Math.abs(C-last),sw)<=A.smax)return;
+    const C0=c.s<Ea-1e-6?c.s+L:c.s,sg=RG.seg.find(q=>q.zi===c.zi&&q.i===c.a.i),bends=sg&&segDiag(sg.g),hl=bends?sg.l/2:0;
+    // the corner: three aisles on a chamfer (one on each bend, mitred, and one on its centreline); one on the centreline of a curved corner
+    extra.push({s:C0,zi:c.zi,a:c.a});if(bends)extra.push({s:C0-hl,zi:c.zi,a:{i:c.a.i,f:0,miter:true,corner:true}},{s:C0+hl,zi:c.zi,a:{i:c.a.i,f:1,miter:true,corner:true}});
+    // each side of the corner aisle(s): an aisle at the end of the straight run if the corner section is still too long
+    [[S.rt,Ea,1,0,C0-hl],[N.lt,Eb,-1,wrap,C0+hl]].forEach(([list,E,dir,off,C])=>{const last=list[list.length-1]+off;if(seats(Math.abs(C-last),sw)<=A.smax)return;
       if(Math.abs(E-last)<1e-3){if(seats(Math.abs(C-E),sw)>A.smax)flags.push(1);return;}
       const al=align.map(x=>[x,x+L,x-L]).flat().filter(x=>(x-last)*dir>0.5&&(E-x)*dir>0.5).sort((p,q)=>(p-q)*dir);   // a Tier 1 aisle in between: keep the line
       if(al.length){al.forEach(x=>list.push(x-off));
@@ -1261,8 +1263,22 @@ function egressRows(){const e=egress();if(!e)return null;const imp=imperial(),ro
 // seats in one row: sections between the aisle cuts (vomitory rows cut wider on vomitory aisles)
 function rowSections(Lz,j){const A=AIS(),r=Lz.tr[j],d=(r.x+r.T/2)/1000,Ld=chainLen(Lz.ch,d),sw=r.seatW/1000,wA=A.w/1000,gp=(A.gap||0)/1000,inV=Lz.vr&&Lz.vr.rows.includes(j),wV=(A.vomW+2*vomWall())/1000+2*wA;
   let prev=0,cut=false;const secs=[],cuts=[];                            // each row end at an aisle keeps the end-seat space (construction tolerance)
-  const raws=[];Lz.ais.forEach((a,i)=>{const s=chainS(Lz.ch,a,d),w=inV&&Lz.vom[i]?wV:cutW(a,wA),rw=s-w/2-prev-gp*(cut?2:1);raws.push(rw);secs.push(Math.max(0,Math.floor(rw/sw+1e-9)));cuts.push([s,w]);prev=s+w/2;cut=true;});
-  raws.push(Ld-prev-(cut?gp:0));secs.push(Math.max(0,Math.floor(raws[raws.length-1]/sw+1e-9)));return {secs,raws,cuts,seats:secs.reduce((a,b)=>a+b,0),d,Ld,sw,gp};}
+  const K=chainKinks(Lz.ch,d,r.T/1000),kd=(p0,p1)=>K.reduce((t,k)=>t+Math.max(0,Math.min(p1,k.s+k.e)-Math.max(p0,k.s-k.e)),0);   // knee space at each bend of the row
+  const raws=[];Lz.ais.forEach((a,i)=>{const s=chainS(Lz.ch,a,d),w=inV&&Lz.vom[i]?wV:cutW(a,wA),p0=prev+(cut?gp:0),p1=s-w/2-gp,rw=p1-p0-kd(p0,p1);raws.push(rw);secs.push(Math.max(0,Math.floor(rw/sw+1e-9)));cuts.push([s,w]);prev=s+w/2;cut=true;});
+  {const p0=prev+(cut?gp:0);raws.push(Ld-p0-kd(p0,Ld));}secs.push(Math.max(0,Math.floor(raws[raws.length-1]/sw+1e-9)));return {secs,raws,cuts,seats:secs.reduce((a,b)=>a+b,0),d,Ld,sw,gp,K};}
+// Bends in a row (chamfered corners turn 45 degrees): seats either side keep their fronts apart so knees and feet don't meet.
+// Each side gives up e = (half the row depth) x tan(turn / 2) + 1 in along the row centre line, measured from the bend.
+function chainKinks(ch,d,T){const segs=[];let acc=0;ch.forEach(g=>{const l=segLen(g,d);if(l>1e-6&&g.t!=='ARC'){const a=segPt(g,0,d),b=segPt(g,1,d);segs.push({s0:acc,s1:acc+l,u:[(b[0]-a[0])/l,(b[1]-a[1])/l]});}else if(l>1e-6)segs.push({s0:acc,s1:acc+l,u:null});acc+=l;});
+  const out=[];for(let i=1;i<segs.length;i++){const u1=segs[i-1].u,u2=segs[i].u;if(!u1||!u2)continue;const th=Math.acos(Math.max(-1,Math.min(1,u1[0]*u2[0]+u1[1]*u2[1])));
+    if(th>0.02)out.push({s:segs[i].s0,th,e:(T/2)*Math.tan(th/2)+0.0254});}
+  return out;}
+// seat positions along a piece of row, skipping the knee space at bends; from the start, or from the end when the aisle is there
+// seats line up 4 in from the aisle square to the rows; the leftover space falls at a mitred (bend) aisle
+function seatsFromEnd(T,sc){const m=id=>{if(id==null)return false;const f=findAisle(T,id);return !!(f&&f.a.miter);};return m(sc.l)&&!m(sc.r);}
+function placeSeats(a,b,sw,K,fromEnd){const out=[],zones=K.map(k=>[k.s-k.e,k.s+k.e]);
+  if(!fromEnd){let s=a;while(s+sw<=b+1e-6){const z=zones.find(z=>s<z[1]-1e-6&&s+sw>z[0]+1e-6);if(z){s=z[1];continue;}out.push(s);s+=sw;}}
+  else{let s=b;while(s-sw>=a-1e-6){const z=zones.find(z=>s-sw<z[1]-1e-6&&s>z[0]+1e-6);if(z){s=z[0];continue;}out.push(s-sw);s-=sw;}out.reverse();}
+  return out;}
 // one row of a tier joined round the ring: sections between aisles, the two end pieces at each stand joint counted as one section
 function ringSecs(ti,j,AL){AL=AL||(M&&M.AL);const T=AL&&AL[ti];if(!T)return [];const zs=GEO.map(k=>T[k]).filter(Boolean),ring=zs.length===4&&zs.every(z=>z.ring);const seq=[];
   zs.forEach(Lz=>{if(j>=Lz.tr.length){seq.push({brk:true});return;}const S=rowSections(Lz,j),n=Lz.ais.length;
@@ -1456,7 +1472,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.14.8';
+const VERSION='2026.10.14.13';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2222,10 +2238,10 @@ function labMid(k,ti,px,py,rf){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz||!zon
 // Sections of a tier, numbered clockwise in plan from the middle section of the north end zone: Tier 1 101, 102 ...; Tier 2 201 ...
 // Each: typical seats per row (a range where rows differ), the label point (middle row, a little off-centre) and the number.
 function sectionList(ti){const T=M.AL&&M.AL[ti];if(!T)return [];const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return [];
-  const nr=Math.max(...zs.map(z=>z.tr.length)),jm=Math.floor((nr-1)/2),st={},lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
-  for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{sc.n=Math.min(sc.n,lim);const k=sc.l+'_'+sc.r,q=st[k]||(st[k]={key:k,lo:Infinity,hi:0,mid:null});q.lo=Math.min(q.lo,sc.n);q.hi=Math.max(q.hi,sc.n);if(j===jm)q.mid=sc;});
-  const out=Object.values(st).filter(q=>q.mid&&q.mid.pieces.length&&q.hi>0).map(q=>{const pc=q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a);
-    q.pt=chainPtS(pc.Lz.ch,(pc.a+pc.b)/2,pc.d);q.mpt=chainPtS(pc.Lz.ch,(pc.a+pc.b)/2,pc.d);q.th=Math.atan2(q.mpt[1],q.mpt[0]);return q;});
+  const nr=Math.max(...zs.map(z=>z.tr.length)),jm=Math.floor((nr-1)/2),jw=Math.floor((nr-1)*0.78),st={},lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
+  for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{sc.n=Math.min(sc.n,lim);const k=sc.l+'_'+sc.r,q=st[k]||(st[k]={key:k,lo:Infinity,hi:0,mid:null});q.lo=Math.min(q.lo,sc.n);q.hi=Math.max(q.hi,sc.n);if(j===jm)q.mid=sc;if(j===jw)q.wide=sc;});
+  const out=Object.values(st).filter(q=>q.mid&&q.mid.pieces.length&&q.hi>0).map(q=>{const pc=q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a),lw=q.lo<0.6*q.hi&&q.wide&&q.wide.pieces.length?q.wide.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a):pc;   // a tapered corner section: label it further up, where it is wider
+    q.pt=chainPtS(lw.Lz.ch,(lw.a+lw.b)/2,lw.d);q.mpt=chainPtS(pc.Lz.ch,(pc.a+pc.b)/2,pc.d);q.th=Math.atan2(q.mpt[1],q.mpt[0]);return q;});
   // start: the section on the north end zone's centre line
   const nk=GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='N'),Lz=nk&&T[nk];let th0=out.length?out[0].th:0;
   if(Lz){const gi=Lz.ch.findIndex(g=>g.t==='LINE');if(gi>=0){const r=Lz.tr[Math.min(jm,Lz.tr.length-1)],d=(r.x+r.T/2)/1000,pm=segPt(Lz.ch[gi],0.5,d);th0=Math.atan2(pm[1],pm[0]);}}
@@ -2245,7 +2261,7 @@ function enlargedData(ti,k){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz)return n
   const fs=Lz.ais.map((a,i)=>({a,i})).filter(x=>x.a.i===gi&&x.a.f!=null).sort((p,q)=>p.a.f-q.a.f);let L0=null,R0=null;
   for(let j=1;j<fs.length;j++)if(fs[j-1].a.f<=0.5+1e-9&&fs[j].a.f>=0.5-1e-9){L0=fs[j-1];R0=fs[j];break;}   // the middle section of the side
   if(!L0)return null;return {Lz,gi,L0,R0};}
-function drawEnlarged(o={}){const ti=Math.min(ENL.tier,P.tierCount-1),k=enlSide(),E=enlargedData(ti,k);
+function drawEnlarged(o={}){if(enlSide()==='corner')return drawCornerEnlarged(o);const ti=Math.min(ENL.tier,P.tierCount-1),k=enlSide(),E=enlargedData(ti,k);
   if(!E)return '<p class="empty" style="padding:16px">Choose the computed aisle layout to see a typical section.</p>';
   const {Lz,L0,R0}=E,A=AIS(),tr=Lz.tr,x0=tr[0].x,d=1,sa=chainS(Lz.ch,L0.a,d),sb=chainS(Lz.ch,R0.a,d),span=(sb-sa)*1000,wA=A.w,gp=A.gap||0,cd=A.chairD||14*25.4,cb=A.chairBack??2*25.4,cdn=A.chairDown||24*25.4,cf=cd-cb;   /* cf: raised seat tip in front of the riser; cb: back behind it */
   const sw=tr[0].seatW,lastR=tr[tr.length-1],depth=lastR.x+lastR.T-x0,side=wA/2+2*sw;      // two neighbouring seats each side, light
@@ -2293,13 +2309,13 @@ function drawEnlarged(o={}){const ti=Math.min(ENL.tier,P.tierCount-1),k=enlSide(
   const lo3=Math.min(...counts),hi3=Math.max(...counts);
   const cap=`<text x="${X(span/2)}" y="${Y(depth)-fs*1.4}" font-size="${f(fs*1.15)}" font-weight="700" text-anchor="middle" fill="#1E5BD8">${lo3===hi3?lo3:lo3+'–'+hi3} seats per row, ${tr.length} rows: ${fmt(counts.reduce((a,b)=>a+b,0))} seats</text>`;
   return `<svg viewBox="0 0 ${f(W)} ${f(H)}" role="img" aria-label="Enlarged plan of a typical section">`+g+nb+seats+rn+K.out()+det+cap+'</svg>';}
-function enlargedTitle(){const ti=Math.min(ENL.tier,P.tierCount-1),E=enlargedData(ti,enlSide()),no=E?(sectionList(ti).find(q=>q.key===E.L0.a.id+'_'+E.R0.a.id)||{}).no:null;return `Enlarged plan: typical section${no?' '+no:''}, Tier ${ti+1} ${zoneName(P,enlSide())} (middle section)`;}
+function enlargedTitle(){if(enlSide()==='corner')return cornerTitle();const ti=Math.min(ENL.tier,P.tierCount-1),E=enlargedData(ti,enlSide()),no=E?(sectionList(ti).find(q=>q.key===E.L0.a.id+'_'+E.R0.a.id)||{}).no:null;return `Enlarged plan: typical section${no?' '+no:''}, Tier ${ti+1} ${zoneName(P,enlSide())} (middle section)`;}
 // plan overlay: every seat at its true width (on screen, on request)
 function seatsSvg(){if(!SHOWSEATS||!M.AL||PLAN!=='bowl')return '';const A=AIS(),gp=(A.gap||0)/1000,cb=(A.chairBack??2*25.4)/1000,cd=(A.chairDown||24*25.4)/1000,f=v=>v.toFixed(3);let p='';
-  for(const T of M.AL)for(const Lz of Object.values(T))Lz.tr.forEach((r,j)=>{const S=rowSections(Lz,j),sw=r.seatW/1000,d1=(r.x+r.T)/1000+cb-cd,d2=(r.x+r.T)/1000+cb;
-    S.secs.forEach((n,m)=>{const a=m?S.cuts[m-1][0]+S.cuts[m-1][1]/2+gp:0;
-      for(let q=0;q<n;q++){const s0=a+q*sw,s1=s0+sw,P1=chainPtS(Lz.ch,s0,d1),P2=chainPtS(Lz.ch,s1,d1),P3=chainPtS(Lz.ch,s1,d2),P4=chainPtS(Lz.ch,s0,d2);
-        p+=`M${f(P1[0])} ${f(P1[1])}L${f(P2[0])} ${f(P2[1])}L${f(P3[0])} ${f(P3[1])}L${f(P4[0])} ${f(P4[1])}Z`;}});});
+  M.AL.forEach((T,ti)=>{const nr=Math.max(0,...Object.values(T).map(z=>z.tr.length));for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{const fe=seatsFromEnd(T,sc);
+    sc.pieces.forEach(pc=>{const r=pc.Lz.tr[j];if(!r)return;const Lz=pc.Lz,sw=r.seatW/1000,d1=(r.x+r.T)/1000+cb-cd,d2=(r.x+r.T)/1000+cb,K=chainKinks(Lz.ch,pc.d,r.T/1000);
+      for(const s0 of placeSeats(pc.a,pc.b,sw,K,fe)){const s1=s0+sw,P1=chainPtS(Lz.ch,s0,d1),P2=chainPtS(Lz.ch,s1,d1),P3=chainPtS(Lz.ch,s1,d2),P4=chainPtS(Lz.ch,s0,d2);
+        p+=`M${f(P1[0])} ${f(P1[1])}L${f(P2[0])} ${f(P2[1])}L${f(P3[0])} ${f(P3[1])}L${f(P4[0])} ${f(P4[1])}Z`;}});});});
   return `<path d="${p}" fill="none" stroke="var(--ink)" stroke-width="0.25" opacity=".7" vector-effect="non-scaling-stroke"/>`;}
 // PDF sheet: the enlarged section plan at the largest standard scale that fits
 function plotEnlarged(sh){const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=sh.txt*3.2,aw=sh.w-2*B,ah=sh.h-2*B-title-sb;let fit=null;
@@ -2326,6 +2342,71 @@ function overRowsSvg(){if(!M.AL||PLAN!=='bowl'||!imperial())return '';let p='';c
         for(let q=0;q<=N;q++){const a=chainAt(pc.Lz.ch,pc.a+(pc.b-pc.a)*q/N,pc.d),g=pc.Lz.ch[a.i];F.push(segPt(g,a.f,d0));B.push(segPt(g,a.f,d1));}
         p+='M'+F.concat(B.reverse()).map(q=>f(q[0])+' '+f(q[1])).join('L')+'Z';});});}
   return p?`<path d="${p}" fill="#FF8A8A" fill-opacity=".6" stroke="none"><title>Rows over the IBC maximum seats per row</title></path>`:'';}
+// ---------- enlarged plan of a corner: the two sections either side of the north-east corner aisle, at true geometry ----------
+function cornerData(ti){const T=M.AL&&M.AL[ti];if(!T||!zoned(P))return null;const cp=compassOf(P),nk=GEO.find(k=>!isSide(k)&&cp[k]==='N'),ek=GEO.find(k=>isSide(k)&&cp[k]==='E');
+  if(!nk||!ek||!T[nk]||!T[ek])return null;const Lz=T[nk],eg=rectGeo(P).side[ek],em=[(eg.p[0]+eg.q[0])/2,(eg.p[1]+eg.q[1])/2];
+  // the corner aisle of the north end zone nearer the east sideline
+  const cs=Lz.ais.filter(a=>a.corner);if(!cs.length)return null;const d1=(Lz.tr[0].x)/1000;
+  const ca=cs.reduce((b,a)=>{const pa=segPt(Lz.ch[a.i],a.f,d1),pb=segPt(Lz.ch[b.i],b.f,d1);return Math.hypot(pa[0]-em[0],pa[1]-em[1])<Math.hypot(pb[0]-em[0],pb[1]-em[1])?a:b;});
+  const ids=cs.filter(a=>a.i===ca.i).map(a=>a.id);   // one corner aisle, or the two on its bends
+  return {T,Lz,ca,cid:ca.id,ids,di:ca.i};}
+function findAisle(T,id){for(const Lz of Object.values(T)){const a=Lz.ais.find(x=>x.id===id);if(a)return {Lz,a};}return null;}
+function drawCornerEnlarged(o={}){const ti=Math.min(ENL.tier,P.tierCount-1),C=cornerData(ti);
+  if(!C)return '<p class="empty" style="padding:16px">Choose the computed aisle layout with a corner aisle to see a corner section.</p>';
+  const {T,Lz,ca,cid,ids,di}=C,inC=id=>ids.includes(id),A=AIS(),wA=A.w/1000,gp=(A.gap||0)/1000,cb=(A.chairBack??2*25.4)/1000,cdn=(A.chairDown||24*25.4)/1000,cf=((A.chairD||14*25.4)-(A.chairBack??2*25.4))/1000;
+  const zs=GEO.map(k=>T[k]).filter(Boolean),nr=Math.max(...zs.map(z=>z.tr.length)),cap=Math.min(...zs.map(z=>nmaxZone(P.zt[ti].z[z.k]))),ibc=imperial()?Math.min(...zs.map(z=>ibcRow(P.zt[ti].z[z.k]).n)):cap;
+  // frame: origin on the corner aisle at the front row, v outward along the aisle, u across it
+  const g=Lz.ch[di],dF=Lz.tr[0].x/1000,dB=(Lz.tr[Lz.tr.length-1].x+Lz.tr[Lz.tr.length-1].T)/1000,O=segPt(g,0.5,dF),O2=segPt(g,0.5,dB);   // frame on the corner's centreline
+  let dv=[O2[0]-O[0],O2[1]-O[1]];const dl=Math.hypot(...dv);dv=[dv[0]/dl,dv[1]/dl];const pr=[-dv[1],dv[0]];
+  const loc=p=>[((p[0]-O[0])*pr[0]+(p[1]-O[1])*pr[1])*1000,-((p[0]-O[0])*dv[0]+(p[1]-O[1])*dv[1])*1000];   // mm, y down on the drawing
+  // the two sections beside the corner aisle, row by row
+  const rows=[];let bothIds=new Set(ids);
+  for(let j=0;j<nr;j++){const secs=ringSecs(ti,j).filter(sc=>inC(sc.l)||inC(sc.r));secs.forEach(sc=>{if(sc.l!=null)bothIds.add(sc.l);if(sc.r!=null)bothIds.add(sc.r);});rows.push(secs);}
+  const pts=[],F=v=>v.toFixed(1);let rowsSvg='',aisSvg='',seatSvg='',omitSvg='',redSvg='',txt='';
+  const poly=(L,R)=>'M'+L.concat(R.slice().reverse()).map(q=>F(q[0])+' '+F(q[1])).join('L')+'Z';
+  // aisles: the corner aisle and the two outer aisles
+  for(const id of bothIds){const f=findAisle(T,id);if(!f)continue;const L=[],R=[];
+    f.Lz.tr.forEach(r=>{for(const d of [r.x/1000,(r.x+r.T)/1000]){const s=chainS(f.Lz.ch,f.a,d),w=cutW(f.a,wA);L.push(loc(chainPtS(f.Lz.ch,s-w/2,d)));R.push(loc(chainPtS(f.Lz.ch,s+w/2,d)));}});
+    pts.push(...L,...R);aisSvg+=`<path d="${poly(L,R)}" fill="#FFFFFF" stroke="var(--ink)" stroke-width="0.9" vector-effect="non-scaling-stroke"/>`;}
+  // treads, seats, rows over the code limit, seats left out by the section cap
+  rows.forEach((secs,j)=>secs.forEach(sc=>{const over=sc.n>ibc,omit=Math.max(0,sc.n-cap),list=[],fe=seatsFromEnd(T,sc);
+    sc.pieces.forEach(pc=>{const r=pc.Lz.tr[j];if(!r)return;const sw=r.seatW/1000,K=chainKinks(pc.Lz.ch,pc.d,r.T/1000),pos=placeSeats(pc.a,pc.b,sw,K,fe);   // start 4 in from the aisle square to the rows
+      // tread band across the piece (and its end spaces)
+      const N=14,Fr=[],Bk=[];for(let q=0;q<=N;q++){const s=pc.a-gp+(pc.b-pc.a+2*gp)*q/N,a=chainAt(pc.Lz.ch,s,pc.d),gg=pc.Lz.ch[a.i];Fr.push(loc(segPt(gg,a.f,r.x/1000)));Bk.push(loc(segPt(gg,a.f,(r.x+r.T)/1000)));}
+      pts.push(...Fr,...Bk);rowsSvg+=`<path d="${poly(Fr,Bk)}" fill="${over?'#FF8A8A':tierFill(ti)}" fill-opacity="${over?.45:.28}" stroke="var(--ink)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`;
+      for(const s0 of pos){const s1=s0+sw,dm=pc.d,bk=(r.x+r.T)/1000+cb-dm,fr=bk-cdn,rz=(r.x+r.T)/1000-cf-dm;
+        // a true rectangle: placed along the row at its centre line, offset square to the row
+        const P0=chainPtS(pc.Lz.ch,s0,dm),P1=chainPtS(pc.Lz.ch,s1,dm),tl=Math.hypot(P1[0]-P0[0],P1[1]-P0[1])||1,t=[(P1[0]-P0[0])/tl,(P1[1]-P0[1])/tl];
+        let nn=[-t[1],t[0]];const mx=(P0[0]+P1[0])/2,my=(P0[1]+P1[1])/2;if(nn[0]*mx+nn[1]*my<0)nn=[-nn[0],-nn[1]];   // outward, away from the field
+        const at=(Pp,o)=>[Pp[0]+nn[0]*o,Pp[1]+nn[1]*o];
+        list.push([at(P0,fr),at(P1,fr),at(P1,bk),at(P0,bk),at(P0,rz),at(P1,rz)].map(loc));}});
+    // which seats the cap leaves out: those next to the corner aisle
+    const idx=list.map((_,i)=>i),cut=new Set(fe?idx.slice(0,omit):idx.slice(list.length-omit));   // the cap leaves out the seats at the far end, away from the aisle the seats line up on
+    list.forEach((q,i)=>{const d=`M${F(q[0][0])} ${F(q[0][1])}L${F(q[1][0])} ${F(q[1][1])}L${F(q[2][0])} ${F(q[2][1])}L${F(q[3][0])} ${F(q[3][1])}Z`;
+      if(cut.has(i))omitSvg+=`<path d="${d}" fill="none" stroke="#C0392B" stroke-width="0.7" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/><path d="M${F(q[0][0])} ${F(q[0][1])}L${F(q[2][0])} ${F(q[2][1])}M${F(q[1][0])} ${F(q[1][1])}L${F(q[3][0])} ${F(q[3][1])}" stroke="#C0392B" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`;
+      else seatSvg+=`<path d="${d}" fill="${tierFill(ti)}" fill-opacity=".6" stroke="var(--ink)" stroke-width="0.4" vector-effect="non-scaling-stroke"/><path d="M${F(q[4][0])} ${F(q[4][1])}L${F(q[5][0])} ${F(q[5][1])}" stroke="var(--ink)" stroke-width="0.45" stroke-dasharray="2.5 1.5" vector-effect="non-scaling-stroke"/>`;});}));
+  if(!pts.length)return '<p class="empty" style="padding:16px">No corner section on this tier.</p>';
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),fs=o.fs||(x1-x0)/58,m=fs*7;
+  const VX=x0-m,VY=y0-fs*5,W=x1-x0+2*m,H=y1-y0+fs*5+fs*8;
+  // row numbers in the corner aisle; seats per row beside each outer aisle
+  const ftx=(p,t,sz,an='middle',col='var(--ink)',fw=400)=>`<text x="${F(p[0])}" y="${F(p[1])}" font-size="${F(sz)}" font-weight="${fw}" fill="${col}" text-anchor="${an}" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${F(sz*.12)}">${t}</text>`;
+  Lz.tr.forEach(r=>{const d=(r.x+r.T/2)/1000;txt+=ftx(loc(chainPtS(Lz.ch,chainS(Lz.ch,ca,d),d)),r.row,fs*.62);});
+  const secList=sectionList(ti),labs={};
+  rows.forEach((secs,j)=>secs.forEach(sc=>{const k=sc.l+'_'+sc.r;(labs[k]=labs[k]||[]).push(sc);if(inC(sc.l)&&inC(sc.r))return;const oid=inC(sc.l)?sc.r:sc.l,f=findAisle(T,oid);if(!f)return;const r=f.Lz.tr[Math.min(j,f.Lz.tr.length-1)],d=(r.x+r.T/2)/1000,s=chainS(f.Lz.ch,f.a,d),side=inC(sc.l)?1:-1,
+      p=loc(chainPtS(f.Lz.ch,s+side*(wA/2+0.35),d)),shown=Math.min(sc.n,cap);
+      txt+=ftx(p,shown+(sc.n>cap?`<tspan fill="#C0392B">+${sc.n-cap}</tspan>`:''),fs*.5,side>0?'start':'end',sc.n>ibc?'#C0392B':'#1E5BD8',700);}));
+  Object.keys(labs).forEach(k=>{const q=secList.find(x=>x.key===k);if(!q)return;const p=loc(q.mpt);txt+=ftx([p[0],p[1]-fs*.7],q.no,fs*1.05,'middle','var(--ink)',800)+ftx([p[0],p[1]+fs*.6],q.lo===q.hi?q.lo:q.lo+'–'+q.hi,fs*.9,'middle','#1E5BD8',700);});
+  // corner aisle width at the front row
+  const X=v=>F(v-VX),Y=v=>F(v-VY),K=SecDim(u=>(+u-VX).toFixed(1),v=>(+v-VY).toFixed(1),fs*.9,[W,H]);
+  if(ids.length===1){const d=dF,s=chainS(Lz.ch,ca,d),w=cutW(ca,wA),a=loc(chainPtS(Lz.ch,s-w/2,d)),b=loc(chainPtS(Lz.ch,s+w/2,d)),off=fs*2.4;
+    K.dim([a[0],a[1]+off],[b[0],b[1]+off],{lab:'Corner aisle',val:L(w*1000),ea:a,eb:b,ref:'aisle'});}
+  const key=`<g font-size="${F(fs*.6)}" fill="var(--ink)"><rect x="${F(fs)}" y="${F(H-fs*2.6)}" width="${F(fs*1.2)}" height="${F(fs*.7)}" fill="#FF8A8A" fill-opacity=".45" stroke="var(--ink)" stroke-width="0.4" vector-effect="non-scaling-stroke"/><text x="${F(fs*2.6)}" y="${F(H-fs*2.0)}">Row over the IBC maximum of ${ibc} seats per row</text>`
+    +`<path d="M${F(fs*1.1)} ${F(H-fs*1.4)}h${F(fs)}v${F(fs*.6)}h${F(-fs)}Z" fill="none" stroke="#C0392B" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/><text x="${F(fs*2.6)}" y="${F(H-fs*.95)}">Seat left out by the ${cap}-seat section cap, at the far end of the row (red +n beside the row)</text></g>`;
+  const tr=s=>s.replace(/(M|L)(-?[\d.]+) (-?[\d.]+)/g,(m0,c,x,y)=>`${c}${X(+x)} ${Y(+y)}`).replace(/x="(-?[\d.]+)" y="(-?[\d.]+)"/g,(m0,x,y)=>`x="${X(+x)}" y="${Y(+y)}"`);
+  return `<svg viewBox="0 0 ${F(W)} ${F(H)}" role="img" aria-label="Enlarged plan of a corner">`+tr(rowsSvg+aisSvg+seatSvg+omitSvg+txt)+K.out()+key+'</svg>';}
+function cornerTitle(){const ti=Math.min(ENL.tier,P.tierCount-1),C=cornerData(ti);let nos='';
+  if(C){const l=[...new Set(sectionList(ti).filter(q=>q.key.split('_').map(Number).some(x=>C.ids.includes(x))).map(q=>q.no))].sort((a,b)=>a-b);if(l.length)nos=' '+(l.length>2?l.slice(0,-1).join(', ')+' and '+l[l.length-1]:l.join(' and '));}
+  return `Enlarged plan: corner sections${nos}, Tier ${ti+1} north-east corner`;}
 function drawPlan(o={}){
   PLANROT=planRot();DIMREG=[];
   const S=SPORTS[P.sport],bnd=boundary(P),st=stations(bnd),xs=bnd.map(p=>p[0]),ys=bnd.map(p=>p[1]);
@@ -2465,7 +2546,7 @@ function update(){
    $('spect').innerHTML=SPECT_MODES.map(m=>`<div><div class="lab"><b>${SPECT_NAMES[m]}</b>, ${enlargedWhere(m)}</div>${drawSpectator(m)}${tab(m)}</div>`).join('');}
   {const ok=!!M.AL&&zoned(P);$('enl').innerHTML=drawEnlarged();$('enlTitle').textContent=ok?enlargedTitle():'Enlarged plan: typical section';
    $('enlTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlt="${i}" class="${Math.min(ENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
-     +[eastKey(),GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='S')||'R'].map(k=>`<button data-enls="${k}" class="${enlSide()===k?'on':''}">${zoneName(P,k)}</button>`).join(''):'';}
+     +[eastKey(),GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='S')||'R'].map(k=>`<button data-enls="${k}" class="${enlSide()===k?'on':''}">${zoneName(P,k)}</button>`).join('')+`<button data-enls="corner" class="${enlSide()==='corner'?'on':''}">North-east corner</button>`:'';}
   $('iso').innerHTML=drawIso();$('isoTitle').textContent=`Isometric view from the ${({SE:'south-east',SW:'south-west',NW:'north-west',NE:'north-east'})[ISOVIEW]}`;
   renderOpts();
 }
@@ -2702,7 +2783,7 @@ async function exportPdfSet(kind){
     const [reg,bold]=await Promise.all([loadB64('vendor/fonts/DejaVuSansCondensed.ttf'),loadB64('vendor/fonts/DejaVuSansCondensed-Bold.ttf')]);
     const sheets=PLOT_SHEETS(),small=sheets[0],big=kind==='archE'?sheets[1]:sheets[0];
     const t1=plotTier(big,0),tiers=[t1,...Array.from({length:P.tierCount-1},(_,i)=>plotTier(big,i+1,t1&&t1.sc))];   // Tier 2 at the Tier 1 scale
-    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,plotOne(big,'plan'),...(M.AL&&zoned(P)?(()=>{const e=ENL;ENL={tier:0,side:eastKey()};const r=plotEnlarged(big);ENL=e;return [r].filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
+    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,plotOne(big,'plan'),...(M.AL&&zoned(P)?(()=>{const e=ENL;ENL={tier:0,side:eastKey()};const r=[plotEnlarged(big)];for(let t=0;t<P.tierCount;t++){ENL={tier:t,side:'corner'};r.push(plotEnlarged(big));}ENL=e;return r.filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
     if(draws.some(p=>!p))throw new Error('A drawing does not fit its sheet at any standard scale.');
     const port={pw:small.h,ph:small.w,m:0.25};                                             // 11 x 17 (A3) portrait pages
     const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'l',unit:'in',format:[draws[0].sheet.w,draws[0].sheet.h]});
