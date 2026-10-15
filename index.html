@@ -1477,7 +1477,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.14.20';
+const VERSION='2026.10.14.21';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2099,11 +2099,11 @@ function drawIso(){
   if(first)svg+=fieldSvg;
   svg+=`<polygon points="${bp.map(([x,y])=>pj(R([x,y,0]))).map(([x,y])=>f(x)+','+f(y)).join(' ')}" fill="none" stroke="${FOCAL}" stroke-width="0.9" vector-effect="non-scaling-stroke"/>`;
   // stand labels above the top row, and a north arrow along the model's -X axis
-  const fsz=W/38;let isoN=null;
-  if(zoned(P))GEO.forEach(k=>{const zr=ZR[k];if(!zr.length)return;const t=zr[zr.length-1],s0=G.side[k],d=(t.x+t.T)/1000+4,mx=(s0.p[0]+s0.q[0])/2+s0.n[0]*d,my=-((s0.p[1]+s0.q[1])/2+s0.n[1]*d);
+  const fsz=W/38,fsl=W/58;let isoN=null;
+  if(zoned(P))GEO.forEach(k=>{const zr=ZR[k];if(!zr.length)return;const t=zr[zr.length-1],s0=G.side[k],d=(t.x+t.T)/1000+(imperial()?50*0.3048:15),mx=(s0.p[0]+s0.q[0])/2+s0.n[0]*d,my=-((s0.p[1]+s0.q[1])/2+s0.n[1]*d);
     const [px,py]=pj(R([mx,my,t.z/1000+6])),A=pj(R([s0.p[0],-s0.p[1],0])),Bq=pj(R([s0.q[0],-s0.q[1],0]));let ang=Math.atan2(Bq[1]-A[1],Bq[0]-A[0])*180/Math.PI;while(ang>90)ang-=180;while(ang<=-90)ang+=180;
     if(k==='L'||/NEZ/.test(zoneName(P,k,true)))isoN=[px,py,ang];
-    svg+=`<text x="${f(px)}" y="${f(py)}" font-size="${f(fsz)}" font-weight="400" fill="var(--ink)" text-anchor="middle" paint-order="stroke" stroke="var(--panel)" stroke-width="${f(fsz*.18)}" transform="rotate(${f(ang)} ${f(px)} ${f(py)})">${standName(k)}</text>`;});
+    svg+=`<text x="${f(px)}" y="${f(py)}" font-size="${f(fsl)}" font-weight="400" fill="var(--ink)" text-anchor="middle" paint-order="stroke" stroke="var(--panel)" stroke-width="${f(fsl*.18)}" transform="rotate(${f(ang)} ${f(px)} ${f(py)})">${standName(k)}</text>`;});
   if(zoned(P)){const a=pj(R([0,0,0])),b=pj(R([-1,0,0])),ux=b[0]-a[0],uy=b[1]-a[1],ul=Math.hypot(ux,uy),dx=ux/ul,dy=uy/ul,len=fsz*1.6,cx=isoN?isoN[0]+dx*fsz*1.8+(-dy)*fsz*2.2:x1-fsz*1.2,cy=isoN?isoN[1]-fsz*1.6:y0+fsz*1.4,hw=len*.45*Math.tan(10*Math.PI/180);   // beside the NEZ label; 20 degree head
     svg+=`<line x1="${f(cx-dx*len/2)}" y1="${f(cy-dy*len/2)}" x2="${f(cx+dx*len/2)}" y2="${f(cy+dy*len/2)}" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/>`
       +`<polygon points="${f(cx+dx*len/2)},${f(cy+dy*len/2)} ${f(cx+dx*len*.05-dy*hw)},${f(cy+dy*len*.05+dx*hw)} ${f(cx+dx*len*.05+dy*hw)},${f(cy+dy*len*.05-dx*hw)}" fill="var(--ink)"/>`
@@ -2352,7 +2352,8 @@ function plotEnlarged(sh){const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=
   const gy=sh.h-B-title-sb+sh.txt*1.6,bh=sh.txt*.7;let g=`<text x="${f(B)}" y="${f(gy)}" font-size="${f(sh.txt*1.1)}" font-weight="700">Scale ${fit.sc.label}</text>`;
   for(let i=0;i<5;i++)g+=`<rect x="${f(B+i*u*per)}" y="${f(gy+sh.txt*.5)}" width="${f(u*per)}" height="${f(bh)}" fill="${i%2?'#fff':'#000'}" stroke="#000" stroke-width="${f(sh.txt*.06)}"/>`;
   for(let i=0;i<=5;i++)g+=`<text x="${f(B+i*u*per)}" y="${f(gy+sh.txt*.5+bh+sh.txt*1.05)}" font-size="${f(sh.txt*.85)}" text-anchor="middle">${i*u}</text>`;
-  g+=`<text x="${f(B+5*u*per+sh.txt*.5)}" y="${f(gy+sh.txt*.5+bh*.9)}" font-size="${f(sh.txt*.85)}">${imperial()?'feet':'metres'}</text>`;
+  g+=`<text x="${f(B+5*u*per+sh.txt*.5)}" y="${f(gy+sh.txt*.5+bh*.9)}" font-size="${f(sh.txt*.85)}">${imperial()?'feet':'metres'}</text>`;if(enlSide()==='corner')g='';   // a non-standard scale: no graphic scale bar
+  
   const Sp=SPORTS[P.sport],ty=sh.h-B-sh.txt*.4;
   const tb=`<text x="${f(sh.w*.5)}" y="${f(ty-sh.txt*1.6)}" font-size="${f(sh.txt*1.5)}" font-weight="800" text-anchor="start">Sightline Schematic: ${enlargedTitle()}</text>`
     +`<text x="${f(sh.w*.5)}" y="${f(ty)}" font-size="${f(sh.txt*.95)}" text-anchor="start">${Sp.name} (${Sp.org}) | ${optName()} | Scale ${fit.sc.label} | ${sh.name} landscape | ${new Date().toLocaleDateString()}</text>`;
@@ -2457,16 +2458,17 @@ function drawPlan(o={}){
      }});
     if(zoned(P)){const G=rectGeo(P),back=k=>{const zr=ZR[k];if(!zr.length)return 0;const t=zr[zr.length-1];return (t.x+t.T)/1000;};
       const dS=Math.max(back('T'),back('B')),dE=Math.max(back('L'),back('R'));      // same offset on opposite sides keeps W and E level
-      GEO.forEach(k=>{const s=G.side[k];if(!ZR[k].length)return;const d=(isSide(k)?dS:dE)+fs*(o.tight?1.25:2.6);
+      GEO.forEach(k=>{const s=G.side[k];if(!ZR[k].length)return;const lg=o.labGap==null?(imperial()?50*0.3048:15):typeof o.labGap==='object'?o.labGap[isSide(k)?'side':'end']:o.labGap,d=(isSide(k)?dS:dE)+lg+fs*.45;   /* 1 in clear of the bowl at 1" = 50' */
         labels.push([(s.p[0]+s.q[0])/2+s.n[0]*d,(s.p[1]+s.q[1])/2+s.n[1]*d,standName(k),Math.atan2(s.q[1]-s.p[1],s.q[0]-s.p[0])*180/Math.PI,k]);});}
-    const sc=sectionAt(),sw=(x1-x0)/45;grow(sc[0]+sc[2]*(Rmax+1.5)+sc[2]*sw*1.4,sc[1]+sc[3]*(Rmax+1.5)+sc[3]*sw*1.4,sw*3.4);   /* room for the label beside the cut mark */
-    labels.forEach(([x,y])=>{const mx=fs*(o.tight?2.6:3),my=fs*(o.tight?1.45:3);x0=Math.min(x0,x-mx);x1=Math.max(x1,x+mx);y0=Math.min(y0,y-my);y1=Math.max(y1,y+my);});   // NEZ needs width more than height
+    {const sc=sectionAt(),sw=(x1-x0)/45;grow(sc[0]+sc[2]*(Rmax+1.5)+sc[2]*sw*.9,sc[1]+sc[3]*(Rmax+1.5)+sc[3]*sw*.9,sw*1.2);}   /* the cut mark's arrows */
+    labels.forEach(([x,y])=>{const mx=fs*(o.tight?1.8:2.2),my=fs*(o.tight?.9:1.6);x0=Math.min(x0,x-mx);x1=Math.max(x1,x+mx);y0=Math.min(y0,y-my);y1=Math.max(y1,y+my);});   // NEZ needs width more than height
   }else{dims=focalDims(P);
     for(const d of dims){const D=dimLabel(d,fs);if(d.r)grow(d.c[0],d.c[1]);else{grow(D.a[0],D.a[1],fs);grow(D.b[0],D.b[1],fs);}
       const R=D.rot*Math.PI/180,hx=Math.abs(Math.cos(R))*D.tw*.65+Math.abs(Math.sin(R))*fs*2+fs*.4,hy=Math.abs(Math.sin(R))*D.tw*.65+Math.abs(Math.cos(R))*fs*2+fs*.4;
       grow(D.mx-hx,D.my-hy);grow(D.mx+hx,D.my+hy);}}
   const W=x1-x0,H=y1-y0,g=Pen(W/900),t=PLANROT;
   // drawing rotated north up; view box = the rotated extents; labels drawn upright at their rotated positions
+  if(o.tight&&zoned(P)&&PLAN==='bowl'){const hx=Math.max(-x0,x1),hy=Math.max(-y0,y1);x0=-hx;x1=hx;y0=-hy;y1=hy;}   // the field centre on the sheet centre
   const cs=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]].map(([x,y])=>rotPt(x,y,t)),vx0=Math.min(...cs.map(c=>c[0])),vy0=Math.min(...cs.map(c=>c[1])),
     vW=Math.max(...cs.map(c=>c[0]))-vx0,vH=Math.max(...cs.map(c=>c[1]))-vy0;
   let s=`<svg viewBox="${vx0.toFixed(2)} ${vy0.toFixed(2)} ${vW.toFixed(2)} ${vH.toFixed(2)}"${vH>vW*1.05?' class="portrait"':''} role="img" aria-label="${S.org} ${S.name} ${PLAN==='field'?'field layout':'bowl plan'}, north up">`;
@@ -2482,7 +2484,7 @@ function drawPlan(o={}){
         over+=`<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${rf.toFixed(2)}" font-weight="600" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${(rf*.12).toFixed(2)}">${r.row}</text>`;});}
     over+=sectLabels(rf,t);
     over+=labels.map(([x,y,tx,ang])=>{const [rx,ry]=rotPt(x,y,t);let a=(ang||0)+t;while(a>90)a-=180;while(a<=-90)a+=180;   // parallel to the stand, reading upright
-      return `<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${(lf*1.1).toFixed(2)}" font-weight="400" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle"${a?` transform="rotate(${a.toFixed(1)} ${rx.toFixed(2)} ${ry.toFixed(2)})"`:''}>${tx}</text>`;}).join('');
+      return `<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${(lf*.7).toFixed(2)}" font-weight="400" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle"${a?` transform="rotate(${a.toFixed(1)} ${rx.toFixed(2)} ${ry.toFixed(2)})"`:''}>${tx}</text>`;}).join('');
 
     // north arrow
     if(zoned(P)){const nz=labels.find(l=>l[4]&&/NEZ|North/.test(l[2]))||labels[0],na=lf*1.3,[lx0,ly0]=rotPt(nz[0],nz[1],t),vert=t===90;
@@ -2496,8 +2498,7 @@ function drawPlan(o={}){
     const arrow=(x,y)=>`<line x1="${fx(x)}" y1="${fx(y)}" x2="${fx(x+vx*al*.9)}" y2="${fx(y+vy*al*.9)}" stroke="${BL}" stroke-width="2.2" vector-effect="non-scaling-stroke"/>`
       +`<path d="M${fx(x+vx*al*1.5)} ${fx(y+vy*al*1.5)}L${fx(x+vx*al*.75+nx*hw)} ${fx(y+vy*al*.75+ny*hw)}L${fx(x+vx*al*.75-nx*hw)} ${fx(y+vy*al*.75-ny*hw)}Z" fill="${BL}"/>`;
     body+=`<line x1="${fx(ax)}" y1="${fx(ay)}" x2="${fx(bx)}" y2="${fx(by)}" stroke="${BL}" stroke-width="2.2" vector-effect="non-scaling-stroke"/>`+arrow(ax,ay)+arrow(bx,by);   // arrows: the direction the section looks
-    const E=rotPt(bx,by,PLANROT),Tp=rotPt(bx+vx*al*1.5,by+vy*al*1.5,PLANROT),lx=Math.max(E[0],Tp[0])+al*.45,ly=(E[1]+Tp[1])/2+al*.2;   /* to the right of the cut mark */
-    over+=`<text x="${fx(lx)}" y="${fx(ly)}" font-size="${fx(al*.62)}" fill="${BL}" font-weight="400" text-anchor="start" dominant-baseline="middle" paint-order="stroke" stroke="var(--panel)" stroke-width="${fx(al*.12)}">Section</text>`;}
+  }
   return s+(t?`<g transform="rotate(${t})">${body}</g>`:body)+over+'</svg>';
 }
 $('planTabs').addEventListener('click',e=>{const b=e.target.closest('[data-plan]');if(!b)return;PLAN=b.dataset.plan;
@@ -2693,10 +2694,18 @@ function plotOne(sh,what,maxIn,fixed,ori){ori=ori||'h';if(what==='plan'&&ori==='
   if(what==='section')return plotSection(sh);                 // maxIn: largest scale allowed, inches per foot (e.g. 1/16)
   const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=sh.txt*3.2,aw=sh.w-2*B,ah=sh.h-2*B-title-sb;
   let fit=null,svg0=null;
-  if(what==='plan'){const keep=[P.planOri,PLAN];P.planOri=ori;PLAN='bowl';svg0=drawPlan({tight:true});P.planOri=keep[0];PLAN=keep[1];
-    const pv=svg0.match(/viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/).slice(1).map(Number);
-    for(const sc of PLOT_SCALES().filter(sc=>!maxIn||!imperial()||sc.ratio>=12/maxIn-1e-6)){const k=1/sc.ratio/25.4,w=pv[2]*1000*k,h=pv[3]*1000*k;
-      if((w<=aw&&h<=ah)||(fixed&&imperial())){fit={sc,k,w,h,svg:svg0,u:25.4*sc.ratio/1000,over:w>aw||h>ah};break;}}}
+  if(what==='plan'){const FT=imperial()?0.3048:1/3.28084;
+    const G=[1,0.75,0.5,0.25];let gi={side:0,end:0},r=maxIn?12/maxIn:600;   // stand names 1 in (on paper) clear of the bowl; closer, on the tight axis only, when the sheet is tight
+    for(let tries=0;tries<10;tries++){const pm=r*25.4/1000;   // paper inches to metres at the current scale
+      const keep=[P.planOri,PLAN];P.planOri=ori;PLAN='bowl';svg0=drawPlan({tight:true,labGap:{side:G[gi.side]*pm,end:G[gi.end]*pm}});P.planOri=keep[0];PLAN=keep[1];fit=null;
+      const pv=svg0.match(/viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/).slice(1).map(Number);
+      for(const sc of PLOT_SCALES().filter(sc=>!maxIn||!imperial()||sc.ratio>=12/maxIn-1e-6)){const k=1/sc.ratio/25.4,w=pv[2]*1000*k,h=pv[3]*1000*k;
+        if((w<=aw&&h<=ah)||(fixed&&imperial())){fit={sc,k,w,h,svg:svg0,u:25.4*sc.ratio/1000,over:w>aw||h>ah};break;}}
+      if(fit&&Math.abs(fit.sc.ratio-r)>1e-6&&!fit.over){r=fit.sc.ratio;continue;}   // a different scale: redo the gap for it
+      if(!fit||!fit.over)break;
+      const sideAxisW=ori==='v',ow=fit.w>aw,oh=fit.h>ah,moved=[];   // vertical: the sidelines face across the sheet; landscape: up and down
+      if((sideAxisW&&ow)||(!sideAxisW&&oh))moved.push('side');if((sideAxisW&&oh)||(!sideAxisW&&ow))moved.push('end');
+      let any=false;moved.forEach(q=>{if(gi[q]<G.length-1){gi[q]++;any=true;}});if(!any)break;}}
   else{const rows=ZR[P.sec].filter(r=>r.tier===0);
     for(const sc of PLOT_SCALES()){const k=1/sc.ratio/25.4,svg=drawDetail(ZR[P.sec],{fs:sh.txt*25.4*sc.ratio,sparse:(rows[1]||rows[0]).T*k<sh.txt*2.2});
       const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;if(w<=aw&&h<=ah){fit={sc,k,w,h,svg,u:25.4*sc.ratio};break;}}}
@@ -2820,7 +2829,7 @@ async function exportPdfSet(kind){
     const [reg,bold]=await Promise.all([loadB64('vendor/fonts/DejaVuSansCondensed.ttf'),loadB64('vendor/fonts/DejaVuSansCondensed-Bold.ttf')]);
     const sheets=PLOT_SHEETS(),small=sheets[0],big=kind==='archE'?sheets[1]:sheets[0];
     const t1=plotTier(big,0),tiers=[t1,...Array.from({length:P.tierCount-1},(_,i)=>plotTier(big,i+1,t1&&t1.sc))];   // Tier 2 at the Tier 1 scale
-    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,plotOne(big,'plan'),plotOne(big,'plan',0,false,'v'),...(M.AL&&zoned(P)?(()=>{const e=ENL;const ce=CENL;ENL={tier:0,side:westKey()};const r=[plotEnlarged(big)];for(let t=0;t<P.tierCount;t++){ENL={tier:0,side:'corner'};CENL={tier:t,corner:ce.corner};r.push(plotEnlarged(big));}ENL=e;CENL=ce;return r.filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
+    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,...(kind!=='archE'&&imperial()?[plotOne(big,'plan',1/50,true),plotOne(big,'plan',1/50,true,'v')]:[plotOne(big,'plan'),plotOne(big,'plan',0,false,'v')]),   /* 11 x 17: both bowl plans at 1" = 50' */...(M.AL&&zoned(P)?(()=>{const e=ENL;const ce=CENL;ENL={tier:0,side:westKey()};const r=[plotEnlarged(big)];for(let t=0;t<P.tierCount;t++){ENL={tier:0,side:'corner'};CENL={tier:t,corner:ce.corner};r.push(plotEnlarged(big));}ENL=e;CENL=ce;return r.filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
     if(draws.some(p=>!p))throw new Error('A drawing does not fit its sheet at any standard scale.');
     const port={pw:small.h,ph:small.w,m:0.25};                                             // 11 x 17 (A3) portrait pages
     const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'l',unit:'in',format:[draws[0].sheet.w,draws[0].sheet.h]});
