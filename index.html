@@ -1477,7 +1477,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.14.19';
+const VERSION='2026.10.14.20';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2298,33 +2298,43 @@ function drawEnlarged(o={}){if(enlSide()==='corner')return drawCornerEnlarged(o)
    .dim([0,lo2],[span,lo2],{lab:'Aisle centre to aisle centre',val:L(span),ea:[0,lo],eb:[span,lo]});
   // row depth, chair and clear width at a typical row (row 2), on the right
   // row detail at 4x: two typical rows, seat down (solid), seat raised (dashed), back behind the riser, clear width
-  let det='';{const r2=tr[Math.min(1,tr.length-1)],T=r2.T,sw2=r2.seatW,ox=span+side+fs*6,oy=Math.max(fs*3,depth-2*T*MI-fs*2),Xd=u=>(ox-U0+u*MI).toFixed(1),Yd=v=>(V1-oy-v*MI).toFixed(1),K2=SecDim(Xd,Yd,fs*.9,[W,H]);
-    // one seat beside the aisle (seat 1), the riser of its row and the row ahead, the end-seat space and part of the aisle
-    const xa=sw2+gp,AWp=Math.min(wA,18*25.4),xe=xa+AWp,ln=(x1,y1,x2,y2,st)=>`<line x1="${Xd(x1)}" y1="${Yd(y1)}" x2="${Xd(x2)}" y2="${Yd(y2)}" ${st} vector-effect="non-scaling-stroke"/>`;
-    for(const v of [T,2*T])det+=ln(0,v,xe,v,'stroke="var(--ink)" stroke-width="1.2"');
-    det+=`<rect x="${Xd(xa)}" y="${Yd(2*T+cb)}" width="${f(AWp*MI)}" height="${f((T+cb)*MI)}" fill="#FFFFFF" stroke="none"/>`
-      +ln(xa,T,xa,2*T+cb,'stroke="var(--ink)" stroke-width="0.9"')+ln(xa,T+T/2,xe,T+T/2,'stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="4 2.5"')
-      +`<text x="${f((+Xd(xa)+ +Xd(xe))/2)}" y="${f(+Yd(T+T*.25))}" font-size="${f(fs*.75)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Aisle</text>`;
-    det+=`<rect x="${Xd(0)}" y="${Yd(2*T+cb)}" width="${f(sw2*MI)}" height="${f(cdn*MI)}" fill="${tierFill(ti)}" fill-opacity=".55" stroke="var(--ink)" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
-      +ln(0,2*T-cf,sw2,2*T-cf,'stroke="var(--ink)" stroke-width="0.8" stroke-dasharray="4 2.5"')
-      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(2*T+cb-cdn*.42))}" font-size="${f(sw2*MI*.16)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">1</text>`
-      +ln(0,T+cb,sw2,T+cb,'stroke="var(--muted)" stroke-width="0.8"')+ln(0,T+cb,0,T,'stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="3 2"')+ln(sw2,T+cb,sw2,T,'stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="3 2"');   // back of the seat in the row ahead
-    det+=`<text x="${Xd(0)}" y="${f(+Yd(2*T+cb)-fs*1.2)}" font-size="${f(fs*.95)}" font-weight="700" fill="var(--ink)">Seat 1 beside the aisle, enlarged ×${MI}</text>`
-      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(T+cb/2))}" font-size="${f(fs*.5)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Seat back, row ahead</text>`;
+  let det='';{const r2=tr[Math.min(1,tr.length-1)],T=r2.T,sw2=r2.seatW,ox=span+side+fs*6,oy=V1-fs*3.4-(3*T-6*25.4)*MI,Xd=u=>(ox-U0+u*MI).toFixed(1),Yd=v=>(V1-oy-v*MI).toFixed(1),K2=SecDim(Xd,Yd,fs*.9,[W,H]);
+    // seat 1 complete in the middle row, with part of the seat in the row behind (above) and the row ahead (below), beside the aisle
+    const xa=sw2+gp,AWp=Math.min(wA,18*25.4),xe=xa+AWp,vb=T-10*25.4,vt=3*T-6*25.4,ln=(x1,y1,x2,y2,st)=>`<line x1="${Xd(x1)}" y1="${Yd(y1)}" x2="${Xd(x2)}" y2="${Yd(y2)}" ${st} vector-effect="non-scaling-stroke"/>`;
+    det+=`<rect x="${Xd(xa)}" y="${Yd(vt)}" width="${f(AWp*MI)}" height="${f((vt-vb)*MI)}" fill="#FFFFFF" stroke="none"/>`
+      +ln(xa,vb,xa,vt,'stroke="var(--ink)" stroke-width="0.9"');
+    for(const v of [T,2*T,3*T])det+=(v>vt?'':ln(0,v,xe,v,'stroke="var(--ink)" stroke-width="1.2"'))+(v-T/2<vb?'':ln(xa,v-T/2,xe,v-T/2,'stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="4 2.5"'));   // risers; aisle steps
+    for(const base of [T,2*T,3*T]){const y0=Math.max(base+cb-cdn,vb),y1=Math.min(base+cb,vt),full=base===2*T,tip=base-cf;if(y1<=y0)continue;
+      det+=`<rect x="${Xd(0)}" y="${Yd(y1)}" width="${f(sw2*MI)}" height="${f((y1-y0)*MI)}" fill="${tierFill(ti)}" fill-opacity="${full?.55:.3}" stroke="none"/>`
+        +ln(0,y0,0,y1,'stroke="var(--ink)" stroke-width="0.6"')+ln(sw2,y0,sw2,y1,'stroke="var(--ink)" stroke-width="0.6"')
+        +(y1===base+cb?ln(0,y1,sw2,y1,'stroke="var(--ink)" stroke-width="0.6"'):ln(-sw2*.06,y1,sw2*1.06,y1,'stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="1.5 2"'))   // seat back, or a cut line
+        +(y0===base+cb-cdn?ln(0,y0,sw2,y0,'stroke="var(--ink)" stroke-width="0.6"'):ln(-sw2*.06,y0,sw2*1.06,y0,'stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="1.5 2"'))
+        +(tip>y0&&tip<y1?ln(0,tip,sw2,tip,'stroke="var(--ink)" stroke-width="0.8" stroke-dasharray="4 2.5"'):'');}
+    det+=`<text x="${Xd(sw2/2)}" y="${f(+Yd(2*T+cb-cdn*.42))}" font-size="${f(sw2*MI*.16)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">1</text>`
+      +`<text x="${Xd(sw2/2)}" y="${f(+Yd((3*T+cb-cdn+vt)/2))}" font-size="${f(fs*.55)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row behind</text>`
+      +`<text x="${Xd(sw2/2)}" y="${f(+Yd((vb+T)/2))}" font-size="${f(fs*.55)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row ahead</text>`
+      +`<text x="${f((+Xd(xa)+ +Xd(xe))/2)}" y="${f(+Yd(2*T-T*.25))}" font-size="${f(fs*.75)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Aisle</text>`
+      +`<text x="${Xd(0)}" y="${f(+Yd(vt)-fs*1.2)}" font-size="${f(fs*.95)}" font-weight="700" fill="var(--ink)">Seat 1 beside the aisle, enlarged ×${MI}</text>`;
     const ux=xe+fs*0.9/MI*1.6;
-    K2.avoid(0,T,xe,T).avoid(0,2*T,xe,2*T)
+    K2.avoid(0,T,xe,T).avoid(0,2*T,xe,2*T).avoid(0,3*T,xe,3*T)
       .dim([ux,T],[ux,T+cb],{lab:'Back of row ahead',val:L(cb),ea:[xe,T]})
       .dim([ux,T+cb],[ux,2*T-cf],{lab:'Clear width',val:L(T-cd),ref:'tread'})
       .dim([ux,2*T-cf],[ux,2*T],{lab:'Seat raised',val:L(cf),eb:[xe,2*T]})
       .dim([ux+fs*3/MI,T],[ux+fs*3/MI,2*T],{lab:'Row depth',val:L(T)})
       .dim([-fs*1.6/MI,2*T+cb-cdn],[-fs*1.6/MI,2*T+cb],{lab:'Seat down',val:L(cdn),ea:[0,2*T+cb-cdn],eb:[0,2*T+cb]})
-      .dim([0,T-fs*1.8/MI],[sw2,T-fs*1.8/MI],{lab:'Seat width',val:L(sw2),ea:[0,T],eb:[sw2,T]})   // the selected seat width
-      .dim([sw2,T-fs*1.8/MI],[xa,T-fs*1.8/MI],{lab:'End space',val:L(gp),eb:[xa,T]});
+      .dim([0,vb-fs*1.8/MI],[sw2,vb-fs*1.8/MI],{lab:'Seat width',val:L(sw2),ea:[0,vb],eb:[sw2,vb]})   // the selected seat width
+      .dim([sw2,vb-fs*1.8/MI],[xa,vb-fs*1.8/MI],{lab:'End space',val:L(gp),eb:[xa,vb]});
     det+=K2.out();}
   const lo3=Math.min(...counts),hi3=Math.max(...counts);
   const cap=`<text x="${X(span/2)}" y="${Y(depth)-fs*1.4}" font-size="${f(fs*1.15)}" font-weight="700" text-anchor="middle" fill="#1E5BD8">${lo3===hi3?lo3:lo3+'–'+hi3} seats per row, ${tr.length} rows: ${fmt(counts.reduce((a,b)=>a+b,0))} seats</text>`;
   return `<svg viewBox="0 0 ${f(W)} ${f(H)}" role="img" aria-label="Enlarged plan of a typical section">`+g+nb+seats+rn+K.out()+det+cap+'</svg>';}
 function enlargedTitle(){if(enlSide()==='corner')return cornerTitle();const ti=Math.min(ENL.tier,P.tierCount-1),E=enlargedData(ti,enlSide()),no=E?(sectionList(ti).find(q=>q.key===E.L0.a.id+'_'+E.R0.a.id)||{}).no:null;return `Enlarged plan: typical section${no?' '+no:''}, Tier ${ti+1} ${zoneName(P,enlSide())} (middle section)`;}
+// corner sheets: one scale for every tier, not necessarily a standard one, the largest that fits the paper (the common frame is the largest tier's corner)
+function cornerScale(sh,aw,ah){let Wc=0,Hc=0;for(let t=0;t<P.tierCount;t++){const b=drawCornerEnlarged({measure:true,tier:t});if(b&&b.w){Wc=Math.max(Wc,b.w);Hc=Math.max(Hc,b.h);}}
+  if(!Wc)return null;const rw=Wc/(25.4*(aw-14.2*sh.txt)),rh=Hc/(25.4*(ah-13.2*sh.txt));   // frame: 7 text heights each side, 5 above and 8 below
+  let r=Math.max(rw,rh);
+  if(imperial()){r=Math.ceil(r);const ft=Math.floor(r/12),inch=r-ft*12;return {ratio:r,label:`1" = ${ft}'-${inch}"`};}
+  r=Math.ceil(r);return {ratio:r,label:`1:${r}`};}
 // plan overlay: every seat at its true width (on screen, on request)
 function seatsSvg(){if(!SHOWSEATS||!M.AL||PLAN!=='bowl')return '';const A=AIS(),gp=(A.gap||0)/1000,cb=(A.chairBack??2*25.4)/1000,cd=(A.chairDown||24*25.4)/1000,f=v=>v.toFixed(3);let p='';
   M.AL.forEach((T,ti)=>{const nr=Math.max(0,...Object.values(T).map(z=>z.tr.length));for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{const fe=seatsFromEnd(T,sc);
@@ -2334,7 +2344,8 @@ function seatsSvg(){if(!SHOWSEATS||!M.AL||PLAN!=='bowl')return '';const A=AIS(),
   return `<path d="${p}" fill="none" stroke="var(--ink)" stroke-width="0.25" opacity=".7" vector-effect="non-scaling-stroke"/>`;}
 // PDF sheet: the enlarged section plan at the largest standard scale that fits
 function plotEnlarged(sh){const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=sh.txt*3.2,aw=sh.w-2*B,ah=sh.h-2*B-title-sb;let fit=null;
-  for(const sc of PLOT_SCALES()){const kk=1/sc.ratio/25.4,svg=drawEnlarged({fs:sh.txt*25.4*sc.ratio}),v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);if(!v)return null;const w=+v[1]*kk,h=+v[2]*kk;
+  const scs=enlSide()==='corner'?[cornerScale(sh,aw,ah)].filter(Boolean):PLOT_SCALES();
+  for(const sc of scs){const kk=1/sc.ratio/25.4,svg=drawEnlarged({fs:sh.txt*25.4*sc.ratio}),v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);if(!v)return null;const w=+v[1]*kk,h=+v[2]*kk;
     if(w<=aw&&h<=ah){fit={sc,k:kk,w,h,svg,u:25.4*sc.ratio};break;}}
   if(!fit)return null;
   const x=B+(aw-fit.w)/2,y=B+(ah-fit.h)/2,per=(imperial()?304.8:1000)*fit.k,divs=[1,2,5,10,20,25,50,100];let u=divs[0];for(const q of divs)if(q*5*per<=sh.w*.22)u=q;
