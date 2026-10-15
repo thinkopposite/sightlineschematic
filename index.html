@@ -1472,7 +1472,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.14.13';
+const VERSION='2026.10.14.14';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2256,7 +2256,7 @@ function sectLabels(rf,t){if(!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>
       +`<text x="${f(rx)}" y="${f(ry+fz*.55)}" font-size="${f(fz)}" font-weight="700" fill="#1E5BD8" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.12)}">${cnt}</text></g>`;});
   return o;}
 // ---------- enlarged plan of a typical section: every seat at its true width ----------
-let ENL={tier:0,side:null},SHOWSEATS=false;const eastKey=()=>GEO.find(k=>isSide(k)&&compassOf(P)[k]==='E')||'T',enlSide=()=>ENL.side||eastKey();
+let ENL={tier:0,side:null,corner:'NW'},SHOWSEATS=false;const eastKey=()=>GEO.find(k=>isSide(k)&&compassOf(P)[k]==='E')||'T',enlSide=()=>ENL.side||eastKey();
 function enlargedData(ti,k){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz)return null;const gi=Lz.ch.findIndex(g=>g.t==='LINE');if(gi<0)return null;
   const fs=Lz.ais.map((a,i)=>({a,i})).filter(x=>x.a.i===gi&&x.a.f!=null).sort((p,q)=>p.a.f-q.a.f);let L0=null,R0=null;
   for(let j=1;j<fs.length;j++)if(fs[j-1].a.f<=0.5+1e-9&&fs[j].a.f>=0.5-1e-9){L0=fs[j-1];R0=fs[j];break;}   // the middle section of the side
@@ -2342,10 +2342,11 @@ function overRowsSvg(){if(!M.AL||PLAN!=='bowl'||!imperial())return '';let p='';c
         for(let q=0;q<=N;q++){const a=chainAt(pc.Lz.ch,pc.a+(pc.b-pc.a)*q/N,pc.d),g=pc.Lz.ch[a.i];F.push(segPt(g,a.f,d0));B.push(segPt(g,a.f,d1));}
         p+='M'+F.concat(B.reverse()).map(q=>f(q[0])+' '+f(q[1])).join('L')+'Z';});});}
   return p?`<path d="${p}" fill="#FF8A8A" fill-opacity=".6" stroke="none"><title>Rows over the IBC maximum seats per row</title></path>`:'';}
-// ---------- enlarged plan of a corner: the two sections either side of the north-east corner aisle, at true geometry ----------
-function cornerData(ti){const T=M.AL&&M.AL[ti];if(!T||!zoned(P))return null;const cp=compassOf(P),nk=GEO.find(k=>!isSide(k)&&cp[k]==='N'),ek=GEO.find(k=>isSide(k)&&cp[k]==='E');
+// ---------- enlarged plan of a typical corner (north-west by default): the sections round its corner aisles, at true geometry ----------
+const CORNERS={NW:'north-west',NE:'north-east',SE:'south-east',SW:'south-west'},enlCorner=()=>CORNERS[ENL.corner]?ENL.corner:'NW';
+function cornerData(ti,cn){cn=cn||enlCorner();const T=M.AL&&M.AL[ti];if(!T||!zoned(P))return null;const cp=compassOf(P),nk=GEO.find(k=>!isSide(k)&&cp[k]===cn[0]),ek=GEO.find(k=>isSide(k)&&cp[k]===cn[1]);
   if(!nk||!ek||!T[nk]||!T[ek])return null;const Lz=T[nk],eg=rectGeo(P).side[ek],em=[(eg.p[0]+eg.q[0])/2,(eg.p[1]+eg.q[1])/2];
-  // the corner aisle of the north end zone nearer the east sideline
+  // the corner aisle of the chosen end zone nearer the chosen sideline
   const cs=Lz.ais.filter(a=>a.corner);if(!cs.length)return null;const d1=(Lz.tr[0].x)/1000;
   const ca=cs.reduce((b,a)=>{const pa=segPt(Lz.ch[a.i],a.f,d1),pb=segPt(Lz.ch[b.i],b.f,d1);return Math.hypot(pa[0]-em[0],pa[1]-em[1])<Math.hypot(pb[0]-em[0],pb[1]-em[1])?a:b;});
   const ids=cs.filter(a=>a.i===ca.i).map(a=>a.id);   // one corner aisle, or the two on its bends
@@ -2406,7 +2407,7 @@ function drawCornerEnlarged(o={}){const ti=Math.min(ENL.tier,P.tierCount-1),C=co
   return `<svg viewBox="0 0 ${F(W)} ${F(H)}" role="img" aria-label="Enlarged plan of a corner">`+tr(rowsSvg+aisSvg+seatSvg+omitSvg+txt)+K.out()+key+'</svg>';}
 function cornerTitle(){const ti=Math.min(ENL.tier,P.tierCount-1),C=cornerData(ti);let nos='';
   if(C){const l=[...new Set(sectionList(ti).filter(q=>q.key.split('_').map(Number).some(x=>C.ids.includes(x))).map(q=>q.no))].sort((a,b)=>a-b);if(l.length)nos=' '+(l.length>2?l.slice(0,-1).join(', ')+' and '+l[l.length-1]:l.join(' and '));}
-  return `Enlarged plan: corner sections${nos}, Tier ${ti+1} north-east corner`;}
+  return `Enlarged plan: typical corner, sections${nos}, Tier ${ti+1} ${CORNERS[enlCorner()]} corner`;}
 function drawPlan(o={}){
   PLANROT=planRot();DIMREG=[];
   const S=SPORTS[P.sport],bnd=boundary(P),st=stations(bnd),xs=bnd.map(p=>p[0]),ys=bnd.map(p=>p[1]);
@@ -2476,7 +2477,7 @@ function setTierColor(i,v){v=String(v).trim();if(!v.startsWith('#'))v='#'+v;
   if(!Array.isArray(P.tierColors))P.tierColors=TIER_COL.slice();P.tierColors[i]=v.toUpperCase();renderControls();update();}
 $('controls').addEventListener('change',e=>{const t=e.target;if(t.dataset.tcol!=null)setTierColor(+t.dataset.tcol,t.value);else if(t.dataset.tcolpick!=null)setTierColor(+t.dataset.tcolpick,t.value);});
 $('controls').addEventListener('click',e=>{if(e.target.id==='tcolReset'){P.tierColors=TIER_COL.slice();renderControls();update();}});
-$('enlTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.enlt!=null)ENL.tier=+b.dataset.enlt;if(b.dataset.enls)ENL.side=b.dataset.enls;update();});
+$('enlTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.enlt!=null)ENL.tier=+b.dataset.enlt;if(b.dataset.enls)ENL.side=b.dataset.enls;if(b.dataset.enlc)ENL.corner=b.dataset.enlc;update();});
 $('seatTog').addEventListener('click',e=>{SHOWSEATS=!SHOWSEATS;e.target.classList.toggle('on',SHOWSEATS);e.target.setAttribute('aria-pressed',SHOWSEATS);$('plan').innerHTML=drawPlan();});
 $('isoTabs').addEventListener('click',e=>{const b=e.target.closest('[data-iso]');if(!b)return;ISOVIEW=b.dataset.iso;
   document.querySelectorAll('#isoTabs [data-iso]').forEach(x=>{const on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on);});$('iso').innerHTML=drawIso();});
@@ -2546,7 +2547,7 @@ function update(){
    $('spect').innerHTML=SPECT_MODES.map(m=>`<div><div class="lab"><b>${SPECT_NAMES[m]}</b>, ${enlargedWhere(m)}</div>${drawSpectator(m)}${tab(m)}</div>`).join('');}
   {const ok=!!M.AL&&zoned(P);$('enl').innerHTML=drawEnlarged();$('enlTitle').textContent=ok?enlargedTitle():'Enlarged plan: typical section';
    $('enlTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlt="${i}" class="${Math.min(ENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
-     +[eastKey(),GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='S')||'R'].map(k=>`<button data-enls="${k}" class="${enlSide()===k?'on':''}">${zoneName(P,k)}</button>`).join('')+`<button data-enls="corner" class="${enlSide()==='corner'?'on':''}">North-east corner</button>`:'';}
+     +[eastKey(),GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='S')||'R'].map(k=>`<button data-enls="${k}" class="${enlSide()===k?'on':''}">${zoneName(P,k)}</button>`).join('')+`<button data-enls="corner" class="${enlSide()==='corner'?'on':''}">Corner</button>`+(enlSide()==='corner'?Object.keys(CORNERS).map(c=>`<button data-enlc="${c}" class="${enlCorner()===c?'on':''}" title="${CORNERS[c]} corner">${c}</button>`).join(''):''):'';}
   $('iso').innerHTML=drawIso();$('isoTitle').textContent=`Isometric view from the ${({SE:'south-east',SW:'south-west',NW:'north-west',NE:'north-east'})[ISOVIEW]}`;
   renderOpts();
 }
@@ -2783,7 +2784,7 @@ async function exportPdfSet(kind){
     const [reg,bold]=await Promise.all([loadB64('vendor/fonts/DejaVuSansCondensed.ttf'),loadB64('vendor/fonts/DejaVuSansCondensed-Bold.ttf')]);
     const sheets=PLOT_SHEETS(),small=sheets[0],big=kind==='archE'?sheets[1]:sheets[0];
     const t1=plotTier(big,0),tiers=[t1,...Array.from({length:P.tierCount-1},(_,i)=>plotTier(big,i+1,t1&&t1.sc))];   // Tier 2 at the Tier 1 scale
-    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,plotOne(big,'plan'),...(M.AL&&zoned(P)?(()=>{const e=ENL;ENL={tier:0,side:eastKey()};const r=[plotEnlarged(big)];for(let t=0;t<P.tierCount;t++){ENL={tier:t,side:'corner'};r.push(plotEnlarged(big));}ENL=e;return r.filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
+    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,plotOne(big,'plan'),...(M.AL&&zoned(P)?(()=>{const e=ENL;ENL={tier:0,side:eastKey()};const r=[plotEnlarged(big)];for(let t=0;t<P.tierCount;t++){ENL={tier:t,side:'corner',corner:e.corner};r.push(plotEnlarged(big));}ENL=e;return r.filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
     if(draws.some(p=>!p))throw new Error('A drawing does not fit its sheet at any standard scale.');
     const port={pw:small.h,ph:small.w,m:0.25};                                             // 11 x 17 (A3) portrait pages
     const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'l',unit:'in',format:[draws[0].sheet.w,draws[0].sheet.h]});
