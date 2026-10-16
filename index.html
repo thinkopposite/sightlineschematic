@@ -1490,7 +1490,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.14.25';
+const VERSION='2026.10.15.01';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2281,7 +2281,7 @@ function drawEnlarged(o={}){if(enlSide()==='corner')return drawCornerEnlarged(o)
   if(!E)return '<p class="empty" style="padding:16px">Choose the computed aisle layout to see a typical section.</p>';
   const {Lz,L0,R0}=E,A=AIS(),tr=Lz.tr,x0=tr[0].x,d=1,sa=chainS(Lz.ch,L0.a,d),sb=chainS(Lz.ch,R0.a,d),span=(sb-sa)*1000,wA=A.w,gp=A.gap||0,cd=A.chairD||14*25.4,cb=A.chairBack??2*25.4,cdn=A.chairDown||24*25.4,cf=cd-cb;   /* cf: raised seat tip in front of the riser; cb: back behind it */
   const sw=tr[0].seatW,lastR=tr[tr.length-1],depth=lastR.x+lastR.T-x0,side=wA/2+2*sw;      // two neighbouring seats each side, light
-  const fs0=o.fs||(span+2*side)/62,MI=8,cd0=AIS().chairD||14*25.4,U0=-side-1200,U1=span+side+fs0*6+2*tr[0].seatW*MI+fs0*14,V0=-fs0*7.5,fs=fs0,V1=depth+Math.max(fs*6,(span+2*side)/62*3),W=U1-U0,H=V1-V0+fs*9;
+  const fs0=o.fs||(span+2*side)/62,MI=8,cd0=AIS().chairD||14*25.4,U0=-side-1200,U1=span+side+fs0*8+2*tr[0].seatW*MI+fs0*14,V0=-fs0*7.5,fs=fs0,V1=depth+Math.max(fs*6,(span+2*side)/62*3),W=U1-U0,H=V1-V0+fs*9;
   const X=u=>(u-U0).toFixed(1),Y=v=>(V1-v).toFixed(1),K=SecDim(X,Y,fs*.9,[W,H]),f=v=>(+v).toFixed(1);
   let g='',seats='',nb='';
   // treads and risers, aisle strips
@@ -2309,9 +2309,9 @@ function drawEnlarged(o={}){if(enlSide()==='corner')return drawCornerEnlarged(o)
    .dim([0,lo2],[span,lo2],{lab:'Aisle centre to aisle centre',val:L(span),ea:[0,lo],eb:[span,lo]});
   // row depth, chair and clear width at a typical row (row 2), on the right
   // row detail at 4x: two typical rows, seat down (solid), seat raised (dashed), back behind the riser, clear width
-  let det='';{const r2=tr[Math.min(1,tr.length-1)],T=r2.T,sw2=r2.seatW,ox=span+side+fs*6,oy=V1-fs*3.4-(3*T-6*25.4)*MI,Xd=u=>(ox-U0+u*MI).toFixed(1),Yd=v=>(V1-oy-v*MI).toFixed(1),K2=SecDim(Xd,Yd,fs*.9,[W,H]);
-    // seat 1 complete in the middle row, with part of the seat in the row behind (above) and the row ahead (below), beside the aisle
-    const xa=sw2+gp,AWp=Math.min(wA,18*25.4),xe=xa+AWp,vb=T-10*25.4,vt=3*T-6*25.4,ln=(x1,y1,x2,y2,st)=>`<line x1="${Xd(x1)}" y1="${Yd(y1)}" x2="${Xd(x2)}" y2="${Yd(y2)}" ${st} vector-effect="non-scaling-stroke"/>`;
+  let det='';{const r2=tr[Math.min(1,tr.length-1)],T=r2.T,sw2=r2.seatW,ox=span+side+fs*8,oy=V1-fs*3.4-(3*T+cb+3*25.4)*MI,Xd=u=>(ox-U0+u*MI).toFixed(1),Yd=v=>(V1-oy-v*MI).toFixed(1),K2=SecDim(Xd,Yd,fs*.9,[W,H]);
+    // seat 1 in three rows, complete: the middle row, the row behind (above) and the row ahead (below), beside the aisle
+    const xa=sw2+gp,AWp=Math.min(wA,18*25.4),xe=xa+AWp,vb=T+cb-cdn-3*25.4,vt=3*T+cb+3*25.4,ln=(x1,y1,x2,y2,st)=>`<line x1="${Xd(x1)}" y1="${Yd(y1)}" x2="${Xd(x2)}" y2="${Yd(y2)}" ${st} vector-effect="non-scaling-stroke"/>`;
     det+=`<rect x="${Xd(xa)}" y="${Yd(vt)}" width="${f(AWp*MI)}" height="${f((vt-vb)*MI)}" fill="#FFFFFF" stroke="none"/>`
       +ln(xa,vb,xa,vt,'stroke="var(--ink)" stroke-width="0.9"');
     for(const v of [T,2*T,3*T])det+=(v>vt?'':ln(0,v,xe,v,'stroke="var(--ink)" stroke-width="1.2"'))+(v-T/2<vb?'':ln(xa,v-T/2,xe,v-T/2,'stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="4 2.5"'));   // risers; aisle steps
@@ -2322,8 +2322,10 @@ function drawEnlarged(o={}){if(enlSide()==='corner')return drawCornerEnlarged(o)
         +(y0===base+cb-cdn?ln(0,y0,sw2,y0,'stroke="var(--ink)" stroke-width="0.6"'):ln(-sw2*.06,y0,sw2*1.06,y0,'stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="1.5 2"'))
         +(tip>y0&&tip<y1?ln(0,tip,sw2,tip,'stroke="var(--ink)" stroke-width="0.8" stroke-dasharray="4 2.5"'):'');}
     det+=`<text x="${Xd(sw2/2)}" y="${f(+Yd(2*T+cb-cdn*.42))}" font-size="${f(sw2*MI*.16)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">1</text>`
-      +`<text x="${Xd(sw2/2)}" y="${f(+Yd((3*T+cb-cdn+vt)/2))}" font-size="${f(fs*.55)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row behind</text>`
-      +`<text x="${Xd(sw2/2)}" y="${f(+Yd((vb+T)/2))}" font-size="${f(fs*.55)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row ahead</text>`
+      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(3*T+cb-cdn*.42))}" font-size="${f(sw2*MI*.16)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">1</text>`
+      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(T+cb-cdn*.42))}" font-size="${f(sw2*MI*.16)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">1</text>`
+      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(3*T+cb-cdn*.82))}" font-size="${f(fs*.5)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row behind</text>`
+      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(T+cb-cdn*.82))}" font-size="${f(fs*.5)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row ahead</text>`
       +`<text x="${f((+Xd(xa)+ +Xd(xe))/2)}" y="${f(+Yd(2*T-T*.25))}" font-size="${f(fs*.5)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Aisle</text>`
       +`<text x="${Xd(0)}" y="${f(+Yd(vt)-fs*1.2)}" font-size="${f(fs*.95)}" font-weight="700" fill="var(--ink)">Seat 1 beside the aisle, enlarged ×${MI}</text>`;
     const ux=xe+fs*0.9/MI*1.6;
@@ -2332,7 +2334,10 @@ function drawEnlarged(o={}){if(enlSide()==='corner')return drawCornerEnlarged(o)
       .dim([ux,T+cb],[ux,2*T-cf],{lab:'Clear width',val:L(T-cd),ref:'tread'})
       .dim([ux,2*T-cf],[ux,2*T],{lab:'Seat raised',val:L(cf),eb:[xe,2*T]})
       .dim([ux+fs*3/MI,T],[ux+fs*3/MI,2*T],{lab:'Row depth',val:L(T)})
-      .dim([-fs*1.6/MI,2*T+cb-cdn],[-fs*1.6/MI,2*T+cb],{lab:'Seat down',val:L(cdn),ea:[0,2*T+cb-cdn],eb:[0,2*T+cb]})
+      ;{const xc=-fs*1.6/MI,xo=-fs*4.2/MI,y=[T+cb-cdn,T+cb,2*T+cb-cdn,2*T+cb,3*T+cb-cdn,3*T+cb];   // chain on the left: seat, space, seat, space, seat; and overall
+      for(let i=0;i<5;i++)K2.dim([xc,y[i]],[xc,y[i+1]],{lab:i%2?'':'Seat down',val:L(y[i+1]-y[i]),ea:[0,y[i]],eb:[0,y[i+1]]});
+      K2.dim([xo,y[0]],[xo,y[5]],{lab:'Three rows of seats',val:L(y[5]-y[0])});}
+    K2
       .dim([0,vb-fs*1.8/MI],[sw2,vb-fs*1.8/MI],{lab:'Seat width',val:L(sw2),ea:[0,vb],eb:[sw2,vb]})   // the selected seat width
       .dim([sw2,vb-fs*1.8/MI],[xa,vb-fs*1.8/MI],{lab:'End space',val:L(gp),eb:[xa,vb]});
     det+=K2.out();}
