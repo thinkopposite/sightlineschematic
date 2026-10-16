@@ -1259,11 +1259,26 @@ function egressRows(){const e=egress();if(!e)return null;const imp=imperial(),ro
   e.tiers.forEach(t=>{const n=`Tier ${t.ti+1}`;
     rows.push([`${n}: aisles`,`${t.aisles} aisles; ${fmt(t.lostA-(t.omit||0))} seats lost to aisles and end-seat space${t.omit?`, ${fmt(t.omit)} left out at the top of corner sections`:''}`,null]);
     rows.push([`${n}: largest section`,`${t.secMax} seats between two aisles; ${imp?`limit ${t.limMin} (IBC ${egBasis()==='open'||egBasis()==='smoke'?'Table 1030.13.2.1':'1030.13.2.1'} at ${L(ibcRow(P.zt[0].z.T).C)} clear, middle sections up to ${AIS().smaxMid}, most ${AIS().smax})`:'Green Guide allows '+t.limMin}${t.over?` (${t.over} section-rows over)`:''}`,t.over===0&&t.secMax<=t.limMin]);
+    {const st=imp?aisleStepSummary(t.ti):null;if(st)rows.push([`${n}: aisle steps`,`${st.ns.map(stepName).join(' and ')}; risers ${L(st.rhMin)}${st.rhMax-st.rhMin>1?'–'+L(st.rhMax):''}, treads ${L(st.tdMin)}${st.tdMax-st.tdMin>1?'–'+L(st.tdMax):''} (IBC: risers 4"–8", treads 11" min)${st.bad.length?`; ${st.bad.length} rows fail: ${[...new Set(st.bad.map(b=>b.bad))].join(', ')}`:''}${st.strip?`; ${st.strip} riser changes over 3/16" need a marking stripe`:''}`,!st.bad.length]);}
     if(t.aMax)rows.push([`${n}: busiest aisle`,`${fmt(t.aMax.q)} seats need ${L(t.aMax.req)}; ${L(t.aMax.w)} provided`,t.aMax.w>=t.aMax.req-0.5]);});
   if(imp)rows.push(['Clear width between rows',`${L(Math.min(...P.zt.slice(0,P.tierCount).flatMap(t=>GEO.map(k=>ibcRow(t.z[k]).C))))} least (row depth less the seat); 12" minimum, + 0.3" per seat over 14 with backrests, 22" covers 100 seats`,null]);
   else rows.push(['Clear width between rows','400 mm minimum seatway clearway (FIFA, Green Guide)',null]);
   rows.push(['Seats after aisles',`${fmt(M.cap)} of ${fmt(gross)} (${gross?((gross-M.cap)/gross*100).toFixed(1):0}% lost)`,null]);
   return rows;}
+// Aisle steps (IBC 1029.13.2 / 2024 1030.14.2): risers 4-8 in, uniform in a row; treads 11 in minimum.
+// The rise to the next row R: up to 8 in, no aisle step (one riser, the full row tread); over 8 to 16 in, a one-step
+// (2 equal risers, 2 equal treads); over 16 to 24 in, a two-step (3 equal risers, 3 equal treads). Steps sit on the row's tread.
+const AIN_=25.4;
+function aisleStep(tr,j){const r=tr[j],nx=tr[j+1],R=nx&&nx.riser!=null?nx.riser:null,T=r.T;
+  if(R==null)return {n:1,R:0,T,rh:0,td:T,top:true,bad:null};
+  const n=R<=8*AIN_+0.5?1:R<=16*AIN_+0.5?2:3,rh=R/n,td=T/n;
+  const bad=R<4*AIN_-0.5?'riser under 4"':R>24*AIN_+0.5?'riser over 8" (row rise over 24")':td<11*AIN_-0.5?'tread under 11"':null;
+  return {n,R,T,rh,td,bad};}
+function aisleStepSummary(ti){const zs=GEO.map(k=>ZR[k].filter(r=>r.tier===ti)).filter(t=>t.length>1);if(!zs.length)return null;
+  const all=zs.flatMap(t=>t.slice(0,-1).map((_,j)=>aisleStep(t,j)));const ns=[...new Set(all.map(a=>a.n))].sort(),rh=all.map(a=>a.rh),td=all.map(a=>a.td),bad=all.filter(a=>a.bad);
+  let strip=0;zs.forEach(t=>{for(let j=1;j<t.length-1;j++){const a=aisleStep(t,j-1),b=aisleStep(t,j);if(Math.abs(a.rh-b.rh)>3/16*AIN_)strip++;}});
+  return {ns,rhMin:Math.min(...rh),rhMax:Math.max(...rh),tdMin:Math.min(...td),tdMax:Math.max(...td),bad,strip};}
+const stepName=n=>n===1?'no aisle step':n===2?'one-step':'two-step';
 // seats in one row: sections between the aisle cuts (vomitory rows cut wider on vomitory aisles)
 function rowSections(Lz,j){const A=AIS(),r=Lz.tr[j],d=(r.x+r.T/2)/1000,Ld=chainLen(Lz.ch,d),sw=r.seatW/1000,wA=A.w/1000,gp=(A.gap||0)/1000,inV=Lz.vr&&Lz.vr.rows.includes(j),wV=(A.vomW+2*vomWall())/1000+2*wA;
   let prev=0,cut=false;const secs=[],cuts=[];                            // each row end at an aisle keeps the end-seat space (construction tolerance)
@@ -1323,11 +1338,15 @@ function egFactor(level,seats){const b=egBasis();
 function aisleSvg(){const AL=M.AL;if(!AL||PLAN!=='bowl')return '';const A=AIS(),wA=A.w/1000,wV=(A.vomW+2*vomWall())/1000+2*wA,vc=A.vomW/1000,f=v=>v.toFixed(3);let a='',v='',tun='';
   const strip=(Lz,i,j0,j1,w,lo,hi)=>{const L=[],R=[];for(let j=j0;j<=j1;j++){const r=Lz.tr[j];for(const d of [(lo&&j===j0?lo:r.x)/1000,(hi&&j===j1?hi:r.x+r.T)/1000]){const s=chainS(Lz.ch,Lz.ais[i],d);L.push(chainPtS(Lz.ch,s-w/2,d));R.push(chainPtS(Lz.ch,s+w/2,d));}}
     return 'M'+L.concat(R.reverse()).map(p=>f(p[0])+' '+f(p[1])).join('L')+'Z';};
+  let stp='',red='';
   for(const T of AL)for(const Lz of Object.values(T)){const last=Lz.tr.length-1;
     Lz.ais.forEach((ai,i)=>{a+=strip(Lz,i,0,last,cutW(ai,wA));
+      if(imperial())Lz.tr.forEach((r,j)=>{const st=aisleStep(Lz.tr,j),w=cutW(ai,wA);for(let k=0;k<st.n;k++){const d=(r.x+k*r.T/st.n)/1000,s=chainS(Lz.ch,ai,d),p=chainPtS(Lz.ch,s-w/2,d),q=chainPtS(Lz.ch,s+w/2,d);stp+=`M${f(p[0])} ${f(p[1])}L${f(q[0])} ${f(q[1])}`;}   // every step nosing
+        if(st.bad)red+=strip(Lz,i,j,j,w);});
       if(Lz.vom[i]&&Lz.vr&&Lz.vr.rows.length){const j0=Lz.vr.rows[0],j1=Lz.vr.rows[Lz.vr.rows.length-1];a+=strip(Lz,i,j0,j1,wV);v+=strip(Lz,i,j0,j1,vc+2*vomWall()/1000);
         if(j1<last)tun+=strip(Lz,i,j1+1,last,vc);}});}
   return `<g class="aisles"><path d="${a}" fill="#FFFFFF" fill-rule="nonzero" stroke="var(--ink)" stroke-width="0.35" vector-effect="non-scaling-stroke"/>`
+    +(red?`<path d="${red}" fill="#FF8A8A" fill-opacity=".6" stroke="none"/>`:'')+(stp?`<path d="${stp}" fill="none" stroke="#7A7A7A" stroke-width="0.2" vector-effect="non-scaling-stroke"/>`:'')
     +`<path d="${v}" fill="#3C3C3C" stroke="var(--ink)" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
     +`<path d="${tun}" fill="none" stroke="#3C3C3C" stroke-width="0.8" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/></g>`;}
 function egressHTML(){const r=egressRows();if(!r)return '<tbody><tr><td>Percentage allowance: '+P.loss+'% off every row. Choose the computed layout under Aisles to check the sections and egress.</td></tr></tbody>';
@@ -1490,7 +1509,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.15.01';
+const VERSION='2026.10.15.02';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2009,7 +2028,10 @@ function drawIso(){
   let bp=boundary(P).map(([x,y])=>[x,-y]);if(polyArea(bp)<0)bp.reverse();
   CH.forEach((c,ti)=>{for(const z of Object.keys(c)){const rows=ZR[z].filter(r=>r.tier===ti);if(!rows.length)continue;
     const pr=profileOf(rows,ti).map(([x,h])=>[x/1000,h/1000]),n=pr.length,closed=c[z]==='ring';
-    const st=closed?stations(bp):chainStations(c[z]).map(([x,y,nx,ny])=>[x,-y,nx,-ny]).reverse(),m=st.length;
+    const st0=closed?stations(bp):chainStations(c[z]).map(([x,y,nx,ny])=>[x,-y,nx,-ny]).reverse(),st=[];   // short pieces, so the depth sort holds next to the aisle steps
+    for(let i=0;i<st0.length;i++){const a=st0[i],b=closed?st0[(i+1)%st0.length]:st0[i+1];st.push(a);if(!b)continue;const l=Math.hypot(b[0]-a[0],b[1]-a[1]),k=Math.ceil(l/6);
+      if(k>1)for(let q=1;q<k;q++)st.push([a[0]+(b[0]-a[0])*q/k,a[1]+(b[1]-a[1])*q/k,a[2]+(b[2]-a[2])*q/k,a[3]+(b[3]-a[3])*q/k]);}   // linear in position and offset direction: the same surface, in pieces
+    const m=st.length;
     const V=(s,i)=>R([st[s][0]+st[s][2]*pr[i][0],st[s][1]+st[s][3]*pr[i][0],pr[i][1]]),base=rgb(tierFill(ti));
     for(let s=0;s<(closed?m:m-1);s++){const s2=(s+1)%m;for(let i=0;i<n;i++){const i2=(i+1)%n,q=[V(s,i),V(s,i2),V(s2,i2),V(s2,i)];
       const u=[q[1][0]-q[0][0],q[1][1]-q[0][1],q[1][2]-q[0][2]],w=[q[2][0]-q[0][0],q[2][1]-q[0][1],q[2][2]-q[0][2]];
@@ -2018,6 +2040,22 @@ function drawIso(){
       const k=0.5+0.5*Math.max(0,N[0]*L[0]+N[1]*L[1]+N[2]*L[2]);
       const tread=Math.abs(pr[i][1]-pr[i2][1])<1e-6&&pr[i2][0]>pr[i][0];                // tread face: its front edge is the nosing
       faces.push({q,d:q.reduce((a,p)=>a+p[0]+p[1]+p[2],0)/4,fill:`rgb(${base.map(v=>Math.round(v*k)).join(',')})`,edge:tread?[q[0],q[3]]:null});}}}});
+  // aisle steps cut into the rake: each row's tread split into the IBC aisle steps (one riser per 8 in or less of rise), light concrete
+  const AL_=M&&M.AL;
+  if(AL_&&imperial()){const wA=AIS().w/1000,ac=[228,228,224],face=(pts,edge)=>{const q=pts.map(R),u=[0,1,2].map(i=>q[1][i]-q[0][i]),w=[0,1,2].map(i=>q[2][i]-q[0][i]);
+      let N=[u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]];const nl=Math.hypot(...N);if(nl<1e-9)return;N=N.map(a=>a/nl);
+      if(N[0]+N[1]+N[2]<0)N=N.map(a=>-a);const cz=q.reduce((t,p)=>t+p[2],0)/q.length,k=0.55+0.45*Math.max(0,N[0]*L[0]+N[1]*L[1]+N[2]*L[2]);
+      faces.push({q,d:q.reduce((a,p)=>a+p[0]+p[1]+p[2],0)/q.length+0.35,fill:`rgb(${ac.map(v=>Math.round(v*k)).join(',')})`,edge:edge?edge.map(R):null});};
+    AL_.forEach(T=>Object.values(T).forEach(Lz=>Lz.ais.forEach(ai=>{const w=cutW(ai,wA),P2=(d,sd)=>{const s=chainS(Lz.ch,ai,d),p=chainPtS(Lz.ch,s+sd*w/2,d);return [p[0],-p[1]];};
+      // which way the stand faces: draw its aisle steps only where its seating faces the camera
+      const r0=Lz.tr[0],a0=P2(r0.x/1000,0),a1=P2((r0.x+r0.T)/1000,0),out=R([a1[0]-a0[0],a1[1]-a0[1],0]);if((out[0]+out[1])/Math.hypot(out[0],out[1])>-0.25)return;   // facing away or edge-on: hidden
+      Lz.tr.forEach((r,j)=>{const st=aisleStep(Lz.tr,j);if(st.top)return;const z0=r.z/1000;
+        for(let k=0;k<st.n;k++){const x0=(r.x+k*r.T/st.n)/1000,x1=(r.x+(k+1)*r.T/st.n)/1000,z=z0+k*st.rh/1000,zt=z0+(k+1)*st.rh/1000;
+          const A=P2(x0,-1),B=P2(x0,1),C=P2(x1,1),D=P2(x1,-1);
+          if(k)face([[A[0],A[1],z],[B[0],B[1],z],[C[0],C[1],z],[D[0],D[1],z]],[[A[0],A[1],z],[B[0],B[1],z]]);   // tread (k = 0 is the row's own tread level)
+          face([[D[0],D[1],z],[C[0],C[1],z],[C[0],C[1],zt],[D[0],D[1],zt]]);                                  // riser up to the next step
+          if(k)for(const [p,q2] of [[A,D],[B,C]])face([[p[0],p[1],z0],[q2[0],q2[1],z0],[q2[0],q2[1],z],[p[0],p[1],z]]);}   // step sides above the seating tread
+        {const A=P2(r.x/1000,-1),B=P2(r.x/1000,1),C=P2((r.x+r.T/st.n)/1000,1),D=P2((r.x+r.T/st.n)/1000,-1);face([[A[0],A[1],z0],[B[0],B[1],z0],[C[0],C[1],z0],[D[0],D[1],z0]],[[A[0],A[1],z0],[B[0],B[1],z0]]);}});})));}
   const ground=(poly,fill,d)=>({q:poly.map(([x,y])=>R([x,y,0])),d:d,fill,ground:true});
   const G=rectGeo(P),buf=zoned(P)?(()=>{const t=ZR.T.find(r=>r.tier===0),dd=t?t.x/1000:0,s=G.side;return [[s.L.p[0]-dd,s.T.p[1]-dd],[s.R.p[0]+dd,s.T.p[1]-dd],[s.R.p[0]+dd,s.B.p[1]+dd],[s.L.p[0]-dd,s.B.p[1]+dd]].map(([x,y])=>[x,-y]);})():null;
   const gf=[];if(buf)gf.push(ground(buf,css('--grass2')||'#8EB03E',-1e9));
@@ -2100,9 +2138,9 @@ function drawIso(){
   const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),pad=(x1-x0)*.04,W=x1-x0+2*pad,H=y1-y0+2*pad,f=v=>v.toFixed(2);
   let svg=`<svg viewBox="${f(x0-pad)} ${f(y0-pad)} ${f(W)} ${f(H)}" role="img" aria-label="Isometric view of the bowl from the ${ISOVIEW}">`;
   // ground plane: plan (screen y down) -> model (y up) -> rotation -> isometric, as one affine matrix
-  const c30v=Math.cos(Math.PI/6),M=[c30v*(sr-cr),.5*(cr+sr),-c30v*(cr+sr),.5*(sr-cr)],Sp=SPORTS[P.sport];
+  const c30v=Math.cos(Math.PI/6),MX=[c30v*(sr-cr),.5*(cr+sr),-c30v*(cr+sr),.5*(sr-cr)],Sp=SPORTS[P.sport];
   const clip=buf?`<clipPath id="isoClip"><polygon points="${buf.map(([x,y])=>`${x.toFixed(2)},${(-y).toFixed(2)}`).join(' ')}"/></clipPath>`:'';   // field drawing kept inside the buffer
-  const fieldSvg=`<g transform="matrix(${M.map(v=>v.toFixed(6)).join(' ')} 0 0)">${clip}<g${buf?' clip-path="url(#isoClip)"':''}>${Sp.draw(P,Object.assign(Pen((x1-x0)/700),{iso:true}))}</g></g>`;
+  const fieldSvg=`<g transform="matrix(${MX.map(v=>v.toFixed(6)).join(' ')} 0 0)">${clip}<g${buf?' clip-path="url(#isoClip)"':''}>${Sp.draw(P,Object.assign(Pen((x1-x0)/700),{iso:true}))}</g></g>`;
   let first=true;
   for(const fc of all){if(!fc.ground&&first){svg+=fieldSvg;first=false;}const p=fc.q.map(pj);
     if(fc.post){const [a,b]=p;svg+=`<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${fc.col||'#F2C200'}" stroke-width="${fc.w||0.1016}" stroke-linecap="${fc.cap||'round'}"/>`;continue;}   /* 4 in uprights, true size */
@@ -2288,7 +2326,8 @@ function drawEnlarged(o={}){if(enlSide()==='corner')return drawCornerEnlarged(o)
   tr.forEach((r,j)=>{const v=r.x-x0;g+=`<line x1="${X(-side)}" y1="${Y(v)}" x2="${X(span+side)}" y2="${Y(v)}" stroke="var(--ink)" stroke-width="${j?0.7:1.4}" vector-effect="non-scaling-stroke"/>`;});
   g+=`<line x1="${X(-side)}" y1="${Y(depth)}" x2="${X(span+side)}" y2="${Y(depth)}" stroke="var(--ink)" stroke-width="1.4" vector-effect="non-scaling-stroke"/>`;
   for(const uc of [0,span])g+=`<rect x="${X(uc-wA/2)}" y="${Y(depth)}" width="${f(wA)}" height="${f(depth)}" fill="#FFFFFF" stroke="var(--ink)" stroke-width="0.9" vector-effect="non-scaling-stroke"/>`
-    +tr.map(r=>{const v=r.x-x0;return `<line x1="${X(uc-wA/2)}" y1="${Y(v+r.T/2)}" x2="${X(uc+wA/2)}" y2="${Y(v+r.T/2)}" stroke="var(--muted)" stroke-width="0.5" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"/>`;}).join('');   // aisle steps: two per row
+    +tr.map((r,j)=>{const v=r.x-x0,st=aisleStep(tr,j);let o=st.bad?`<rect x="${X(uc-wA/2)}" y="${Y(v+r.T)}" width="${f(wA)}" height="${f(r.T)}" fill="#FF8A8A" fill-opacity=".6"/>`:'';
+      for(let k=0;k<st.n;k++)o+=`<line x1="${X(uc-wA/2)}" y1="${Y(v+k*r.T/st.n)}" x2="${X(uc+wA/2)}" y2="${Y(v+k*r.T/st.n)}" stroke="var(--ink)" stroke-width="${k?0.45:0.7}" vector-effect="non-scaling-stroke"/>`;return o;}).join('');   // aisle steps: the row riser and each step nosing
   // seats: chair at the back of each tread, seat raised (envelope), clear width in front
   const iL=Lz.ais.indexOf(L0.a)+1,counts=[];
   tr.forEach((r,j)=>{const S=rowSections(Lz,j),n=S.secs[iL]||0,v=r.x-x0;counts.push(n);
@@ -2314,7 +2353,8 @@ function drawEnlarged(o={}){if(enlSide()==='corner')return drawCornerEnlarged(o)
     const xa=sw2+gp,AWp=Math.min(wA,18*25.4),xe=xa+AWp,vb=T+cb-cdn-3*25.4,vt=3*T+cb+3*25.4,ln=(x1,y1,x2,y2,st)=>`<line x1="${Xd(x1)}" y1="${Yd(y1)}" x2="${Xd(x2)}" y2="${Yd(y2)}" ${st} vector-effect="non-scaling-stroke"/>`;
     det+=`<rect x="${Xd(xa)}" y="${Yd(vt)}" width="${f(AWp*MI)}" height="${f((vt-vb)*MI)}" fill="#FFFFFF" stroke="none"/>`
       +ln(xa,vb,xa,vt,'stroke="var(--ink)" stroke-width="0.9"');
-    for(const v of [T,2*T,3*T])det+=(v>vt?'':ln(0,v,xe,v,'stroke="var(--ink)" stroke-width="1.2"'))+(v-T/2<vb?'':ln(xa,v-T/2,xe,v-T/2,'stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="4 2.5"'));   // risers; aisle steps
+    const ast=aisleStep(tr,Math.min(1,tr.length-1));   // the aisle steps of the typical row (IBC: risers 4-8 in, treads 11 in min)
+    for(const v of [T,2*T,3*T]){det+=(v>vt?'':ln(0,v,xe,v,'stroke="var(--ink)" stroke-width="1.2"'));for(let k=1;k<ast.n;k++){const y=v-T+k*T/ast.n;if(y>=vb&&y<=vt)det+=ln(xa,y,xe,y,'stroke="var(--ink)" stroke-width="0.8"');}}   // risers; aisle step nosings
     for(const base of [T,2*T,3*T]){const y0=Math.max(base+cb-cdn,vb),y1=Math.min(base+cb,vt),full=base===2*T,tip=base-cf;if(y1<=y0)continue;
       det+=`<rect x="${Xd(0)}" y="${Yd(y1)}" width="${f(sw2*MI)}" height="${f((y1-y0)*MI)}" fill="${tierFill(ti)}" fill-opacity="${full?.55:.3}" stroke="none"/>`
         +ln(0,y0,0,y1,'stroke="var(--ink)" stroke-width="0.6"')+ln(sw2,y0,sw2,y1,'stroke="var(--ink)" stroke-width="0.6"')
@@ -2326,7 +2366,8 @@ function drawEnlarged(o={}){if(enlSide()==='corner')return drawCornerEnlarged(o)
       +`<text x="${Xd(sw2/2)}" y="${f(+Yd(T+cb-cdn*.42))}" font-size="${f(sw2*MI*.16)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">1</text>`
       +`<text x="${Xd(sw2/2)}" y="${f(+Yd(3*T+cb-cdn*.82))}" font-size="${f(fs*.5)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row behind</text>`
       +`<text x="${Xd(sw2/2)}" y="${f(+Yd(T+cb-cdn*.82))}" font-size="${f(fs*.5)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row ahead</text>`
-      +`<text x="${f((+Xd(xa)+ +Xd(xe))/2)}" y="${f(+Yd(2*T-T*.25))}" font-size="${f(fs*.5)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Aisle</text>`
+      +`<text x="${f((+Xd(xa)+ +Xd(xe))/2)}" y="${f(+Yd(3*T-T*.3))}" font-size="${f(fs*.5)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Aisle, ${stepName(ast.n)}</text>`
+      +`<text x="${f((+Xd(xa)+ +Xd(xe))/2)}" y="${f(+Yd(3*T-T*.3)+fs*.7)}" font-size="${f(fs*.45)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">${ast.n} risers @ ${L(ast.rh)}, ${ast.n} treads @ ${L(ast.td)}</text>`
       +`<text x="${Xd(0)}" y="${f(+Yd(vt)-fs*1.2)}" font-size="${f(fs*.95)}" font-weight="700" fill="var(--ink)">Seat 1 beside the aisle, enlarged ×${MI}</text>`;
     const ux=xe+fs*0.9/MI*1.6;
     K2.avoid(0,T,xe,T).avoid(0,2*T,xe,2*T).avoid(0,3*T,xe,3*T)
@@ -2334,6 +2375,8 @@ function drawEnlarged(o={}){if(enlSide()==='corner')return drawCornerEnlarged(o)
       .dim([ux,T+cb],[ux,2*T-cf],{lab:'Clear width',val:L(T-cd),ref:'tread'})
       .dim([ux,2*T-cf],[ux,2*T],{lab:'Seat raised',val:L(cf),eb:[xe,2*T]})
       .dim([ux+fs*3/MI,T],[ux+fs*3/MI,2*T],{lab:'Row depth',val:L(T)})
+      ;for(let k=0;k<ast.n;k++)K2.dim([xa+AWp*.62,T+k*T/ast.n],[xa+AWp*.62,T+(k+1)*T/ast.n],{lab:k?'':'Aisle tread',val:L(T/ast.n)});   // the aisle treads of the middle row
+    K2
       ;{const xc=-fs*1.6/MI,xo=-fs*4.2/MI,y=[T+cb-cdn,T+cb,2*T+cb-cdn,2*T+cb,3*T+cb-cdn,3*T+cb];   // chain on the left: seat, space, seat, space, seat; and overall
       for(let i=0;i<5;i++)K2.dim([xc,y[i]],[xc,y[i+1]],{lab:i%2?'':'Seat down',val:L(y[i+1]-y[i]),ea:[0,y[i]],eb:[0,y[i+1]]});
       K2.dim([xo,y[0]],[xo,y[5]],{lab:'Three rows of seats',val:L(y[5]-y[0])});}
@@ -2411,7 +2454,9 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.tier??CENL.tier,P.tierCoun
   // aisles: the corner aisle and the two outer aisles
   for(const id of bothIds){const f=findAisle(T,id);if(!f)continue;const L=[],R=[];
     f.Lz.tr.forEach(r=>{for(const d of [r.x/1000,(r.x+r.T)/1000]){const s=chainS(f.Lz.ch,f.a,d),w=cutW(f.a,wA);L.push(loc(chainPtS(f.Lz.ch,s-w/2,d)));R.push(loc(chainPtS(f.Lz.ch,s+w/2,d)));}});
-    pts.push(...L,...R);aisSvg+=`<path d="${poly(L,R)}" fill="#FFFFFF" stroke="var(--ink)" stroke-width="0.9" vector-effect="non-scaling-stroke"/>`;}
+    pts.push(...L,...R);aisSvg+=`<path d="${poly(L,R)}" fill="#FFFFFF" stroke="var(--ink)" stroke-width="0.9" vector-effect="non-scaling-stroke"/>`;
+    f.Lz.tr.forEach((r,j)=>{const st=aisleStep(f.Lz.tr,j),w=cutW(f.a,wA);for(let k=0;k<st.n;k++){const d=(r.x+k*r.T/st.n)/1000,s=chainS(f.Lz.ch,f.a,d),p=loc(chainPtS(f.Lz.ch,s-w/2,d)),q=loc(chainPtS(f.Lz.ch,s+w/2,d));
+      aisSvg+=`<path d="M${F(p[0])} ${F(p[1])}L${F(q[0])} ${F(q[1])}" fill="none" stroke="var(--ink)" stroke-width="${k?0.35:0.6}" vector-effect="non-scaling-stroke"/>`;}});}   // the row riser and each aisle step nosing
   // treads, seats, rows over the code limit, seats left out by the section cap
   rows.forEach((secs,j)=>secs.forEach(sc=>{const over=sc.n>ibc,omit=Math.max(0,sc.n-cap),list=[],fe=seatsFromEnd(T,sc);
     const all=sectionSeats(T,sc,j);   // start 4 in from the aisles square to the rows; one placement across stand joints
