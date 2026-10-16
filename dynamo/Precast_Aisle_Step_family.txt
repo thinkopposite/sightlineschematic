@@ -1,0 +1,29 @@
+PRECAST AISLE STEP - Revit family (placeholder spec for Sightline_AisleSteps_R2024.dyn)
+
+Template: Metric Generic Model.rft (work-plane based OFF, always vertical ON). Save as "Precast Aisle Step.rfa" and load it
+into the project. The family name must match input 2 of the graph ("Precast Aisle Step").
+
+Origin (insertion point): the middle of the front edge (the first nosing), at the bottom of the piece, which sits on the
+bowl tread. Family +X runs across the aisle (left to right looking up the aisle), +Y runs up the aisle (away from the field),
++Z is up. The graph places the instance at the sheet's X, Y, Z and rotates it about Z by "Rotation".
+
+Instance parameters (the graph sets them by name):
+  Width        Length   default 1219.2 mm (48 in, edge to edge; the end seats keep 4 in clear of it)
+  Tread        Length   each aisle tread depth = row depth / (Steps + 1)
+  Riser        Length   each aisle riser = row rise / (Steps + 1), 4 in to 8 in (IBC)
+  Steps        Integer  1 = one-step, 2 = two-step
+  Bend Angle   Angle    0 for straight pieces (optional, see below)
+
+Geometry (concrete material, subcategory "Precast aisle step"):
+  Lower block: extrusion X -Width/2..+Width/2, Y 0..Steps*Tread, Z 0..Riser.
+  Upper block: extrusion X -Width/2..+Width/2, Y Tread..2*Tread, Z Riser..2*Riser; Visible = (Steps > 1).
+  Lock the extrusions to reference planes dimensioned and labelled with the parameters above.
+
+Bend Angle (pieces on the mitred aisles at a bend in the rows): the piece's plan outline follows the rows on both sides, with a
+corner at the bend in the middle of the piece. To support it, build each block as two halves (X < 0 and X > 0), each on a
+reference line through the origin rotated by -Bend Angle/2 and +Bend Angle/2, mitred where they meet. If the family has no
+"Bend Angle" parameter, the graph builds those pieces as exact DirectShape solids instead (Generic Models), and places the
+straight pieces as family instances.
+
+Every placed piece gets Comments = "Sightline aisle step" (the graph deletes and replaces these on each run) and
+Mark = tier, stand, aisle, row (e.g. "T2 W A3 R12").

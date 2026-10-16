@@ -1,0 +1,301 @@
+{
+  "Uuid": "d2daf0c5-fcda-4140-81b4-927662e60a6b",
+  "IsCustomNode": false,
+  "Description": "Sightline Precast Aisle Steps | Base version: Revit 2024.0 (Dynamo 2.17, CPython3). Run in the PROJECT. Places one precast aisle step per aisle per row from the \"Aisle step pieces\" sheet: instances of the \"Precast Aisle Step\" family when loaded, otherwise exact DirectShape solids. Re-running replaces the previous pieces.",
+  "Name": "Sightline_AisleSteps_R2024",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [
+    {
+      "Id": "ed2d912ca76a4053a642da1d9cd22114",
+      "Name": "1. Sightline workbook (.xlsx)",
+      "Type": "string",
+      "Value": "Choose the Sightline .xlsx",
+      "Description": "The file from Sightline > Export for Revit"
+    },
+    {
+      "Id": "40d4c500b5ca4fcea6a5d2c12d2bd8e6",
+      "Name": "2. Family name",
+      "Type": "string",
+      "Value": "Precast Aisle Step",
+      "Description": "The loaded family to place (see Precast_Aisle_Step_family.txt)"
+    },
+    {
+      "Id": "a65523d0680b48df9b078830e402c407",
+      "Name": "3. Build every piece as DirectShape",
+      "Type": "boolean",
+      "Value": "false",
+      "Description": "True ignores the family and builds exact solids"
+    }
+  ],
+  "Outputs": [
+    {
+      "Id": "f384a5b0f395495db0aadff2ecef649d",
+      "Name": "Result",
+      "Type": "string",
+      "InitialValue": "",
+      "Description": "What was placed"
+    }
+  ],
+  "Nodes": [
+    {
+      "ConcreteType": "CoreNodeModels.Input.Filename, CoreNodeModels",
+      "HintPath": "",
+      "InputValue": "Choose the Sightline .xlsx",
+      "NodeType": "ExtensionNode",
+      "Id": "ed2d912ca76a4053a642da1d9cd22114",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "60d194b6d955437596800f30e9060c46",
+          "Name": "",
+          "Description": "File Path",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Allows you to select a file on the system to get its filename"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "NodeType": "StringInputNode",
+      "InputValue": "Precast Aisle Step",
+      "Id": "40d4c500b5ca4fcea6a5d2c12d2bd8e6",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "721f5948edd3491d84977a65ab8507c7",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Creates a string."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": false,
+      "Id": "a65523d0680b48df9b078830e402c407",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "67b8131e4e474292b84cdf197f571970",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Selection between a true and false."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "# Sightline Precast Aisle Steps  |  Dynamo 2.17 (CPython3)  |  Base version Revit 2024.0\n# Places one precast aisle step per aisle per row in the PROJECT, from the \"Aisle step pieces\" sheet of a Sightline workbook:\n#   a one-step is a rectangular block, a two-step an L-shaped block, sitting on the bowl tread against the riser of the row above.\n# With the \"Precast Aisle Step\" family loaded, each piece is an instance of it (parameters Width, Tread, Riser, Steps, Bend Angle;\n# see Precast_Aisle_Step_family.txt). Pieces the family cannot take (a bend, when it has no Bend Angle parameter), or every piece when\n# the family is not loaded, are built as exact DirectShape solids (Generic Models) from the \"Aisle steps\" plates.\n# Coordinates: Sightline origin (field centre at pitch level) = project internal origin, the same as the bowl family placed there.\n# Inputs: IN[0] Sightline workbook (.xlsx)  IN[1] Family name  IN[2] Build every piece as DirectShape (ignore the family)\nimport clr, math, re, os, zipfile\nimport xml.etree.ElementTree as ET\nclr.AddReference('RevitAPI')\nfrom Autodesk.Revit.DB import *\nfrom Autodesk.Revit.DB.Structure import StructuralType\nclr.AddReference('RevitServices')\nfrom RevitServices.Persistence import DocumentManager\nfrom RevitServices.Transactions import TransactionManager\nclr.AddReference('System')\nfrom System.Collections.Generic import List\n\nMM = 1.0 / 304.8                       # Revit works in feet\nTAG = 'Sightline aisle step'\nNS = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'\nRID = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id'\nTIER_COLOURS = [(150, 150, 150), (110, 140, 180), (185, 135, 95)]\n\n\nclass Stop(Exception):\n    pass\n\n\n# ---------- Excel, read with the standard library (no Excel install needed) ----------\ndef col_of(ref):\n    n = 0\n    for ch in ref:\n        if not ch.isalpha():\n            break\n        n = n * 26 + ord(ch.upper()) - 64\n    return n - 1\n\n\ndef read_xlsx(p):\n    with zipfile.ZipFile(p) as z:\n        names = set(z.namelist())\n        shared = []\n        if 'xl/sharedStrings.xml' in names:\n            for si in ET.fromstring(z.read('xl/sharedStrings.xml')).iter(NS + 'si'):\n                shared.append(''.join(t.text or '' for t in si.iter(NS + 't')))\n        rels = {r.get('Id'): r.get('Target') for r in ET.fromstring(z.read('xl/_rels/workbook.xml.rels'))}\n        book = {}\n        for sh in ET.fromstring(z.read('xl/workbook.xml')).iter(NS + 'sheet'):\n            t = (rels.get(sh.get(RID)) or '').replace('\\\\', '/')\n            t = t[1:] if t.startswith('/') else (t if t.startswith('xl/') else 'xl/' + t)\n            if t not in names:\n                continue\n            rows = []\n            for row in ET.fromstring(z.read(t)).iter(NS + 'row'):\n                vals = []\n                for c in row.iter(NS + 'c'):\n                    i = col_of(c.get('r')) if c.get('r') else len(vals)\n                    while len(vals) < i:\n                        vals.append(None)\n                    typ, v = c.get('t'), c.find(NS + 'v')\n                    if typ == 's':\n                        val = shared[int(v.text)]\n                    elif typ == 'inlineStr':\n                        val = ''.join(x.text or '' for x in c.iter(NS + 't'))\n                    elif typ in ('str', 'e'):\n                        val = v.text if v is not None else ''\n                    elif typ == 'b':\n                        val = v is not None and v.text == '1'\n                    else:\n                        val = float(v.text) if v is not None and v.text not in (None, '') else None\n                    vals.append(val)\n                rows.append(vals)\n            book[sh.get('name')] = rows\n    return book\n\n\ndef num(v):\n    try:\n        return float(v)\n    except (TypeError, ValueError):\n        return None\n\n\n\n\ndef sheet(book, name):\n    rows = book.get(name, [])\n    if not rows:\n        return [], []\n    head = [str(h or '').strip() for h in rows[0]]\n    return head, [list(r) + [None] * 80 for r in rows[1:] if r and num(r[0]) is not None]\n\n\ndef col(head, name):\n    for i, h in enumerate(head):\n        if h.lower().startswith(name.lower()):\n            return i\n    raise Stop('Column \"%s\" missing: re-export the workbook from Sightline.' % name)\n\n\ndef set_param(e, names, value):\n    for n in names:\n        p = e.LookupParameter(n)\n        if p is not None and not p.IsReadOnly:\n            try:\n                if p.StorageType == StorageType.Integer:\n                    p.Set(int(round(value)))\n                elif p.StorageType == StorageType.Double:\n                    p.Set(float(value))\n                else:\n                    p.Set(str(value))\n                return True\n            except Exception:\n                pass\n    return False\n\n\ndef plate_solid(pts, z0, z1):\n    q = []\n    for x, y in pts:\n        if not q or math.hypot(x - q[-1][0], y - q[-1][1]) > 0.5:\n            q.append((x, y))\n    while len(q) > 2 and math.hypot(q[0][0] - q[-1][0], q[0][1] - q[-1][1]) <= 0.5:\n        q.pop()\n    loop = CurveLoop()\n    p3 = [XYZ(x * MM, y * MM, z0 * MM) for x, y in q]\n    for i in range(len(p3)):\n        loop.Append(Line.CreateBound(p3[i], p3[(i + 1) % len(p3)]))\n    if loop.IsCounterclockwise(XYZ.BasisZ) is False:\n        loop.Flip()\n    loops = List[CurveLoop]()\n    loops.Add(loop)\n    return GeometryCreationUtilities.CreateExtrusionGeometry(loops, XYZ.BasisZ, (z1 - z0) * MM)\n\n\ndef main(path, fam_name, force_ds):\n    doc = DocumentManager.Instance.CurrentDBDocument\n    if doc is None or doc.IsFamilyDocument:\n        raise Stop('Run this in the project (with the bowl family placed at the internal origin), not in a family.')\n    book = read_xlsx(str(path))\n    head, pieces = sheet(book, 'Aisle step pieces')\n    if not pieces:\n        raise Stop('No \"Aisle step pieces\" sheet: export again from Sightline (computed aisle layout, imperial).')\n    phead, plates = sheet(book, 'Aisle steps')\n    c = dict((k, col(head, k)) for k in ('Piece', 'Tier', 'Zone', 'Aisle', 'Row', 'Steps', 'Riser', 'Tread', 'Width', 'Bend', 'X (', 'Y (', 'Z (', 'Rotation'))\n    pc = dict((k, col(phead, k)) for k in ('Piece', 'Z bottom', 'Z top', 'Corners')) if plates else {}\n    by_piece = {}\n    for r in plates:\n        n = int(num(r[pc['Corners']]) or 0)\n        v = [num(x) for x in r[pc['Corners'] + 1:pc['Corners'] + 1 + 2 * n]]\n        if n >= 3 and all(x is not None for x in v):\n            by_piece.setdefault(int(num(r[pc['Piece']])), []).append(([(v[2 * i], v[2 * i + 1]) for i in range(n)], num(r[pc['Z bottom']]), num(r[pc['Z top']])))\n\n    sym = None\n    if not force_ds:\n        for s in FilteredElementCollector(doc).OfClass(FamilySymbol):\n            if s.Family is not None and s.Family.Name == fam_name:\n                sym = s\n                break\n    has_bend = False\n    stats = {'fam': 0, 'ds': 0, 'fail': 0, 'removed': 0, 'err': ''}\n    TransactionManager.Instance.EnsureInTransaction(doc)\n    try:\n        old = []                                                # re-run replaces, never stacks\n        for e in FilteredElementCollector(doc).WhereElementIsNotElementType():\n            p = e.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)\n            if p is not None and p.AsString() == TAG:\n                old.append(e.Id)\n        for i in old:\n            try:\n                doc.Delete(i)\n                stats['removed'] += 1\n            except Exception:\n                pass\n        if sym is not None:\n            if not sym.IsActive:\n                sym.Activate()\n                doc.Regenerate()\n        gm = ElementId(BuiltInCategory.OST_GenericModel)\n        for r in pieces:\n            i = int(num(r[c['Piece']]))\n            mark = 'T%d %s A%d R%d' % (int(num(r[c['Tier']])), r[c['Zone']], int(num(r[c['Aisle']])), int(num(r[c['Row']])))\n            bend = num(r[c['Bend']]) or 0.0\n            try:\n                e = None\n                if sym is not None:\n                    if True:\n                        pt = XYZ(num(r[c['X (']]) * MM, num(r[c['Y (']]) * MM, num(r[c['Z (']]) * MM)\n                        e = doc.Create.NewFamilyInstance(pt, sym, StructuralType.NonStructural)\n                        ok = set_param(e, ['Width'], num(r[c['Width']]) * MM) and set_param(e, ['Tread'], num(r[c['Tread']]) * MM) \\\n                            and set_param(e, ['Riser'], num(r[c['Riser']]) * MM) and set_param(e, ['Steps'], num(r[c['Steps']]))\n                        bok = abs(bend) < 0.01 or set_param(e, ['Bend Angle', 'Bend angle'], math.radians(bend))\n                        if not (ok and bok):\n                            doc.Delete(e.Id)\n                            e = None\n                        else:\n                            ElementTransformUtils.RotateElement(doc, e.Id, Line.CreateUnbound(pt, XYZ.BasisZ), math.radians(num(r[c['Rotation']])))\n                            stats['fam'] += 1\n                if e is None:                                   # exact solid from the plates\n                    sol = None\n                    for pts, z0, z1 in by_piece.get(i, []):\n                        s = plate_solid(pts, z0, z1)\n                        sol = s if sol is None else BooleanOperationsUtils.ExecuteBooleanOperation(sol, s, BooleanOperationsType.Union)\n                    if sol is None:\n                        raise Exception('no plates for piece %d' % i)\n                    e = DirectShape.CreateElement(doc, gm)\n                    shp = List[GeometryObject]()\n                    shp.Add(sol)\n                    e.SetShape(shp)\n                    try:\n                        e.Name = 'Precast aisle step'\n                    except Exception:\n                        pass\n                    stats['ds'] += 1\n                set_param(e, ['Comments'], TAG)\n                set_param(e, ['Mark'], mark)\n            except Exception as ex:\n                stats['fail'] += 1\n                if not stats['err']:\n                    stats['err'] = '%s: %s' % (mark, ex)\n    finally:\n        TransactionManager.Instance.TransactionTaskDone()\n\n    lines = ['Placed %d precast aisle steps: %d family instances of \"%s\", %d DirectShape solids.' % (\n        stats['fam'] + stats['ds'], stats['fam'], fam_name, stats['ds'])]\n    if sym is None and not force_ds:\n        lines.append('Family \"%s\" is not loaded, so every piece is a DirectShape. Load it (see Precast_Aisle_Step_family.txt) and run again for family instances.' % fam_name)\n    if stats['removed']:\n        lines.append('Replaced %d elements from the previous run.' % stats['removed'])\n    if stats['fail']:\n        lines.append('WARNING: %d pieces failed. First: %s' % (stats['fail'], stats['err']))\n    lines.append('Each piece: Comments = \"%s\", Mark = tier, stand, aisle, row. Origin = field centre at pitch level (project internal origin).' % TAG)\n    return '\\n'.join(lines)\n\n\ntry:\n    OUT = main(IN[0], str(IN[1] or 'Precast Aisle Step'), bool(IN[2]))\nexcept Stop as e:\n    OUT = 'Stopped: ' + str(e)\n",
+      "Engine": "CPython3",
+      "VariableInputPorts": true,
+      "Id": "c921841d7bbd4a3e8f76365edd353e25",
+      "Inputs": [
+        {
+          "Id": "4f07afdc8d40454180847f56330246f3",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "dd453d5992974e2ca0bedd4ce2527e51",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "c4998ff3a13947c2a105322064dd1a64",
+          "Name": "IN[2]",
+          "Description": "Input #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "48fb7ed4480f495d88f1125007d76c29",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Places the precast aisle steps from the Sightline workbook: family instances, or DirectShape solids."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "NodeType": "ExtensionNode",
+      "Id": "f384a5b0f395495db0aadff2ecef649d",
+      "Inputs": [
+        {
+          "Id": "911acc8a6c264db08e4800fba48cf2fa",
+          "Name": "",
+          "Description": "Node to show output from",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "35b5f6379f7f4b4f926ed9286fe8255b",
+          "Name": "",
+          "Description": "Node output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualize the node's output"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "60d194b6d955437596800f30e9060c46",
+      "End": "4f07afdc8d40454180847f56330246f3",
+      "Id": "d7f47a093fd74587b7156181af4f27e4",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "721f5948edd3491d84977a65ab8507c7",
+      "End": "dd453d5992974e2ca0bedd4ce2527e51",
+      "Id": "09c16f3db1d84c169628c55186594ab3",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "67b8131e4e474292b84cdf197f571970",
+      "End": "c4998ff3a13947c2a105322064dd1a64",
+      "Id": "53b685d1dd9c4505b26e25c820644150",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "48fb7ed4480f495d88f1125007d76c29",
+      "End": "911acc8a6c264db08e4800fba48cf2fa",
+      "Id": "d99f6f987ae24a6881479d6a63229cbb",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [],
+  "Author": "Sightline",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.17.0.3472",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Background Preview",
+      "EyeX": -120.0,
+      "EyeY": 160.0,
+      "EyeZ": 200.0,
+      "LookX": 120.0,
+      "LookY": -150.0,
+      "LookZ": -200.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "ed2d912ca76a4053a642da1d9cd22114",
+        "Name": "1. Sightline workbook (.xlsx)",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0,
+        "Y": 0
+      },
+      {
+        "Id": "40d4c500b5ca4fcea6a5d2c12d2bd8e6",
+        "Name": "2. Family name",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0,
+        "Y": 160
+      },
+      {
+        "Id": "a65523d0680b48df9b078830e402c407",
+        "Name": "3. Build every piece as DirectShape",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0,
+        "Y": 260
+      },
+      {
+        "Id": "c921841d7bbd4a3e8f76365edd353e25",
+        "Name": "Place precast aisle steps",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 420,
+        "Y": 110
+      },
+      {
+        "Id": "f384a5b0f395495db0aadff2ecef649d",
+        "Name": "Result",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": true,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 720,
+        "Y": 110
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}
