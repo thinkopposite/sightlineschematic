@@ -222,7 +222,7 @@ button,a.btnlink,select.sel,.sl-val input,.hex,.swatch{border-color:var(--edge)}
 :focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
 .refb{display:inline-grid;place-items:center;width:1.6em;height:1.6em;border:1.5px solid var(--ref);border-radius:50%;color:var(--ref);font-weight:700;font-size:.85em}.reft{font-size:.8em;color:var(--muted)}table.refs th{text-align:left}table.refs td{vertical-align:top;text-align:left;white-space:normal;min-width:7em}table.refs td:nth-child(4),table.refs td:nth-child(5){min-width:16em}
 main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main g.ctl.hl tspan,main g.ctl.hl text.dv{fill:#E8590C;font-weight:700}main g.ctl.hl line{stroke:#E8590C;stroke-width:2.4px}
-.ctlmark{color:#B4531A;font-size:.8em}.sl.hl{background:var(--accent-soft);box-shadow:0 0 0 2px #E8590C;border-radius:6px}.sl.flash{animation:ctlflash 1.2s}@keyframes ctlflash{0%{box-shadow:0 0 0 4px #E8590C}100%{box-shadow:0 0 0 0 transparent}}
+#secTable tr.hl td{background:var(--accent-soft)}table.wrap th{position:static}table.wrap td,table.wrap th{white-space:normal;text-align:left;vertical-align:top;padding:5px 8px 5px 0}table.wrap td+td{font-weight:400}table.wrap td.n{text-align:right;white-space:nowrap}#secTable td input[type=number]{padding:2px 4px}.ctlmark{color:#B4531A;font-size:.8em}.sl.hl{background:var(--accent-soft);box-shadow:0 0 0 2px #E8590C;border-radius:6px}.sl.flash{animation:ctlflash 1.2s}@keyframes ctlflash{0%{box-shadow:0 0 0 4px #E8590C}100%{box-shadow:0 0 0 0 transparent}}
 </style>
 </head>
 <body>
@@ -245,6 +245,7 @@ main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main 
     <p class="verdict" id="verdict"></p>
     <div class="stats" id="stats"></div>
     <div class="tablewrap" id="zones"></div>
+    <details id="secBox" open><summary>Sections and accessible seating</summary><div id="secPanel"></div></details>
     <details id="egrBox" open><summary>Aisles and egress</summary><div class="tablewrap" style="max-height:none"><table id="egrTable" class="fixed"></table></div><p class="hint" id="egrHint"></p></details>
 
     <p class="group">Sightlines</p>
@@ -297,6 +298,7 @@ main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main 
     <details id="countBox" open><summary>Seat count and C-value by row</summary>
       <div class="seg" style="margin:8px 0"><button id="cntPrint">Download PDF</button><button id="cntXlsx">Export Excel</button></div>
       <div class="tablewrap" style="max-height:none"><table id="countTable" class="count"></table></div></details>
+    <details id="codeBox"><summary>Code summary: accessible seating, plumbing fixtures and concourse loading</summary><div id="codePanel"></div></details>
     <details id="refBox"><summary>References (numbered bubbles on the drawings)</summary><div class="tablewrap" style="max-height:none"><table id="refTable" class="refs"></table></div><p class="hint" id="refHint"></p></details>
     <details id="engBox"><summary>Engineering quantities (preliminary)</summary><div class="tablewrap" style="max-height:none"><table id="engTable"></table></div><p class="hint">Seating slab only (treads, risers, Tier 1 leg wall) at 150 pcf; guard rail at row 1 of each tier. Rakers, columns, beams and foundations are not included.</p></details>
     <details><summary id="schedHead">Row schedule</summary><div class="tablewrap"><table id="table"></table></div></details>
@@ -1139,17 +1141,24 @@ function ringAt(R,d){let s=0;const cs=[],seg=[];R.forEach((z,zi)=>{cs.push(s);z.
 // the straight-run aisles in line from tier to tier. At each corner: no aisle where the section round the corner stays within smax;
 // otherwise one on the corner centreline, plus one at the end of a straight run where the corner section would still be too long
 // (two short sections are evened out rather than leaving a sliver).
-function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti){const wA=A.w/1000,gp=(A.gap||0)/1000,L=RG.L,sides=[],flags=[],ALN=new Set(),SECN={};align=align||[];prevN=prevN||{};
+function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti,Q){const OV=(Q&&Q.secN)||{};const wA=A.w/1000,gp=(A.gap||0)/1000,L=RG.L,sides=[],flags=[],ALN=new Set(),SECN={};align=align||[];prevN=prevN||{};
   R.forEach((z,zi)=>{const gi=z.ch.findIndex(g=>g.t==='LINE');if(gi<0)return;const sc=posOf(zi,{i:gi,f:0.5}),sw=z.z.seatW/1000,P=n=>n*sw+2*gp+wA;
     const run=runs.find(r=>r.a<=sc+1e-6&&sc<=r.b+1e-6);if(!run){sides.miss=1;return;}
     // equal middle sections: 5 on each sideline, 3 on each end zone, as large as the straight run allows up to the middle-section maximum;
     // upper tiers take the Tier 1 size so the aisles stay in line
     const k=Math.max(1,Math.round(isSide(z.k)?A.nSL:A.nEZ)),half=Math.min(run.b-sc,sc-run.a),fit=Math.floor((2*half/k-2*gp-wA)/sw+1e-9);
     const n=Math.min(A.smaxMid,fit,prevN[zi]??Infinity);if(n<1){sides.miss=1;return;}SECN[zi]=n;
-    const rt=[],lt=[];for(let m=0;m<(k+1)/2;m++){const o=k%2?P(n)*(m+0.5):P(n)*m;if(!o&&k%2===0){rt.push(sc);continue;}rt.push(sc+o);lt.push(sc-o);}if(k%2===0&&!lt.length)lt.push(sc);
+    let rt=[],lt=[];for(let m=0;m<(k+1)/2;m++){const o=k%2?P(n)*(m+0.5):P(n)*m;if(!o&&k%2===0){rt.push(sc);continue;}rt.push(sc+o);lt.push(sc-o);}if(k%2===0&&!lt.length)lt.push(sc);
+    // section editor: seats per row set by hand for some middle sections; the rest of the middle group shares what is left (Spread), so the group keeps its length
+    const ns=Array.from({length:k},(_,m)=>OV[ti+'.'+z.k+'.'+m]),ovr=ns.some(v=>v!=null);
+    if(ovr){const free=ns.filter(v=>v==null).length,rem=k*n-ns.reduce((a,v)=>a+(v||0),0),base=free?Math.floor(rem/free):0;let ex=free?rem-base*free:0;
+      [...Array(k).keys()].sort((a,b)=>Math.abs(a-(k-1)/2)-Math.abs(b-(k-1)/2)).forEach(m=>{if(ns[m]==null){ns[m]=base+(ex>0?1:0);if(ex>0)ex--;}});
+      const W=ns.reduce((a,v)=>a+P(Math.max(1,v)),0),bd=[sc-W/2];ns.forEach(v=>bd.push(bd[bd.length-1]+P(Math.max(1,v))));
+      rt=bd.filter(v=>v>=sc-1e-9);lt=bd.filter(v=>v<sc-1e-9).reverse();if(!lt.length)lt.push(rt[0]);}
     const snap=v=>{let best=null;for(const x of align)for(const y of [x,x+L,x-L])if(Math.abs(y-v)<P(n)*0.3&&(best==null||Math.abs(y-v)<Math.abs(best-v)))best=y;return best;};   // upper tiers keep the Tier 1 line nearby
-    [rt,lt].forEach(l=>l.forEach((v,i)=>{if(!i)return;const y=snap(v);if(y!=null&&y>=run.a-1e-6&&y<=run.b+1e-6){l[i]=y;ALN.add(y.toFixed(4));}}));
-    sides.push({zi,sc,run,rt,lt,sw});});
+    if(!ovr)[rt,lt].forEach(l=>l.forEach((v,i)=>{if(!i)return;const y=snap(v);if(y!=null&&y>=run.a-1e-6&&y<=run.b+1e-6){l[i]=y;ALN.add(y.toFixed(4));}}));
+    const bounds=[...new Set(lt.concat(rt).map(v=>+v.toFixed(6)))].sort((a,b)=>a-b);
+    sides.push({zi,sc,run,rt,lt,sw,bounds,k,n:ns.map((v,m)=>v??n)});});
   if(sides.miss||sides.length<2)return null;sides.sort((a,b)=>a.sc-b.sc);
   const corners=[];RG.seg.forEach(q=>{if(segDiag(q.g)||q.g.t==='ARC'){const a={i:q.i,f:0.5,corner:true};corners.push({s:posOf(q.zi,a),zi:q.zi,a});}});
   const seats=(len,sw)=>Math.floor((len-wA-2*gp)/sw+1e-9),extra=[];
@@ -1172,7 +1181,7 @@ function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti){const wA=A.w/1000,gp=(
       else if(seats(Math.abs(E-last),sw)<soft){}   // an extra aisle would only cut off a sliver: no aisle; the corner seats over the limit are left out
       else list.push(E-off);
       if(seats(Math.abs(C-E),sw)>A.smax)flags.push(1);});});
-  const out=[];out.secN=SECN;sides.forEach(S=>S.rt.concat(S.lt).forEach(p=>out.push(Object.assign({s:((p%L)+L)%L},toA(p)))));
+  const out=[];out.secN=SECN;out.mid=sides.map(S=>({zi:S.zi,k:R[S.zi].k,b:S.bounds.map(v=>((v%L)+L)%L),n:S.n}));sides.forEach(S=>S.rt.concat(S.lt).forEach(p=>out.push(Object.assign({s:((p%L)+L)%L},toA(p)))));
   extra.forEach(x=>out.push({s:((x.s%L)+L)%L,zi:x.zi,a:x.a}));
   return out;}
 // Aisles round a tier: one on the centreline of each corner; the rest only on the straight runs, spaced evenly so no section holds
@@ -1197,7 +1206,7 @@ function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;co
     let fixed=[];const below=ti>0&&out[0].__ring;
     if(!imperial()&&below&&R.every((z,zi)=>sameChain(below[zi].ch,z.ch)))fixed=below.list.map(x=>({s:posOf(x.zi,x.a),zi:x.zi,a:Object.assign({},x.a)}));
     else RG.seg.forEach(q=>{if(segDiag(q.g)||q.g.t==='ARC'){const a={i:q.i,f:0.5,corner:true};fixed.push({s:posOf(q.zi,a),zi:q.zi,a});}});
-    let sect=null;if(imperial()){const b0=ti>0&&out[0].__ring,al=b0&&R.every((z,zi)=>sameChain(b0[zi].ch,z.ch))?b0.list.map(x=>posOf(x.zi,x.a)):[];sect=sectAisles(R,RG,runs,posOf,toA,A,al,ti>0&&out[0].__secN||{},ti);if(sect){fixed=sect;Object.defineProperty(T,'__secN',{enumerable:false,value:sect.secN,configurable:true});}}
+    let sect=null;if(imperial()){const b0=ti>0&&out[0].__ring,al=b0&&R.every((z,zi)=>sameChain(b0[zi].ch,z.ch))?b0.list.map(x=>posOf(x.zi,x.a)):[];sect=sectAisles(R,RG,runs,posOf,toA,A,al,ti>0&&out[0].__secN||{},ti,Q);if(sect){fixed=sect;Object.defineProperty(T,'__secN',{enumerable:false,value:sect.secN,configurable:true});}}
     fixed.sort((x,y)=>x.s-y.s);
     const added=[],place=(A0,B0)=>{const S=B0-A0;if(S<=Math.min(capAt(A0+1e-6),capAt(B0-1e-6))+1e-9)return;
       const run=runs.map(r=>({a:Math.max(r.a,A0),b:Math.min(r.b,B0),len:Math.min(r.b,B0)-Math.max(r.a,A0)}))
@@ -1216,6 +1225,8 @@ function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;co
     if(sect){}else if(!fixed.length)place(0,RG.L);else fixed.forEach((f,i)=>{const nx=fixed[(i+1)%fixed.length];place(f.s,nx.s+(i===fixed.length-1?RG.L:0));});
     const list=fixed.concat(added).map(x=>({...x,s:((x.s%RG.L)+RG.L)%RG.L})).sort((x,y)=>x.s-y.s);
     list.forEach(x=>{x.id=++uid;x.a.id=x.id;});
+    if(sect&&sect.mid){const idAt=v=>{const x=list.find(x=>{const d=Math.abs(x.s-v);return d<1e-5||Math.abs(d-RG.L)<1e-5;});return x?x.id:null;};   // middle sections of each stand, for the section editor
+      Object.defineProperty(T,'__mid',{enumerable:false,configurable:true,value:sect.mid.map(g=>({k:g.k,n:g.n,keys:g.b.slice(1).map((v,m)=>idAt(g.b[m])+'_'+idAt(v))}))});}
     R.forEach((z,zi)=>{const ais=[];list.forEach(x=>{if(x.zi===zi)ais.push(x.a);
         else{const nz=(x.zi+1)%R.length;const L0=chainLen(R[x.zi].ch,dB),sx=x.s-RG.cs[x.zi];   // an aisle on the end line of the stand before: shared
           if(nz===zi&&Math.abs(sx-L0)<1e-6)ais.unshift(Object.assign({},{i:0,f:0,id:x.id}));}});
@@ -1229,7 +1240,8 @@ function egress(){const AL=M.AL;if(!AL)return null;const imp=imperial(),fS=egFac
     zs.forEach(Lz=>{t.limMin=Math.min(t.limMin,nmaxZone(P.zt[ti].z[Lz.k]));});
     const nr=Math.max(...zs.map(z=>z.tr.length));let gross=0,net=0;zs.forEach(Lz=>Lz.tr.forEach(r=>{gross+=r.gross;net+=r.net??0;}));
     const lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
-    for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{if(sc.n>lim){t.omit=(t.omit||0)+sc.n-lim;sc.n=lim;}t.secMax=Math.max(t.secMax,sc.n);const both=sc.l!=null&&sc.r!=null;
+    const smap=secNoMap(ti),SS=P.secs||{};
+    for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{{const e=SS[smap[sc.l+'_'+sc.r]];if(e&&e.off)return;}if(sc.n>lim){t.omit=(t.omit||0)+sc.n-lim;sc.n=lim;}t.secMax=Math.max(t.secMax,sc.n);const both=sc.l!=null&&sc.r!=null;
       if(sc.l!=null)load[sc.l]=(load[sc.l]||0)+sc.n*(both?0.5:1);if(sc.r!=null)load[sc.r]=(load[sc.r]||0)+sc.n*(both?0.5:1);});
     t.lostA=Math.round(gross-net);
     Object.values(load).forEach(q=>{const w=AIS().w,req=Math.max(imp?(q<50?36:48)*25.4:0,q*fS);if(!t.aMax||req>t.aMax.req)t.aMax={q:Math.round(q),req,w};});
@@ -1389,6 +1401,7 @@ function metrics(P,ZR,CH){
   let omit=0;if(AL)AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
     const nr=Math.max(...zs.map(z=>z.tr.length));for(let j=0;j<nr;j++)ringSecs(ti,j,AL).forEach(sc=>{if(sc.n<=lim||!sc.pieces.length)return;const o=sc.n-lim,pc=sc.pieces.reduce((a,b)=>b.raw>a.raw?b:a),r=pc.Lz.tr[j];
       if(r&&r.net!=null){r.net-=o;r.omit=(r.omit||0)+o;omit+=o;}});});   // seats over the section limit are left out (corner sections, top rows)
+  const ADA=AL?secAdjust(P,AL):null;
   rows.forEach(r=>{const s=r.net!=null?r.net:r.gross*(1-P.loss/100);cap+=s;tierSeats[r.tier]=(tierSeats[r.tier]||0)+s;
     (zoneSeats[r.tier]=zoneSeats[r.tier]||{})[r.zone]=(zoneSeats[r.tier][r.zone]||0)+s;});
   const cs=rows.filter(r=>r.C!=null),worst=cs.reduce((a,r)=>!a||r.C<a.C?r:a,null);
@@ -1408,7 +1421,8 @@ function metrics(P,ZR,CH){
       h=Math.min(h,u0.z-LEG2-lb.z);   /* clear height under the upper-tier leg wall, over the top tread below */
       heads.push({zone:k,tier:ti,h});}}
   const rails=rows.filter(r=>r.railC!=null&&r.railC<0),lowHead=heads.filter(h=>h.h<P.minHead);
-  return {AL,omit,cap:Math.round(cap),tierSeats:tierSeats.map(x=>Math.round(x||0)),zoneSeats,worst,steep,rails,heads,lowHead,
+  if(ADA){cap+=ADA.comp;ADA.byTier.forEach((t,ti)=>tierSeats[ti]=(tierSeats[ti]||0)+t.comp);adaFinish(ADA,Math.round(cap));}
+  return {AL,ADA,omit,cap:Math.round(cap),tierSeats:tierSeats.map(x=>Math.round(x||0)),zoneSeats,worst,steep,rails,heads,lowHead,
     below:cs.filter(r=>status(r)!=='pass').length,over:rk.filter(r=>r.rake>P.maxRake).length,height,depth,vd,rows:rows.length};
 }
 // Closed tier profile: treads and risers of one consistent thickness t (4, 5 or 6 in), like precast seating units.
@@ -1547,7 +1561,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.88 0.88 0.86')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.15.06';
+const VERSION='2026.10.16.01';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2322,9 +2336,9 @@ function labMid(k,ti,px,py,rf){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz||!zon
 // typical seats per row in each section, written in the middle of the section at the tier's middle row (a range where rows differ)
 // Sections of a tier, numbered clockwise in plan from the middle section of the north end zone: Tier 1 101, 102 ...; Tier 2 201 ...
 // Each: typical seats per row (a range where rows differ), the label point (middle row, a little off-centre) and the number.
-function sectionList(ti){const T=M.AL&&M.AL[ti];if(!T)return [];const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return [];
+function sectionList(ti,AL){AL=AL||(M&&M.AL);const T=AL&&AL[ti];if(!T)return [];const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return [];
   const nr=Math.max(...zs.map(z=>z.tr.length)),jm=Math.floor((nr-1)/2),jw=Math.floor((nr-1)*0.78),st={},lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
-  for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{sc.n=Math.min(sc.n,lim);const k=sc.l+'_'+sc.r,q=st[k]||(st[k]={key:k,lo:Infinity,hi:0,mid:null});q.lo=Math.min(q.lo,sc.n);q.hi=Math.max(q.hi,sc.n);if(j===jm)q.mid=sc;if(j===jw)q.wide=sc;});
+  for(let j=0;j<nr;j++)ringSecs(ti,j,AL).forEach(sc=>{sc.n=Math.min(sc.n,lim);const k=sc.l+'_'+sc.r,q=st[k]||(st[k]={key:k,lo:Infinity,hi:0,mid:null});q.lo=Math.min(q.lo,sc.n);q.hi=Math.max(q.hi,sc.n);if(j===jm)q.mid=sc;if(j===jw)q.wide=sc;});
   const out=Object.values(st).filter(q=>q.mid&&q.mid.pieces.length&&q.hi>0).map(q=>{const pc=q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a);
     // the label sits on the middle row of every section (so labels line up round the tier), halfway along the section's seats, across stand joints too
     {const ps=q.mid.pieces,tot=ps.reduce((t,x)=>t+Math.max(0,x.b-x.a),0);let h=tot/2,at=null;for(const x of ps){const l=Math.max(0,x.b-x.a);if(h<=l+1e-9){at=chainPtS(x.Lz.ch,x.a+h,x.d);break;}h-=l;}q.pt=at||chainPtS(pc.Lz.ch,(pc.a+pc.b)/2,pc.d);}q.mpt=chainPtS(pc.Lz.ch,(pc.a+pc.b)/2,pc.d);q.th=Math.atan2(q.mpt[1],q.mpt[0]);return q;});
@@ -2337,10 +2351,137 @@ function sectionList(ti){const T=M.AL&&M.AL[ti];if(!T)return [];const zs=GEO.map
   return out;}
 const SECNO={};
 function sectLabels(rf,t,plain){if(!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>v.toFixed(2),fz=rf*1.05,fn=rf*.95;
-  for(let ti=0;ti<M.AL.length;ti++)sectionList(ti).forEach(q=>{SECNO[ti+':'+q.key]=q.no;const [rx,ry]=rotPt(q.pt[0],q.pt[1],t),cnt=q.lo===q.hi?q.lo:q.lo+'–'+q.hi;
-    o+=`<g><title>Section ${q.no}: ${q.lo===q.hi?q.lo:q.lo+' to '+q.hi} seats per row</title><text x="${f(rx)}" y="${f(ry-fn*.6)}" font-size="${f(fn)}" font-weight="${plain?400:800}" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fn*.12)}">${q.no}</text>`
-      +`<text x="${f(rx)}" y="${f(ry+fz*.6)}" font-size="${f(fz)}" font-weight="${plain?400:700}" fill="#1E5BD8" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.12)}">${cnt}</text></g>`;});
+  const SS=P.secs||{},WC=(M.ADA&&M.ADA.secs)||{};
+  for(let ti=0;ti<M.AL.length;ti++)sectionList(ti).forEach(q=>{SECNO[ti+':'+q.key]=q.no;const e=SS[q.no]||{},w=WC[q.no],[rx,ry]=rotPt(q.pt[0],q.pt[1],t),cnt=e.off?'off':q.lo===q.hi?q.lo:q.lo+'–'+q.hi;
+    if(w&&!e.off)o+=`<text x="${f(rx)}" y="${f(ry+fz*1.75)}" font-size="${f(fz*.8)}" font-weight="${plain?400:700}" fill="#0B6E4F" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.1)}">WC ${w.wc}</text>`;
+    o+=`<g data-secno="${q.no}" style="cursor:pointer"><title>Section ${q.no}: ${e.off?'switched off':(q.lo===q.hi?q.lo:q.lo+' to '+q.hi)+' seats per row'}${w&&!e.off?`; wheelchair platform: ${w.wc} spaces, ${w.comp} companion seats`:''}</title><text x="${f(rx)}" y="${f(ry-fn*.6)}" font-size="${f(fn)}" font-weight="${plain?400:800}" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fn*.12)}">${q.no}</text>`
+      +`<text x="${f(rx)}" y="${f(ry+fz*.6)}" font-size="${f(fz)}" font-weight="${plain?400:700}" fill="${e.off?'#777777':'#1E5BD8'}" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.12)}">${cnt}</text></g>`;});
   return o;}
+// ---------- section editor and accessible seating (decisions 54-57) ----------
+// P.secN  {"tier.stand.m": seats per row}  middle sections set by hand (Spread balances the rest of the middle group)
+// P.secs  {"105": {off:true, wc:true}}     a section switched off, or given a wheelchair platform at the back of its tier
+const SECS=()=>P.secs||(P.secs={});
+// IBC Table 1108.2.2.1 / 2010 ADA Table 221.2.1.1: wheelchair spaces for the number of seats
+function wcReq(n){if(n<4)return 0;if(n<=25)return 1;if(n<=50)return 2;if(n<=150)return 4;if(n<=300)return 5;if(n<=500)return 6;if(n<=5000)return 6+Math.ceil((n-500)/150);return 36+Math.ceil((n-5000)/200);}
+// platform module along the row: companion + two adjacent wheelchair spaces (33 in each) + companion, repeated; a single companion + 36 in space in the leftover
+function wcModules(len,sw){const IN=0.0254,pair=2*sw+66*IN,one=sw+36*IN;let np=Math.max(0,Math.floor(len/pair+1e-9)),rem=len-np*pair,single=rem>=one-1e-9?1:0;return {pairs:np,single,wc:2*np+single,comp:2*np+single,used:np*pair+single*one};}
+function secNoMap(ti,AL){const m={};sectionList(ti,AL).forEach(q=>m[q.key]=q.no);return m;}
+// seats off: switched-off sections lose every row; platform sections lose the two rows below the tier's top row (the infill, decision 56)
+function secAdjust(P,AL){const S=P.secs||{},IN=25.4,out={secs:{},wc:0,comp:0,lost:0,off:0,aisleSeats:0,byTier:[],byStand:{}};
+  AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);out.byTier[ti]={wc:0,comp:0,secs:0};if(!zs.length)return;const map=secNoMap(ti,AL),lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
+    const nr=Math.max(...zs.map(z=>z.tr.length));
+    for(let j=0;j<nr;j++)ringSecs(ti,j,AL).forEach(sc=>{const no=map[sc.l+'_'+sc.r],e=no&&S[no];const n=Math.min(sc.n,lim);if(n<=0)return;
+      const plat=e&&e.wc&&!e.off,take=e&&e.off?n:0;
+      // aisle seats: one at each aisle end of the row (decision 57, 5% designated)
+      if(!(e&&e.off)){out.aisleSeats+=Math.min(n,(sc.l!=null)+(sc.r!=null));}
+      const pcs=sc.pieces.filter(pc=>pc.Lz.tr[j]),inPlat=pc=>{const L=pc.Lz.tr.length;return j===L-3||j===L-2;};
+      const tk=plat?pcs.filter(inPlat):take?pcs:[];if(!tk.length)return;
+      let want=plat?Math.round(n*tk.reduce((a,pc)=>a+pc.raw,0)/Math.max(1e-9,pcs.reduce((a,pc)=>a+pc.raw,0))):n;
+      const sh=tk.map(pc=>Math.min(want,Math.floor(pc.raw/sc.sw+1e-9)));let d=want-sh.reduce((a,b)=>a+b,0);if(d>0){const bi=tk.reduce((b,pc,i)=>pc.raw>tk[b].raw?i:b,0);sh[bi]+=d;}
+      tk.forEach((pc,i)=>{const r=pc.Lz.tr[j];if(r.net==null)return;const t=Math.min(sh[i],r.net);r.net-=t;r.secOff=(r.secOff||0)+t;if(plat)out.lost+=t;else out.off+=t;});});
+    // the platforms: spaces along the platform row (the row below the top row) and the sightline over standing spectators per stand
+    sectionList(ti,AL).forEach(q=>{const e=S[q.no];if(!e||!e.wc||e.off)return;const pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a),Lz=pc.Lz,tr=Lz.tr,L=tr.length;if(L<4)return;
+      const j=L-2,sc=ringSecs(ti,j,AL).find(x=>x.l+'_'+x.r===q.key);if(!sc)return;const mod=wcModules(sc.raw,sc.sw);
+      const sd=tr[L-4],p1=tr[L-3],top=tr[L-1],X=sd.T/IN,Y=((sd.riser??p1.riser)||0)/IN,Hreq=(2*X+34)*(Y-2.25)/X+(20.2-Y),H=(top.z-sd.z)/IN,depth=(p1.T+tr[L-2].T)/IN-6;
+      const st=zoneName(P,Lz.k,true);out.secs[q.no]={no:q.no,ti,k:Lz.k,stand:st,len:sc.raw,...mod,H,Hreq,sight:!imperial()||H>=Hreq-0.01,depth,deep:depth>=48-0.01,rows:[tr[L-3].row,tr[L-2].row]};
+      out.wc+=mod.wc;out.comp+=mod.comp;out.byTier[ti].wc+=mod.wc;out.byTier[ti].comp+=mod.comp;out.byTier[ti].secs++;const b=out.byStand[st]||(out.byStand[st]={wc:0,secs:0});b.wc+=mod.wc;b.secs++;});});
+  return out;}
+function adaFinish(D,cap){D.seats=cap;D.total=cap+D.wc;D.req=wcReq(D.total);D.reqComp=D.req;D.reqAisle=Math.ceil(D.aisleSeats*0.05);D.over=D.req?(D.wc/D.req-1):0;
+  D.ok=D.wc>=D.req&&D.comp>=D.reqComp;D.disp=Object.keys(D.byStand).length;return D;}
+// Auto: platforms spread evenly round each tier, in proportion to the tier's seats, until the requirement plus the margin is met
+function adaAuto(){const S=SECS(),mg=(P.adaMargin??25)/100;Object.keys(S).forEach(k=>{if(S[k].wc){delete S[k].wc;if(!Object.keys(S[k]).length)delete S[k];}});
+  update();const D=M.ADA;if(!D)return;const target=Math.ceil(wcReq(M.cap)*(1+mg)),tot=M.tierSeats.reduce((a,b)=>a+b,0)||1;
+  for(let ti=0;ti<P.tierCount;ti++){const list=sectionList(ti).filter(q=>!(S[q.no]&&S[q.no].off));if(!list.length)continue;
+    const need=Math.ceil(target*M.tierSeats[ti]/tot),per=Math.max(1,(()=>{const q=list.reduce((a,b)=>b.lo>a.lo?b:a);const pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a);return wcModules(pc.raw,q.mid.sw).wc;})());
+    const cnt=Math.min(list.length,Math.ceil(need/per)),wt=list.map(q=>q.mid.raw||q.hi||1),tw=wt.reduce((a,b)=>a+b,0),cum=[];wt.reduce((a,w,i)=>(cum[i]=a+w/2,a+w),0);   // evenly by length round the tier
+    const used=new Set();for(let i=0;i<cnt;i++){const at=(i+0.5)*tw/cnt;let bi=0;cum.forEach((c,j)=>{if(Math.abs(c-at)<Math.abs(cum[bi]-at))bi=j;});while(used.has(bi))bi=(bi+1)%list.length;used.add(bi);(S[list[bi].no]=S[list[bi].no]||{}).wc=true;}}
+  update();
+  for(let guard=0;guard<40&&M.ADA&&M.ADA.wc<Math.ceil(M.ADA.req*(1+mg));guard++){let added=false;   // top up where the estimate fell short
+    for(let ti=0;ti<P.tierCount&&!added;ti++){const q=sectionList(ti).find(q=>!(S[q.no]&&(S[q.no].wc||S[q.no].off)));if(q){(S[q.no]=S[q.no]||{}).wc=true;added=true;}}if(!added)break;update();}}
+// plan overlay: switched-off sections hatched, wheelchair platforms as a green band over the two infill rows
+function secBand(ti,key,j0,j1){const f=v=>v.toFixed(3),a=ringSecs(ti,j0).find(x=>x.l+'_'+x.r===key),b=ringSecs(ti,j1).find(x=>x.l+'_'+x.r===key);if(!a||!b)return '';let p='';
+  a.pieces.forEach(pa=>{const pb=b.pieces.find(x=>x.Lz===pa.Lz);if(!pb||pa.b-pa.a<1e-3)return;const N=12,pts=[],r0=pa.Lz.tr[j0],r1=pb.Lz.tr[j1],h0=r0.T/2000,h1=r1.T/2000;
+    for(let i=0;i<=N;i++)pts.push(chainPtS(pa.Lz.ch,pa.a+(pa.b-pa.a)*i/N,pa.d-h0));for(let i=N;i>=0;i--)pts.push(chainPtS(pb.Lz.ch,pb.a+(pb.b-pb.a)*i/N,pb.d+h1));
+    p+='M'+pts.map(q=>f(q[0])+' '+f(q[1])).join('L')+'Z';});return p;}
+function secOverlaySvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{};let off='',wc='';
+  M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));
+    sectionList(ti).forEach(q=>{const e=S[q.no];if(!e)return;if(e.off)off+=secBand(ti,q.key,0,nr-1);else if(e.wc&&nr>=4)wc+=secBand(ti,q.key,nr-3,nr-2);});});
+  if(!off&&!wc)return '';
+  return `<defs><pattern id="secOffHatch" patternUnits="userSpaceOnUse" width="1.2" height="1.2" patternTransform="rotate(45)"><rect width="1.2" height="1.2" fill="#FFFFFF" fill-opacity=".72"/><line x1="0" y1="0" x2="0" y2="1.2" stroke="#666666" stroke-width=".18"/></pattern></defs>`
+    +(off?`<path d="${off}" fill="url(#secOffHatch)" stroke="#666666" stroke-width="0.8" vector-effect="non-scaling-stroke"/>`:'')
+    +(wc?`<path d="${wc}" fill="#1FA37A" fill-opacity=".8" stroke="#0B6E4F" stroke-width="0.8" vector-effect="non-scaling-stroke"/>`:'');}
+// ---------- the Sections panel: seats per row, on/off and wheelchair platforms by section ----------
+let SECT_TI=0,SECT_HL=null;
+function secPanelHTML(){if(!M.AL||!zoned(P))return '<p class="hint" style="padding:8px 0">Choose the computed aisle layout to edit sections.</p>';
+  const ti=Math.min(SECT_TI,P.tierCount-1),T=M.AL[ti],S=P.secs||{},N=P.secN||{},D=M.ADA,A=AIS(),fmtN=v=>fmt(v);
+  const mid={};(T.__mid||[]).forEach(g=>g.keys.forEach((key,m)=>mid[key]={k:g.k,m,n:g.n[m],id:ti+'.'+g.k+'.'+m}));
+  const tabs=Array.from({length:P.tierCount},(_,i)=>`<button data-secti="${i}" class="${i===ti?'on':''}" aria-pressed="${i===ti}">Tier ${i+1}</button>`).join('');
+  // accessible seating check
+  let chk='';if(D){const pct=D.req?Math.round(D.over*100):0,ok=v=>v?'<span style="color:#0B6E4F">meets</span>':'<span style="color:#C0262D">short</span>';
+    const tiers=D.byTier.slice(0,P.tierCount).map((t,i)=>`Tier ${i+1}: ${t.wc} in ${t.secs} section${t.secs===1?'':'s'}`).join('; ');
+    const stands=Object.entries(D.byStand).map(([k,v])=>`${k} ${v.wc}`).join(', ')||'none';
+    const lowT=D.byTier.slice(0,P.tierCount).some(t=>!t.wc),sightBad=Object.values(D.secs).filter(x=>!x.sight).map(x=>x.no),shallow=Object.values(D.secs).filter(x=>!x.deep).map(x=>x.no);
+    chk=`<table class="fixed wrap" style="margin:6px 0 10px"><thead><tr><th>Accessible seating</th><th>Required</th><th>Provided</th><th></th></tr></thead><tbody>
+      <tr><td>Wheelchair spaces (IBC Table 1108.2.2.1; 2010 ADA 221.2.1.1), for ${fmtN(D.total)} spectators</td><td>${fmtN(D.req)}</td><td>${fmtN(D.wc)}${D.req&&D.wc?` (${pct>=0?'+':''}${pct}%)`:''}</td><td>${ok(D.wc>=D.req)}</td></tr>
+      <tr><td>Companion seats (1 per wheelchair space; ADA 221.3)</td><td>${fmtN(D.reqComp)}</td><td>${fmtN(D.comp)}</td><td>${ok(D.comp>=D.reqComp)}</td></tr>
+      <tr><td>Designated aisle seats, 5% of ${fmtN(D.aisleSeats)} aisle seats (IBC 1108.2.4; ADA 221.4)</td><td>${fmtN(D.reqAisle)}</td><td>to designate</td><td></td></tr>
+      <tr><td>Dispersion by tier and stand (ADA 221.2.3)</td><td colspan="2">${tiers}<br>${stands}</td><td>${lowT||D.disp<4?'<span style="color:#B4531A">check</span>':'spread'}</td></tr>
+      ${imperial()?`<tr><td>Sightline over standing spectators per platform (A117.1 Table 802.9.2.2)</td><td colspan="2">${sightBad.length?'Below in '+sightBad.join(', '):'All platforms meet'}</td><td>${ok(!sightBad.length)}</td></tr>`:''}
+      ${shallow.length?`<tr><td>Platform depth under 48"</td><td colspan="2">${shallow.join(', ')}</td><td>${ok(false)}</td></tr>`:''}
+      <tr><td>Seats taken by platforms / by sections switched off</td><td colspan="3">${fmtN(D.lost)} / ${fmtN(D.off)}</td></tr></tbody></table>`;}
+  const ctl=`<div class="seg" style="margin:4px 0 8px;flex-wrap:wrap;gap:6px;align-items:center"><span class="hint" style="margin:0">Design margin over the minimum</span><input id="adaMargin" type="number" min="0" max="200" step="5" value="${P.adaMargin??25}" style="width:64px"> %<button id="adaAuto" title="Spread platforms round every tier until the requirement plus the margin is met">Auto platforms</button><button id="adaClear">Clear platforms</button><button id="secReset" title="All sections on, middle-section seats back to the computed layout">Reset sections</button></div>`;
+  const list=sectionList(ti);
+  const rows=list.map(q=>{const e=S[q.no]||{},md=mid[q.key],pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a),st=zoneName(P,pc.Lz.k,true),w=D&&D.secs[q.no];
+    const set=md&&N[md.id]!=null,cnt=md?`<input type="number" data-secn="${md.id}" min="1" max="${A.smax}" step="1" value="${set?md.n:(q.lo===q.hi?q.lo:md.n)}" style="width:58px${set?';border-color:#E8590C':''}"${e.off?' disabled':''}>${set?` <button data-secnclr="${md.id}" title="Back to the computed size">↺</button>`:''}`:(q.lo===q.hi?q.lo:q.lo+'–'+q.hi);
+    const over=md&&md.n>A.smax;
+    return `<tr data-secrow="${q.no}" class="${SECT_HL===q.no?'hl':''}"><td><b>${q.no}</b></td><td>${st}</td><td class="${over?'steep':''}">${cnt}</td><td><input type="checkbox" data-secon="${q.no}"${e.off?'':' checked'} aria-label="Section ${q.no} on"></td>`
+      +`<td><input type="checkbox" data-secwc="${q.no}"${e.wc?' checked':''}${e.off?' disabled':''} aria-label="Section ${q.no} wheelchair platform"></td><td>${w&&!e.off?`${w.wc} / ${w.comp}${w.single?' <span class="hint" style="margin:0">(+1 single)</span>':''}`:''}</td>`
+      +`<td>${w&&!e.off?(w.sight&&w.deep?'✓':'<span style="color:#C0262D">'+(!w.sight?'sightline':'depth')+'</span>'):''}</td></tr>`;}).join('');
+  return `<div class="seg" role="group" aria-label="Tier" style="margin:6px 0">${tabs}</div>${chk}${ctl}
+    <div class="tablewrap" style="max-height:420px"><table class="fixed" id="secTable"><thead><tr><th>Section</th><th>Stand</th><th>Seats per row</th><th>On</th><th>Platform</th><th>Wheelchair / companion</th><th>Check</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="hint">Middle sections of each stand take a seat count; the other middle sections of that stand share the rest so the stand keeps its length (Spread). Corner and end sections follow the geometry. Tap a section number on the bowl plan to find it here. Platforms sit at the back of the tier, over rows ${(()=>{const zs=GEO.map(k=>T[k]).filter(Boolean),nr=Math.max(...zs.map(z=>z.tr.length));return nr>=4?(nr-2)+'–'+(nr-1):'n/a';})()}: companion, two wheelchair spaces at 33", companion, repeated, with one single pair (36") where the length allows. Switched-off sections are taken out of the seat count and egress; their structure is still drawn.</p>`;}
+function renderSecPanel(){const el=$('secPanel');if(!el)return;const sc=el.querySelector('.tablewrap'),top=sc?sc.scrollTop:0;el.innerHTML=secPanelHTML();const s2=el.querySelector('.tablewrap');if(s2)s2.scrollTop=top;
+  if(SECT_HL){const r=el.querySelector(`[data-secrow="${SECT_HL}"]`);if(r&&s2)s2.scrollTop=r.offsetTop-s2.clientHeight/2;}}
+function secEntry(no){const S=SECS();return S[no]||(S[no]={});}
+function secTidy(no){const S=SECS();if(S[no]&&!S[no].off&&!S[no].wc)delete S[no];}
+$('secPanel').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.secti!=null){SECT_TI=+b.dataset.secti;SECT_HL=null;renderSecPanel();return;}
+  if(b.dataset.secnclr){delete (P.secN||{})[b.dataset.secnclr];update();return;}
+  if(b.id==='adaAuto'){adaAuto();toast(`Platforms placed: ${M.ADA?M.ADA.wc:0} wheelchair spaces`);return;}
+  if(b.id==='adaClear'){Object.keys(SECS()).forEach(k=>{delete P.secs[k].wc;secTidy(k);});update();return;}
+  if(b.id==='secReset'){P.secN={};Object.keys(SECS()).forEach(k=>{delete P.secs[k].off;secTidy(k);});update();return;}});
+$('secPanel').addEventListener('change',e=>{const t=e.target;
+  if(t.dataset.secon){const x=secEntry(t.dataset.secon);if(t.checked)delete x.off;else x.off=true;secTidy(t.dataset.secon);update();return;}
+  if(t.dataset.secwc){const x=secEntry(t.dataset.secwc);if(t.checked)x.wc=true;else delete x.wc;secTidy(t.dataset.secwc);update();return;}
+  if(t.dataset.secn){const v=Math.round(+t.value);if(!(v>=1)){t.value='';return;}(P.secN||(P.secN={}))[t.dataset.secn]=Math.min(AIS().smax,v);update();return;}
+  if(t.id==='adaMargin'){P.adaMargin=Math.max(0,+t.value||0);update();}});
+$('plan').addEventListener('click',e=>{const g=e.target.closest('[data-secno]');if(!g)return;const no=+g.dataset.secno;SECT_TI=Math.max(0,Math.floor(no/100)-1);SECT_HL=no;$('secBox').open=true;renderSecPanel();$('secBox').scrollIntoView({behavior:'smooth',block:'start'});});
+// ---------- code summary: plumbing fixtures (IPC 2021/2024 Table 403.1 = IBC Table 2902.1, stadiums) and concourse loading (decision 58) ----------
+const PLB=()=>P.plumb||(P.plumb={extra:0,factor:1});
+function plumbing(occ){const m=Math.ceil(occ/2),f=Math.ceil(occ/2),wm=m<=1500?Math.ceil(m/75):20+Math.ceil((m-1500)/120),wf=f<=1520?Math.ceil(f/40):38+Math.ceil((f-1520)/60);
+  return {occ,m,f,wm,wf,ur:Math.floor(wm*0.67),lm:Math.ceil(m/200),lf:Math.ceil(f/150),df:Math.ceil(occ/1000),ss:1,fam:wm+wf>=6?1:0,acs:wm+wf>=6?1:0};}
+function codeSummary(){if(!M)return [];const D=M.ADA,B=PLB(),seats=M.cap,wc=D?D.wc:0,occ=seats+wc+(+B.extra||0),pl=plumbing(occ),fx=+B.factor||1,tg=v=>Math.ceil(v*fx-1e-9),out=[];
+  if(D)out.push(['Accessible seating',[['Wheelchair spaces',`${fmt(D.wc)} provided; ${fmt(D.req)} required for ${fmt(D.total)} spectators (IBC Table 1108.2.2.1; 2010 ADA Table 221.2.1.1: over 5,000 seats, 36 + 1 per 200 over 5,000)`],
+    ['Companion seats',`${fmt(D.comp)} provided; ${fmt(D.reqComp)} required (1 per wheelchair space; ADA 221.3, 802.7)`],['Designated aisle seats',`${fmt(D.reqAisle)} required: 5% of ${fmt(D.aisleSeats)} aisle seats (IBC 1108.2.4; ADA 221.4)`],
+    ['Platforms',`${Object.keys(D.secs).length} sections, back of each tier: companion, two wheelchair spaces at 33" each (ADA 802.1.2), companion; ${fmt(D.lost)} seats taken by the infill`],
+    ['Dispersion',D.byTier.slice(0,P.tierCount).map((t,i)=>`Tier ${i+1}: ${t.wc}`).join('; ')+' | '+(Object.entries(D.byStand).map(([k,v])=>`${k} ${v.wc}`).join(', ')||'none')+' (ADA 221.2.3)']]]);
+  const row=(n,code,t)=>[n,`${fmt(code)} code minimum; ${fmt(tg(code))} design target${t?' ('+t+')':''}`];
+  out.push(['Plumbing fixtures (IPC Table 403.1, stadiums)',[['Occupant load',`${fmt(occ)} = ${fmt(seats)} seats + ${fmt(wc)} wheelchair spaces${+B.extra?` + ${fmt(+B.extra)} other occupants (standing, suites, club)`:''}; divided 50/50, ${fmt(pl.m)} male and ${fmt(pl.f)} female (IPC 403.1.1)`],
+    row('Water closets, male',pl.wm,'1 per 75 for the first 1,500, then 1 per 120'),['Urinals',`up to ${fmt(Math.floor(tg(pl.wm)*0.67))} of the male water closets (not more than 67%, per toilet room; IPC Table 403.1 note)`],
+    row('Water closets, female',pl.wf,'1 per 40 for the first 1,520, then 1 per 60'),row('Lavatories, male',pl.lm,'1 per 200'),row('Lavatories, female',pl.lf,'1 per 150'),row('Drinking fountains',pl.df,'1 per 1,000'),
+    ['Service sinks','1 minimum; in practice 1 per concourse'],['Family or assisted-use toilet',`required (${fmt(pl.wm+pl.wf)} water closets, 6 or more; IBC 1110.2.1), within 500 ft and one story of the separate-sex toilet rooms`],
+    ['Adult changing station','required where family or assisted-use toilets are (IBC 2024 1110.3), in those rooms; reachable within 2 stories and 2,000 ft'],
+    ['Travel distance','500 ft maximum to the toilet rooms, not more than one story up or down (IPC 403.3)'],['Design target',`code minimum × ${fx}`+(fx===1?' (set a higher factor for shorter queues; check local amendments, e.g. potty parity)':'')]]]);
+  // concourse loading: tier by tier (vomitories are not modelled yet, so every row of a tier walks to the concourse behind it)
+  const D2=D||{byTier:[]},pops=M.tierSeats.slice(0,P.tierCount).map((s,i)=>s+((D2.byTier[i]||{}).wc||0)),tp=pops.reduce((a,b)=>a+b,0)||1,cc=[];
+  pops.forEach((pp,i)=>{const sh=pp/tp,q=v=>Math.ceil(tg(v)*sh-1e-9);cc.push([`Concourse ${i+1} (Tier ${i+1})`,`${fmt(pp)} spectators, ${(sh*100).toFixed(1)}%: water closets ${q(pl.wm)} M / ${q(pl.wf)} F, lavatories ${q(pl.lm)} M / ${q(pl.lf)} F, drinking fountains ${q(pl.df)}`]);});
+  cc.push(['Method','No code sets a fixed split (such as 50% of the rows above and below a vomitory). IBC 1005.5 (losing one exit leaves 50% of the capacity) and 1029.2 (assembly main exit: half the occupants; the exception lets stadiums spread exits round the perimeter) are about exit capacity, not who uses which concourse. Here every row is assigned to the exit its aisle leads to; with a mid-tier vomitory the split row is where the travel to the vomitory equals the travel to the top or front exit, adjustable by hand. Each concourse then gets fixtures in proportion to the spectators it serves, rounded up, so the concourses together meet the building total.']);
+  cc.push(['Status','Vomitories are not modelled yet (decision 9): each tier loads the concourse behind it. Suites, club seats and standing room go in "other occupants".']);
+  out.push(['Concourse loading',cc]);return out;}
+function codeHTML(){const B=PLB();return `<div class="seg" style="margin:6px 0;gap:6px;align-items:center;flex-wrap:wrap"><span class="hint" style="margin:0">Other occupants (standing, suites, club)</span><input id="plbExtra" type="number" min="0" step="100" value="${+B.extra||0}" style="width:90px"><span class="hint" style="margin:0">Design target × code minimum</span><input id="plbFactor" type="number" min="1" max="3" step="0.05" value="${+B.factor||1}" style="width:64px"></div>`
+  +codeSummary().map(([t,rows])=>`<table class="fixed wrap" style="margin:8px 0"><thead><tr><th colspan="2">${t}</th></tr></thead><tbody>${rows.map(([k,v])=>`<tr><td style="width:30%">${k}</td><td>${v}</td></tr>`).join('')}</tbody></table>`).join('')
+  +'<p class="hint">Code references: IBC 2024, IPC 2024 and the 2010 ADA Standards; confirm the adopted editions and local amendments with the authority having jurisdiction.</p>';}
+$('codeBox').addEventListener('change',e=>{const t=e.target;if(t.id==='plbExtra'){PLB().extra=Math.max(0,+t.value||0);update();}else if(t.id==='plbFactor'){PLB().factor=Math.max(1,+t.value||1);update();}});
 // ---------- enlarged plan of a typical section: every seat at its true width ----------
 let ENL={tier:0,side:null},CENL={tier:0,corner:'NW'},SHOWSEATS=false;const eastKey=()=>GEO.find(k=>isSide(k)&&compassOf(P)[k]==='E')||'T',westKey=()=>GEO.find(k=>isSide(k)&&compassOf(P)[k]==='W')||'B',enlSide=()=>ENL.side||westKey();
 function enlargedData(ti,k){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz)return null;const gi=Lz.ch.findIndex(g=>g.t==='LINE');if(gi<0)return null;
@@ -2428,8 +2569,8 @@ function cornerScale(sh,aw,ah){let Wc=0,Hc=0;for(let t=0;t<P.tierCount;t++){cons
   r=Math.ceil(r);return {ratio:r,label:`1:${r}`};}
 // plan overlay: every seat at its true width (on screen, on request)
 function seatsSvg(){if(!SHOWSEATS||!M.AL||PLAN!=='bowl')return '';const A=AIS(),gp=(A.gap||0)/1000,cb=(A.chairBack??2*25.4)/1000,cd=(A.chairDown||24*25.4)/1000,f=v=>v.toFixed(3);let p='';
-  M.AL.forEach((T,ti)=>{const nr=Math.max(0,...Object.values(T).map(z=>z.tr.length));for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{
-    for(const {pc,s0,sw} of sectionSeats(T,sc,j)){const r=pc.Lz.tr[j],Lz=pc.Lz,d1=(r.x+r.T)/1000+cb-cd,d2=(r.x+r.T)/1000+cb;
+  M.AL.forEach((T,ti)=>{const nr=Math.max(0,...Object.values(T).map(z=>z.tr.length)),smap=secNoMap(ti),SS=P.secs||{};for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{const e=SS[smap[sc.l+'_'+sc.r]];if(e&&e.off)return;
+    for(const {pc,s0,sw} of sectionSeats(T,sc,j)){if(e&&e.wc){const L=pc.Lz.tr.length;if(j===L-3||j===L-2)continue;}const r=pc.Lz.tr[j],Lz=pc.Lz,d1=(r.x+r.T)/1000+cb-cd,d2=(r.x+r.T)/1000+cb;
       const P1=chainPtS(Lz.ch,s0,d1),Q=chainPtS(Lz.ch,s0+0.01,d1),P4=chainPtS(Lz.ch,s0,d2),tl=Math.hypot(Q[0]-P1[0],Q[1]-P1[1])||1,tx=(Q[0]-P1[0])/tl*sw,ty=(Q[1]-P1[1])/tl*sw,P2=[P1[0]+tx,P1[1]+ty],P3=[P4[0]+tx,P4[1]+ty];   // straight from the seat's start, so a seat at a stand joint keeps its width
       p+=`M${f(P1[0])} ${f(P1[1])}L${f(P2[0])} ${f(P2[1])}L${f(P3[0])} ${f(P3[1])}L${f(P4[0])} ${f(P4[1])}Z`;}});});
   return `<path d="${p}" fill="none" stroke="var(--ink)" stroke-width="0.25" opacity=".7" vector-effect="non-scaling-stroke"/>`;}
@@ -2566,7 +2707,7 @@ function drawPlan(o={}){
   const cs=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]].map(([x,y])=>rotPt(x,y,t)),vx0=Math.min(...cs.map(c=>c[0])),vy0=Math.min(...cs.map(c=>c[1])),
     vW=Math.max(...cs.map(c=>c[0]))-vx0,vH=Math.max(...cs.map(c=>c[1]))-vy0;
   let s=`<svg viewBox="${vx0.toFixed(2)} ${vy0.toFixed(2)} ${vW.toFixed(2)} ${vH.toFixed(2)}"${vH>vW*1.05?' class="portrait"':''} role="img" aria-label="${S.org} ${S.name} ${PLAN==='field'?'field layout':'bowl plan'}, north up">`;
-  let body=(PLAN==='bowl'?planGrid():'')+bufferFill()+S.draw(P,g)+rings+overRowsSvg()+rowLines+aisleSvg()+seatsSvg()+(PLAN==='bowl'?drawDims(bufferDims(),g,fs*.8):'')+`<path d="${ptsPath(bnd)}" fill="none" stroke="${FOCAL}" stroke-width="${(1.7*g.k).toFixed(3)}" stroke-linejoin="round"/>`+((P.sport==='nfl'||P.sport==='ncaafb')?pylons(P).map(([cx,cy,h])=>`<rect x="${g.f(cx-h)}" y="${g.f(cy-h)}" width="${g.f(2*h)}" height="${g.f(2*h)}" fill="${COL_PYLON}"/>`).join(''):''),over='';
+  let body=(PLAN==='bowl'?planGrid():'')+bufferFill()+S.draw(P,g)+rings+overRowsSvg()+rowLines+aisleSvg()+secOverlaySvg()+seatsSvg()+(PLAN==='bowl'?drawDims(bufferDims(),g,fs*.8):'')+`<path d="${ptsPath(bnd)}" fill="none" stroke="${FOCAL}" stroke-width="${(1.7*g.k).toFixed(3)}" stroke-linejoin="round"/>`+((P.sport==='nfl'||P.sport==='ncaafb')?pylons(P).map(([cx,cy,h])=>`<rect x="${g.f(cx-h)}" y="${g.f(cy-h)}" width="${g.f(2*h)}" height="${g.f(2*h)}" fill="${COL_PYLON}"/>`).join(''):''),over='';
   if(PLAN==='bowl'){const sec=sectionAt(),ex=sec[0]+sec[2]*(Rmax+1.5),ey=sec[1]+sec[3]*(Rmax+1.5),lf=W/45;
     const rf=W/105;                                                  // row-number text height (plan metres)
     const at=zoned(P)?GEO.map(k=>{const sd=rectGeo(P).side[k],f=isSide(k)?0.22:0.3;return [k,[sd.p[0]+(sd.q[0]-sd.p[0])*f,sd.p[1]+(sd.q[1]-sd.p[1])*f,sd.n[0],sd.n[1],(sd.q[0]-sd.p[0])/Math.hypot(sd.q[0]-sd.p[0],sd.q[1]-sd.p[1]),(sd.q[1]-sd.p[1])/Math.hypot(sd.q[0]-sd.p[0],sd.q[1]-sd.p[1])]];})
@@ -2621,7 +2762,7 @@ function update(){
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);
   const pct=Math.min(100,M.cap/P.capTarget*100),ok=M.cap>=P.capTarget;
   $('cap').innerHTML=`<div><div class="big">${fmt(M.cap)}</div><div class="lbl">Estimated seats</div></div><div><div class="bar"><i class="${ok?'ok':''}" style="width:${pct}%"></i></div><div class="lbl" style="margin-top:5px">${ok?'Meets':'Short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</div></div><div class="cap-side">${M.tierSeats.map((s,i)=>`Tier ${i+1}: ${fmt(s)}`).join('<br>')}</div>`;
-  $('zones').innerHTML=zoneTable();
+  $('zones').innerHTML=zoneTable();renderSecPanel();{const cp=$('codePanel');if(cp)cp.innerHTML=codeHTML();}
   const hmin=M.heads.length?Math.min(...M.heads.map(h=>h.h)):null;
   const st=[[ZR[P.sec].length,zoned(P)?`Rows, ${zoneName(P,P.sec,true)}`:'Rows',0],[M.worst?CV(M.worst.C):'n/a','Lowest C-value',M.below>0],[M.steep?M.steep.rake.toFixed(1)+'°':'n/a','Steepest rake',M.over>0],[L(M.vd*1000,'m',0,true),'Farthest viewing distance',M.vd>P.vd],[L(M.height*1000,'m',1,true),`Top row above ${surfLow()}`,0],[hmin==null?'n/a':L(hmin),'Least headroom under a tier',M.lowHead.length>0]];
   $('stats').innerHTML=st.map(([b,l,bad])=>`<div class="stat ${bad?'bad':''}"><b>${b}</b><span>${l}</span></div>`).join('');
@@ -3080,7 +3221,8 @@ function pdfProjectInfo(doc,o){const {pw,ph,m}=o,Sp=SPORTS[P.sport],k=Math.min(1
   sec('Results',[['Seats, all',fmt(seatCount().out.find(o=>o.label==='Total, all seats').t)],[`Seats less ${lossTxt()}`,fmt(M.cap)],
     ['Lowest C-value (current mode)',M.worst?CV(M.worst.C):'n/a'],['Steepest rake',M.steep?M.steep.rake.toFixed(1)+'°':'n/a'],
     [`Top row above the ${surfLow()}`,L(M.height*1000)],['Farthest viewing distance',L(M.vd*1000)],['Checks',$('verdict').textContent]]);
-  {const er=egressRows();if(er)sec('Aisles and Egress (Preliminary)',er.map(([k,v,ok])=>[k,v+(ok===false?' (short)':ok?' (meets)':'')]));}}
+  {const er=egressRows();if(er)sec('Aisles and Egress (Preliminary)',er.map(([k,v,ok])=>[k,v+(ok===false?' (short)':ok?' (meets)':'')]));}
+  codeSummary().forEach(([t,rows])=>sec(t,rows));}
 // Row schedule for one side (all tiers), fitted to the page width
 function pdfRowSchedule(doc,o,zone){const {pw,ph,m}=o,Sp=SPORTS[P.sport],rows=ZR[zone];
   const cols0=[['Row',1.5,'left'],['Riser from focus',1.45],['Tread height',1.25],['Tread depth',1.05],['Riser',0.85],['Rake',0.75],['C sitting',1.05],['C standing',1.1]],w0=cols0.reduce((a,c)=>a+c[1],0);
@@ -3229,7 +3371,7 @@ $('exRevit').onclick=()=>{
 $('exSku').onclick=()=>{
   const dae=buildDAE(P,ZR,CH),name=slug();
   const zip=new JSZip();zip.file(name+'.dae',dae);
-  zip.file('How to open in SketchUp.txt','In SketchUp desktop: File > Import, choose COLLADA (*.dae), then pick '+name+'.dae.\nUnits are metres. Each stand (tier and side) imports as its own closed solid; the precast aisle steps import as closed solids grouped under "Aisle steps (precast)", one per aisle per row, with the pitch as a separate object.\nOpen corners are gaps between stands. Origin is the centre of the field extents, at field level.\n');
+  zip.file('How to open in SketchUp.txt','In SketchUp desktop: File > Import, choose COLLADA (*.dae), then pick '+name+'.dae.\nUnits are metres. Each stand (tier and side) imports as its own closed solid; the precast aisle steps import as components (identical pieces share one definition) grouped under "Aisle steps (precast)", one per aisle per row, with the pitch as a separate object.\nOpen corners are gaps between stands. Origin is the centre of the field extents, at field level.\n');
   zip.generateAsync({type:'blob'}).then(b=>offer(name+'.zip',b));
 };
 
