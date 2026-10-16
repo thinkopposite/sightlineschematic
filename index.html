@@ -237,7 +237,7 @@ main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main 
     <section class="step deliver"><div class="step-h"><span class="bub">7</span><h2>Deliver</h2><p>Drawings, schedules and models for the team.</p></div>
       <div class="seg"><button id="dlTab" class="primary">Download project set (Tabloid)</button><button id="dlArch" class="primary">Download project set (ARCH E)</button></div>
       <p class="sub2">Models</p>
-      <div class="seg"><button id="exRevit">Export for Revit (.xlsx)</button><button id="exSku">Export for SketchUp</button><a class="btnlink" href="dynamo/Sightline_BowlMass_R2024.dyn" download>Revit graph (.dyn)</a></div>
+      <div class="seg"><button id="exRevit">Export for Revit (.xlsx)</button><button id="exSku">Export for SketchUp</button><a class="btnlink" href="dynamo/Sightline_BowlMass_R2024.dyn" download>Revit graph (.dyn)</a><a class="btnlink" href="dynamo/Sightline_AisleSteps_R2024.dyn" download title="Run in the project: places the precast aisle steps">Aisle steps graph (.dyn)</a><a class="btnlink" href="dynamo/Precast_Aisle_Step_family.txt" download title="How to build the Precast Aisle Step family">Aisle step family spec</a></div>
     </section></aside>
   <main>
     <p class="group">Results</p>
@@ -1278,6 +1278,33 @@ function aisleStepSummary(ti){const zs=GEO.map(k=>ZR[k].filter(r=>r.tier===ti)).
   const all=zs.flatMap(t=>t.slice(0,-1).map((_,j)=>aisleStep(t,j)));const ns=[...new Set(all.map(a=>a.n))].sort(),rh=all.map(a=>a.rh),td=all.map(a=>a.td),bad=all.filter(a=>a.bad);
   let strip=0;zs.forEach(t=>{for(let j=1;j<t.length-1;j++){const a=aisleStep(t,j-1),b=aisleStep(t,j);if(Math.abs(a.rh-b.rh)>3/16*AIN_)strip++;}});
   return {ns,rhMin:Math.min(...rh),rhMax:Math.max(...rh),tdMin:Math.min(...td),tdMax:Math.max(...td),bad,strip};}
+// Precast aisle steps as closed solids (model metres, plan Y flipped to Y up, origin at the field centre, Z up): one piece per aisle per row,
+// a rectangular block (one-step) or an L-shaped block (two-step) sitting on the row's tread against the riser of the row above, as wide as the
+// aisle. The plan outline follows the rows: across a bend (mitred bend aisles) it takes a vertex at the bend. One source for the isometric
+// views, the SketchUp export and the Revit export.
+function aislePieces(){let AL=null;try{AL=M&&M.AL;}catch(e){}if(!AL||!imperial())return [];const wA=AIS().w/1000,out=[];
+  AL.forEach((T,ti)=>Object.entries(T).forEach(([zk,Lz])=>Lz.ais.forEach(ai=>{const w=cutW(ai,wA);
+    const cross=u=>{const sc=chainS(Lz.ch,ai,u),sL=sc-w/2,sR=sc+w/2,ks=chainKinks(Lz.ch,u,0).map(k=>k.s).filter(x=>x>sL+1e-4&&x<sR-1e-4);   // left edge, any bend, right edge
+      return [sL,...ks,sR].map(x=>{const p=chainPtS(Lz.ch,x,u);return [p[0],-p[1]];});};
+    Lz.tr.forEach((r,j)=>{const st=aisleStep(Lz.tr,j);if(st.top||st.n<2)return;const z0=r.z/1000,h=st.rh/1000,ub=(r.x+r.T)/1000,uk=k=>(r.x+k*r.T/st.n)/1000;
+      const prof=st.n===2?[[uk(1),z0],[ub,z0],[ub,z0+h],[uk(1),z0+h]]:[[uk(1),z0],[ub,z0],[ub,z0+2*h],[uk(2),z0+2*h],[uk(2),z0+h],[uk(1),z0+h]];   // section, counter-clockwise (u up the aisle, z up)
+      const cs=prof.map(([u])=>cross(u));if(cs.some(c=>c.length!==cs[0].length))return;const K=cs[0].length;
+      const V=[];prof.forEach(([u,z],i)=>cs[i].forEach(p=>V.push([p[0],p[1],z])));const vi=(i,k)=>i*K+k,np=prof.length;
+      const mid=K>>1,a0=cs[0][0],a1=cs[0][K-1],cdir=[a1[0]-a0[0],a1[1]-a0[1]],cl=Math.hypot(...cdir);cdir[0]/=cl;cdir[1]/=cl;
+      const udir=[-cdir[1],cdir[0]];{const m0=cs[0][mid],m1=cs[1][mid];if(udir[0]*(m1[0]-m0[0])+udir[1]*(m1[1]-m0[1])<0){udir[0]*=-1;udir[1]*=-1;}}   // up the aisle, level
+      const faces=[];
+      for(let i=0;i<np;i++){const i2=(i+1)%np,du=prof[i2][0]-prof[i][0],dz=prof[i2][1]-prof[i][1],l=Math.hypot(du,dz)||1,o=[udir[0]*dz/l,udir[1]*dz/l,-du/l];   // outward normal of this section edge
+        for(let k=0;k<K-1;k++)faces.push({idx:[vi(i,k),vi(i2,k),vi(i2,k+1),vi(i,k+1)],out:o});}
+      faces.push({idx:prof.map((_,i)=>vi(i,0)).reverse(),out:[-cdir[0],-cdir[1],0],cap:true},{idx:prof.map((_,i)=>vi(i,K-1)),out:[cdir[0],cdir[1],0],cap:true});   // the two ends
+      const plate=(u0,za,zb)=>{const iF=prof.findIndex(q=>Math.abs(q[0]-u0)<1e-9),f=cross(u0),b=cross(ub);return {z0:za,z1:zb,pts:[...f,...b.reverse()]};};
+      const plates=st.n===2?[plate(uk(1),z0,z0+h)]:[plate(uk(1),z0,z0+h),plate(uk(2),z0+h,z0+2*h)];   // for Revit: the block as one or two straight extrusions
+      // local frame for sharing and placing: origin at the middle of the front edge's chord at the bottom, X across the aisle, Y up it
+      const fl=cs[0][0],fr=cs[0][K-1],O=[(fl[0]+fr[0])/2,(fl[1]+fr[1])/2,z0],X=[cdir[0],cdir[1]];if(-X[1]*udir[0]+X[0]*udir[1]<0){X[0]*=-1;X[1]*=-1;}const Y=[-X[1],X[0]];   // right-handed: Y up the aisle
+      const Lv=V.map(v=>[(v[0]-O[0])*X[0]+(v[1]-O[1])*X[1],(v[0]-O[0])*Y[0]+(v[1]-O[1])*Y[1],v[2]-z0]);
+      let bend=0;if(K>2){const kp=cs[0][1],off=(kp[0]-O[0])*Y[0]+(kp[1]-O[1])*Y[1];bend=-2*Math.atan2(off,cl/2)*180/Math.PI;}   // + when the bend points toward the field
+      const key=Lv.map(v=>v.map(c=>Math.round(c*1000)).join(',')).join(';')+'|'+faces.length;
+      out.push({ti,zone:zk,aisle:ai.id,row:j+1,n:st.n,rh:st.rh,td:st.td,w,mitre:!!ai.miter,prof,V,faces,plates,O,rot:Math.atan2(X[1],X[0])*180/Math.PI,bend,Lv,key});});})));
+  return out;}
 const stepName=n=>n===1?'no aisle step':n===2?'one-step':'two-step';
 const stepNote=(n,rh)=>n===1?`no aisle step (row riser ${L(rh)})`:`${stepName(n)} (${n-1} × ${L(rh)})`;   // e.g. 18 in rise: two-step (2 x 6 in)
 // seats in one row: sections between the aisle cuts (vomitory rows cut wider on vomitory aisles)
@@ -1500,6 +1527,16 @@ function buildDAE(P,ZR,CH){
           if(nx*out[0]+ny*out[1]<0)[i1,i2]=[i2,i1];I.push(i0,i1,i2);}});}
     const id=`T${ti+1}_${zoneName(P,z,true)}`;
     geos.push(geo(id,'concrete',V,I));nodes.push(node(id,`Tier ${ti+1} ${zoneName(P,z)}`,'concrete'));}});
+  {const kids=[],defs={};aislePieces().forEach(pc=>{let d=defs[pc.key];
+      if(!d){const id=`AS_${Object.keys(defs).length+1}_${pc.n===2?'1step':'2step'}`,V=pc.Lv.flat(),I=[],vx=i=>pc.Lv[i];
+        for(const fc of pc.faces){const tris=fc.cap?earClip(fc.idx.map(i=>{const v=pc.V[i];return [v[0]*(-fc.out[1])+v[1]*fc.out[0],v[2]];})).map(t=>t.map(q=>fc.idx[q])):[[fc.idx[0],fc.idx[1],fc.idx[2]],[fc.idx[0],fc.idx[2],fc.idx[3]]];
+          const ang=pc.rot*Math.PI/180,o3=[fc.out[0]*Math.cos(ang)+fc.out[1]*Math.sin(ang),-fc.out[0]*Math.sin(ang)+fc.out[1]*Math.cos(ang),fc.out[2]];   // the outward normal in the local frame
+          for(let [a,b,c] of tris){const A=vx(a),B=vx(b),C=vx(c),u=[B[0]-A[0],B[1]-A[1],B[2]-A[2]],w=[C[0]-A[0],C[1]-A[1],C[2]-A[2]],N=[u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]];
+            if(N[0]*o3[0]+N[1]*o3[1]+N[2]*o3[2]<0)[b,c]=[c,b];I.push(a,b,c);}}   // faced outward: a closed solid
+        geos.push(geo(id,'precast',V,I));d=defs[pc.key]={id,count:0};}
+      d.count++;const a=pc.rot*Math.PI/180,c=Math.cos(a),sn=Math.sin(a),m=[c,-sn,0,pc.O[0],sn,c,0,pc.O[1],0,0,1,pc.O[2],0,0,0,1].map(v=>+v.toFixed(6)).join(' ');
+      kids.push(`<node id="AS_T${pc.ti+1}_${zoneName(P,pc.zone,true)}_A${pc.aisle}_R${pc.row}-n" name="Aisle step T${pc.ti+1} ${zoneName(P,pc.zone,true)} aisle ${pc.aisle} row ${pc.row} (${stepName(pc.n)})"><matrix>${m}</matrix><instance_geometry url="#${d.id}"><bind_material><technique_common><instance_material symbol="precast" target="#precast"/></technique_common></bind_material></instance_geometry></node>`);});
+    if(kids.length)nodes.push(`<node id="AisleSteps-n" name="Aisle steps (precast)">${kids.join('')}</node>`);}
   const pcx=bp.reduce((a,p)=>a+p[0],0)/bp.length,pcy=bp.reduce((a,p)=>a+p[1],0)/bp.length,PV=[pcx,pcy,0],PI=[];
   bp.forEach((p,i)=>{PV.push(p[0],p[1],0);PI.push(0,1+i,1+(i+1)%bp.length);});
   geos.push(geo('Pitch','pitch',PV,PI));nodes.push(node('Pitch','Pitch','pitch'));
@@ -1507,10 +1544,10 @@ function buildDAE(P,ZR,CH){
     return `<geometry id="${id}" name="${id}"><mesh><source id="${id}-p"><float_array id="${id}-a" count="${V.length}">${f}</float_array><technique_common><accessor source="#${id}-a" count="${V.length/3}" stride="3"><param name="X" type="float"/><param name="Y" type="float"/><param name="Z" type="float"/></accessor></technique_common></source><vertices id="${id}-v"><input semantic="POSITION" source="#${id}-p"/></vertices><triangles material="${mat}" count="${I.length/3}"><input semantic="VERTEX" source="#${id}-v" offset="0"/><p>${I.join(' ')}</p></triangles></mesh></geometry>`;}
   function node(id,name,mat){return `<node id="${id}-n" name="${name}"><instance_geometry url="#${id}"><bind_material><technique_common><instance_material symbol="${mat}" target="#${mat}"/></technique_common></bind_material></instance_geometry></node>`;}
   const fx=(n,c)=>`<effect id="${n}-fx"><profile_COMMON><technique sid="c"><lambert><diffuse><color>${c} 1</color></diffuse></lambert></technique></profile_COMMON></effect>`;
-  return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
+  return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.88 0.88 0.86')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.15.04';
+const VERSION='2026.10.15.06';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2030,8 +2067,14 @@ function drawIso(){
   CH.forEach((c,ti)=>{for(const z of Object.keys(c)){const rows=ZR[z].filter(r=>r.tier===ti);if(!rows.length)continue;
     const pr=profileOf(rows,ti).map(([x,h])=>[x/1000,h/1000]),n=pr.length,closed=c[z]==='ring';
     const st0=closed?stations(bp):chainStations(c[z]).map(([x,y,nx,ny])=>[x,-y,nx,-ny]).reverse(),st=[];   // short pieces, so the depth sort holds next to the aisle steps
-    for(let i=0;i<st0.length;i++){const a=st0[i],b=closed?st0[(i+1)%st0.length]:st0[i+1];st.push(a);if(!b)continue;const l=Math.hypot(b[0]-a[0],b[1]-a[1]),k=Math.ceil(l/6);
-      if(k>1)for(let q=1;q<k;q++)st.push([a[0]+(b[0]-a[0])*q/k,a[1]+(b[1]-a[1])*q/k,a[2]+(b[2]-a[2])*q/k,a[3]+(b[3]-a[3])*q/k]);}   // linear in position and offset direction: the same surface, in pieces
+    // split the stand at every aisle edge (so the bowl under each aisle is its own piece and the precast steps sort with it), and into pieces of 3 m at most
+    const d0=rows[0].x/1000,EP=[];{let AL=null;try{AL=M&&M.AL;}catch(e){}const Lz=AL&&AL[ti]&&AL[ti][z];if(Lz&&imperial()){const wA=AIS().w/1000;
+      Lz.ais.forEach(ai=>{const w=cutW(ai,wA),sc=chainS(Lz.ch,ai,d0);for(const sd of [-1,1]){const p=chainPtS(Lz.ch,sc+sd*w/2,d0);EP.push([p[0],-p[1]]);}});}}
+    for(let i=0;i<st0.length;i++){const a=st0[i],b=closed?st0[(i+1)%st0.length]:st0[i+1];st.push(a);if(!b)continue;
+      const A=[a[0]+a[2]*d0,a[1]+a[3]*d0],B=[b[0]+b[2]*d0,b[1]+b[3]*d0],ab=[B[0]-A[0],B[1]-A[1]],l2=ab[0]*ab[0]+ab[1]*ab[1],ts=[];
+      if(l2>1e-9)for(const p of EP){const t=((p[0]-A[0])*ab[0]+(p[1]-A[1])*ab[1])/l2;if(t>1e-4&&t<1-1e-4&&Math.hypot(A[0]+ab[0]*t-p[0],A[1]+ab[1]*t-p[1])<0.05)ts.push(t);}
+      const l=Math.hypot(b[0]-a[0],b[1]-a[1]),k=Math.ceil(l/3);for(let q=1;q<k;q++)ts.push(q/k);ts.sort((x,y)=>x-y);
+      ts.filter((t,q)=>!q||t-ts[q-1]>1e-4).forEach(t=>st.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t,a[3]+(b[3]-a[3])*t]));}   // linear in position and offset direction: the same surface, in pieces
     const m=st.length;
     const V=(s,i)=>R([st[s][0]+st[s][2]*pr[i][0],st[s][1]+st[s][3]*pr[i][0],pr[i][1]]),base=rgb(tierFill(ti));
     for(let s=0;s<(closed?m:m-1);s++){const s2=(s+1)%m;for(let i=0;i<n;i++){const i2=(i+1)%n,q=[V(s,i),V(s,i2),V(s2,i2),V(s2,i)];
@@ -2041,23 +2084,10 @@ function drawIso(){
       const k=0.5+0.5*Math.max(0,N[0]*L[0]+N[1]*L[1]+N[2]*L[2]);
       const tread=Math.abs(pr[i][1]-pr[i2][1])<1e-6&&pr[i2][0]>pr[i][0];                // tread face: its front edge is the nosing
       faces.push({q,d:q.reduce((a,p)=>a+p[0]+p[1]+p[2],0)/4,fill:`rgb(${base.map(v=>Math.round(v*k)).join(',')})`,edge:tread?[q[0],q[3]]:null});}}}});
-  // precast aisle steps sitting on the bowl treads: a one-step is one rectangular block, a two-step one L-shaped block, each against
-  // the riser of the row above and as wide as the aisle; every aisle on every stand, hidden faces culled, light concrete
-  const AL_=M&&M.AL;
-  if(AL_&&imperial()){const wA=AIS().w/1000,ac=[226,226,221],cam=[1,1,1];
-    const face=(pts,nrm,edge)=>{const q=pts.map(R),N=R([nrm[0],nrm[1],nrm[2]]);if(N[0]*cam[0]+N[1]*cam[1]+N[2]*cam[2]<=1e-6)return;   // turned away from the camera
-      const nl=Math.hypot(...N),k=0.55+0.45*Math.max(0,(N[0]*L[0]+N[1]*L[1]+N[2]*L[2])/nl);
-      faces.push({q,d:q.reduce((a,p)=>a+p[0]+p[1]+p[2],0)/q.length+0.05,fill:`rgb(${ac.map(v=>Math.round(v*k)).join(',')})`,edge:edge?edge.map(R):null});};
-    AL_.forEach(T=>Object.values(T).forEach(Lz=>Lz.ais.forEach(ai=>{const w=cutW(ai,wA),P2=(d,sd)=>{const s=chainS(Lz.ch,ai,d),p=chainPtS(Lz.ch,s+sd*w/2,d);return [p[0],-p[1]];};
-      Lz.tr.forEach((r,j)=>{const st=aisleStep(Lz.tr,j);if(st.top||st.n<2)return;const z0=r.z/1000,xb=(r.x+r.T)/1000;   // block runs to the back of the tread
-        const m0=P2(r.x/1000,0),m1=P2(xb,0),ul=Math.hypot(m1[0]-m0[0],m1[1]-m0[1])||1,u=[(m1[0]-m0[0])/ul,(m1[1]-m0[1])/ul];   // up the aisle (away from the field)
-        for(let k=1;k<st.n;k++){const x0=(r.x+k*r.T/st.n)/1000,x1=(r.x+(k+1)*r.T/st.n)/1000,z=z0+k*st.rh/1000;
-          const A=P2(x0,-1),B=P2(x0,1),C=P2(x1,1),D=P2(x1,-1),sv=[A[0]-B[0],A[1]-B[1]],sl=Math.hypot(...sv)||1,sn=[sv[0]/sl,sv[1]/sl];
-          face([[A[0],A[1],z],[B[0],B[1],z],[C[0],C[1],z],[D[0],D[1],z]],[0,0,1],[[A[0],A[1],z],[B[0],B[1],z]]);                    // tread of the step
-          face([[A[0],A[1],z-st.rh/1000],[B[0],B[1],z-st.rh/1000],[B[0],B[1],z],[A[0],A[1],z]],[-u[0],-u[1],0]);                     // its riser, facing the field
-          const Ab=P2(xb,-1),Bb=P2(xb,1);                                                                                         // the block's two ends: the L profile up to this step
-          face([[A[0],A[1],z0],[Ab[0],Ab[1],z0],[Ab[0],Ab[1],z],[A[0],A[1],z]],[sn[0],sn[1],0]);
-          face([[B[0],B[1],z0],[Bb[0],Bb[1],z0],[Bb[0],Bb[1],z],[B[0],B[1],z]],[-sn[0],-sn[1],0]);}});})));}
+  // precast aisle steps (see aislePieces): every piece on every stand, faces turned away from the camera hidden, light concrete
+  {const ac=[226,226,221];for(const pc of aislePieces())for(const fc of pc.faces){const N=R(fc.out);if(N[0]+N[1]+N[2]<=1e-6)continue;
+    const q=fc.idx.map(i=>R(pc.V[i])),k=0.55+0.45*Math.max(0,N[0]*L[0]+N[1]*L[1]+N[2]*L[2]),top=fc.out[2]>0.9;
+    faces.push({q,d:q.reduce((a,p)=>a+p[0]+p[1]+p[2],0)/q.length+0.3,fill:`rgb(${ac.map(v=>Math.round(v*k)).join(',')})`,edge:top?[q[1],q[2]]:null});}}   // edge: the nosing
   const ground=(poly,fill,d)=>({q:poly.map(([x,y])=>R([x,y,0])),d:d,fill,ground:true});
   const G=rectGeo(P),buf=zoned(P)?(()=>{const t=ZR.T.find(r=>r.tier===0),dd=t?t.x/1000:0,s=G.side;return [[s.L.p[0]-dd,s.T.p[1]-dd],[s.R.p[0]+dd,s.T.p[1]-dd],[s.R.p[0]+dd,s.B.p[1]+dd],[s.L.p[0]-dd,s.B.p[1]+dd]].map(([x,y])=>[x,-y]);})():null;
   const gf=[];if(buf)gf.push(ground(buf,css('--grass2')||'#8EB03E',-1e9));
@@ -3178,6 +3208,17 @@ $('exRevit').onclick=()=>{
   if(cp.length)add([['Plate','Tier','Zone','Z bottom (mm)','Z top (mm)','Corners',...Array.from({length:nP},(_,i)=>[`X${i+1} (mm)`,`Y${i+1} (mm)`]).flat()],
     ...cp.map((c,i)=>[i+1,c.tier+1,zoneName(P,c.zone,true),r1(c.z0),r1(c.z1),c.pts.length,...c.pts.flat().map(r1)]),
     [],['Chamfered corners: each plate is its plan outline (plan mm, Y up) extruded straight up from Z bottom to Z top. Together they form the stepped tread and riser slab around the corner.']],'Corner plates');
+  {const ap=aislePieces();if(ap.length){const nA=Math.max(4,...ap.flatMap(a=>a.plates.map(q=>q.pts.length))),rowsA=[];
+    ap.forEach((a,i)=>a.plates.forEach((q,k)=>rowsA.push([i+1,k+1,a.ti+1,zoneName(P,a.zone,true),a.aisle,a.row,stepName(a.n),a.n,r1(a.rh),r1(a.td),r1(a.w*1000),a.mitre?'yes':'',r1(q.z0*1000),r1(q.z1*1000),q.pts.length,...q.pts.flat().map(v=>r1(v*1000))])));
+    add([['Piece','Plate','Tier','Zone','Aisle','Row','Type','Risers','Riser (mm)','Tread (mm)','Width (mm)','Mitred','Z bottom (mm)','Z top (mm)','Corners',...Array.from({length:nA},(_,i)=>[`X${i+1} (mm)`,`Y${i+1} (mm)`]).flat()],...rowsA,
+      [],['Precast aisle steps sitting on the bowl treads (IBC: risers 4-8 in, treads 11 in min). Each piece is one solid: a one-step is one plate, a two-step two stacked plates (an L-shaped block).'],
+      ['Each plate is its plan outline (plan mm, Y up, same origin as Bowl pieces) extruded straight up from Z bottom to Z top; join the plates of one piece into one solid.']],'Aisle steps');
+    add([['Piece','Tier','Zone','Aisle','Row','Type','Steps','Riser (mm)','Tread (mm)','Width (mm)','Bend angle (deg)','X (mm)','Y (mm)','Z (mm)','Rotation (deg)','Type key'],
+      ...ap.map((a,i)=>[i+1,a.ti+1,zoneName(P,a.zone,true),a.aisle,a.row,stepName(a.n),a.n-1,r1(a.rh),r1(a.td),r1(a.w*1000),+a.bend.toFixed(3),r1(a.O[0]*1000),r1(a.O[1]*1000),r1(a.O[2]*1000),+a.rot.toFixed(4),
+        `${a.n-1}S-R${Math.round(a.rh)}-T${Math.round(a.td)}-W${Math.round(a.w*1000)}${Math.abs(a.bend)>0.01?'-B'+a.bend.toFixed(1):''}`]),
+      [],['One row per precast aisle step, for the Sightline_AisleSteps_R2024.dyn graph, which places the "Precast Aisle Step" family (or builds DirectShape solids if the family is not loaded).'],
+      ['Insertion point X, Y, Z: the middle of the front edge (across the aisle) at the bottom of the piece, on the bowl tread. Rotation: the family X axis (across the aisle, left to right looking up the aisle), counter-clockwise from +X. Family Y runs up the aisle.'],
+      ['Steps 1 = one-step (2 equal risers: one block Riser high, Tread deep from the first nosing to the back). Steps 2 = two-step (3 equal risers: an L of two blocks). Tread is each tread depth; the block runs Steps x Tread deep. Bend angle: mitred pieces at a bend, the two halves each turned back by half the angle about the middle (positive: bend toward the field).']],'Aisle step pieces');}}
   add([['Seg','Type','X1 (mm)','Y1 (mm)','X2 (mm)','Y2 (mm)','CX (mm)','CY (mm)','R (mm)','Start (deg)','Sweep (deg)'],...focalPath(P).map((g,i)=>[i+1,...geo(g)]),
     [],['The point-of-focus boundary, counter-clockwise, same coordinates as Bowl pieces.']],'Focal path');
   add([['Tier','Zone','Row','Riser from focus (mm)','Tread height (mm)','Tread (mm)','Seat width (mm)','Riser (mm)','Rake (deg)','C-value (mm)','Guard clearance (mm)'],
@@ -3188,7 +3229,7 @@ $('exRevit').onclick=()=>{
 $('exSku').onclick=()=>{
   const dae=buildDAE(P,ZR,CH),name=slug();
   const zip=new JSZip();zip.file(name+'.dae',dae);
-  zip.file('How to open in SketchUp.txt','In SketchUp desktop: File > Import, choose COLLADA (*.dae), then pick '+name+'.dae.\nUnits are metres. Each stand (tier and side) imports as its own closed solid, with the pitch as a separate object.\nOpen corners are gaps between stands. Origin is the centre of the field extents, at field level.\n');
+  zip.file('How to open in SketchUp.txt','In SketchUp desktop: File > Import, choose COLLADA (*.dae), then pick '+name+'.dae.\nUnits are metres. Each stand (tier and side) imports as its own closed solid; the precast aisle steps import as closed solids grouped under "Aisle steps (precast)", one per aisle per row, with the pitch as a separate object.\nOpen corners are gaps between stands. Origin is the centre of the field extents, at field level.\n');
   zip.generateAsync({type:'blob'}).then(b=>offer(name+'.zip',b));
 };
 
