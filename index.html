@@ -1576,7 +1576,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.88 0.88 0.86')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.16.12';
+const VERSION='2026.10.16.13';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2243,14 +2243,16 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
       const d0=rows[0].x/1000,EP=[],VZ=[];let kV=0;{const AL=M&&M.AL,Lz=AL&&AL[ti]&&AL[ti][z];if(Lz&&imperial()){const wA=AIS().w/1000;
         Lz.ais.forEach(ai=>{const w=cutW(ai,wA),sc=chainS(Lz.ch,ai,d0);for(const sd of [-1,1])for(const o of [w/2,w/2+gp]){const p=chainPtS(Lz.ch,sc+sd*o,d0);EP.push([p[0],-p[1]]);}});
         if(Lz.vr)Lz.ais.forEach((ai,i)=>{if(!Lz.vom[i])return;kV=Lz.vr.rows.length;const W2=vomClear(ai)/2000,tw=vomWall()/1000,sc=chainS(Lz.ch,ai,d0),dk=rows[Math.min(kV,rows.length-1)].x/1000;   // a vom: split at its opening and walls
-          for(const o of [W2,W2+tw])for(const sd of [-1,1]){const p=chainPtS(Lz.ch,sc+sd*o,d0);EP.push([p[0],-p[1]]);}
+          const c0=chainPtS(Lz.ch,sc,d0),c1=chainPtS(Lz.ch,chainS(Lz.ch,ai,d0+1),d0+1),ax=[c1[0]-c0[0],-(c1[1]-c0[1])];   // the vom axis per metre of depth (iso coordinates)
+          for(const o of [W2,W2+tw,W2+tw+VSIDE()/1000])for(const sd of [-1,1]){const p=chainPtS(Lz.ch,sc+sd*o,d0);EP.push([p[0],-p[1],ax[0],ax[1]]);}
           const at=(o,d)=>chainPtS(Lz.ch,chainS(Lz.ch,ai,d)+o,d),o=W2+tw-1e-3;VZ.push([at(-o,d0-0.5),at(-o,dk),at(o,dk),at(o,d0-0.5)]);});}}
       for(let i=0;i<st0.length;i++){const a=st0[i],b=closed?st0[(i+1)%st0.length]:st0[i+1];st.push(a);if(!b)continue;
         const A=[a[0]+a[2]*d0,a[1]+a[3]*d0],B=[b[0]+b[2]*d0,b[1]+b[3]*d0],ab=[B[0]-A[0],B[1]-A[1]],l2=ab[0]*ab[0]+ab[1]*ab[1],ts=[];
-        if(l2>1e-9)for(const p of EP){const t=((p[0]-A[0])*ab[0]+(p[1]-A[1])*ab[1])/l2;if(t>1e-4&&t<1-1e-4&&Math.hypot(A[0]+ab[0]*t-p[0],A[1]+ab[1]*t-p[1])<0.05)ts.push(t);}
-        ts.sort((x,y)=>x-y);ts.filter((t,q)=>!q||t-ts[q-1]>1e-4).forEach(t=>st.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t,a[3]+(b[3]-a[3])*t]));}
+        if(l2>1e-9)for(const p of EP){const t=((p[0]-A[0])*ab[0]+(p[1]-A[1])*ab[1])/l2;if(t>1e-4&&t<1-1e-4&&Math.hypot(A[0]+ab[0]*t-p[0],A[1]+ab[1]*t-p[1])<0.05)ts.push({t,n:p.length>2?[p[2],p[3]]:null});}
+        ts.sort((x,y)=>x.t-y.t);ts.filter((q,i)=>!i||q.t-ts[i-1].t>1e-4).forEach(({t,n})=>{const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,nx=n?n[0]:a[2]+(b[2]-a[2])*t,ny=n?n[1]:a[3]+(b[3]-a[3])*t;
+          st.push(n?[x+(a[2]+(b[2]-a[2])*t-n[0])*d0,y+(a[3]+(b[3]-a[3])*t-n[1])*d0,nx,ny]:[x,y,nx,ny]);});}   // a vom split: offset along the vom axis, kept on the same point at the front row
       const m=st.length,np=closed?m:m-1,V=(s,i,q)=>{q=q||pr;return [st[s][0]+st[s][2]*q[i][0],st[s][1]+st[s][3]*q[i][0],q[i][1]];};
-      const prV=kV&&rows.length>kV+1?profileOf(rows.slice(kV),ti).map(([x,h])=>[x/1000,h/1000]):null,vp=[];   // inside a vom: the tier starts at its top tread (the rows in front are cut)
+      const prV=kV&&rows.length>kV+1?profileOf(rows.slice(kV),-1).map(([x,h])=>[x/1000,h/1000]):null,vp=[];   /* open below the header: the tunnel continues under the rows */   // inside a vom: the tier starts at its top tread (the rows in front are cut)
       if(prV&&VZ.length)for(let s=0;s<np;s++){const a=st[s],b=st[(s+1)%m],at=t=>{const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,nx=a[2]+(b[2]-a[2])*t,ny=a[3]+(b[3]-a[3])*t,dd=d0+0.05;return [x+nx*dd,-(y+ny*dd)];};
         vp[s]=[.25,.75].every(t=>{const p=at(t);return VZ.some(q=>inPoly(p,q));});}
       const offT=OFF.filter(o=>o.ti===ti).map(o=>o.pts),dm=(rows[0].x+rows[rows.length-1].x+rows[rows.length-1].T)/2000,hid=[];
