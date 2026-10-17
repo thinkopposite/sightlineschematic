@@ -289,8 +289,14 @@ main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main 
       <div><div id="v3Tabs"><div class="seg" role="group" aria-label="Camera"><button data-v3p="persp" class="on" title="Perspective">Perspective</button><button data-v3p="ortho" title="Parallel projection: no vanishing points, true for measuring (SketchUp: Camera, Parallel Projection)">Parallel</button></div>
         <div class="seg" role="group" aria-label="Standard views"><button data-v3="Top">Top</button><button data-v3="S" title="South elevation: looking north from the SEZ side">South</button><button data-v3="N" title="North elevation">North</button><button data-v3="E" title="East elevation">East</button><button data-v3="W" title="West elevation">West</button></div>
         <div class="seg" role="group" aria-label="Isometric views"><button data-v3="NW">NW</button><button data-v3="NE">NE</button><button data-v3="SW">SW</button><button data-v3="SE" class="on">SE</button></div>
-        <div class="seg"><button id="v3Glb" title="glTF binary: opens in Windows 3D Viewer, Blender, PowerPoint and most web and BIM viewers">Download .glb</button></div></div></div></div>
+        <div class="seg" role="group" aria-label="Download the 3D model"><button id="v3Glb" title="glTF binary: viewing and presenting">.glb</button><button id="v3Ifc" title="IFC4: BIM coordination, opens or links in Revit">.ifc</button><button id="v33dm" title="Rhino 3dm: Rhino and Grasshopper; imports into Revit and SketchUp">.3dm</button></div></div></div></div>
     <div class="panel" id="v3d" style="height:min(72vh,720px);min-height:360px;padding:0;overflow:hidden"></div>
+    <details id="v3Fmt" style="margin-top:8px"><summary>3D model downloads: which format for what</summary><table class="fixed wrap" style="margin:6px 0"><tbody>
+      <tr><td style="width:16%"><b>.glb</b> (glTF)</td><td>The web standard for 3D. Opens in Windows 3D Viewer, PowerPoint (Insert › 3D Models), Blender and online viewers. For viewing and presenting; triangles only, no BIM data.</td></tr>
+      <tr><td><b>.ifc</b> (IFC4)</td><td>Open BIM. In Revit use Open › IFC, or Link IFC to coordinate. Each stand comes in as a slab (floor) and each precast aisle step as its own generic element, on a level per tier, with tier, stand, aisle, row, step type, riser, tread and width as parameters you can schedule, tag and filter. The geometry is fixed (not reshaped in Revit); for native editable Revit geometry use the Revit export with the Dynamo graphs. Also opens in Navisworks, Solibri, BIMcollab and other IFC viewers.</td></tr>
+      <tr><td><b>.3dm</b> (Rhino)</td><td>Rhino 7 / 8 and Grasshopper: one mesh per stand and per step, on layers by tier, named, with the same data as user text. Fully editable in Rhino. Revit imports .3dm (Insert › Import CAD) as fixed geometry; SketchUp Pro imports it through an extension.</td></tr>
+      <tr><td><b>.dae</b> (SketchUp)</td><td>Use Deliver › Export for SketchUp: opens with File › Import; stands as solids and the precast steps as components. Editable in SketchUp. (Still the full bowl: switched-off sections not yet taken out.)</td></tr>
+      <tr><td>Units, origin</td><td>Metres; origin at the centre of the field at field level; Z up (glTF: Y up, converted by the viewer). Switched-off sections are left out of .glb, .ifc and .3dm.</td></tr></tbody></table></details>
     <div class="planhead"><span class="bub" id="bubEnl">G</span><h3 id="enlTitle">Enlarged plan: typical section</h3>
       <p class="capt">One section at true seat width: seats, end-seat space, aisles and clear width between rows.</p>
       <div><div class="seg" id="enlTabs" role="group" aria-label="Enlarged section"></div></div></div>
@@ -1569,7 +1575,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.88 0.88 0.86')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.16.06';
+const VERSION='2026.10.16.08';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2229,8 +2235,8 @@ const V3={on:false,ready:null,r:null,scene:null,cam:null,ctl:null,grp:null,tm:nu
 function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[],gp=(AIS().gap||0)/1000;
   const rgbOf=v=>{v=String(v).trim();if(/^#[0-9a-f]{6}$/i.test(v))return [1,3,5].map(i=>parseInt(v.slice(i,i+2),16));const m=v.match(/\d+/g);return m?m.slice(0,3).map(Number):[180,180,180];};
   let bp=boundary(P).map(([x,y])=>[x,-y]);if(polyArea(bp)<0)bp.reverse();
-  CH.forEach((c,ti)=>{const tri=[];
-    for(const z of Object.keys(c)){const rows=ZR[z].filter(r=>r.tier===ti);if(!rows.length)continue;
+  CH.forEach((c,ti)=>{const tri=[],parts=[];
+    for(const z of Object.keys(c)){const rows=ZR[z].filter(r=>r.tier===ti);if(!rows.length)continue;const t0=tri.length;
       const pr=profileOf(rows,ti).map(([x,h])=>[x/1000,h/1000]),n=pr.length,closed=c[z]==='ring';
       const st0=closed?stations(bp):chainStations(c[z]).map(([x,y,nx,ny])=>[x,-y,nx,-ny]).reverse(),st=[];
       const d0=rows[0].x/1000,EP=[];{const AL=M&&M.AL,Lz=AL&&AL[ti]&&AL[ti][z];if(Lz&&imperial()){const wA=AIS().w/1000;
@@ -2248,19 +2254,24 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
       // end caps: at every cut between a kept and an open piece, and at the two ends of a stand that does not close on itself
       const ear=earClip(pr),cap=s=>ear.forEach(([a,b,c2])=>tri.push(V(s,a),V(s,b),V(s,c2)));
       for(let s=0;s<np;s++){const pv=s?s-1:(closed?np-1:-1);if(pv>=0&&!!hid[s]!==!!hid[pv])cap(s);}
-      if(!closed){if(!hid[0])cap(0);if(!hid[np-1])cap(m-1);}}
-    out.push({name:`Tier ${ti+1}`,tri,col:rgbOf(tierFill(ti))});});
-  {const tri=[];for(const pc of aislePieces()){if(gone.has(pc.aisle))continue;for(const fc of pc.faces){const q=fc.idx.map(i=>pc.V[i]);
+      if(!closed){if(!hid[0])cap(0);if(!hid[np-1])cap(m-1);}
+      const sn=zoneName(P,z);parts.push({a:t0,b:tri.length,name:`Tier ${ti+1} ${sn}`,meta:{ti,props:{Tier:ti+1,Stand:sn,Rows:rows.length,Seats:Math.round(((M.zoneSeats||[])[ti]||{})[z]||0),'Row 1 tread height':+(rows[0].z/1000).toFixed(4),'Top tread height':+(rows[rows.length-1].z/1000).toFixed(4)}}});}
+    out.push({name:`Tier ${ti+1}`,kind:'stand',tri,parts,col:rgbOf(tierFill(ti))});});
+  {const tri=[],parts=[];for(const pc of aislePieces()){if(gone.has(pc.aisle))continue;const t0=tri.length;for(const fc of pc.faces){const q=fc.idx.map(i=>pc.V[i]);
       if(q.length===4)tri.push(q[0],q[1],q[2],q[0],q[2],q[3]);else{const ax=Math.abs(fc.out[0])>Math.abs(fc.out[1])?1:0,p2=q.map(v=>[v[ax],v[2]]);earClip(p2).forEach(([a,b,c2])=>tri.push(q[a],q[b],q[c2]));}
-      if(fc.out[2]>0.9&&q.length===4)edges.push(q[1],q[2]);}}
-    if(tri.length)out.push({name:'Aisle steps (precast)',tri,col:[226,226,221]});}
+      if(fc.out[2]>0.9&&q.length===4)edges.push(q[1],q[2]);}
+      const mk=`T${pc.ti+1}-${zoneName(P,pc.zone,true)}-A${pc.aisle}-R${pc.row}`;parts.push({a:t0,b:tri.length,name:`Aisle step ${mk}`,meta:{ti:pc.ti,mark:mk,props:{Tier:pc.ti+1,Stand:zoneName(P,pc.zone),Aisle:pc.aisle,Row:pc.row,Type:stepName(pc.n),Steps:pc.n-1,Riser:+(pc.rh/1000).toFixed(4),Tread:+(pc.td/1000).toFixed(4),Width:+pc.w.toFixed(4),'Bend angle (deg)':+pc.bend.toFixed(2)}}});}
+    if(tri.length)out.push({name:'Aisle steps (precast)',kind:'step',tri,parts,col:[226,226,221]});}
   return {groups:out,edges};}
 function v3Field(){   // the field drawing as a texture on the ground, inside the buffer (or the boundary's box)
   const Sp=SPORTS[P.sport],bnd=boundary(P),xs=bnd.map(p=>p[0]),ys=bnd.map(p=>p[1]),t=(ZR.T||Object.values(ZR).flat()).find(r=>r.tier===0),dd=t?t.x/1000:0;
   let x0=Math.min(...xs)-dd,x1=Math.max(...xs)+dd,y0=Math.min(...ys)-dd,y1=Math.max(...ys)+dd;if(zoned(P)){const s=rectGeo(P).side;x0=s.L.p[0]-dd;x1=s.R.p[0]+dd;y0=s.T.p[1]-dd;y1=s.B.p[1]+dd;}
   const W=x1-x0,H=y1-y0,svg=pdfReadySvg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x0} ${y0} ${W} ${H}" width="${Math.round(4096*Math.min(1,W/H))}" height="${Math.round(4096*Math.min(1,H/W))}"><rect x="${x0}" y="${y0}" width="${W}" height="${H}" fill="var(--grass2)"/>${Sp.draw(P,Object.assign(Pen(W/700),{iso:true}))}</svg>`).replace(/font-family="DVS"/g,'font-family="Helvetica, Arial, sans-serif"');
   return {x0,y0,W,H,url:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)};}
-async function v3Init(){if(V3.ready)return V3.ready;V3.ready=(async()=>{await loadJS('vendor/three/three.min.js');await loadJS('vendor/three/OrbitControls.js');
+// three.js from the site's vendor/three folder, or the same version from jsDelivr when the folder is not uploaded
+const V3CDN='https://cdn.jsdelivr.net/npm/three@0.147.0/',V3SRC={'three.min.js':'build/three.min.js','OrbitControls.js':'examples/js/controls/OrbitControls.js','GLTFExporter.js':'examples/js/exporters/GLTFExporter.js'};
+async function loadThree(f){try{await loadJS('vendor/three/'+f);}catch(e){await loadJS(V3CDN+V3SRC[f]);}}
+async function v3Init(){if(V3.ready)return V3.ready;V3.ready=(async()=>{await loadThree('three.min.js');await loadThree('OrbitControls.js');
   const el=$('v3d'),r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
   el.innerHTML='';el.appendChild(r.domElement);r.domElement.style.cssText='display:block;width:100%;height:100%;touch-action:none;border-radius:8px';
   const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(32,1,0.5,5000),ortho=new THREE.OrthographicCamera(-1,1,1,-1,0.1,5000);scene.add(new THREE.HemisphereLight(0xffffff,0x6f6f68,0.62));
@@ -2307,13 +2318,58 @@ function v3View(v){V3.view=v;if(!V3.grp)return;const T=THREE,box=new T.Box3();V3
   V3.persp.up.set(0,1,0);V3.persp.position.copy(c.clone().add(dir.clone().multiplyScalar(dist)));V3.persp.near=dist/100;V3.persp.far=dist*20;V3.persp.zoom=1;V3.persp.updateProjectionMatrix();
   V3.oh=Math.max(2*hh,2*hw/asp)*M1;V3.ortho.zoom=1;V3.ortho.up.set(0,1,0);V3.ortho.position.copy(V3.persp.position);V3.ortho.near=-dist*20;V3.ortho.far=dist*20;v3Frustum();
   V3.ctl.target.copy(c);V3.ctl.update();v3Tabs();v3Render();}
-async function v3Glb(){await v3Init();if(!V3.grp)await v3Build();await loadJS('vendor/three/GLTFExporter.js');
+async function v3Glb(){await v3Init();if(!V3.grp)await v3Build();await loadThree('GLTFExporter.js');
   const keep=V3.grp.children.filter(o=>o.name==='Ground');keep.forEach(o=>V3.grp.remove(o));
   new THREE.GLTFExporter().parse(V3.grp,res=>{keep.forEach(o=>V3.grp.add(o));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([res],{type:'model/gltf-binary'}));a.download=`Sightline_${slug()}.glb`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('3D model downloaded (.glb)');},
     e=>{keep.forEach(o=>V3.grp.add(o));toast('Export failed: '+e);},{binary:true});}
-function v3Schedule(){if(!V3.on)return;clearTimeout(V3.tm);V3.tm=setTimeout(()=>v3Build().catch(e=>{$('v3Note').textContent='3D view unavailable: '+e.message;}),250);}
-$('v3Tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.v3)v3View(b.dataset.v3);else if(b.dataset.v3p)v3Proj(b.dataset.v3p);else if(b.id==='v3Glb')v3Glb();});
+function v3Schedule(){if(!V3.on)return;clearTimeout(V3.tm);V3.tm=setTimeout(()=>v3Build().catch(e=>{V3.ready=null;$('v3Note').textContent='3D view unavailable: could not load three.js ('+e.message+'). Upload the vendor/three folder, or check the internet connection.';}),250);}
+$('v3Tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.v3)v3View(b.dataset.v3);else if(b.dataset.v3p)v3Proj(b.dataset.v3p);else if(b.id==='v3Glb')v3Glb();else if(b.id==='v3Ifc')exportIFC();else if(b.id==='v33dm')export3DM();});
 {const io=new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)&&!V3.on){V3.on=true;v3Schedule();}},{rootMargin:'200px'});io.observe($('v3d'));}
+// ---------- 3D model exports from the live model (switched-off sections stay open): IFC4 and Rhino .3dm ----------
+// model coordinates: metres, x and y in plan (y north), z up; origin at the centre of the field, field level
+function modelParts(){const {groups}=model3D(),out=[];
+  groups.forEach(G=>{if(G.parts)G.parts.forEach(p=>out.push({kind:G.kind,name:p.name,col:G.col,tri:G.tri.slice(p.a,p.b),meta:p.meta}));});return out;}
+function meshIndex(tri){const key=p=>p.map(v=>Math.round(v*1e4)).join(','),map=new Map(),pts=[],ix=[];
+  tri.forEach(p=>{const k=key(p);let i=map.get(k);if(i==null){i=pts.length;map.set(k,i);pts.push(p);}ix.push(i);});
+  const f=[];for(let i=0;i+2<ix.length;i+=3)if(ix[i]!==ix[i+1]&&ix[i+1]!==ix[i+2]&&ix[i]!==ix[i+2])f.push([ix[i],ix[i+1],ix[i+2]]);return {pts,f};}
+const ifcGuid=()=>{const A='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$';let s=A[Math.floor(Math.random()*4)];for(let i=1;i<22;i++)s+=A[Math.floor(Math.random()*64)];return s;};
+const ifcStr=t=>"'"+String(t).replace(/\\/g,'\\\\').replace(/'/g,"''").replace(/[^\x20-\x7E]/g,c=>'\\X2\\'+c.charCodeAt(0).toString(16).toUpperCase().padStart(4,'0')+'\\X0\\')+"'";
+const ifcR=v=>{const s=(+v).toFixed(5).replace(/0+$/,'');return s.endsWith('.')?s:s;};
+function buildIFC(){const parts=modelParts(),L=[];let n=0;const E=t=>{L.push(`#${++n}=${t};`);return '#'+n;},Sp=SPORTS[P.sport],nm=`Sightline ${Sp.name} bowl`;
+  const o=E('IFCCARTESIANPOINT((0.,0.,0.))'),zA=E('IFCDIRECTION((0.,0.,1.))'),xA=E('IFCDIRECTION((1.,0.,0.))'),ax=E(`IFCAXIS2PLACEMENT3D(${o},${zA},${xA})`);
+  const u=[E('IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.)'),E('IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.)'),E('IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.)'),E('IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.)')],ua=E(`IFCUNITASSIGNMENT((${u.join(',')}))`);
+  const ctx=E(`IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,${ax},$)`),body=E(`IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,${ctx},$,.MODEL_VIEW.,$)`);
+  const prj=E(`IFCPROJECT('${ifcGuid()}',$,${ifcStr(nm)},${ifcStr('Exported from Sightline Schematic '+VERSION+' ('+optName()+')')},$,$,$,(${ctx}),${ua})`);
+  const pS=E(`IFCLOCALPLACEMENT($,${ax})`),site=E(`IFCSITE('${ifcGuid()}',$,'Site',$,$,${pS},$,$,.ELEMENT.,$,$,$,$,$)`);
+  const pB=E(`IFCLOCALPLACEMENT(${pS},${ax})`),bld=E(`IFCBUILDING('${ifcGuid()}',$,'Stadium bowl',$,$,${pB},$,$,.ELEMENT.,$,$,$)`);
+  E(`IFCRELAGGREGATES('${ifcGuid()}',$,$,$,${prj},(${site}))`);E(`IFCRELAGGREGATES('${ifcGuid()}',$,$,$,${site},(${bld}))`);
+  const sty={},style=c=>{const k=c.join(',');if(sty[k])return sty[k];const rgb=E(`IFCCOLOURRGB($,${c.map(v=>ifcR(v/255)).join(',')})`),sh=E(`IFCSURFACESTYLESHADING(${rgb},0.)`);return sty[k]=E(`IFCSURFACESTYLE($,.BOTH.,(${sh}))`);};
+  const storeys={},pl={};const storey=ti=>{if(storeys[ti])return storeys[ti];const z=((ZR.T||[]).find(r=>r.tier===ti)||{z:0}).z/1000;pl[ti]=E(`IFCLOCALPLACEMENT(${pB},${ax})`);
+    return storeys[ti]={id:E(`IFCBUILDINGSTOREY('${ifcGuid()}',$,${ifcStr('Tier '+(ti+1))},$,$,${pl[ti]},$,$,.ELEMENT.,${ifcR(z)})`),els:[]};};
+  const val=(v,k)=>typeof v!=='number'?`IFCLABEL(${ifcStr(v)})`:/angle/i.test(k)?`IFCREAL(${ifcR(v)})`:Number.isInteger(v)&&!/height|riser|tread|width/i.test(k)?`IFCINTEGER(${v})`:`IFCLENGTHMEASURE(${ifcR(v)})`;   // lengths in metres, angles in degrees
+  parts.forEach(p=>{const {pts,f}=meshIndex(p.tri);if(!f.length)return;const S=storey(p.meta.ti);
+    const cl=E(`IFCCARTESIANPOINTLIST3D((${pts.map(q=>`(${q.map(ifcR).join(',')})`).join(',')}))`),fs=E(`IFCTRIANGULATEDFACESET(${cl},$,$,(${f.map(t=>`(${t.map(i=>i+1).join(',')})`).join(',')}),$)`);
+    E(`IFCSTYLEDITEM(${fs},(${style(p.col)}),$)`);const sr=E(`IFCSHAPEREPRESENTATION(${body},'Body','Tessellation',(${fs}))`),pds=E(`IFCPRODUCTDEFINITIONSHAPE($,$,(${sr}))`),lp=E(`IFCLOCALPLACEMENT(${pl[p.meta.ti]},${ax})`);
+    const el=p.kind==='stand'?E(`IFCSLAB('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Seating tier (raker and treads) by stand')},'Seating tier',${lp},${pds},$,.NOTDEFINED.)`)
+      :E(`IFCBUILDINGELEMENTPROXY('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Precast concrete aisle step block on the bowl tread')},'Precast aisle step',${lp},${pds},${ifcStr(p.meta.mark||'')},.ELEMENT.)`);
+    S.els.push(el);const props=Object.entries(p.meta.props||{}).map(([k,v])=>E(`IFCPROPERTYSINGLEVALUE(${ifcStr(k)},$,${val(v,k)},$)`));
+    if(props.length){const ps=E(`IFCPROPERTYSET('${ifcGuid()}',$,'Sightline',$,(${props.join(',')}))`);E(`IFCRELDEFINESBYPROPERTIES('${ifcGuid()}',$,$,$,(${el}),${ps})`);}});
+  const ss=Object.values(storeys);E(`IFCRELAGGREGATES('${ifcGuid()}',$,$,$,${bld},(${ss.map(s=>s.id).join(',')}))`);
+  ss.forEach(s=>E(`IFCRELCONTAINEDINSPATIALSTRUCTURE('${ifcGuid()}',$,$,$,(${s.els.join(',')}),${s.id})`));
+  const ts=new Date().toISOString().slice(0,19);
+  return `ISO-10303-21;\nHEADER;\nFILE_DESCRIPTION(('ViewDefinition [ReferenceView_V1.2]'),'2;1');\nFILE_NAME(${ifcStr(nm+'.ifc')},'${ts}',('Sightline Schematic'),(''),'Sightline Schematic ${VERSION}','Sightline Schematic','');\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\n${L.join('\n')}\nENDSEC;\nEND-ISO-10303-21;\n`;}
+function dlBlob(data,type,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
+function exportIFC(){toast('Building the IFC model…');setTimeout(()=>{try{const t=buildIFC();dlBlob(t,'application/x-step',`Sightline_${slug()}.ifc`);toast('IFC model downloaded');}catch(e){toast('IFC export failed: '+e.message);}},30);}
+// Rhino 3dm through McNeel's rhino3dm (WebAssembly), from vendor/rhino3dm or jsDelivr
+const R3CDN='https://cdn.jsdelivr.net/npm/rhino3dm@8.4.0/';let R3=null;
+async function loadRhino(){if(R3)return R3;let base='vendor/rhino3dm/';try{await loadJS(base+'rhino3dm.min.js');}catch(e){base=R3CDN;await loadJS(base+'rhino3dm.min.js');}
+  R3=await rhino3dm({locateFile:f=>base+f});return R3;}
+async function export3DM(){toast('Building the Rhino model…');try{const r=await loadRhino(),parts=modelParts(),doc=new r.File3dm();doc.settings().modelUnitSystem=r.UnitSystem.Meters;
+    const lay={},layer=(name,c)=>lay[name]??(lay[name]=doc.layers().addLayer(name,[c[0],c[1],c[2],255]));
+    parts.forEach(p=>{const {pts,f}=meshIndex(p.tri);if(!f.length)return;const m=new r.Mesh(),vs=m.vertices(),fc=m.faces();pts.forEach(q=>vs.add(q[0],q[1],q[2]));f.forEach(t=>fc.addTriFace(t[0],t[1],t[2]));m.normals().computeNormals();m.compact();
+      const at=new r.ObjectAttributes();at.layerIndex=layer(p.kind==='stand'?`Tier ${p.meta.ti+1}`:'Precast aisle steps',p.col);at.name=p.name;Object.entries(p.meta.props||{}).forEach(([k,v])=>at.setUserString(k,typeof v==='number'&&!Number.isInteger(v)?String(+v.toFixed(4)):String(v)));doc.objects().add(m,at);m.delete();at.delete();});
+    const b=doc.toByteArray();doc.delete();dlBlob(b,'application/octet-stream',`Sightline_${slug()}.3dm`);toast('Rhino model downloaded (.3dm)');}
+  catch(e){toast('3dm export failed: '+e.message);}}
 // ---------- enlarged spectators: three Tier 1 rows, sitting or standing, with the eye sight values dimensioned ----------
 const SPECT_ROWS=5;                                                    // rows in each enlarged spectator view
 function spectatorRows(){const t1=(ZR.T||[]).filter(r=>r.tier===0),n=SPECT_ROWS;if(t1.length<n)return t1;
@@ -3516,7 +3572,7 @@ function titleCase(str){
       if(UNITS.has(lo))return p;                                       // keep units lowercase
       if(k===0&&!first&&!last&&SMALL.has(lo))return p;
       return p[0].toUpperCase()+p.slice(1);}).join('-');});}
-const SENTENCE='.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td';
+const SENTENCE='.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td';
 function titleize(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
   while((n=w.nextNode())){const el=n.parentElement;if(!el||el.closest(SENTENCE))continue;const t=titleCase(n.data);if(t!==n.data)n.data=t;}}
 new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData'){const el=m.target.parentElement;if(el&&!el.closest(SENTENCE)){const t=titleCase(m.target.data);if(t!==m.target.data)m.target.data=t;}}
