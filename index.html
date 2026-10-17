@@ -1570,7 +1570,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.88 0.88 0.86')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.16.10';
+const VERSION='2026.10.16.11';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2257,6 +2257,16 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
       if(fc.out[2]>0.9&&q.length===4)edges.push(q[1],q[2]);}
       const mk=`T${pc.ti+1}-${zoneName(P,pc.zone,true)}-A${pc.aisle}-R${pc.row}`;parts.push({a:t0,b:tri.length,name:`Aisle step ${mk}`,meta:{ti:pc.ti,mark:mk,props:{Tier:pc.ti+1,Stand:zoneName(P,pc.zone),Aisle:pc.aisle,Row:pc.row,Type:stepName(pc.n),Steps:pc.n-1,Riser:+(pc.rh/1000).toFixed(4),Tread:+(pc.td/1000).toFixed(4),Width:+pc.w.toFixed(4),'Bend angle (deg)':+pc.bend.toFixed(2)}}});}
     if(tri.length)out.push({name:'Aisle steps (precast)',kind:'step',tri,parts,col:[226,226,221]});}
+  // wheelchair platforms (decision 56): the infill over the two rows below the top row, up to the top tread, on the section's outline inset from the aisles
+  {const S=P.secs||{},WC=(M.ADA&&M.ADA.secs)||{},RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),tri=[],parts=[];
+    if(M.AL)M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<4)return;
+      sectionList(ti).forEach(q=>{const e=S[q.no],w=WC[q.no];if(!e||!e.wc||e.off||!w)return;const tr=ZR[w.k].filter(r=>r.tier===ti),L=tr.length;if(L<4)return;
+        const z0=tr[L-3].z/1000-0.05,z1=tr[L-1].z/1000,t0=tri.length;
+        secGeom(ti,q.key,nr-3,nr-2,RS,true).polys.forEach(pp=>{const pts=pp.map(([x,y])=>[x,-y]);if(pts.length<3)return;
+          earClip(pts).forEach(([a,b,c2])=>tri.push([...pts[a],z1],[...pts[b],z1],[...pts[c2],z1]));
+          for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];tri.push([...a,z0],[...b,z0],[...b,z1],[...a,z0],[...b,z1],[...a,z1]);}});
+        if(tri.length>t0)parts.push({a:t0,b:tri.length,name:`Wheelchair platform ${q.no}`,meta:{ti,mark:'WC-'+q.no,props:{Tier:ti+1,Section:q.no,Stand:w.stand,'Wheelchair spaces':w.wc,'Companion seats':w.comp,'Platform level':+z1.toFixed(4),'Rows filled':w.rows.join('–')}}});});});
+    if(tri.length)out.push({name:'Wheelchair platforms',kind:'platform',tri,parts,col:[255,122,0]});}
   return {groups:out,edges};}
 function v3Field(){   // the field drawing as a texture on the ground, inside the buffer (or the boundary's box)
   const Sp=SPORTS[P.sport],bnd=boundary(P),xs=bnd.map(p=>p[0]),ys=bnd.map(p=>p[1]),t=(ZR.T||Object.values(ZR).flat()).find(r=>r.tier===0),dd=t?t.x/1000:0;
@@ -2341,11 +2351,12 @@ function buildIFC(){const parts=modelParts(),L=[];let n=0;const E=t=>{L.push(`#$
   const sty={},style=c=>{const k=c.join(',');if(sty[k])return sty[k];const rgb=E(`IFCCOLOURRGB($,${c.map(v=>ifcR(v/255)).join(',')})`),sh=E(`IFCSURFACESTYLESHADING(${rgb},0.)`);return sty[k]=E(`IFCSURFACESTYLE($,.BOTH.,(${sh}))`);};
   const storeys={},pl={};const storey=ti=>{if(storeys[ti])return storeys[ti];const z=((ZR.T||[]).find(r=>r.tier===ti)||{z:0}).z/1000;pl[ti]=E(`IFCLOCALPLACEMENT(${pB},${ax})`);
     return storeys[ti]={id:E(`IFCBUILDINGSTOREY('${ifcGuid()}',$,${ifcStr('Tier '+(ti+1))},$,$,${pl[ti]},$,$,.ELEMENT.,${ifcR(z)})`),els:[]};};
-  const val=(v,k)=>typeof v!=='number'?`IFCLABEL(${ifcStr(v)})`:/angle/i.test(k)?`IFCREAL(${ifcR(v)})`:Number.isInteger(v)&&!/height|riser|tread|width/i.test(k)?`IFCINTEGER(${v})`:`IFCLENGTHMEASURE(${ifcR(v)})`;   // lengths in metres, angles in degrees
+  const val=(v,k)=>typeof v!=='number'?`IFCLABEL(${ifcStr(v)})`:/angle/i.test(k)?`IFCREAL(${ifcR(v)})`:Number.isInteger(v)&&!/height|riser|tread|width|level/i.test(k)?`IFCINTEGER(${v})`:`IFCLENGTHMEASURE(${ifcR(v)})`;   // lengths in metres, angles in degrees
   parts.forEach(p=>{const {pts,f}=meshIndex(p.tri);if(!f.length)return;const S=storey(p.meta.ti);
     const cl=E(`IFCCARTESIANPOINTLIST3D((${pts.map(q=>`(${q.map(ifcR).join(',')})`).join(',')}))`),fs=E(`IFCTRIANGULATEDFACESET(${cl},$,$,(${f.map(t=>`(${t.map(i=>i+1).join(',')})`).join(',')}),$)`);
     E(`IFCSTYLEDITEM(${fs},(${style(p.col)}),$)`);const sr=E(`IFCSHAPEREPRESENTATION(${body},'Body','Tessellation',(${fs}))`),pds=E(`IFCPRODUCTDEFINITIONSHAPE($,$,(${sr}))`),lp=E(`IFCLOCALPLACEMENT(${pl[p.meta.ti]},${ax})`);
     const el=p.kind==='stand'?E(`IFCSLAB('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Seating tier (raker and treads) by stand')},'Seating tier',${lp},${pds},$,.NOTDEFINED.)`)
+      :p.kind==='platform'?E(`IFCBUILDINGELEMENTPROXY('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Wheelchair platform: infill over the two rows below the top row, level with the top tread')},'Wheelchair platform',${lp},${pds},${ifcStr(p.meta.mark||'')},.ELEMENT.)`)
       :E(`IFCBUILDINGELEMENTPROXY('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Precast concrete aisle step block on the bowl tread')},'Precast aisle step',${lp},${pds},${ifcStr(p.meta.mark||'')},.ELEMENT.)`);
     S.els.push(el);const props=Object.entries(p.meta.props||{}).map(([k,v])=>E(`IFCPROPERTYSINGLEVALUE(${ifcStr(k)},$,${val(v,k)},$)`));
     if(props.length){const ps=E(`IFCPROPERTYSET('${ifcGuid()}',$,'Sightline',$,(${props.join(',')}))`);E(`IFCRELDEFINESBYPROPERTIES('${ifcGuid()}',$,$,$,(${el}),${ps})`);}});
@@ -2362,7 +2373,7 @@ async function loadRhino(){if(R3)return R3;let base='vendor/rhino3dm/';try{await
 async function export3DM(){toast('Building the Rhino model…');try{const r=await loadRhino(),parts=modelParts(),doc=new r.File3dm();doc.settings().modelUnitSystem=r.UnitSystem.Meters;
     const lay={},layer=(name,c)=>lay[name]??(lay[name]=doc.layers().addLayer(name,[c[0],c[1],c[2],255]));
     parts.forEach(p=>{const {pts,f}=meshIndex(p.tri);if(!f.length)return;const m=new r.Mesh(),vs=m.vertices(),fc=m.faces();pts.forEach(q=>vs.add(q[0],q[1],q[2]));f.forEach(t=>fc.addTriFace(t[0],t[1],t[2]));m.normals().computeNormals();m.compact();
-      const at=new r.ObjectAttributes();at.layerIndex=layer(p.kind==='stand'?`Tier ${p.meta.ti+1}`:'Precast aisle steps',p.col);at.name=p.name;Object.entries(p.meta.props||{}).forEach(([k,v])=>at.setUserString(k,typeof v==='number'&&!Number.isInteger(v)?String(+v.toFixed(4)):String(v)));doc.objects().add(m,at);m.delete();at.delete();});
+      const at=new r.ObjectAttributes();at.layerIndex=layer(p.kind==='stand'?`Tier ${p.meta.ti+1}`:p.kind==='platform'?'Wheelchair platforms':'Precast aisle steps',p.col);at.name=p.name;Object.entries(p.meta.props||{}).forEach(([k,v])=>at.setUserString(k,typeof v==='number'&&!Number.isInteger(v)?String(+v.toFixed(4)):String(v)));doc.objects().add(m,at);m.delete();at.delete();});
     const b=doc.toByteArray();doc.delete();dlBlob(b,'application/octet-stream',`Sightline_${slug()}.3dm`);toast('Rhino model downloaded (.3dm)');}
   catch(e){toast('3dm export failed: '+e.message);}}
 // ---------- enlarged spectators: three Tier 1 rows, sitting or standing, with the eye sight values dimensioned ----------
@@ -2514,7 +2525,7 @@ const SECNO={};
 function sectLabels(rf,t,plain){if(!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>v.toFixed(2),fz=rf*1.05,fn=rf*.95;
   const SS=P.secs||{},WC=(M.ADA&&M.ADA.secs)||{};
   for(let ti=0;ti<M.AL.length;ti++)sectionList(ti).forEach(q=>{SECNO[ti+':'+q.key]=q.no;const e=SS[q.no]||{},w=WC[q.no],[rx,ry]=rotPt(q.pt[0],q.pt[1],t),cnt=e.off?'off':q.lo===q.hi?q.lo:q.lo+'–'+q.hi;
-    if(w&&!e.off)o+=`<text x="${f(rx)}" y="${f(ry+fz*1.75)}" font-size="${f(fz*.8)}" font-weight="${plain?400:700}" fill="#0B6E4F" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.1)}">WC ${w.wc}</text>`;
+    if(w&&!e.off)o+=`<text x="${f(rx)}" y="${f(ry+fz*1.75)}" font-size="${f(fz*.8)}" font-weight="${plain?400:700}" fill="#C24E00" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.1)}">WC ${w.wc}</text>`;
     o+=`<g data-secno="${q.no}" style="cursor:pointer"><title>Section ${q.no}: ${e.off?'switched off':(q.lo===q.hi?q.lo:q.lo+' to '+q.hi)+' seats per row'}${w&&!e.off?`; wheelchair platform: ${w.wc} spaces, ${w.comp} companion seats`:''}</title><text x="${f(rx)}" y="${f(ry-fn*.6)}" font-size="${f(fn)}" font-weight="${plain?400:800}" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fn*.12)}">${q.no}</text>`
       +`<text x="${f(rx)}" y="${f(ry+fz*.6)}" font-size="${f(fz)}" font-weight="${plain?400:700}" fill="${e.off?'#777777':'#1E5BD8'}" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.12)}">${cnt}</text></g>`;});
   return o;}
@@ -2589,7 +2600,7 @@ function secOverlaySvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC
     sectionList(ti).forEach(q=>{const e=S[q.no];if(!e)return;if(e.off)off+=secGeom(ti,q.key,0,nr-1,RS,keep).poly;else if(e.wc&&nr>=4)wc+=secGeom(ti,q.key,nr-3,nr-2,RS,true).poly;});});
   if(!off&&!wc)return '';
   return (off?`<defs><clipPath id="secOffClip"><path d="${off}"/></clipPath></defs><path d="${off}" fill="var(--panel)" stroke="none"/><g clip-path="url(#secOffClip)">${planGrid()}</g>`:'')
-    +(wc?`<path d="${wc}" fill="#1FA37A" fill-opacity=".8" stroke="#0B6E4F" stroke-width="0.8" vector-effect="non-scaling-stroke"/>`:'');}
+    +(wc?`<path d="${wc}" fill="#FF7A00" fill-opacity=".9" stroke="#B34700" stroke-width="0.8" vector-effect="non-scaling-stroke"/>`:'');}
 // ---------- the Sections panel: seats per row, on/off and wheelchair platforms by section ----------
 let SECT_TI=0,SECT_HL=null;
 function secPanelHTML(){if(!M.AL||!zoned(P))return '<p class="hint" style="padding:8px 0">Choose the computed aisle layout to edit sections.</p>';
