@@ -1576,7 +1576,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.88 0.88 0.86')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.16.14';
+const VERSION='2026.10.16.15';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2404,18 +2404,25 @@ function vomRowsOf(ti,nr){const t=VT(ti),mid=Math.floor(nr/2);let k=Math.max(1,M
 const VOMK=()=>vomRowsOf(0,99).k;
 function cornerName(p){if(!zoned(P))return '';const G=rectGeo(P),cp=compassOf(P),n={};GEO.forEach(k=>n[cp[k]]=G.side[k].n);return ((p[0]*n.N[0]+p[1]*n.N[1])>0?'N':'S')+((p[0]*n.E[0]+p[1]*n.E[1])>0?'E':'W');}
 function vomCands(AL,ti=0){const T=AL&&AL[ti],out=[],pre=ti?ti+':':'';if(!T)return out;
-  (T.__mid||[]).forEach(g=>{const sn=zoneName(P,g.k,true);for(let m=0;m<g.keys.length-1;m++){const id=+g.keys[m].split('_')[1];if(id)out.push({key:pre+g.k+'.'+(m+1),id,label:`${sn} ${m+1}`,kind:'aisle',k:g.k,ti});}});
-  if(ti===0){const seen=new Set();Object.values(T).forEach(Lz=>Lz.ais.forEach(a=>{if(a.corner&&a.f===0.5&&!a.miter&&!seen.has(a.id)){seen.add(a.id);const r=Lz.tr[0],d=r.x/1000,p=chainPtS(Lz.ch,chainS(Lz.ch,a,d),d),cn=cornerName(p);out.push({key:'C.'+cn,id:a.id,label:'Corner '+cn,kind:'corner',ti});}}));}
+  // the interior aisles of each stand's middle group; on upper-tier sidelines all six aisles of the middle group (the outer two as well)
+  (T.__mid||[]).forEach(g=>{const sn=zoneName(P,g.k,true),all=ti>0&&isSide(g.k),ids=[];if(all)ids.push(+g.keys[0].split('_')[0]);
+    for(let m=0;m<g.keys.length-1;m++)ids.push(+g.keys[m].split('_')[1]);if(all)ids.push(+g.keys[g.keys.length-1].split('_')[1]);
+    ids.forEach((id,n)=>{if(id)out.push({key:pre+g.k+'.'+(n+1),id,label:`${sn} ${n+1}`,kind:'aisle',k:g.k,ti});});});
+  // the corner centrelines: Tier 1 player tunnels; upper tiers 8 ft spectator voms
+  {const seen=new Set();Object.values(T).forEach(Lz=>Lz.ais.forEach(a=>{if(a.corner&&a.f===0.5&&!a.miter&&!seen.has(a.id)){seen.add(a.id);const r=Lz.tr[0],d=r.x/1000,p=chainPtS(Lz.ch,chainS(Lz.ch,a,d),d),cn=cornerName(p);
+    out.push(ti===0?{key:'C.'+cn,id:a.id,label:'Corner '+cn,kind:'corner',ti}:{key:pre+'C.'+cn,id:a.id,label:cn,kind:'corner2',ti});}}));}
   return out;}
-function applyVoms(P,AL){const on=P.vomOn||{};if(!AL)return;AL.forEach((T,ti)=>{const zs=Object.values(T);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<3)return;
+function applyVoms(P,AL){if(!AL)return;if(!P.vomRev2){P.vomOn=null;P.vomRev2=1;}
+  if(!P.vomOn){P.vomOn={};AL.forEach((T,ti)=>vomCands(AL,ti).forEach(c=>P.vomOn[c.key]=true));}   // every vomitory on by default
+  const on=P.vomOn;AL.forEach((T,ti)=>{const zs=Object.values(T);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<3)return;
   const cs=vomCands(AL,ti).filter(c=>on[c.key]);if(!cs.length)return;const {k,s}=vomRowsOf(ti,nr),rows=[...Array(k).keys()].map(j=>j+s);
   cs.forEach(c=>zs.forEach(Lz=>Lz.ais.forEach((a,i)=>{if(a.id!==c.id)return;Lz.vom[i]=true;a.vomC=c.kind==='corner'?VTUN():AIS().vomW;a.vomKey=c.key;a.vomLabel=c.label;a.vomTi=ti;if(!Lz.vr)Lz.vr={rows,s,k};})));});}
 const vomAt=(Lz,i,j)=>!!(Lz&&Lz.vr&&Lz.vom&&Lz.vom[i]&&Lz.vr.rows.includes(j));
 // egress through a tier's voms: its lower rows (up to the equal-travel split, half the tier) leave by the voms (level route), the rest walk up
 function vomNeed(ti=0){if(!M||!M.AL||!M.AL[ti])return null;const zs=Object.values(M.AL[ti]);if(!zs.length)return null;const nr=Math.max(...zs.map(z=>z.tr.length)),split=Math.ceil(nr/2);
   let occ=0;zs.forEach(Lz=>Lz.tr.forEach((r,j)=>{if(j<split)occ+=r.net??0;}));const f=egFactor(true,M.cap),need=occ*f,W=AIS().vomW,n=Math.max(1,Math.ceil(need/W-1e-9));
-  const on=P.vomOn||{},cs=vomCands(M.AL,ti),act=cs.filter(c=>on[c.key]&&c.kind==='aisle');return {ti,nr,split,occ:Math.round(occ),f,need,n,W,act,cs,per:act.length?need/act.length:null,...vomRowsOf(ti,nr)};}
-function vomAuto(ti=0){const v=vomNeed(ti);if(!v)return;const on=P.vomOn||(P.vomOn={}),list=v.cs.filter(c=>c.kind==='aisle');list.forEach(c=>delete on[c.key]);
+  const on=P.vomOn||{},cs=vomCands(M.AL,ti),act=cs.filter(c=>on[c.key]&&c.kind!=='corner');return {ti,nr,split,occ:Math.round(occ),f,need,n,W,act,cs,per:act.length?need/act.length:null,...vomRowsOf(ti,nr)};}
+function vomAuto(ti=0){const v=vomNeed(ti);if(!v)return;const on=P.vomOn||(P.vomOn={}),list=v.cs.filter(c=>c.kind!=='corner');list.forEach(c=>delete on[c.key]);
   const n=Math.min(list.length,v.n),step=list.length/n;for(let i=0;i<n;i++)on[list[Math.floor(i*step+step/2)%list.length].key]=true;update();}
 // 3D: walls (tops 26 in above the nosings), header, front wall (a vom above the bottom tread) and floor of each active vom, as prisms along the chain
 function vomSolids(){const out=[];if(!M||!M.AL)return out;const t=vomWall()/1000,hd=VHEAD()/1000,sl=slabT()/1000;
@@ -2441,7 +2448,7 @@ function vomPanelHTML(){if(!M||!M.AL)return '';const on=P.vomOn||{},imp=imperial
   let h=`<div style="margin:14px 0 6px;font-weight:600">Vomitories</div>
     <div class="seg" style="gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 6px"><span class="hint" style="margin:0">Vom clear width (${u})</span><input id="vomW" type="number" min="${imp?4:1.2}" step="${imp?0.5:0.1}" value="${cv(AIS().vomW)}" style="width:64px">
       <span class="hint" style="margin:0">Corner tunnel width (${u})</span><input id="vomTun" type="number" min="${imp?8:2.4}" step="${imp?0.5:0.1}" value="${cv(VTUN())}" style="width:64px"></div>`;
-  for(let ti=0;ti<Math.min(P.tierCount,M.AL.length);ti++){const v=vomNeed(ti);if(!v)continue;const groups={};v.cs.forEach(c=>{const g=c.kind==='corner'?'Corner tunnels (players)':zoneName(P,c.k);(groups[g]=groups[g]||[]).push(c);});
+  for(let ti=0;ti<Math.min(P.tierCount,M.AL.length);ti++){const v=vomNeed(ti);if(!v)continue;const groups={};v.cs.forEach(c=>{const g=c.kind==='corner'?'Corner tunnels (players)':c.kind==='corner2'?'Corners':zoneName(P,c.k);(groups[g]=groups[g]||[]).push(c);});
     const prov=v.act.length*v.W,ok=v.act.length&&v.per<=v.W+0.5;
     h+=`<div style="margin:10px 0 4px;font-weight:600">Tier ${ti+1}</div><table class="fixed wrap" style="margin:0 0 6px"><tbody>
       <tr><td>Rows leaving by the voms</td><td>rows 1–${v.split} of Tier ${ti+1} (equal-travel split): ${fmt(v.occ)} spectators</td></tr>
@@ -2452,7 +2459,7 @@ function vomPanelHTML(){if(!M||!M.AL)return '';const on=P.vomOn||{},imp=imperial
         <span class="hint" style="margin:0">Rows cut</span><input data-vomk="${ti}" type="number" min="1" max="${v.mid}" step="1" value="${v.k}" style="width:52px">
         <button data-vomauto="${ti}" title="Switch on the fewest spectator voms in this tier, spread evenly, for the egress width needed">Auto voms</button><button data-vomclr="${ti}">Clear</button></div>
       ${Object.entries(groups).map(([g,cs])=>`<div style="margin:2px 0"><span class="hint" style="margin:0 8px 0 0">${g}</span>${cs.map(chip).join('')}</div>`).join('')}`;}
-  return h+`<p class="hint">Candidates: the interior middle aisles of each stand in every tier, and the Tier 1 corner centrelines; switch on what the stadium needs. Each vom: ${L(AIS().vomW)} clear between 8" walls whose tops run 26" above the nosings, an 8" header over the top tread (26" above it), a 36" aisle along each wall, and an 8" front wall 26" above the tread in front when it starts above the bottom tread. Corner tunnels are team-only and not counted for spectator egress.</p>`;}
+  return h+`<p class="hint">Candidates: the interior middle aisles of each stand (on upper-tier sidelines all six aisles of the middle group) and the corner centrelines (Tier 1: player tunnels; upper tiers: spectator voms); all on by default, switch off what the stadium doesn't need. Each vom: ${L(AIS().vomW)} clear between 8" walls whose tops run 26" above the nosings, an 8" header over the top tread (26" above it), a 36" aisle along each wall, and an 8" front wall 26" above the tread in front when it starts above the bottom tread. Corner tunnels are team-only and not counted for spectator egress.</p>`;}
 // ---------- enlarged spectators: three Tier 1 rows, sitting or standing, with the eye sight values dimensioned ----------
 const SPECT_ROWS=5;                                                    // rows in each enlarged spectator view
 function spectatorRows(){const t1=(ZR.T||[]).filter(r=>r.tier===0),n=SPECT_ROWS;if(t1.length<n)return t1;
