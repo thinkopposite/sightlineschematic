@@ -1562,7 +1562,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.88 0.88 0.86')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.16.03';
+const VERSION='2026.10.16.04';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2084,7 +2084,7 @@ function drawIso(){
     const st0=closed?stations(bp):chainStations(c[z]).map(([x,y,nx,ny])=>[x,-y,nx,-ny]).reverse(),st=[];   // short pieces, so the depth sort holds next to the aisle steps
     // split the stand at every aisle edge (so the bowl under each aisle is its own piece and the precast steps sort with it), and into pieces of 3 m at most
     const d0=rows[0].x/1000,EP=[];{let AL=null;try{AL=M&&M.AL;}catch(e){}const Lz=AL&&AL[ti]&&AL[ti][z];if(Lz&&imperial()){const wA=AIS().w/1000;
-      Lz.ais.forEach(ai=>{const w=cutW(ai,wA),sc=chainS(Lz.ch,ai,d0);for(const sd of [-1,1]){const p=chainPtS(Lz.ch,sc+sd*w/2,d0);EP.push([p[0],-p[1]]);}});}}
+      const gp=(AIS().gap||0)/1000;Lz.ais.forEach(ai=>{const w=cutW(ai,wA),sc=chainS(Lz.ch,ai,d0);for(const sd of [-1,1])for(const o of [w/2,w/2+gp]){const p=chainPtS(Lz.ch,sc+sd*o,d0);EP.push([p[0],-p[1]]);}});}}   // aisle edges, and the cut line of a switched-off section beside them
     for(let i=0;i<st0.length;i++){const a=st0[i],b=closed?st0[(i+1)%st0.length]:st0[i+1];st.push(a);if(!b)continue;
       const A=[a[0]+a[2]*d0,a[1]+a[3]*d0],B=[b[0]+b[2]*d0,b[1]+b[3]*d0],ab=[B[0]-A[0],B[1]-A[1]],l2=ab[0]*ab[0]+ab[1]*ab[1],ts=[];
       if(l2>1e-9)for(const p of EP){const t=((p[0]-A[0])*ab[0]+(p[1]-A[1])*ab[1])/l2;if(t>1e-4&&t<1-1e-4&&Math.hypot(A[0]+ab[0]*t-p[0],A[1]+ab[1]*t-p[1])<0.05)ts.push(t);}
@@ -2413,14 +2413,14 @@ function adaAuto(){const S=SECS(),mg=(P.adaMargin??25)/100;Object.keys(S).forEac
 // plan overlay: switched-off sections become open space (the stand is blanked and the background grid shows through, with a line on
 // each cut along the aisle); wheelchair platforms are a green band over the two infill rows. Outlines are built row by row on the
 // aisle stations of each row, so the cut edges follow the aisles exactly (chamfered corners stretch with depth).
-function secGeom(ti,key,j0,j1,RS,inset){const f=v=>v.toFixed(3),by=new Map(),A=AIS(),wA=A.w/1000,gp=(A.gap||0)/1000;
+function secGeom(ti,key,j0,j1,RS,inset){const ins=typeof inset==='function'?inset:()=>inset;const f=v=>v.toFixed(3),by=new Map(),A=AIS(),wA=A.w/1000,gp=(A.gap||0)/1000;
   // stations from the bounding aisles at each row's front and back, exactly as the aisle strips are drawn: off sections run to the
   // aisle centrelines (the aisles are drawn on top), platforms stop at the aisle edge plus the end-seat space
   for(let j=j0;j<=j1;j++){const sc=RS(ti,j).find(x=>x.l+'_'+x.r===key);if(!sc)continue;
     sc.pieces.forEach(pc=>{const r=pc.Lz.tr[j];if(!r||pc.b-pc.a<1e-4)return;const ch=pc.Lz.ch,aL=pc.Lz.ais.find(a=>a.id===sc.l),aR=pc.Lz.ais.find(a=>a.id===sc.r);
       const g=by.get(pc.Lz)||{L:[],R:[],ch,S:[]};by.set(pc.Lz,g);
-      for(const d of [r.x/1000,(r.x+r.T)/1000]){const sl=aL&&pc.a>1e-6||aL&&chainS(ch,aL,d)<1e-6?chainS(ch,aL,d)+(inset?cutW(aL,wA)/2+gp:0):pc.a<1e-6?0:chainS(ch,aL||{i:0,f:0},d),
-        Ld=chainLen(ch,d),sr=aR&&(Ld-pc.b)>1e-6||aR&&Ld-chainS(ch,aR,d)<1e-6?chainS(ch,aR,d)-(inset?cutW(aR,wA)/2+gp:0):Ld;
+      for(const d of [r.x/1000,(r.x+r.T)/1000]){const sl=aL&&pc.a>1e-6||aL&&chainS(ch,aL,d)<1e-6?chainS(ch,aL,d)+(ins(sc.l)?cutW(aL,wA)/2+gp:0):pc.a<1e-6?0:chainS(ch,aL||{i:0,f:0},d),
+        Ld=chainLen(ch,d),sr=aR&&(Ld-pc.b)>1e-6||aR&&Ld-chainS(ch,aR,d)<1e-6?chainS(ch,aR,d)-(ins(sc.r)?cutW(aR,wA)/2+gp:0):Ld;
         g.L.push(chainPtS(ch,sl,d));g.R.push(chainPtS(ch,sr,d));g.S.push([sl,sr,d]);}});}
   // front and back boundaries follow the row round any bend between the two aisles
   const along=(ch,s0,s1,d)=>{const ss=[s0];let acc=0;ch.forEach(g=>{const l=segLen(g,d);if(g.t==='ARC')for(let k=1;k<16;k++){const v=acc+l*k/16;if(v>Math.min(s0,s1)&&v<Math.max(s0,s1))ss.push(v);}acc+=l;if(acc>Math.min(s0,s1)+1e-6&&acc<Math.max(s0,s1)-1e-6)ss.push(acc);});ss.push(s1);
@@ -2430,14 +2430,14 @@ function secGeom(ti,key,j0,j1,RS,inset){const f=v=>v.toFixed(3),by=new Map(),A=A
     polys.push(pts);poly+='M'+P_(pts)+'Z';});
   return {poly,polys};}
 // switched-off sections in plan (points, plan coordinates) and the aisles with open space on both sides
-function offPolys(){const S=P.secs||{},out=[];if(!M||!M.AL)return out;const RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j));
+function offPolys(){const S=P.secs||{},out=[];if(!M||!M.AL)return out;const RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),gone=goneAisles(M.AL),keep=id=>!gone.has(+id);
   M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));
-    sectionList(ti).forEach(q=>{const e=S[q.no];if(e&&e.off)out.push(...secGeom(ti,q.key,0,nr-1,RS,false).polys.map(pts=>({ti,pts})));});});return out;}
+    sectionList(ti).forEach(q=>{const e=S[q.no];if(e&&e.off)out.push(...secGeom(ti,q.key,0,nr-1,RS,keep).polys.map(pts=>({ti,pts})));});});return out;}
 function goneAisles(AL){const SS=P.secs||{},gone=new Set();(AL||[]).forEach((T,ti)=>{const c={};sectionList(ti,AL).forEach(q=>{if(!(SS[q.no]&&SS[q.no].off))return;q.key.split('_').forEach(id=>c[id]=(c[id]||0)+1);});Object.keys(c).forEach(id=>{if(c[id]>=2)gone.add(+id);});});return gone;}
 const inPoly=(p,q)=>{let c=false;for(let i=0,j=q.length-1;i<q.length;j=i++){const a=q[i],b=q[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;};
-function secOverlaySvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j));let off='',wc='';
+function secOverlaySvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),gone=goneAisles(M.AL),keep=id=>!gone.has(+id);let off='',wc='';
   M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));
-    sectionList(ti).forEach(q=>{const e=S[q.no];if(!e)return;if(e.off)off+=secGeom(ti,q.key,0,nr-1,RS,false).poly;else if(e.wc&&nr>=4)wc+=secGeom(ti,q.key,nr-3,nr-2,RS,true).poly;});});
+    sectionList(ti).forEach(q=>{const e=S[q.no];if(!e)return;if(e.off)off+=secGeom(ti,q.key,0,nr-1,RS,keep).poly;else if(e.wc&&nr>=4)wc+=secGeom(ti,q.key,nr-3,nr-2,RS,true).poly;});});
   if(!off&&!wc)return '';
   return (off?`<defs><clipPath id="secOffClip"><path d="${off}"/></clipPath></defs><path d="${off}" fill="var(--panel)" stroke="none"/><g clip-path="url(#secOffClip)">${planGrid()}</g>`:'')
     +(wc?`<path d="${wc}" fill="#1FA37A" fill-opacity=".8" stroke="#0B6E4F" stroke-width="0.8" vector-effect="non-scaling-stroke"/>`:'');}
