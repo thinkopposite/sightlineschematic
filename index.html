@@ -280,16 +280,12 @@ main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main 
       <p class="capt">Stands coloured by seat type, with buffer depths and row numbers.</p>
       <div><div class="seg" id="planTabs" role="group" aria-label="Plan view"><button data-plan="field" aria-pressed="false">Field layout</button><button data-plan="bowl" aria-pressed="true" class="on">Bowl plan</button></div><div class="seg"><button id="seatTog" aria-pressed="false" title="Draw every seat at its true width (screen only)">Show seats</button></div></div></div>
     <div class="panel" id="plan"></div>
-    <div class="planhead"><span class="bub" id="bubIso">F</span><h3 id="isoTitle">Isometric view</h3>
-      <p class="capt">Not to scale. Pick the corner to look from.</p>
-      <div><div class="seg" id="isoTabs" role="group" aria-label="Isometric view from"><button data-iso="NW">From NW</button><button data-iso="NE">From NE</button><button data-iso="SW">From SW</button><button data-iso="SE" class="on" aria-pressed="true">From SE</button></div></div></div>
-    <div class="panel" id="iso"></div>
     <div class="planhead"><span class="bub" id="bub3d">G</span><h3>3D view</h3>
       <p class="capt" id="v3Note">Live model of the bowl. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom.</p>
       <div><div id="v3Tabs"><div class="seg" role="group" aria-label="Camera"><button data-v3p="persp" class="on" title="Perspective">Perspective</button><button data-v3p="ortho" title="Parallel projection: no vanishing points, true for measuring (SketchUp: Camera, Parallel Projection)">Parallel</button></div>
         <div class="seg" role="group" aria-label="Isometric views"><button data-v3="NW">NW</button><button data-v3="NE">NE</button><button data-v3="SW">SW</button><button data-v3="SE" class="on">SE</button></div>
         <div class="seg" role="group" aria-label="Download the 3D model"><button id="v3Glb" title="glTF binary: viewing and presenting">.glb</button><button id="v3Ifc" title="IFC4: BIM coordination, opens or links in Revit">.ifc</button><button id="v33dm" title="Rhino 3dm: Rhino and Grasshopper; imports into Revit and SketchUp">.3dm</button></div></div></div></div>
-    <div class="panel" id="v3d" style="height:min(72vh,720px);min-height:360px;padding:0;overflow:hidden"></div>
+    <div class="panel" id="v3d" style="height:min(88vh,1000px);min-height:440px;padding:0;overflow:hidden"></div>
     <details id="v3Fmt" style="margin-top:8px"><summary>3D model downloads: which format for what</summary><table class="fixed wrap" style="margin:6px 0"><tbody>
       <tr><td style="width:16%"><b>.glb</b> (glTF)</td><td>The web standard for 3D. Opens in Windows 3D Viewer, PowerPoint (Insert › 3D Models), Blender and online viewers. For viewing and presenting; triangles only, no BIM data.</td></tr>
       <tr><td><b>.ifc</b> (IFC4)</td><td>Open BIM. In Revit use Open › IFC, or Link IFC to coordinate. Each stand comes in as a slab (floor) and each precast aisle step as its own generic element, on a level per tier, with tier, stand, aisle, row, step type, riser, tread and width as parameters you can schedule, tag and filter. The geometry is fixed (not reshaped in Revit); for native editable Revit geometry use the Revit export with the Dynamo graphs. Also opens in Navisworks, Solibri, BIMcollab and other IFC viewers.</td></tr>
@@ -1574,7 +1570,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.88 0.88 0.86')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.16.09';
+const VERSION='2026.10.16.10';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2313,7 +2309,7 @@ function v3View(v){V3.view=v;if(!V3.grp)return;const T=THREE,box=new T.Box3();V3
   // fit the bowl's projected outline to the frame: view axes from the direction, the eight box corners measured on them
   const up=Math.abs(dir.y)>0.999?new T.Vector3(-d[0],0,d[1]).normalize():new T.Vector3(0,1,0),zA=dir.clone(),xA=up.clone().cross(zA).normalize(),yA=zA.clone().cross(xA);
   const pts=[];for(const X of [box.min.x,box.max.x])for(const Y of [box.min.y,box.max.y])for(const Z of [box.min.z,box.max.z]){const q=new T.Vector3(X,Y,Z).sub(c);pts.push([q.dot(xA),q.dot(yA),q.dot(zA)]);}
-  const tV=Math.tan(V3.persp.fov*Math.PI/360),tH=tV*asp,M1=1.06;let dist=0,hw=0,hh=0;pts.forEach(([x,y,z])=>{dist=Math.max(dist,Math.abs(y)/tV+z,Math.abs(x)/tH+z);hw=Math.max(hw,Math.abs(x));hh=Math.max(hh,Math.abs(y));});dist*=M1;
+  const tV=Math.tan(V3.persp.fov*Math.PI/360),tH=tV*asp,M1=0.86;let dist=0,hw=0,hh=0;pts.forEach(([x,y,z])=>{dist=Math.max(dist,Math.abs(y)/tV+z,Math.abs(x)/tH+z);hw=Math.max(hw,Math.abs(x));hh=Math.max(hh,Math.abs(y));});dist*=M1;
   V3.persp.up.set(0,1,0);V3.persp.position.copy(c.clone().add(dir.clone().multiplyScalar(dist)));V3.persp.near=dist/100;V3.persp.far=dist*20;V3.persp.zoom=1;V3.persp.updateProjectionMatrix();
   V3.oh=Math.max(2*hh,2*hw/asp)*M1;V3.ortho.zoom=1;V3.ortho.up.set(0,1,0);V3.ortho.position.copy(V3.persp.position);V3.ortho.near=-dist*20;V3.ortho.far=dist*20;v3Frustum();
   V3.ctl.target.copy(c);V3.ctl.update();v3Tabs();v3Render();}
@@ -2926,8 +2922,7 @@ $('controls').addEventListener('click',e=>{if(e.target.id==='tcolReset'){P.tierC
 $('enlTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.enlt!=null)ENL.tier=+b.dataset.enlt;if(b.dataset.enls)ENL.side=b.dataset.enls;update();});
 $('enlcTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.enlct!=null)CENL.tier=+b.dataset.enlct;if(b.dataset.enlc)CENL.corner=b.dataset.enlc;update();});
 $('seatTog').addEventListener('click',e=>{SHOWSEATS=!SHOWSEATS;e.target.classList.toggle('on',SHOWSEATS);e.target.setAttribute('aria-pressed',SHOWSEATS);$('plan').innerHTML=drawPlan();});
-$('isoTabs').addEventListener('click',e=>{const b=e.target.closest('[data-iso]');if(!b)return;ISOVIEW=b.dataset.iso;
-  document.querySelectorAll('#isoTabs [data-iso]').forEach(x=>{const on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on);});$('iso').innerHTML=drawIso();});
+
 $('detTabs').addEventListener('click',e=>{const b=e.target.closest('[data-dm]');if(!b)return;DETMODE=b.dataset.dm;update();});
 $('modeTabs').addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(!b)return;P.eyeMode=b.dataset.mode;CUR=null;update();});
 $('secTabs').addEventListener('click',e=>{const b=e.target.closest('[data-sec]');if(!b)return;P.sec=b.dataset.sec;update();});
@@ -2968,7 +2963,7 @@ function update(){
   document.querySelectorAll('#modeTabs [data-mode]').forEach(b=>{const on=b.dataset.mode===P.eyeMode;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
   $('section').innerHTML=drawSection(ZR[P.sec]);
   {const t1=ZR[P.sec].filter(r=>r.tier===0),d1=drawDetail(ZR[P.sec]);$('detail').innerHTML=d1;const two=P.tierCount>1&&ZR[P.sec].some(r=>r.tier===1);
-   $('det2Wrap').hidden=!two;['bubSp','bubPlan','bubIso','bub3d','bubEnl','bubEnlC'].forEach((id,i)=>$(id).textContent='CDEFGHI'[i+(two?1:0)]);
+   $('det2Wrap').hidden=!two;['bubSp','bubPlan','bub3d','bubEnl','bubEnlC'].forEach((id,i)=>$(id).textContent='CDEFGH'[i+(two?1:0)]);
    if(two){const v1=d1.match(/viewBox="0 0 ([\d.]+)/),d2=drawDetail(ZR[P.sec],{tier:1,noFocus:true,fs:v1?(+v1[1])/110:undefined});   // same text size, so the same drawing scale
      $('detail2').innerHTML=d2;const w1=+v1[1],w2=+d2.match(/viewBox="0 0 ([\d.]+)/)[1];$('detail2').firstElementChild.style.width=Math.min(100,w2/w1*100).toFixed(1)+'%';
      $('det2Title').textContent=`Sightline detail: Tier 2, ${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'}`;}}
@@ -2998,7 +2993,7 @@ function update(){
    $('enlc').innerHTML=ok?drawCornerEnlarged():'<p class="empty" style="padding:16px">Choose the computed aisle layout to see a typical corner.</p>';$('enlcTitle').textContent=ok?cornerTitle():'Enlarged plan: typical corner';
    $('enlcTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlct="${i}" class="${Math.min(CENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
      +Object.keys(CORNERS).map(c=>`<button data-enlc="${c}" class="${enlCorner()===c?'on':''}" title="${CORNERS[c]} corner">${c}</button>`).join(''):'';}
-  $('iso').innerHTML=drawIso();$('isoTitle').textContent=`Isometric view from the ${({SE:'south-east',SW:'south-west',NW:'north-west',NE:'north-east'})[ISOVIEW]}`;
+  // the isometric views are drawn for the PDF set only (plotIso); on screen the 3D view replaces them
   renderOpts();v3Schedule();
 }
 function renderOpts(){
