@@ -284,6 +284,13 @@ main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main 
       <p class="capt">Not to scale. Pick the corner to look from.</p>
       <div><div class="seg" id="isoTabs" role="group" aria-label="Isometric view from"><button data-iso="NW">From NW</button><button data-iso="NE">From NE</button><button data-iso="SW">From SW</button><button data-iso="SE" class="on" aria-pressed="true">From SE</button></div></div></div>
     <div class="panel" id="iso"></div>
+    <div class="planhead"><span class="bub" id="bub3d">G</span><h3>3D view</h3>
+      <p class="capt" id="v3Note">Live model of the bowl. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom.</p>
+      <div><div id="v3Tabs"><div class="seg" role="group" aria-label="Camera"><button data-v3p="persp" class="on" title="Perspective">Perspective</button><button data-v3p="ortho" title="Parallel projection: no vanishing points, true for measuring (SketchUp: Camera, Parallel Projection)">Parallel</button></div>
+        <div class="seg" role="group" aria-label="Standard views"><button data-v3="Top">Top</button><button data-v3="S" title="South elevation: looking north from the SEZ side">South</button><button data-v3="N" title="North elevation">North</button><button data-v3="E" title="East elevation">East</button><button data-v3="W" title="West elevation">West</button></div>
+        <div class="seg" role="group" aria-label="Isometric views"><button data-v3="NW">NW</button><button data-v3="NE">NE</button><button data-v3="SW">SW</button><button data-v3="SE" class="on">SE</button></div>
+        <div class="seg"><button id="v3Glb" title="glTF binary: opens in Windows 3D Viewer, Blender, PowerPoint and most web and BIM viewers">Download .glb</button></div></div></div></div>
+    <div class="panel" id="v3d" style="height:min(72vh,720px);min-height:360px;padding:0;overflow:hidden"></div>
     <div class="planhead"><span class="bub" id="bubEnl">G</span><h3 id="enlTitle">Enlarged plan: typical section</h3>
       <p class="capt">One section at true seat width: seats, end-seat space, aisles and clear width between rows.</p>
       <div><div class="seg" id="enlTabs" role="group" aria-label="Enlarged section"></div></div></div>
@@ -1562,7 +1569,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.88 0.88 0.86')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.16.04';
+const VERSION='2026.10.16.06';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2216,6 +2223,97 @@ function drawIso(){
 
   return svg+'</svg>';
 }
+// ---------- 3D view (WebGL; three.js r147 in vendor/three): the live bowl, rotate / pan / zoom; .glb download ----------
+// model coordinates as in the isometric view (x, y north, z up, metres); three.js is y-up: (x, y, z) -> (x, z, -y)
+const V3={on:false,ready:null,r:null,scene:null,cam:null,ctl:null,grp:null,tm:null,fitted:false,view:'SE',proj:'persp',oh:100};
+function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[],gp=(AIS().gap||0)/1000;
+  const rgbOf=v=>{v=String(v).trim();if(/^#[0-9a-f]{6}$/i.test(v))return [1,3,5].map(i=>parseInt(v.slice(i,i+2),16));const m=v.match(/\d+/g);return m?m.slice(0,3).map(Number):[180,180,180];};
+  let bp=boundary(P).map(([x,y])=>[x,-y]);if(polyArea(bp)<0)bp.reverse();
+  CH.forEach((c,ti)=>{const tri=[];
+    for(const z of Object.keys(c)){const rows=ZR[z].filter(r=>r.tier===ti);if(!rows.length)continue;
+      const pr=profileOf(rows,ti).map(([x,h])=>[x/1000,h/1000]),n=pr.length,closed=c[z]==='ring';
+      const st0=closed?stations(bp):chainStations(c[z]).map(([x,y,nx,ny])=>[x,-y,nx,-ny]).reverse(),st=[];
+      const d0=rows[0].x/1000,EP=[];{const AL=M&&M.AL,Lz=AL&&AL[ti]&&AL[ti][z];if(Lz&&imperial()){const wA=AIS().w/1000;
+        Lz.ais.forEach(ai=>{const w=cutW(ai,wA),sc=chainS(Lz.ch,ai,d0);for(const sd of [-1,1])for(const o of [w/2,w/2+gp]){const p=chainPtS(Lz.ch,sc+sd*o,d0);EP.push([p[0],-p[1]]);}});}}
+      for(let i=0;i<st0.length;i++){const a=st0[i],b=closed?st0[(i+1)%st0.length]:st0[i+1];st.push(a);if(!b)continue;
+        const A=[a[0]+a[2]*d0,a[1]+a[3]*d0],B=[b[0]+b[2]*d0,b[1]+b[3]*d0],ab=[B[0]-A[0],B[1]-A[1]],l2=ab[0]*ab[0]+ab[1]*ab[1],ts=[];
+        if(l2>1e-9)for(const p of EP){const t=((p[0]-A[0])*ab[0]+(p[1]-A[1])*ab[1])/l2;if(t>1e-4&&t<1-1e-4&&Math.hypot(A[0]+ab[0]*t-p[0],A[1]+ab[1]*t-p[1])<0.05)ts.push(t);}
+        ts.sort((x,y)=>x-y);ts.filter((t,q)=>!q||t-ts[q-1]>1e-4).forEach(t=>st.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t,a[3]+(b[3]-a[3])*t]));}
+      const m=st.length,np=closed?m:m-1,V=(s,i)=>[st[s][0]+st[s][2]*pr[i][0],st[s][1]+st[s][3]*pr[i][0],pr[i][1]];
+      const offT=OFF.filter(o=>o.ti===ti).map(o=>o.pts),dm=(rows[0].x+rows[rows.length-1].x+rows[rows.length-1].T)/2000,hid=[];
+      if(offT.length)for(let s=0;s<np;s++){const a=st[s],b=st[(s+1)%m],at=t=>{const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,nx=a[2]+(b[2]-a[2])*t,ny=a[3]+(b[3]-a[3])*t;return [x+nx*dm,-(y+ny*dm)];};
+        hid[s]=[.25,.75].every(t=>{const p=at(t);return offT.some(q=>inPoly(p,q));});}
+      for(let s=0;s<np;s++){if(hid[s])continue;const s2=(s+1)%m;for(let i=0;i<n;i++){const i2=(i+1)%n,q=[V(s,i),V(s,i2),V(s2,i2),V(s2,i)];tri.push(q[0],q[1],q[2],q[0],q[2],q[3]);
+        if(Math.abs(pr[i][1]-pr[i2][1])<1e-6&&pr[i2][0]>pr[i][0])edges.push(q[0],q[3]);}}   // tread nosing
+      // end caps: at every cut between a kept and an open piece, and at the two ends of a stand that does not close on itself
+      const ear=earClip(pr),cap=s=>ear.forEach(([a,b,c2])=>tri.push(V(s,a),V(s,b),V(s,c2)));
+      for(let s=0;s<np;s++){const pv=s?s-1:(closed?np-1:-1);if(pv>=0&&!!hid[s]!==!!hid[pv])cap(s);}
+      if(!closed){if(!hid[0])cap(0);if(!hid[np-1])cap(m-1);}}
+    out.push({name:`Tier ${ti+1}`,tri,col:rgbOf(tierFill(ti))});});
+  {const tri=[];for(const pc of aislePieces()){if(gone.has(pc.aisle))continue;for(const fc of pc.faces){const q=fc.idx.map(i=>pc.V[i]);
+      if(q.length===4)tri.push(q[0],q[1],q[2],q[0],q[2],q[3]);else{const ax=Math.abs(fc.out[0])>Math.abs(fc.out[1])?1:0,p2=q.map(v=>[v[ax],v[2]]);earClip(p2).forEach(([a,b,c2])=>tri.push(q[a],q[b],q[c2]));}
+      if(fc.out[2]>0.9&&q.length===4)edges.push(q[1],q[2]);}}
+    if(tri.length)out.push({name:'Aisle steps (precast)',tri,col:[226,226,221]});}
+  return {groups:out,edges};}
+function v3Field(){   // the field drawing as a texture on the ground, inside the buffer (or the boundary's box)
+  const Sp=SPORTS[P.sport],bnd=boundary(P),xs=bnd.map(p=>p[0]),ys=bnd.map(p=>p[1]),t=(ZR.T||Object.values(ZR).flat()).find(r=>r.tier===0),dd=t?t.x/1000:0;
+  let x0=Math.min(...xs)-dd,x1=Math.max(...xs)+dd,y0=Math.min(...ys)-dd,y1=Math.max(...ys)+dd;if(zoned(P)){const s=rectGeo(P).side;x0=s.L.p[0]-dd;x1=s.R.p[0]+dd;y0=s.T.p[1]-dd;y1=s.B.p[1]+dd;}
+  const W=x1-x0,H=y1-y0,svg=pdfReadySvg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x0} ${y0} ${W} ${H}" width="${Math.round(4096*Math.min(1,W/H))}" height="${Math.round(4096*Math.min(1,H/W))}"><rect x="${x0}" y="${y0}" width="${W}" height="${H}" fill="var(--grass2)"/>${Sp.draw(P,Object.assign(Pen(W/700),{iso:true}))}</svg>`).replace(/font-family="DVS"/g,'font-family="Helvetica, Arial, sans-serif"');
+  return {x0,y0,W,H,url:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)};}
+async function v3Init(){if(V3.ready)return V3.ready;V3.ready=(async()=>{await loadJS('vendor/three/three.min.js');await loadJS('vendor/three/OrbitControls.js');
+  const el=$('v3d'),r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});r.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  el.innerHTML='';el.appendChild(r.domElement);r.domElement.style.cssText='display:block;width:100%;height:100%;touch-action:none;border-radius:8px';
+  const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(32,1,0.5,5000),ortho=new THREE.OrthographicCamera(-1,1,1,-1,0.1,5000);scene.add(new THREE.HemisphereLight(0xffffff,0x6f6f68,0.62));
+  const sun=new THREE.DirectionalLight(0xffffff,0.55);sun.position.set(-0.35,1,-0.55).multiplyScalar(300);scene.add(sun);const fill=new THREE.DirectionalLight(0xffffff,0.28);fill.position.set(0.4,0.35,0.6).multiplyScalar(300);scene.add(fill);   // soft fill so soffits and elevations read
+  const ctl=new THREE.OrbitControls(cam,r.domElement);ctl.screenSpacePanning=true;ctl.maxPolarAngle=Math.PI/2;ctl.addEventListener('change',()=>v3Render());
+  Object.assign(V3,{r,scene,cam,persp:cam,ortho,ctl});new ResizeObserver(()=>v3Size()).observe(el);v3Size();})();return V3.ready;}
+function v3Frustum(){const el=$('v3d'),a=(el.clientWidth||1)/(el.clientHeight||1),o=V3.ortho,h=V3.oh/2;o.left=-h*a;o.right=h*a;o.top=h;o.bottom=-h;o.updateProjectionMatrix();}
+function v3Size(){if(!V3.r)return;const el=$('v3d'),w=el.clientWidth,h=el.clientHeight;if(!w||!h)return;V3.r.setSize(w,h,false);V3.persp.aspect=w/h;V3.persp.updateProjectionMatrix();v3Frustum();v3Render();}
+// Perspective / Parallel projection (as SketchUp's Camera menu): the parallel frustum matches what the perspective camera sees at the target
+function v3Proj(mode){if(!V3.ctl||mode===V3.proj){v3Tabs();return;}const from=V3.cam,to=mode==='ortho'?V3.ortho:V3.persp,t=V3.ctl.target,dist=from.position.distanceTo(t);
+  if(mode==='ortho'){V3.oh=2*dist*Math.tan(V3.persp.fov*Math.PI/360)/(from.zoom||1);V3.ortho.zoom=1;v3Frustum();V3.ortho.near=-dist*20;V3.ortho.far=dist*20;}
+  else{const d=V3.oh/(2*Math.tan(V3.persp.fov*Math.PI/360))/(from.zoom||1),dir=from.position.clone().sub(t).normalize();V3.persp.position.copy(t.clone().add(dir.multiplyScalar(d)));V3.persp.near=d/100;V3.persp.far=d*20;V3.persp.updateProjectionMatrix();}
+  if(mode==='ortho')to.position.copy(from.position);to.up.copy(from.up);V3.cam=to;V3.ctl.object=to;V3.proj=mode;V3.ctl.update();v3Tabs();v3Render();}
+function v3Tabs(){document.querySelectorAll('#v3Tabs [data-v3]').forEach(b=>b.classList.toggle('on',b.dataset.v3===V3.view));document.querySelectorAll('#v3Tabs [data-v3p]').forEach(b=>b.classList.toggle('on',b.dataset.v3p===V3.proj));}
+function v3Render(){if(V3.r){V3.r.setClearColor(new THREE.Color(getComputedStyle(document.documentElement).getPropertyValue('--panel').trim()||'#ffffff'));V3.r.render(V3.scene,V3.cam);}}
+async function v3Build(){if(!V3.on||!M)return;await v3Init();const {groups,edges}=model3D(),T=THREE,g=new T.Group(),to=p=>[p[0],p[2],-p[1]];
+  for(const G of groups){if(!G.tri.length)continue;const a=new Float32Array(G.tri.length*3);G.tri.forEach((p,i)=>{const v=to(p);a[i*3]=v[0];a[i*3+1]=v[1];a[i*3+2]=v[2];});
+    const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(a,3));geo.computeVertexNormals();
+    const mesh=new T.Mesh(geo,new T.MeshLambertMaterial({color:new T.Color(`rgb(${G.col.join(',')})`),side:T.DoubleSide,flatShading:true}));mesh.name=G.name;g.add(mesh);}
+  if(edges.length){const a=new Float32Array(edges.length*3);edges.forEach((p,i)=>{const v=to(p);a[i*3]=v[0];a[i*3+1]=v[1]+0.003;a[i*3+2]=v[2];});const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(a,3));
+    const ln=new T.LineSegments(geo,new T.LineBasicMaterial({color:0x000000,transparent:true,opacity:0.16}));ln.name='Nosings';g.add(ln);}
+  // ground and field
+  {const F=v3Field(),pl=new T.Mesh(new T.PlaneGeometry(F.W,F.H),new T.MeshLambertMaterial({color:0xffffff}));pl.rotation.x=-Math.PI/2;pl.position.set(F.x0+F.W/2,0.01,F.y0+F.H/2);pl.name='Field';g.add(pl);
+    const img=new Image();img.onload=()=>{const cv=document.createElement('canvas');cv.width=img.width;cv.height=img.height;cv.getContext('2d').drawImage(img,0,0);const tx=new T.CanvasTexture(cv);tx.anisotropy=8;pl.material.map=tx;pl.material.needsUpdate=true;v3Render();};img.src=F.url;
+    const gr=new T.Mesh(new T.PlaneGeometry(2000,2000),new T.MeshLambertMaterial({color:0xE9E7E0}));gr.rotation.x=-Math.PI/2;gr.position.y=-0.02;gr.name='Ground';g.add(gr);}
+  // goal posts (American football), true size as in the isometric view
+  if(P.sport==='nfl'||P.sport==='ncaafb'){const Fz=0.3048,cb=10*Fz,hw=18.5*Fz/2,up=(P.sport==='nfl'?35:30)*Fz,off=6*Fz,xe=P.L/2,mat=new T.MeshLambertMaterial({color:0xF2C200});
+    const bar=(A,B)=>{const a=new T.Vector3(...to(A)),b=new T.Vector3(...to(B)),len=a.distanceTo(b),cy=new T.Mesh(new T.CylinderGeometry(0.06,0.06,len,10),mat);cy.position.copy(a.clone().add(b).multiplyScalar(.5));cy.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),b.clone().sub(a).normalize());g.add(cy);};
+    for(const sg of[1,-1]){const x=sg*xe,xb=sg*(xe+off);bar([xb,0,0],[xb,0,cb]);bar([xb,0,cb],[x,0,cb]);bar([x,-hw,cb],[x,hw,cb]);bar([x,-hw,cb],[x,-hw,cb+up]);bar([x,hw,cb],[x,hw,cb+up]);}}
+  if(V3.grp){V3.scene.remove(V3.grp);V3.grp.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(o.material.map)o.material.map.dispose();o.material.dispose();}});}
+  V3.grp=g;V3.scene.add(g);if(!V3.fitted){v3View(V3.view);V3.fitted=true;}else v3Render();
+  const nt=groups.reduce((a,G)=>a+G.tri.length/3,0);$('v3Note').textContent=`${fmt(nt)} triangles. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom.`;}
+// standard views from the stands' compass directions: elevations look from that side, corner isos from between two sides, Top straight down
+function v3Dir(v){const cm={};if(zoned(P)){const G=rectGeo(P),cp=compassOf(P);GEO.forEach(k=>{const n=G.side[k].n;cm[cp[k]]=[n[0],-n[1]];});}
+  const has=['N','E','S','W'].every(c=>cm[c]),fixed={SE:[1,1],SW:[1,-1],NW:[-1,-1],NE:[-1,1],S:[1,0],N:[-1,0],E:[0,1],W:[0,-1]};
+  if(v==='Top'){const sd=has?cm.S:[0,-1];return [sd[0]*1e-4,sd[1]*1e-4,1];}   /* north up, as the plan */const h=has?(v.length===2?[cm[v[0]][0]+cm[v[1]][0],cm[v[0]][1]+cm[v[1]][1]]:cm[v]):fixed[v];if(!h)return [1,1,1];
+  const l=Math.hypot(h[0],h[1])||1,iso=v.length===2;return [h[0]/l*(iso?Math.SQRT2:1),h[1]/l*(iso?Math.SQRT2:1),iso?1:0.0001];}   // corner: the 35.26 degree isometric elevation
+function v3View(v){V3.view=v;if(!V3.grp)return;const T=THREE,box=new T.Box3();V3.grp.children.forEach(o=>{if(o.name!=='Ground')box.expandByObject(o);});
+  const c=box.getCenter(new T.Vector3()),d=v3Dir(v),dir=new T.Vector3(d[0],d[2],-d[1]).normalize(),el=$('v3d'),asp=(el.clientWidth||1)/(el.clientHeight||1);
+  // fit the bowl's projected outline to the frame: view axes from the direction, the eight box corners measured on them
+  const up=Math.abs(dir.y)>0.999?new T.Vector3(-d[0],0,d[1]).normalize():new T.Vector3(0,1,0),zA=dir.clone(),xA=up.clone().cross(zA).normalize(),yA=zA.clone().cross(xA);
+  const pts=[];for(const X of [box.min.x,box.max.x])for(const Y of [box.min.y,box.max.y])for(const Z of [box.min.z,box.max.z]){const q=new T.Vector3(X,Y,Z).sub(c);pts.push([q.dot(xA),q.dot(yA),q.dot(zA)]);}
+  const tV=Math.tan(V3.persp.fov*Math.PI/360),tH=tV*asp,M1=1.06;let dist=0,hw=0,hh=0;pts.forEach(([x,y,z])=>{dist=Math.max(dist,Math.abs(y)/tV+z,Math.abs(x)/tH+z);hw=Math.max(hw,Math.abs(x));hh=Math.max(hh,Math.abs(y));});dist*=M1;
+  V3.persp.up.set(0,1,0);V3.persp.position.copy(c.clone().add(dir.clone().multiplyScalar(dist)));V3.persp.near=dist/100;V3.persp.far=dist*20;V3.persp.zoom=1;V3.persp.updateProjectionMatrix();
+  V3.oh=Math.max(2*hh,2*hw/asp)*M1;V3.ortho.zoom=1;V3.ortho.up.set(0,1,0);V3.ortho.position.copy(V3.persp.position);V3.ortho.near=-dist*20;V3.ortho.far=dist*20;v3Frustum();
+  V3.ctl.target.copy(c);V3.ctl.update();v3Tabs();v3Render();}
+async function v3Glb(){await v3Init();if(!V3.grp)await v3Build();await loadJS('vendor/three/GLTFExporter.js');
+  const keep=V3.grp.children.filter(o=>o.name==='Ground');keep.forEach(o=>V3.grp.remove(o));
+  new THREE.GLTFExporter().parse(V3.grp,res=>{keep.forEach(o=>V3.grp.add(o));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([res],{type:'model/gltf-binary'}));a.download=`Sightline_${slug()}.glb`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('3D model downloaded (.glb)');},
+    e=>{keep.forEach(o=>V3.grp.add(o));toast('Export failed: '+e);},{binary:true});}
+function v3Schedule(){if(!V3.on)return;clearTimeout(V3.tm);V3.tm=setTimeout(()=>v3Build().catch(e=>{$('v3Note').textContent='3D view unavailable: '+e.message;}),250);}
+$('v3Tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.v3)v3View(b.dataset.v3);else if(b.dataset.v3p)v3Proj(b.dataset.v3p);else if(b.id==='v3Glb')v3Glb();});
+{const io=new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)&&!V3.on){V3.on=true;v3Schedule();}},{rootMargin:'200px'});io.observe($('v3d'));}
 // ---------- enlarged spectators: three Tier 1 rows, sitting or standing, with the eye sight values dimensioned ----------
 const SPECT_ROWS=5;                                                    // rows in each enlarged spectator view
 function spectatorRows(){const t1=(ZR.T||[]).filter(r=>r.tier===0),n=SPECT_ROWS;if(t1.length<n)return t1;
@@ -2815,7 +2913,7 @@ function update(){
   document.querySelectorAll('#modeTabs [data-mode]').forEach(b=>{const on=b.dataset.mode===P.eyeMode;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
   $('section').innerHTML=drawSection(ZR[P.sec]);
   {const t1=ZR[P.sec].filter(r=>r.tier===0),d1=drawDetail(ZR[P.sec]);$('detail').innerHTML=d1;const two=P.tierCount>1&&ZR[P.sec].some(r=>r.tier===1);
-   $('det2Wrap').hidden=!two;['bubSp','bubPlan','bubIso','bubEnl','bubEnlC'].forEach((id,i)=>$(id).textContent='CDEFGH'[i+(two?1:0)]);
+   $('det2Wrap').hidden=!two;['bubSp','bubPlan','bubIso','bub3d','bubEnl','bubEnlC'].forEach((id,i)=>$(id).textContent='CDEFGHI'[i+(two?1:0)]);
    if(two){const v1=d1.match(/viewBox="0 0 ([\d.]+)/),d2=drawDetail(ZR[P.sec],{tier:1,noFocus:true,fs:v1?(+v1[1])/110:undefined});   // same text size, so the same drawing scale
      $('detail2').innerHTML=d2;const w1=+v1[1],w2=+d2.match(/viewBox="0 0 ([\d.]+)/)[1];$('detail2').firstElementChild.style.width=Math.min(100,w2/w1*100).toFixed(1)+'%';
      $('det2Title').textContent=`Sightline detail: Tier 2, ${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'}`;}}
@@ -2846,7 +2944,7 @@ function update(){
    $('enlcTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlct="${i}" class="${Math.min(CENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
      +Object.keys(CORNERS).map(c=>`<button data-enlc="${c}" class="${enlCorner()===c?'on':''}" title="${CORNERS[c]} corner">${c}</button>`).join(''):'';}
   $('iso').innerHTML=drawIso();$('isoTitle').textContent=`Isometric view from the ${({SE:'south-east',SW:'south-west',NW:'north-west',NE:'north-east'})[ISOVIEW]}`;
-  renderOpts();
+  renderOpts();v3Schedule();
 }
 function renderOpts(){
   const el=$('opts');
