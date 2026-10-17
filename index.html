@@ -287,7 +287,6 @@ main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main 
     <div class="planhead"><span class="bub" id="bub3d">G</span><h3>3D view</h3>
       <p class="capt" id="v3Note">Live model of the bowl. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom.</p>
       <div><div id="v3Tabs"><div class="seg" role="group" aria-label="Camera"><button data-v3p="persp" class="on" title="Perspective">Perspective</button><button data-v3p="ortho" title="Parallel projection: no vanishing points, true for measuring (SketchUp: Camera, Parallel Projection)">Parallel</button></div>
-        <div class="seg" role="group" aria-label="Standard views"><button data-v3="Top">Top</button><button data-v3="S" title="South elevation: looking north from the SEZ side">South</button><button data-v3="N" title="North elevation">North</button><button data-v3="E" title="East elevation">East</button><button data-v3="W" title="West elevation">West</button></div>
         <div class="seg" role="group" aria-label="Isometric views"><button data-v3="NW">NW</button><button data-v3="NE">NE</button><button data-v3="SW">SW</button><button data-v3="SE" class="on">SE</button></div>
         <div class="seg" role="group" aria-label="Download the 3D model"><button id="v3Glb" title="glTF binary: viewing and presenting">.glb</button><button id="v3Ifc" title="IFC4: BIM coordination, opens or links in Revit">.ifc</button><button id="v33dm" title="Rhino 3dm: Rhino and Grasshopper; imports into Revit and SketchUp">.3dm</button></div></div></div></div>
     <div class="panel" id="v3d" style="height:min(72vh,720px);min-height:360px;padding:0;overflow:hidden"></div>
@@ -1575,7 +1574,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.88 0.88 0.86')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.16.08';
+const VERSION='2026.10.16.09';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -3572,7 +3571,7 @@ function titleCase(str){
       if(UNITS.has(lo))return p;                                       // keep units lowercase
       if(k===0&&!first&&!last&&SMALL.has(lo))return p;
       return p[0].toUpperCase()+p.slice(1);}).join('-');});}
-const SENTENCE='.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td';
+const SENTENCE='.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#v33dm,#v3Glb,#v3Ifc';
 function titleize(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
   while((n=w.nextNode())){const el=n.parentElement;if(!el||el.closest(SENTENCE))continue;const t=titleCase(n.data);if(t!==n.data)n.data=t;}}
 new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData'){const el=m.target.parentElement;if(el&&!el.closest(SENTENCE)){const t=titleCase(m.target.data);if(t!==m.target.data)m.target.data=t;}}
