@@ -84,6 +84,10 @@ summary{cursor:pointer;font-weight:650;font-size:15px;font-stretch:85%}
 #plan svg{max-height:82vh}
 #plan svg.portrait{max-height:150vh}
 #plan text{font-family:inherit}
+.vgrid{display:grid;grid-template-columns:minmax(120px,170px) 1fr;column-gap:8px;row-gap:4px;align-items:center;margin:2px 0 6px}
+.vglab{margin:0!important}.vgchips{display:flex;flex-wrap:wrap}
+.vchip{display:inline-flex;align-items:center;gap:4px;width:106px;margin:2px 0;white-space:nowrap}
+.wchit{fill:transparent;cursor:pointer}.wchit:hover{fill:#FF7A00;fill-opacity:.3;stroke:#B34700;stroke-width:1px;vector-effect:non-scaling-stroke}
 select.sel{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:7px 8px;cursor:pointer}
 .opt{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:9px 12px;background:var(--panel);border:1px solid var(--line);border-radius:4px;cursor:pointer;text-align:left}
 .opt:hover{border-color:var(--ink)}
@@ -1626,7 +1630,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.17.09';
+const VERSION='2026.10.17.10';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2513,7 +2517,7 @@ function vomLabels(rf,t){if(!M||!M.AL||PLAN!=='bowl')return '';let o='';const f=
 function tunnelFit(){const out=[];if(!M||!M.AL)return out;M.AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>Lz.ais.forEach((a,i)=>{if(!Lz.vom[i]||!a.vr||!a.vr.field)return;const g=Lz.ch[a.i];if(!g||!segDiag(g))return;
   const d=Lz.tr[a.vr.s||0].x/1000,len=segLen(g,d),cut=vomCut(a);if(cut>len+0.01)out.push(`${a.vomLabel||'Corner tunnel'}: ${L(cut*1000)} wide with its walls and side aisles, but the corner is only ${L(len*1000)} across at row 1, so it runs into the corner aisles. Reduce the stand curve or the tunnel width, or switch the tunnel off.`);})));return out;}
 function vomPanelHTML(){if(!M||!M.AL)return '';const on=P.vomOn||{},imp=imperial(),u=imp?'ft':'m',cv=mm=>imp?+(mm/304.8).toFixed(2):+(mm/1000).toFixed(2);
-  const chip=c=>`<label style="display:inline-flex;align-items:center;gap:4px;margin:2px 10px 2px 0;white-space:nowrap"><input type="checkbox" data-vom="${c.key}"${on[c.key]?' checked':''}>${c.kind==='corner'?'T-'+c.key.slice(2):'V'+(c.ti?c.ti+1:'')+'-'+c.label.replace(' ','')}</label>`;
+  const chip=c=>`<label class="vchip"><input type="checkbox" data-vom="${c.key}"${on[c.key]?' checked':''}>${c.kind==='corner'?'T-'+c.key.slice(2):'V'+(c.ti?c.ti+1:'')+'-'+c.label.replace(' ','')}</label>`;
   let h=`<div style="margin:14px 0 6px;font-weight:600">Vomitories</div>
     <div class="seg" style="gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 6px"><span class="hint" style="margin:0">Vom clear width (${u})</span><input id="vomW" type="number" min="${imp?4:1.2}" step="${imp?0.5:0.1}" value="${cv(AIS().vomW)}" style="width:64px">
       <span class="hint" style="margin:0">Corner tunnel width (${u})</span><input id="vomTun" type="number" min="${imp?8:2.4}" step="${imp?0.5:0.1}" value="${cv(VTUN())}" style="width:64px"></div>`;
@@ -2527,7 +2531,7 @@ function vomPanelHTML(){if(!M||!M.AL)return '';const on=P.vomOn||{},imp=imperial
       <div class="seg" style="gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 6px"><span class="hint" style="margin:0">Cross aisle at row</span><input data-vomc="${ti}" type="number" min="${v.cmin+1}" max="${v.cmax+1}" step="1" value="${v.c+1}" style="width:52px">${ti===0?`
         <span class="hint" style="margin:0">Corner tunnel rows cut</span><input data-vomk="0" type="number" min="1" max="${v.nr-2}" step="1" value="${VOMK()}" style="width:52px">`:''}
         <button data-vomauto="${ti}" title="Switch on the fewest spectator voms in this tier, spread evenly, for the egress width needed">Auto voms</button><button data-vomclr="${ti}">Clear</button></div>
-      ${Object.entries(groups).map(([g,cs])=>`<div style="margin:2px 0"><span class="hint" style="margin:0 8px 0 0">${g}</span>${cs.map(chip).join('')}</div>`).join('')}`;}
+      <div class="vgrid">${Object.entries(groups).map(([g,cs])=>`<span class="hint vglab">${g}</span><div class="vgchips">${cs.map(chip).join('')}</div>`).join('')}</div>`;}
   {const tw=tunnelFit();if(tw.length)h+=`<p class="hint" style="color:#C0262D">${tw.join(' ')}</p>`;}
   return h+`<p class="hint">Candidates: the interior middle aisles of each stand (on upper-tier sidelines all six aisles of the middle group) and the corner centrelines (Tier 1: player tunnels; upper tiers: spectator voms); all on by default, switch off what the stadium doesn't need. Each vom: ${L(AIS().vomW)} clear between 8" walls whose tops run 26" above the nosings, an 8" header over the top tread (26" above it), and a 36" stepped aisle along each wall (each serving the seats on its side). Spectator voms open onto a cross aisle at the tier's middle row (no seats in that row) and cut the rows above it up to the first row that clears ${L(AIS().vomH,'mm',1,true)} headroom, where the header sits. The Tier 1 corner tunnels stay at field level for players, carts and equipment, cutting the front rows, and are not counted for spectator egress.</p>`;}
 // ---------- standalone 3D viewer (.html): the live model inlined, three.js from jsDelivr; host it (e.g. on GitHub Pages) or send it ----------
@@ -2763,6 +2767,12 @@ function offPolys(){const S=P.secs||{},out=[];if(!M||!M.AL)return out;const RC={
     sectionList(ti).forEach(q=>{const e=S[q.no];if(e&&e.off)out.push(...secGeom(ti,q.key,0,nr-1,RS,keep).polys.map(pts=>({ti,pts})));});});return out;}
 function goneAisles(AL){const SS=P.secs||{},gone=new Set();(AL||[]).forEach((T,ti)=>{const c={};sectionList(ti,AL).forEach(q=>{if(!(SS[q.no]&&SS[q.no].off))return;q.key.split('_').forEach(id=>c[id]=(c[id]||0)+1);});Object.keys(c).forEach(id=>{if(c[id]>=2)gone.add(+id);});});return gone;}
 const inPoly=(p,q)=>{let c=false;for(let i=0,j=q.length-1;i<q.length;j=i++){const a=q[i],b=q[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;};
+// plan: the back rows of each section (the platform rows and the top row) as a click target that adds or removes its wheelchair platform
+function wcHitSvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j));let o='';
+  M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<4)return;
+    sectionList(ti).forEach(q=>{const e=S[q.no]||{};if(e.off)return;const g=secGeom(ti,q.key,nr-3,nr-1,RS,true);if(!g.poly)return;
+      o+=`<path class="wchit" data-wcsec="${q.no}" d="${g.poly}"><title>Section ${q.no}: click to ${e.wc?'remove the':'add a'} wheelchair platform</title></path>`;});});
+  return o?`<g>${o}</g>`:'';}
 function secOverlaySvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),gone=goneAisles(M.AL),keep=id=>!gone.has(+id);let off='',wc='';
   M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));
     sectionList(ti).forEach(q=>{const e=S[q.no];if(!e)return;if(e.off)off+=secGeom(ti,q.key,0,nr-1,RS,keep).poly;else if(e.wc&&nr>=4)wc+=secGeom(ti,q.key,nr-3,nr-2,RS,true).poly;});});
@@ -2821,7 +2831,8 @@ $('secPanel').addEventListener('change',e=>{const t=e.target;
   if(t.id==='vomW'){const v=+t.value;if(v>0){AIS().vomW=imperial()?v*304.8:v*1000;update();}return;}
   if(t.id==='vomTun'){const v=+t.value;if(v>0){P.vomTun=imperial()?v*304.8:v*1000;update();}return;}
   if(t.id==='adaMargin'){P.adaMargin=Math.max(0,+t.value||0);update();}});
-$('plan').addEventListener('click',e=>{const g=e.target.closest('[data-secno]');if(!g)return;const no=+g.dataset.secno;SECT_TI=Math.max(0,Math.floor(no/100)-1);SECT_HL=no;$('secBox').open=true;renderSecPanel();$('secBox').scrollIntoView({behavior:'smooth',block:'start'});});
+$('plan').addEventListener('click',e=>{const w=e.target.closest('[data-wcsec]');if(w){const no=+w.dataset.wcsec,S=SECS(),x=S[no]||(S[no]={});if(x.off)return;if(x.wc)delete x.wc;else x.wc=true;secTidy(no);update();toast(`Section ${no}: wheelchair platform ${S[no]&&S[no].wc?'added':'removed'}.`);return;}   /* the back rows of a section: its wheelchair platform on or off */
+  const g=e.target.closest('[data-secno]');if(!g)return;const no=+g.dataset.secno;SECT_TI=Math.max(0,Math.floor(no/100)-1);SECT_HL=no;$('secBox').open=true;renderSecPanel();$('secBox').scrollIntoView({behavior:'smooth',block:'start'});});
 // ---------- code summary: plumbing fixtures (IPC 2021/2024 Table 403.1 = IBC Table 2902.1, stadiums) and concourse loading (decision 58) ----------
 const PLB=()=>P.plumb||(P.plumb={extra:0,factor:1});
 function plumbing(occ){const m=Math.ceil(occ/2),f=Math.ceil(occ/2),wm=m<=1500?Math.ceil(m/75):20+Math.ceil((m-1500)/120),wf=f<=1520?Math.ceil(f/40):38+Math.ceil((f-1520)/60);
@@ -3075,7 +3086,7 @@ function drawPlan(o={}){
   const cs=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]].map(([x,y])=>rotPt(x,y,t)),vx0=Math.min(...cs.map(c=>c[0])),vy0=Math.min(...cs.map(c=>c[1])),
     vW=Math.max(...cs.map(c=>c[0]))-vx0,vH=Math.max(...cs.map(c=>c[1]))-vy0;
   let s=`<svg viewBox="${vx0.toFixed(2)} ${vy0.toFixed(2)} ${vW.toFixed(2)} ${vH.toFixed(2)}"${vH>vW*1.05?' class="portrait"':''} role="img" aria-label="${S.org} ${S.name} ${PLAN==='field'?'field layout':'bowl plan'}, north up">`;
-  let body=(PLAN==='bowl'?planGrid():'')+bufferFill()+S.draw(P,g)+rings+overRowsSvg()+rowLines+secOverlaySvg()+aisleSvg()+seatsSvg()+(PLAN==='bowl'?drawDims(bufferDims(),g,fs*.8):'')+`<path d="${ptsPath(bnd)}" fill="none" stroke="${FOCAL}" stroke-width="${(1.7*g.k).toFixed(3)}" stroke-linejoin="round"/>`+((P.sport==='nfl'||P.sport==='ncaafb')?pylons(P).map(([cx,cy,h])=>`<rect x="${g.f(cx-h)}" y="${g.f(cy-h)}" width="${g.f(2*h)}" height="${g.f(2*h)}" fill="${COL_PYLON}"/>`).join(''):''),over='';
+  let body=(PLAN==='bowl'?planGrid():'')+bufferFill()+S.draw(P,g)+rings+overRowsSvg()+rowLines+secOverlaySvg()+aisleSvg()+seatsSvg()+(o.tight?'':wcHitSvg())+(PLAN==='bowl'?drawDims(bufferDims(),g,fs*.8):'')+`<path d="${ptsPath(bnd)}" fill="none" stroke="${FOCAL}" stroke-width="${(1.7*g.k).toFixed(3)}" stroke-linejoin="round"/>`+((P.sport==='nfl'||P.sport==='ncaafb')?pylons(P).map(([cx,cy,h])=>`<rect x="${g.f(cx-h)}" y="${g.f(cy-h)}" width="${g.f(2*h)}" height="${g.f(2*h)}" fill="${COL_PYLON}"/>`).join(''):''),over='';
   if(PLAN==='bowl'){const sec=sectionAt(),ex=sec[0]+sec[2]*(Rmax+1.5),ey=sec[1]+sec[3]*(Rmax+1.5),lf=W/45;
     const rf=W/105;                                                  // row-number text height (plan metres)
     const at=zoned(P)?GEO.map(k=>{const sd=rectGeo(P).side[k],f=isSide(k)?0.22:0.3;return [k,[sd.p[0]+(sd.q[0]-sd.p[0])*f,sd.p[1]+(sd.q[1]-sd.p[1])*f,sd.n[0],sd.n[1],(sd.q[0]-sd.p[0])/Math.hypot(sd.q[0]-sd.p[0],sd.q[1]-sd.p[1]),(sd.q[1]-sd.p[1])/Math.hypot(sd.q[0]-sd.p[0],sd.q[1]-sd.p[1])]];})
