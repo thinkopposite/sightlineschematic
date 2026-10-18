@@ -285,7 +285,7 @@ main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main 
       <div><div class="seg" id="planTabs" role="group" aria-label="Plan view"><button data-plan="field" aria-pressed="false">Field layout</button><button data-plan="bowl" aria-pressed="true" class="on">Bowl plan</button></div><div class="seg"><button id="seatTog" aria-pressed="false" title="Draw every seat at its true width (screen only)">Show seats</button></div></div></div>
     <div class="panel" id="plan"></div>
     <div class="planhead"><span class="bub" id="bub3d">G</span><h3>3D view</h3>
-      <p class="capt" id="v3Note">Live model of the bowl. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom.</p>
+      <p class="capt" id="v3Note">Live model of the bowl. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom. Click (tap) the back rows of a section to add or remove its wheelchair platform.</p>
       <div><div id="v3Tabs"><div class="seg" role="group" aria-label="Camera"><button data-v3p="persp" class="on" title="Perspective">Perspective</button><button data-v3p="ortho" title="Parallel projection: no vanishing points, true for measuring (SketchUp: Camera, Parallel Projection)">Parallel</button></div>
         <div class="seg" role="group" aria-label="Isometric views"><button data-v3="NW">NW</button><button data-v3="NE">NE</button><button data-v3="SW">SW</button><button data-v3="SE" class="on">SE</button></div>
         <div class="seg" role="group" aria-label="Download the 3D model"><button id="v3Glb" title="glTF binary: viewing and presenting">.glb</button><button id="v3Ifc" title="IFC4: BIM coordination, opens or links in Revit">.ifc</button><button id="v33dm" title="Rhino 3dm: Rhino and Grasshopper; imports into Revit and SketchUp">.3dm</button><button id="v3Html" title="A standalone 3D viewer of this bowl (one .html file): open it in any browser, send it, or upload it to your website for a share link">3D viewer (.html)</button></div></div></div></div>
@@ -1630,7 +1630,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.17.10';
+const VERSION='2026.10.17.11';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2363,7 +2363,20 @@ async function v3Init(){if(V3.ready)return V3.ready;V3.ready=(async()=>{await lo
   const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(32,1,0.5,5000),ortho=new THREE.OrthographicCamera(-1,1,1,-1,0.1,5000);scene.add(new THREE.HemisphereLight(0xffffff,0x6f6f68,0.62));
   const sun=new THREE.DirectionalLight(0xffffff,0.55);sun.position.set(-0.35,1,-0.55).multiplyScalar(300);scene.add(sun);const fill=new THREE.DirectionalLight(0xffffff,0.28);fill.position.set(0.4,0.35,0.6).multiplyScalar(300);scene.add(fill);   // soft fill so soffits and elevations read
   const ctl=new THREE.OrbitControls(cam,r.domElement);ctl.screenSpacePanning=true;ctl.maxPolarAngle=Math.PI/2;ctl.addEventListener('change',()=>v3Render());
-  Object.assign(V3,{r,scene,cam,persp:cam,ortho,ctl});new ResizeObserver(()=>v3Size()).observe(el);v3Size();})();return V3.ready;}
+  Object.assign(V3,{r,scene,cam,persp:cam,ortho,ctl});new ResizeObserver(()=>v3Size()).observe(el);v3Size();v3Pick(r.domElement);})();return V3.ready;}
+// 3D: a click (not a drag) on the back rows of a section adds or removes its wheelchair platform, as on the bowl plan (decision 84);
+// the pointer becomes a hand over those rows
+function v3SecAt(e){if(!V3.grp||!M||!M.AL)return null;const el=V3.r.domElement,rc=el.getBoundingClientRect(),m=new THREE.Vector2((e.clientX-rc.left)/rc.width*2-1,-(e.clientY-rc.top)/rc.height*2+1);
+  const ray=new THREE.Raycaster();ray.setFromCamera(m,V3.cam);const hit=ray.intersectObjects(V3.grp.children.filter(o=>o.isMesh&&o.name!=='Field'),false)[0];if(!hit)return null;
+  if(V3.wcM!==M){const RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),L=[];   /* the back-row outlines, once per layout */
+    M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<4)return;const tr=zs[0].tr,z0=tr[nr-3].z/1000-1,z1=tr[nr-1].z/1000+3;
+      sectionList(ti).forEach(q=>secGeom(ti,q.key,nr-3,nr-1,RS,true).polys.forEach(pl=>L.push({no:q.no,pl,z0,z1})));});V3.wcL=L;V3.wcM=M;}
+  const x=hit.point.x,y=hit.point.z,h=hit.point.y,f=V3.wcL.find(o=>h>=o.z0&&h<=o.z1&&inPoly([x,y],o.pl));if(!f)return null;const S=P.secs||{};return S[f.no]&&S[f.no].off?null:f.no;}
+function v3Pick(el){let d=null,t=0;
+  el.addEventListener('pointerdown',e=>{d=[e.clientX,e.clientY,Date.now()];});
+  el.addEventListener('pointerup',e=>{if(!d)return;const moved=Math.hypot(e.clientX-d[0],e.clientY-d[1]),dt=Date.now()-d[2];d=null;if(moved>5||dt>600||e.button>0)return;
+    const no=v3SecAt(e);if(no==null)return;const S=SECS(),x=S[no]||(S[no]={});if(x.wc)delete x.wc;else x.wc=true;secTidy(no);update();toast(`Section ${no}: wheelchair platform ${S[no]&&S[no].wc?'added':'removed'}.`);});
+  el.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType==='touch')return;const now=Date.now();if(now-t<120)return;t=now;const no=v3SecAt(e);el.style.cursor=no==null?'':'pointer';el.title=no==null?'':`Section ${no}: click to add or remove its wheelchair platform`;});}
 function v3Frustum(){const el=$('v3d'),a=(el.clientWidth||1)/(el.clientHeight||1),o=V3.ortho,h=V3.oh/2;o.left=-h*a;o.right=h*a;o.top=h;o.bottom=-h;o.updateProjectionMatrix();}
 function v3Size(){if(!V3.r)return;const el=$('v3d'),w=el.clientWidth,h=el.clientHeight;if(!w||!h)return;V3.r.setSize(w,h,false);V3.persp.aspect=w/h;V3.persp.updateProjectionMatrix();v3Frustum();v3Render();}
 // Perspective / Parallel projection (as SketchUp's Camera menu): the parallel frustum matches what the perspective camera sees at the target
@@ -2389,7 +2402,7 @@ async function v3Build(){if(!V3.on||!M)return;await v3Init();await archivoCSS();
     for(const sg of[1,-1]){const x=sg*xe,xb=sg*(xe+off);bar([xb,0,0],[xb,0,cb]);bar([xb,0,cb],[x,0,cb]);bar([x,-hw,cb],[x,hw,cb]);bar([x,-hw,cb],[x,-hw,cb+up]);bar([x,hw,cb],[x,hw,cb+up]);}}
   if(V3.grp){V3.scene.remove(V3.grp);V3.grp.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(o.material.map)o.material.map.dispose();o.material.dispose();}});}
   V3.grp=g;V3.scene.add(g);if(!V3.fitted){v3View(V3.view);V3.fitted=true;}else v3Render();
-  const nt=groups.reduce((a,G)=>a+G.tri.length/3,0);$('v3Note').textContent=`${fmt(nt)} triangles. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom.`;}
+  const nt=groups.reduce((a,G)=>a+G.tri.length/3,0);$('v3Note').textContent=`${fmt(nt)} triangles. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom. Click (tap) the back rows of a section to add or remove its wheelchair platform.`;}
 // standard views from the stands' compass directions: elevations look from that side, corner isos from between two sides, Top straight down
 function v3Dir(v){const cm={};if(zoned(P)){const G=rectGeo(P),cp=compassOf(P);GEO.forEach(k=>{const n=G.side[k].n;cm[cp[k]]=[n[0],-n[1]];});}
   const has=['N','E','S','W'].every(c=>cm[c]),fixed={SE:[1,1],SW:[1,-1],NW:[-1,-1],NE:[-1,1],S:[1,0],N:[-1,0],E:[0,1],W:[0,-1]};
