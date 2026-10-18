@@ -1634,7 +1634,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.17.13';
+const VERSION='2026.10.18.01';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2342,7 +2342,7 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
     if(M.AL)M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<4)return;
       sectionList(ti).forEach(q=>{const e=S[q.no],w=WC[q.no];if(!e||!e.wc||e.off||!w)return;const tr=ZR[w.k].filter(r=>r.tier===ti),L=tr.length;if(L<4)return;
         const z0=tr[L-3].z/1000-0.05,z1=tr[L-1].z/1000,t0=tri.length;
-        secGeom(ti,q.key,nr-3,nr-2,RS,true).polys.forEach(pp=>{const pts=pp.map(([x,y])=>[x,-y]);if(pts.length<3)return;
+        secGeom(ti,q.key,nr-3,nr-2,RS,true,WC_SETBACK/1000).polys.forEach(pp=>{const pts=pp.map(([x,y])=>[x,-y]);   /* front face 6 in behind the row riser */if(pts.length<3)return;
           earClip(pts).forEach(([a,b,c2])=>tri.push([...pts[a],z1],[...pts[b],z1],[...pts[c2],z1]));
           for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];tri.push([...a,z0],[...b,z0],[...b,z1],[...a,z0],[...b,z1],[...a,z1]);}});
         if(tri.length>t0)parts.push({a:t0,b:tri.length,name:`Wheelchair platform ${q.no}`,meta:{ti,mark:'WC-'+q.no,props:{Tier:ti+1,Section:q.no,Stand:w.stand,'Wheelchair spaces':w.wc,'Companion seats':w.comp,'Platform level':+z1.toFixed(4),'Rows filled':w.rows.join('–')}}});});});
@@ -2461,7 +2461,7 @@ function buildIFC(){const parts=modelParts(),L=[];let n=0;const E=t=>{L.push(`#$
     E(`IFCSTYLEDITEM(${fs},(${style(p.col)}),$)`);const sr=E(`IFCSHAPEREPRESENTATION(${body},'Body','Tessellation',(${fs}))`),pds=E(`IFCPRODUCTDEFINITIONSHAPE($,$,(${sr}))`),lp=E(`IFCLOCALPLACEMENT(${pl[p.meta.ti]},${ax})`);
     const el=p.kind==='stand'?E(`IFCSLAB('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Seating tier (raker and treads) by stand')},'Seating tier',${lp},${pds},$,.NOTDEFINED.)`)
       :p.kind==='vom'?E(`IFCWALL('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Vomitory side walls (tops 26 in above the nosings) and header over the top tread')},'Vomitory',${lp},${pds},${ifcStr(p.meta.mark||'')},.NOTDEFINED.)`)
-      :p.kind==='platform'?E(`IFCBUILDINGELEMENTPROXY('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Wheelchair platform: infill over the two rows below the top row, level with the top tread')},'Wheelchair platform',${lp},${pds},${ifcStr(p.meta.mark||'')},.ELEMENT.)`)
+      :p.kind==='platform'?E(`IFCBUILDINGELEMENTPROXY('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Wheelchair platform: infill over the two rows below the top row, level with the top tread, front face 6 in behind the row riser')},'Wheelchair platform',${lp},${pds},${ifcStr(p.meta.mark||'')},.ELEMENT.)`)
       :E(`IFCBUILDINGELEMENTPROXY('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Precast concrete aisle step block on the bowl tread')},'Precast aisle step',${lp},${pds},${ifcStr(p.meta.mark||'')},.ELEMENT.)`);
     S.els.push(el);const props=Object.entries(p.meta.props||{}).map(([k,v])=>E(`IFCPROPERTYSINGLEVALUE(${ifcStr(k)},$,${val(v,k)},$)`));
     if(props.length){const ps=E(`IFCPROPERTYSET('${ifcGuid()}',$,'Sightline',$,(${props.join(',')}))`);E(`IFCRELDEFINESBYPROPERTIES('${ifcGuid()}',$,$,$,(${el}),${ps})`);}});
@@ -2599,8 +2599,9 @@ function spectatorInfo(mode){
 // is filled up to the top tread to make a level platform whose edge is the front riser of the 2nd row. Bottom row standing,
 // wheelchair on the platform: front of the space 12 in from the platform edge (the back of the tread in front, 802.9.2.1),
 // eye P.eye.wcH (47.45 in, A117.1 table basis average) above the platform and P.eye.wcOff (36 in) behind the platform riser (the rail sits on the riser face, inside face on the riser line); minimum height from Table 802.9.2.2: H = (2X+34)(Y-2.25)/X + (20.2-Y); 26 in rail on the edge.
+const WC_SETBACK=6*25.4;   // the platform infill's front face sits 6 in behind the row riser, for the head of the spectator in front (decision 87)
 function platformGeo(){const rs=spectatorRows(),n=rs.length;if(n<4)return null;const E=P.eye,IN=25.4,sd=rs[n-4],p1=rs[n-3],p2=rs[n-2],top=rs[n-1],front=rs.slice(0,n-3);
-  const SETBACK=6*IN,riserX=p1.x,zP=top.z,edge=p1.x+SETBACK,railC=edge+RAIL_SET,   /* infill face set back 6 in from the row riser */fws=edge+12*IN,eye={x:edge+E.wcOff,z:zP+E.wcH},st={x:sd.x+E.stOff,z:sd.z+E.stH},standers=front.map(r=>({r,e:{x:r.x+E.stOff,z:r.z+E.stH}}));
+  const SETBACK=WC_SETBACK,riserX=p1.x,zP=top.z,edge=p1.x+SETBACK,railC=edge+RAIL_SET,   /* infill face set back 6 in from the row riser */fws=edge+12*IN,eye={x:edge+E.wcOff,z:zP+E.wcH},st={x:sd.x+E.stOff,z:sd.z+E.stH},standers=front.map(r=>({r,e:{x:r.x+E.stOff,z:r.z+E.stH}}));
   const X=sd.T/IN,Y=(sd.riser??p1.riser??0)/IN,Hreq=(2*X+34)*(Y-2.25)/X+(20.2-Y),H=(zP-sd.z)/IN,C=eye.z*st.x/eye.x-st.z;
   return {rs,sd,p1,p2,top,zP,edge,riserX,setback:SETBACK,railC,front:fws,eye,st,standers,X,Y,Hreq,H,C};}
 function platformInfo(){const g=platformGeo();if(!g)return [];const E=P.eye;
@@ -2769,13 +2770,13 @@ function adaAuto(){const S=SECS(),mg=(P.adaMargin??25)/100;Object.keys(S).forEac
 // plan overlay: switched-off sections become open space (the stand is blanked and the background grid shows through, with a line on
 // each cut along the aisle); wheelchair platforms are a green band over the two infill rows. Outlines are built row by row on the
 // aisle stations of each row, so the cut edges follow the aisles exactly (chamfered corners stretch with depth).
-function secGeom(ti,key,j0,j1,RS,inset){const ins=typeof inset==='function'?inset:()=>inset;const f=v=>v.toFixed(3),by=new Map(),A=AIS(),wA=A.w/1000,gp=(A.gap||0)/1000;
+function secGeom(ti,key,j0,j1,RS,inset,fOff){fOff=fOff||0;const ins=typeof inset==='function'?inset:()=>inset;const f=v=>v.toFixed(3),by=new Map(),A=AIS(),wA=A.w/1000,gp=(A.gap||0)/1000;
   // stations from the bounding aisles at each row's front and back, exactly as the aisle strips are drawn: off sections run to the
   // aisle centrelines (the aisles are drawn on top), platforms stop at the aisle edge plus the end-seat space
   for(let j=j0;j<=j1;j++){const sc=RS(ti,j).find(x=>x.l+'_'+x.r===key);if(!sc)continue;
     sc.pieces.forEach(pc=>{const r=pc.Lz.tr[j];if(!r||pc.b-pc.a<1e-4)return;const ch=pc.Lz.ch,aL=pc.Lz.ais.find(a=>a.id===sc.l),aR=pc.Lz.ais.find(a=>a.id===sc.r);
       const g=by.get(pc.Lz)||{L:[],R:[],ch,S:[]};by.set(pc.Lz,g);
-      for(const d of [r.x/1000,(r.x+r.T)/1000]){const sl=aL&&pc.a>1e-6||aL&&chainS(ch,aL,d)<1e-6?chainS(ch,aL,d)+(ins(sc.l)?cutW(aL,wA)/2+gapA(aL,gp):0):pc.a<1e-6?0:chainS(ch,aL||{i:0,f:0},d),
+      for(const d of [r.x/1000+(j===j0?fOff:0),(r.x+r.T)/1000]){const sl=aL&&pc.a>1e-6||aL&&chainS(ch,aL,d)<1e-6?chainS(ch,aL,d)+(ins(sc.l)?cutW(aL,wA)/2+gapA(aL,gp):0):pc.a<1e-6?0:chainS(ch,aL||{i:0,f:0},d),
         Ld=chainLen(ch,d),sr=aR&&(Ld-pc.b)>1e-6||aR&&Ld-chainS(ch,aR,d)<1e-6?chainS(ch,aR,d)-(ins(sc.r)?cutW(aR,wA)/2+gapA(aR,gp):0):Ld;
         g.L.push(chainPtS(ch,sl,d));g.R.push(chainPtS(ch,sr,d));g.S.push([sl,sr,d]);}});}
   // front and back boundaries follow the row round any bend between the two aisles
@@ -2804,7 +2805,7 @@ function wcHitSvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},R
 function secOnOff(no){const S=SECS(),x=S[no]||(S[no]={});if(x.off){delete x.off;}else{x.off=true;}secTidy(no);update();toast(`Section ${no} ${S[no]&&S[no].off?'switched off':'switched back on'}.`);}
 function secOverlaySvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),gone=goneAisles(M.AL),keep=id=>!gone.has(+id);let off='',wc='';
   M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));
-    sectionList(ti).forEach(q=>{const e=S[q.no];if(!e)return;if(e.off)off+=secGeom(ti,q.key,0,nr-1,RS,keep).poly;else if(e.wc&&nr>=4)wc+=secGeom(ti,q.key,nr-3,nr-2,RS,true).poly;});});
+    sectionList(ti).forEach(q=>{const e=S[q.no];if(!e)return;if(e.off)off+=secGeom(ti,q.key,0,nr-1,RS,keep).poly;else if(e.wc&&nr>=4)wc+=secGeom(ti,q.key,nr-3,nr-2,RS,true,WC_SETBACK/1000).poly;});});
   if(!off&&!wc)return '';
   return (off?`<defs><clipPath id="secOffClip"><path d="${off}"/></clipPath></defs><path d="${off}" fill="var(--panel)" stroke="none"/><g clip-path="url(#secOffClip)">${planGrid()}</g>`:'')
     +(wc?`<path d="${wc}" fill="#FF7A00" fill-opacity=".9" stroke="#B34700" stroke-width="0.8" vector-effect="non-scaling-stroke"/>`:'');}
