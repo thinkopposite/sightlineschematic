@@ -786,6 +786,10 @@ const FT_=0.3048,SPORT_MIN={
   rugbyl:[5.0,1.0]};       // no IRL figure found: World Rugby's 5 m perimeter used
 Object.entries(SPORT_MIN).forEach(([k,[D,Z]])=>{if(SPORTS[k])Object.assign(SPORTS[k],{D,Z,Dmin:D,Zmin:Z});});
 
+// Scope (decision 81): stadium sports on a football-sized field only. The bowl rules (sideline and end-zone stands, chamfered corners,
+// 44-seat sections, vomitories) are set for fields of about 90-120 m; basketball, ice hockey and tennis courts need arena rules.
+// Their field drawings stay in the code but are not offered; a saved option for one opens as College Football.
+const FIELD_SPORTS=['nfl','ncaafb','mls','fifa','rugbyu','fih'];
 const LEGACY_SPORT={football:'fifa',rugby:'rugbyu',gridiron:'nfl',athletics:'usatf',ncaabb:'nba',ncaawbb:'nba',fiba:'fifa',rugbyl:'rugbyu'};   // removed sports open as the nearest one kept
 
 // ---------- dimension strings (architectural ticks, text in the selected unit format) ----------
@@ -979,7 +983,7 @@ function gapsOf(P){const Q=Object.assign({},P,{tierCount:3}),g={};
     g[k][ti]=lo.length&&up?(up.x-(lo[lo.length-1].x+lo[lo.length-1].T))/1000:P.zt[ti].z[k].gap;}}return g;}
 function alignUpperTiers(P){P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>t.z[k].X=null);});}
 function keepGaps(P,g){for(let ti=1;ti<3;ti++)for(const k of GEO)Object.assign(P.zt[ti].z[k],{X:null,gap:g[k][ti]});pinUpperTiers(P);}
-function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';const d=defaults();
+function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';if(!FIELD_SPORTS.includes(P.sport))P.sport='ncaafb';   /* court and rink sports are out of scope (decision 81) */const d=defaults();
   if(P.eyeRev!==EYE_REV){P.eye=eyeDefaults();P.eyeRev=EYE_REV;}P.eye=Object.assign(eyeDefaults(),P.eye||{});delete P.eye.bnFront;if(P.eyeMode!=='stand')P.eyeMode='sit';
   if(!P.eyeWc3){if([47.5,48].some(v=>Math.abs(P.eye.wcH-v*25.4)<0.01))P.eye.wcH=47.45*25.4;P.eyeWc3=1;}if(!(P.eye.wcH>0))P.eye.wcH=(P.eye.platH>0?P.eye.platH:47.45*25.4);delete P.eye.platH;   /* one wheelchair eye: 47.45 in, A117.1 table basis */
   for(const k of['fl','cf','bs','L','W','lanes','railH','minHead','suiteH','maxRiser','step','slabT'])if(!(P[k]>0))P[k]=d[k];
@@ -993,7 +997,7 @@ function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGAC
   {const R=REGION_DEF[regionOf(P.sport)];Object.assign(P,{step:R.step,maxRiser:R.maxRiser,bank:1,railH:26*25.4,minHead:R.minHead});LEG2=R.leg;   // fixed values, by region
    if(P.riseRev!==1){P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>{if(t.z[k])t.z[k].rise=R.rise;});});
      if(regionOf(P.sport)==='world')P.zt.forEach(t=>GEO.forEach(k=>{if(t.z[k])Object.assign(t.z[k],{tread:R.tread,tread0:R.tread0,treadN:R.tread});}));P.riseRev=1;}}
-  if(P.sport==='nfl'||P.sport==='ncaafb')Object.assign(P,{L:360*0.3048,W:160*0.3048});           // football field 360 ft x 160 ftif(!GEO.includes(P.sec))P.sec='T';
+  if(P.sport==='nfl'||P.sport==='ncaafb')Object.assign(P,{L:360*0.3048,W:160*0.3048});           /* football field 360 ft x 160 ft */if(!GEO.includes(P.sec))P.sec='T';
   if(!Array.isArray(P.zt)||P.zt.length<3)P.zt=d.zt;
   P.zt.forEach((t,i)=>{if(i&&P.zt[0].corners)t.corners=P.zt[0].corners;
     GEO.forEach(k=>{if(t.z[k]&&t.z.T){t.z[k].on=true;t.z[k].D=t.z.T.D;}});
@@ -1596,7 +1600,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.17.07';
+const VERSION='2026.10.17.08';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -1755,7 +1759,7 @@ function zoneEditor(ti,g){
     +slider(pre+'.Zabs',`Tier-2 bottom tread above the ${surfLow()} (${imperial()?'4 inch':'100 mm'})`,3*0.3048,150*0.3048,imperial()?0.1016:0.1,'m');
   return h;}
 function renderControls(){
-  const grp=(r,lab)=>`<optgroup label="${lab}">`+Object.entries(SPORTS).filter(([k,x])=>x.region===r).map(([k,x])=>`<option value="${k}"${P.sport===k?' selected':''}>${x.name} (${x.org})</option>`).join('')+'</optgroup>';
+  const grp=(r,lab)=>`<optgroup label="${lab}">`+Object.entries(SPORTS).filter(([k,x])=>x.region===r&&FIELD_SPORTS.includes(k)).map(([k,x])=>`<option value="${k}"${P.sport===k?' selected':''}>${x.name} (${x.org})</option>`).join('')+'</optgroup>';
   const step=(n,t,sub)=>`<section class="step"><div class="step-h"><span class="bub">${n}</span><h2>${t}</h2><p>${sub}</p></div>`;
   let h=step(1,'Field','Sport, governing rules, units and orientation.')+'<select id="sportSel" class="sel" aria-label="Sport and governing body">'+grp('america','American sports')+grp('world','International sports')+'</select>';
   h+=`<div class="lab">Units: <b style="color:var(--ink)">${imperial()?'Imperial':'Metric'}</b></div><p class="hint">${imperial()?'American sports use imperial: inches to 2 decimals below 10\'-0", feet and inches at or above.':'International sports use metric: millimetres below 10 m, metres to 3 decimals at or above (1000 mm = 1 m).'}</p>`;
