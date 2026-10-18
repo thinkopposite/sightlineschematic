@@ -910,7 +910,7 @@ function defaults(){const S=SPORTS.ncaafb,f={};
   return {sport:'ncaafb',L:S.L,W:S.W,lanes:8,fl:330*FT,cf:400*FT,bs:60*FT,north:'L',planOri:'v',sec:'T',tierCount:2,
   zt:[tierDef(20,'all',f),tierDef(20,'all',f),tierDef(20,'all',f)].map(t=>{t.corners='chamfer';                 // chairback on every side
     ['T','B'].forEach(k=>Object.assign(t.z[k],{seat:'standard',seatW:22*25.4}));['L','R'].forEach(k=>Object.assign(t.z[k],{seat:'standard',seatW:22*25.4}));return t;}),   /* 22 in chairback on every side */
-  eye:eyeDefaults(),eyeRev:EYE_REV,tierColors:['#CCCCCC','#999999'],eyeMode:'sit',slabT:5*25.4,step:12.7,maxRiser:24*25.4,bank:1,maxRake:34,loss:12,vd:700*0.3048,capTarget:30000,railH:26*25.4,minHead:7*304.8,suiteH:4.27,ais:aisDefaults('america')};}
+  eye:eyeDefaults(),eyeRev:EYE_REV,tierColors:['#CCCCCC','#999999'],eyeMode:'sit',slabT:5*25.4,step:12.7,maxRiser:24*25.4,bank:1,maxRake:34,loss:12,vd:700*0.3048,capTarget:30000,railH:26*25.4,minHead:7*304.8,suiteH:4.27,ais:aisDefaults('america'),bulge:{S:0,E:0}};}
 function defaultsPinned(){const d=Object.assign(defaults(),{riseRev:1,riseRev2:1,seatRev:1,seatRev3:1});   /* fresh bowls skip the one-time migrations */d.zt.forEach(t=>GEO.forEach(k=>t.z[k].target=cvDefault(d.sport)));d.cvRev=2;alignUpperTiers(d);return d;}
 // Saved bowls from before zones: one profile for the whole bowl becomes the same profile on every side.
 function migrate(o){if(!o||o.zt)return o;const d=defaults();
@@ -983,7 +983,7 @@ function gapsOf(P){const Q=Object.assign({},P,{tierCount:3}),g={};
     g[k][ti]=lo.length&&up?(up.x-(lo[lo.length-1].x+lo[lo.length-1].T))/1000:P.zt[ti].z[k].gap;}}return g;}
 function alignUpperTiers(P){P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>t.z[k].X=null);});}
 function keepGaps(P,g){for(let ti=1;ti<3;ti++)for(const k of GEO)Object.assign(P.zt[ti].z[k],{X:null,gap:g[k][ti]});pinUpperTiers(P);}
-function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';if(!FIELD_SPORTS.includes(P.sport))P.sport='ncaafb';   /* court and rink sports are out of scope (decision 81) */const d=defaults();
+function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';if(!FIELD_SPORTS.includes(P.sport))P.sport='ncaafb';if(!P.bulge||typeof P.bulge!=='object')P.bulge={S:0,E:0};['S','E'].forEach(k=>{P.bulge[k]=Math.max(0,Math.min(15,+P.bulge[k]||0));});   /* court and rink sports are out of scope (decision 81) */const d=defaults();
   if(P.eyeRev!==EYE_REV){P.eye=eyeDefaults();P.eyeRev=EYE_REV;}P.eye=Object.assign(eyeDefaults(),P.eye||{});delete P.eye.bnFront;if(P.eyeMode!=='stand')P.eyeMode='sit';
   if(!P.eyeWc3){if([47.5,48].some(v=>Math.abs(P.eye.wcH-v*25.4)<0.01))P.eye.wcH=47.45*25.4;P.eyeWc3=1;}if(!(P.eye.wcH>0))P.eye.wcH=(P.eye.platH>0?P.eye.platH:47.45*25.4);delete P.eye.platH;   /* one wheelchair eye: 47.45 in, A117.1 table basis */
   for(const k of['fl','cf','bs','L','W','lanes','railH','minHead','suiteH','maxRiser','step','slabT'])if(!(P[k]>0))P[k]=d[k];
@@ -1024,6 +1024,21 @@ const cornerWraps=(P,ZR,ti,k)=>cornerKind(P,ZR,ti,k)!=='open';
 // Chain of pieces each stand is swept along. Round and chamfered corners belong wholly to the end-zone stands, so the East/West
 // stands stay straight and their ends are the NEZ/SEZ end lines. Open: the end-zone stand runs on to the front row of the sideline
 // stand, so the sideline and end-zone stands stay straight and the corner between them is left open.
+// Curved stands (decision 82): a sideline or end-zone stand may bulge outward by b at its middle (P.bulge.S sidelines, P.bulge.E end
+// zones, metres). Its rows are concentric arcs through both ends of the field side, so the stand ends stay at the front-row distance
+// and the middle sits b further back; every tier follows (rows are offsets of the same arc). Field sides with a rounded field corner
+// (R > 0) stay straight. Returns the arc and the end frames (outward normal n, running tangent t at the start A and end B).
+const bulgeOf=(P,k)=>{const b=P.bulge||{};return Math.max(0,+(isSide(k)?b.S:b.E)||0);};
+function sideGeo(P,G,k){const s=G.side[k],l=Math.hypot(s.q[0]-s.p[0],s.q[1]-s.p[1])||1,u=[(s.q[0]-s.p[0])/l,(s.q[1]-s.p[1])/l],b=G.R>0?0:bulgeOf(P,k);
+  if(!(b>0.005))return {b:0,nA:s.n,tA:u,nB:s.n,tB:u};
+  const R=(l*l/4+b*b)/(2*b),m=[(s.p[0]+s.q[0])/2,(s.p[1]+s.q[1])/2],c=[m[0]-s.n[0]*(R-b),m[1]-s.n[1]*(R-b)],A=Math.atan2(s.p[1]-c[1],s.p[0]-c[0]),B=Math.atan2(s.q[1]-c[1],s.q[0]-c[0]);
+  let sw=(B-A)*180/Math.PI;while(sw<=-180)sw+=360;while(sw>180)sw-=360;if(sw<=0)return {b:0,nA:s.n,tA:u,nB:s.n,tB:u};
+  return {b,R,c,a0:A*180/Math.PI,sw,nA:[Math.cos(A),Math.sin(A)],nB:[Math.cos(B),Math.sin(B)],tA:[-Math.sin(A),Math.cos(A)],tB:[-Math.sin(B),Math.cos(B)]};}
+// offset of a curved side's front line from the straight side at fraction f along it (0 at the ends, b at the middle)
+function bulgeAt(P,k,f){const G=rectGeo(P),g=sideGeo(P,G,k);if(!g.b)return 0;const s=G.side[k],l=Math.hypot(s.q[0]-s.p[0],s.q[1]-s.p[1]),x=(f-0.5)*l;return Math.sqrt(Math.max(0,g.R*g.R-x*x))-(g.R-g.b);}
+function bulgeRadTxt(){const G=rectGeo(P),rad=k=>{const g=sideGeo(P,G,k);return g.b?'radius '+L(g.R*1000):'straight';};return `Sidelines ${rad(GEO.find(k=>isSide(k)))}; end stands ${rad(GEO.find(k=>!isSide(k)))} (at the field edge).`;}
+const curvedBowl=()=>GEO.some(k=>bulgeOf(P,k)>0.005);
+const midIdx=ch=>{const i=ch.findIndex(g=>g.side);return i>=0?i:ch.findIndex(g=>g.t==='LINE');};   // the middle piece of a stand: its curve, or its straight run
 function chains(P,ZR){
   const out=[];
   for(let ti=0;ti<P.tierCount;ti++){const c={};
@@ -1033,8 +1048,11 @@ function chains(P,ZR){
     // chamfer: each side runs on to the corner of the buffer rectangle (Tier 1 front rows), and the chamfer starts there
     // chamfer for the corner after side k, all of it on the end-zone stand. Each row runs on from the sideline row, turns 45 degrees
     // at the same distance from the red-line corner as its own distance from the red line, then runs on into the end-zone row.
-    const K=Math.SQRT2-1;
+    const K=Math.SQRT2-1,sg=k=>sideGeo(P,G,k);
     const cham=k=>{const nk=GEO[(GEO.indexOf(k)+1)%4],s1=G.side[k],s2=G.side[nk],u1=unit(s1),n1=s1.n,n2=s2.n,fc=[s1.q[0]+u1[0]*G.R,s1.q[1]+u1[1]*G.R];
+      {const g1=sg(k),g2=sg(nk);if(g1.b||g2.b){   /* curved sides (decision 82): the chamfer takes its frames from the two stand ends, so each row runs on tangent to its curve */
+        const N1=g1.nB,T1=g1.tB,N2=g2.nA,T2=[-g2.tA[0],-g2.tA[1]],w1=[N1[0]+K*T1[0],N1[1]+K*T1[1]],w2=[K*T2[0]+N2[0],K*T2[1]+N2[1]],q=s1.q;
+        return [{t:'CHAM',a:q,na:N1,b:q,nb:w1},{t:'CHAM',a:q,na:w1,b:q,nb:w2},{t:'CHAM',a:q,na:w2,b:q,nb:N2}];}}
       const v1=[n1[0]+K*n2[0],n1[1]+K*n2[1]],v2=[K*n1[0]+n2[0],K*n1[1]+n2[1]],seg=(a,na,b,nb)=>({t:'CHAM',a,na,b,nb}),out=[];
       if(G.R>0)out.push(seg(s1.q,n1,fc,n1));                               // rounded field corner: carry the side on to the corner point
       out.push(seg(fc,n1,fc,v1),seg(fc,v1,fc,v2),seg(fc,v2,fc,n2));
@@ -1043,14 +1061,21 @@ function chains(P,ZR){
     GEO.forEach((k,i)=>{if(!ZR[k].some(r=>r.tier===ti))return;const pk=GEO[(i+3)%4],ch=[],kp=cornerKind(P,ZR,ti,pk),kn=cornerKind(P,ZR,ti,k);
       // corners belong to the end-zone stands: East/West stay straight and their ends are the end lines of NEZ/SEZ
       const endZone=!isSide(k);
-      if(endZone&&kp==='round'){const C=G.corner[pk];ch.push({t:'ARC',c:C.c,r:G.R,a0:C.a0,sw:90});}
+      const rnd=(a,b)=>{const g1=sg(a),g2=sg(b);if(!g1.b&&!g2.b){const C=G.corner[a];return {t:'ARC',c:C.c,r:G.R,a0:C.a0,sw:90};}
+        const a0=Math.atan2(g1.nB[1],g1.nB[0])*180/Math.PI;let sw=Math.atan2(g2.nA[1],g2.nA[0])*180/Math.PI-a0;while(sw<0)sw+=360;while(sw>=360)sw-=360;return {t:'ARC',c:G.side[a].q.slice(),r:0,a0,sw};};   /* round corner between two curved ends */
+      if(endZone&&kp==='round')ch.push(rnd(pk,k));
       if(endZone&&kp==='chamfer')ch.push(...cham(pk));
-      const s=G.side[k],u=unit(s);let p=s.p.slice(),q=s.q.slice();
+      const s=G.side[k],u=unit(s),gs=sg(k);let p=s.p.slice(),q=s.q.slice();
+      if(gs.b){   /* a curved stand: the arc through both ends of the side, bulging out by b at its middle; an open corner runs on tangent to it */
+        if(!isSide(k)&&kp==='open'){const e=G.R+front0(pk);ch.push({t:'LINE',p:[p[0]-gs.tA[0]*e,p[1]-gs.tA[1]*e],q:p.slice(),n:gs.nA});}
+        ch.push({t:'ARC',c:gs.c,r:gs.R,a0:gs.a0,sw:gs.sw,side:true});
+        if(!isSide(k)&&kn==='open'){const e=G.R+front0(GEO[(i+1)%4]);ch.push({t:'LINE',p:q.slice(),q:[q[0]+gs.tB[0]*e,q[1]+gs.tB[1]*e],n:gs.nB});}}
+      else{
       if(!isSide(k)){                                                                          // open: every tier of an end zone reaches the Tier 1 sideline front row
         if(kp==='open'){const e=G.R+front0(pk);p=[p[0]-u[0]*e,p[1]-u[1]*e];}
         if(kn==='open'){const e=G.R+front0(GEO[(i+1)%4]);q=[q[0]+u[0]*e,q[1]+u[1]*e];}}
-      if(Math.hypot(q[0]-p[0],q[1]-p[1])>0.005)ch.push({t:'LINE',p,q,n:s.n});
-      if(endZone&&kn==='round'){const C=G.corner[k];ch.push({t:'ARC',c:C.c,r:G.R,a0:C.a0,sw:90});}
+      if(Math.hypot(q[0]-p[0],q[1]-p[1])>0.005)ch.push({t:'LINE',p,q,n:s.n});}
+      if(endZone&&kn==='round')ch.push(rnd(k,GEO[(i+1)%4]));
       if(endZone&&kn==='chamfer')ch.push(...cham(k));
       c[k]=ch;});
     out.push(c);}
@@ -1061,7 +1086,7 @@ function chainLen(ch,d){return ch.reduce((s,g)=>s+(g.t==='LINE'?Math.hypot(g.q[0
 function chainStations(ch){const st=[];
   for(const g of ch){if(g.t==='LINE'){st.push([g.p[0],g.p[1],g.n[0],g.n[1]],[g.q[0],g.q[1],g.n[0],g.n[1]]);continue;}
     if(g.t==='CHAM'){st.push([g.a[0],g.a[1],g.na[0],g.na[1]],[g.b[0],g.b[1],g.nb[0],g.nb[1]]);continue;}   // straight between offsets
-    const m=Math.max(1,Math.ceil(g.sw/7.5));for(let j=0;j<=m;j++){const t=(g.a0+g.sw*j/m)*Math.PI/180,c=Math.cos(t),s=Math.sin(t);st.push([g.c[0]+g.r*c,g.c[1]+g.r*s,c,s]);}}
+    const m=Math.max(1,Math.ceil(g.sw/7.5),g.side?Math.ceil(g.r*g.sw*Math.PI/180/3):0);for(let j=0;j<=m;j++){const t=(g.a0+g.sw*j/m)*Math.PI/180,c=Math.cos(t),s=Math.sin(t);st.push([g.c[0]+g.r*c,g.c[1]+g.r*s,c,s]);}}
   return st.filter((q,i)=>!i||Math.hypot(q[0]-st[i-1][0],q[1]-st[i-1][1])>1e-9||Math.abs(q[2]-st[i-1][2])>1e-9||Math.abs(q[3]-st[i-1][3])>1e-9);}
 function seatLen(P,CH,r){const d=(r.x+r.T/2)/1000,ch=CH[r.tier][r.zone];
   return ch==='ring'?polyPerim(boundary(P))+2*Math.PI*d:chainLen(ch,d);}
@@ -1111,7 +1136,7 @@ const chainPtS=(ch,s,d)=>{const a=chainAt(ch,s,d);return segPt(ch[a.i],a.f,d);};
 // Vomitories: one on each corner centreline, and on the straight runs only, square to the rows, set out from the middle of each
 // run every nth aisle. Sidelines keep a premium zone at midfield clear of vomitories.
 const premDef=k=>{const S=SPORTS[k]||{};if(k==='nfl'||k==='ncaafb')return 20*3*304.8;const v=0.2*(S.L||100)*1000;return regionOf(k)==='world'?Math.round(v/500)*500:Math.round(v/304.8)*304.8;};
-const segStraight=g=>g.t==='LINE'||(g.t==='CHAM'&&Math.hypot(g.na[0]-g.nb[0],g.na[1]-g.nb[1])<1e-9);
+const segStraight=g=>g.t==='LINE'||g.side||(g.t==='CHAM'&&Math.hypot(g.na[0]-g.nb[0],g.na[1]-g.nb[1])<1e-9);
 const segDiag=g=>g.t==='CHAM'&&Math.hypot(g.a[0]-g.b[0],g.a[1]-g.b[1])<1e-9&&Math.abs(Math.hypot(...g.na)-Math.hypot(...g.nb))<1e-9&&Math.hypot(g.na[0]-g.nb[0],g.na[1]-g.nb[1])>1e-9;
 const MITER=1/Math.sin(67.5*Math.PI/180);                            // aisle on a 45 degree bend: along-row cut for the same clear width
 const cutW=(a,w)=>a&&a.cl?0:a&&a.miter?w*MITER:w;
@@ -1163,7 +1188,7 @@ function ringAt(R,d){let s=0;const cs=[],seg=[];R.forEach((z,zi)=>{cs.push(s);z.
 // otherwise one on the corner centreline, plus one at the end of a straight run where the corner section would still be too long
 // (two short sections are evened out rather than leaving a sliver).
 function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti,Q){const OV=(Q&&Q.secN)||{};const wA=A.w/1000,gp=(A.gap||0)/1000,L=RG.L,dBk=Math.max(...R.map(z=>{const l=z.tr[z.tr.length-1];return (l.x+l.T/2)/1000;})),sides=[],flags=[],ALN=new Set(),SECN={};align=align||[];prevN=prevN||{};
-  R.forEach((z,zi)=>{const gi=z.ch.findIndex(g=>g.t==='LINE');if(gi<0)return;const sc=posOf(zi,{i:gi,f:0.5}),sw=z.z.seatW/1000,P=n=>n*sw+2*gp+wA;
+  R.forEach((z,zi)=>{const gi=midIdx(z.ch);if(gi<0)return;const sc=posOf(zi,{i:gi,f:0.5}),sw=z.z.seatW/1000,P=n=>n*sw+2*gp+wA;
     const run=runs.find(r=>r.a<=sc+1e-6&&sc<=r.b+1e-6);if(!run){sides.miss=1;return;}
     // equal middle sections: 5 on each sideline, 3 on each end zone, as large as the straight run allows up to the middle-section maximum;
     // upper tiers take the Tier 1 size so the aisles stay in line
@@ -1181,11 +1206,12 @@ function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti,Q){const OV=(Q&&Q.secN)
     const bounds=[...new Set(lt.concat(rt).map(v=>+v.toFixed(6)))].sort((a,b)=>a-b);
     sides.push({zi,sc,run,rt,lt,sw,bounds,k,n:ns.map((v,m)=>v??n)});});
   if(sides.miss||sides.length<2)return null;sides.sort((a,b)=>a.sc-b.sc);
-  const corners=[];RG.seg.forEach(q=>{if(segDiag(q.g)||q.g.t==='ARC'){const a={i:q.i,f:0.5,corner:true};corners.push({s:posOf(q.zi,a),zi:q.zi,a});}});
-  const seats=(len,sw)=>Math.floor((len-wA-2*gp)/sw+1e-9),extra=[];
+  const corners=[];RG.seg.forEach(q=>{if(segDiag(q.g)||q.g.t==='ARC'&&!q.g.side){const a={i:q.i,f:0.5,corner:true};corners.push({s:posOf(q.zi,a),zi:q.zi,a});}});
+  const seats=(len,sw)=>Math.floor((len-wA-2*gp)/sw+1e-9),extra=[];let RGB=null;
   sides.forEach((S,k)=>{const N=sides[(k+1)%sides.length],wrap=k===sides.length-1?L:0,sw=Math.min(S.sw,N.sw),soft=Math.floor(A.smaxMid/2);
     const Ea=S.run.b,Eb=N.run.a+wrap;let a=S.rt[S.rt.length-1],b=N.lt[N.lt.length-1]+wrap;
-    if(seats(b-a,sw)<=A.smax)return;                                  // the section round the corner is within the limit: no corner aisle
+    const atBack=v=>{const t=toA(v),RB=RGB||(RGB=ringAt(R,dBk));return RB.cs[t.zi]+chainS(R[t.zi].ch,t.a,dBk);},nB=(()=>{let x=atBack(b)-atBack(a);if(x<0)x+=RGB.L;return seats(x,sw);})(),ibcN=Math.min(ibcRow(R[S.zi].z).n,ibcRow(R[N.zi].z).n);
+    if(seats(b-a,sw)<=A.smax&&nB<=ibcN)return;                        // the section round the corner is within the limit and its back row within the IBC row maximum (decision 82): no corner aisle
     const c=corners.find(c=>{const cs=c.s<S.sc?c.s+L:c.s;return cs>Ea-1e-6&&cs<Eb+1e-6;})||corners.find(c=>c.s+L>Ea-1e-6&&c.s+L<Eb+1e-6);if(!c)return;
     const C0=c.s<Ea-1e-6?c.s+L:c.s,sg=RG.seg.find(q=>q.zi===c.zi&&q.i===c.a.i),cs=sg&&segDiag(sg.g)?cornerSet(R,c.zi,c.a.i,dBk,gp):null,bends=!cs&&ti>0&&sg&&segDiag(sg.g);let hl=bends?sg.l/2:0;
     // the corner: a chamfer takes an aisle along each outer edge of its wedge and a section line (or, on long rows, an aisle) on its centreline;
@@ -1224,13 +1250,13 @@ function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;co
     // the rows in a chamfer's short run to the bend continue the straight rows: aisles may sit there, square to them, inside the front row
     runs.forEach(r=>{RG.seg.forEach(q=>{if(!segWedge(q.g))return;const em=Math.max(0,segLen(q.g,dF)-cw),unit0=Math.abs(Math.hypot(...q.g.na)-1)<1e-9;
       const e0=q.s0+q.l-r.a;if(!unit0&&(Math.abs(e0)<1e-6||Math.abs(e0-RG.L)<1e-6))r.a-=Math.min(em,q.l);if(unit0&&Math.abs(q.s0-r.b)<1e-6)r.b+=Math.min(em,q.l);});});
-    const mids=[];R.forEach((z,zi)=>{const gi=z.ch.findIndex(g=>g.t==='LINE');if(gi>=0)mids.push(posOf(zi,{i:gi,f:0.5}));});
+    const mids=[];R.forEach((z,zi)=>{const gi=midIdx(z.ch);if(gi>=0)mids.push(posOf(zi,{i:gi,f:0.5}));});
     // fixed: Tier 1 the corner centrelines; upper tiers carry every Tier 1 aisle up (same lines in plan)
     let fixed=[];const below=ti>0&&out[0].__ring;
     const dBk=Math.max(...R.map(z=>{const l=z.tr[z.tr.length-1];return (l.x+l.T/2)/1000;})),gp0=(A.gap||0)/1000;
     if(!imperial()&&below&&R.every((z,zi)=>sameChain(below[zi].ch,z.ch))){fixed=below.list.map(x=>({s:posOf(x.zi,x.a),zi:x.zi,a:Object.assign({},x.a)}));
       fixed.forEach(x=>{if(x.a.cl){const cs=cornerSet(R,x.zi,x.a.i,dBk,gp0);if(!cs||!cs.C.cl)delete x.a.cl;}});}   // a section line carried up stays one only where this tier's rows fit
-    else RG.seg.forEach(q=>{if(segDiag(q.g)||q.g.t==='ARC'){const a={i:q.i,f:0.5,corner:true},cs=segDiag(q.g)?cornerSet(R,q.zi,q.i,dBk,gp0):null;
+    else RG.seg.forEach(q=>{if(segDiag(q.g)||q.g.t==='ARC'&&!q.g.side){const a={i:q.i,f:0.5,corner:true},cs=segDiag(q.g)?cornerSet(R,q.zi,q.i,dBk,gp0):null;
       if(cs)[cs.L,cs.C,cs.R].forEach(b=>fixed.push({s:posOf(q.zi,b),zi:q.zi,a:b}));else fixed.push({s:posOf(q.zi,a),zi:q.zi,a});}});
     let sect=null;if(imperial()){const b0=ti>0&&out[0].__ring,al=b0&&R.every((z,zi)=>sameChain(b0[zi].ch,z.ch))?b0.list.map(x=>posOf(x.zi,x.a)):[];sect=sectAisles(R,RG,runs,posOf,toA,A,al,ti>0&&out[0].__secN||{},ti,Q);if(sect){fixed=sect;Object.defineProperty(T,'__secN',{enumerable:false,value:sect.secN,configurable:true});}}
     fixed.sort((x,y)=>x.s-y.s);
@@ -1600,7 +1626,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.17.08';
+const VERSION='2026.10.17.09';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -1725,7 +1751,7 @@ function get(path){if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.'),z
 function set(path,v){if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.');
     if(p==='Zabs'){for(const k of ks){const t=lowerTop(+ti,k);P.zt[+ti].z[k].rise=v-(t?t.z:0)/1000;}return;}
     for(const k of ks)P.zt[+ti].z[k][p]=v;if(p==='X')renderControls();return;}
-  const ks=path.split('.');const last=ks.pop();ks.reduce((o,k)=>o[k],P)[last]=v;}
+  const ks=path.split('.');const last=ks.pop();ks.reduce((o,k)=>o[k],P)[last]=v;if(ks[0]==='bulge'){const e=document.getElementById('bulgeRad');if(e)e.textContent=bulgeRadTxt();}}
 const CV=v=>v==null?'':imperial()?(v/25.4).toFixed(4)+'"':v.toFixed(4)+' mm';   // every C-value: 4 decimals, e.g. 2.5000" or 60.0000 mm
 function cvEditor(pre,z,ti){const set=cvSet(P.sport),p=pre+'.target';META[p]={min:25.4,max:10*25.4,step:1e-6,kind:'mm'};
   const lab=mm=>imperial()?`${(mm/25.4).toFixed(4)}" (${mm.toFixed(4)} mm)`:`${mm.toFixed(4)} mm (${(mm/25.4).toFixed(4)}")`;
@@ -1769,7 +1795,10 @@ function renderControls(){
   h+='<div class="lab">Tread and riser thickness</div><div class="seg">'+SLAB[regionOf(P.sport)].map(v=>`<button data-slab="${v}" class="${Math.abs(slabT()-v)<0.1?'on':''}">${L(v)}</button>`).join('')+'</div>';
   if(zoned(P)){
     h+='<div class="lab">Side profiles: <b style="color:var(--ink)">All four sides match</b></div>';
-    h+='<div class="lab">Corners</div><div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>';}
+    h+='<div class="lab">Corners</div><div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>';
+    {const im=imperial(),st=im?0.3048:0.25,mx=im?30*0.3048:9;   /* curved stands (decision 82) */
+      h+='<div class="lab">Curved stands</div>'+slider('bulge.S','Sidelines: set back at the 50-yard line'.replace('the 50-yard line',P.sport==='nfl'||P.sport==='ncaafb'?'the 50-yard line':'halfway'),0,mx,st,'m')+slider('bulge.E','End stands: set back at the centre line',0,mx,st,'m')
+        +`<p class="hint">0 keeps a stand straight. Otherwise its rows are arcs through both ends of the field side: the stand ends stay at the front-row distance and the middle sits further back by this much (every tier follows). <span id="bulgeRad">${bulgeRadTxt()}</span> Aisles run radially.</p>`;}}
   h+='<div class="lab">Bowl colours (HEX)</div>'+[0,1].map(i=>`<div class="colrow"><label for="tcol${i}">Tier ${i+1}</label>`
     +`<input type="color" class="swatch" data-tcolpick="${i}" value="${tierFill(i)}" aria-label="Pick the Tier ${i+1} colour">`
     +`<input type="text" class="hex" id="tcol${i}" data-tcol="${i}" value="${tierFill(i)}" maxlength="7" spellcheck="false" autocomplete="off"></div>`).join('')
@@ -2153,7 +2182,7 @@ function drawIso(){
     const q=fc.idx.map(i=>R(pc.V[i])),k=0.55+0.45*Math.max(0,N[0]*L[0]+N[1]*L[1]+N[2]*L[2]),top=fc.out[2]>0.9;
     faces.push({q,d:q.reduce((a,p)=>a+p[0]+p[1]+p[2],0)/q.length+0.3,fill:`rgb(${ac.map(v=>Math.round(v*k)).join(',')})`,edge:top?[q[1],q[2]]:null});}}   // edge: the nosing
   const ground=(poly,fill,d)=>({q:poly.map(([x,y])=>R([x,y,0])),d:d,fill,ground:true});
-  const G=rectGeo(P),buf=zoned(P)?(()=>{const t=ZR.T.find(r=>r.tier===0),dd=t?t.x/1000:0,s=G.side;return [[s.L.p[0]-dd,s.T.p[1]-dd],[s.R.p[0]+dd,s.T.p[1]-dd],[s.R.p[0]+dd,s.B.p[1]+dd],[s.L.p[0]-dd,s.B.p[1]+dd]].map(([x,y])=>[x,-y]);})():null;
+  const G=rectGeo(P),buf=zoned(P)?(()=>{const t=ZR.T.find(r=>r.tier===0),dd=t?t.x/1000:0,s=G.side,e=k=>dd+bulgeOf(P,k);return [[s.L.p[0]-e('L'),s.T.p[1]-e('T')],[s.R.p[0]+e('R'),s.T.p[1]-e('T')],[s.R.p[0]+e('R'),s.B.p[1]+e('B')],[s.L.p[0]-e('L'),s.B.p[1]+e('B')]].map(([x,y])=>[x,-y]);})():null;   /* curved stands: out to the middle of each curve */
   const gf=[];if(buf)gf.push(ground(buf,css('--grass2')||'#8EB03E',-1e9));
   // goal posts, true size (NFL Rule 1-3: crossbar 18'-6" long, top 10 ft up, in the plane of the end line; uprights 35 ft above it;
   // single standard offset from the end line, 6 ft here). NCAA uprights 30 ft above the crossbar (college range 20-35 ft).
@@ -2274,7 +2303,11 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
         const A=[a[0]+a[2]*d0,a[1]+a[3]*d0],B=[b[0]+b[2]*d0,b[1]+b[3]*d0],ab=[B[0]-A[0],B[1]-A[1]],l2=ab[0]*ab[0]+ab[1]*ab[1],ts=[];
         if(l2>1e-9)for(const p of EP){const t=((p[0]-A[0])*ab[0]+(p[1]-A[1])*ab[1])/l2;if(t>1e-4&&t<1-1e-4&&Math.hypot(A[0]+ab[0]*t-p[0],A[1]+ab[1]*t-p[1])<0.05)ts.push({t,n:p.length>2?[p[2],p[3]]:null});}
         ts.sort((x,y)=>x.t-y.t);ts.filter((q,i)=>!i||q.t-ts[i-1].t>1e-4).forEach(({t,n})=>{const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,nx=n?n[0]:a[2]+(b[2]-a[2])*t,ny=n?n[1]:a[3]+(b[3]-a[3])*t;
-          st.push(n?[x+(a[2]+(b[2]-a[2])*t-n[0])*d0,y+(a[3]+(b[3]-a[3])*t-n[1])*d0,nx,ny]:[x,y,nx,ny]);});}   // a vom split: offset along the vom axis, kept on the same point at the front row
+          st.push(n?[x+(a[2]+(b[2]-a[2])*t-n[0])*d0,y+(a[3]+(b[3]-a[3])*t-n[1])*d0,nx,ny,[x,y,a[2]+(b[2]-a[2])*t,a[3]+(b[3]-a[3])*t]]:[x,y,nx,ny]);});}   // a vom split: offset along the vom axis, kept on the same point at the front row
+      {const dX=(rows[rows.length-1].x+rows[rows.length-1].T)/1000,Pd=(q,d)=>[q[0]+q[2]*d,q[1]+q[3]*d];   /* a vom split that would cross its neighbours within the tier (a vom wider than the corner it sits in, decision 82) falls back to the plain station */
+        for(let i=1;i<st.length-1;i++){const q=st[i];if(!q[4])continue;const pv=st[i-1],nx=st[i+1],A0=Pd(pv,d0),B0=Pd(nx,d0),t0=[B0[0]-A0[0],B0[1]-A0[1]];
+          const bad=[d0,(d0+dX)/2,dX].some(d=>{const a1=Pd(pv,d),q1=Pd(q,d),b1=Pd(nx,d);return (q1[0]-a1[0])*t0[0]+(q1[1]-a1[1])*t0[1]<-1e-4||(b1[0]-q1[0])*t0[0]+(b1[1]-q1[1])*t0[1]<-1e-4;});
+          if(bad&&curvedBowl())st[i]=q[4];}}   /* straight bowls keep their approved geometry */
       const m=st.length,np=closed?m:m-1,V=(s,i,q)=>{q=q||pr;return [st[s][0]+st[s][2]*q[i][0],st[s][1]+st[s][3]*q[i][0],q[i][1]];};
       const mm=q=>q.map(([x,h])=>[x/1000,h/1000]),vp=[];   // inside a vom: the rows in front of the cut (if any) and the rows behind it, open below the header
       VZ.forEach(v=>{v.profs=[v.sV?mm(profileOf(rows.slice(0,v.sV),ti)):null,rows.length>v.sV+v.kV+1?mm(profileOf(rows.slice(v.sV+v.kV),-1)):null].filter(Boolean);});
@@ -2314,7 +2347,7 @@ let ARCHIVO_CSS=null;async function archivoCSS(){if(ARCHIVO_CSS!=null)return ARC
   try{ARCHIVO_CSS=`@font-face{font-family:Archivo;font-weight:400;src:url(data:font/woff2;base64,${await b64('archivo-latin-400-normal.woff2')}) format('woff2')}@font-face{font-family:Archivo;font-weight:700;src:url(data:font/woff2;base64,${await b64('archivo-latin-700-normal.woff2')}) format('woff2')}`;}catch(e){ARCHIVO_CSS='';}return ARCHIVO_CSS;}
 function v3Field(){   // the field drawing as a texture on the ground, inside the buffer (or the boundary's box)
   const Sp=SPORTS[P.sport],bnd=boundary(P),xs=bnd.map(p=>p[0]),ys=bnd.map(p=>p[1]),t=(ZR.T||Object.values(ZR).flat()).find(r=>r.tier===0),dd=t?t.x/1000:0;
-  let x0=Math.min(...xs)-dd,x1=Math.max(...xs)+dd,y0=Math.min(...ys)-dd,y1=Math.max(...ys)+dd;if(zoned(P)){const s=rectGeo(P).side;x0=s.L.p[0]-dd;x1=s.R.p[0]+dd;y0=s.T.p[1]-dd;y1=s.B.p[1]+dd;}
+  let x0=Math.min(...xs)-dd,x1=Math.max(...xs)+dd,y0=Math.min(...ys)-dd,y1=Math.max(...ys)+dd;if(zoned(P)){const s=rectGeo(P).side;x0=s.L.p[0]-dd-bulgeOf(P,'L');x1=s.R.p[0]+dd+bulgeOf(P,'R');y0=s.T.p[1]-dd-bulgeOf(P,'T');y1=s.B.p[1]+dd+bulgeOf(P,'B');}   /* curved stands: out to the middle of each curve */
   const W=x1-x0,H=y1-y0,svg=pdfReadySvg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x0} ${y0} ${W} ${H}" width="${Math.round(4096*Math.min(1,W/H))}" height="${Math.round(4096*Math.min(1,H/W))}"><rect x="${x0}" y="${y0}" width="${W}" height="${H}" fill="var(--grass2)"/>${Sp.draw(P,Object.assign(Pen(W/700),{iso:true}))}</svg>`).replace(/font-family="DVS"/g,'font-family="Archivo, Helvetica, Arial, sans-serif"').replace('<rect ',`<style>${ARCHIVO_CSS||''}text{font-family:Archivo,Helvetica,Arial,sans-serif}</style><rect `);
   return {x0,y0,W,H,url:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)};}
 // three.js from the site's vendor/three folder, or the same version from jsDelivr when the folder is not uploaded
@@ -2475,6 +2508,10 @@ function vomLabels(rf,t){if(!M||!M.AL||PLAN!=='bowl')return '';let o='';const f=
   M.AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>Lz.ais.forEach((a,i)=>{if(!Lz.vom[i]||done.has(a.id)||!a.vr)return;done.add(a.id);const s=(a.vr&&a.vr.s)||0,d=Lz.tr[s].x/1000-fs*1.25,p=chainPtS(Lz.ch,chainS(Lz.ch,a,d),d),[x,y]=rotPt(p[0],p[1],t);
     const lab=a.vomC>AIS().vomW?'T-'+(a.vomKey||'').replace('C.',''):'V'+(ti?ti+1:'')+'-'+(a.vomLabel||'').replace(' ','');
     o+=`<text x="${f(x)}" y="${f(y)}" font-size="${f(fs)}" font-weight="700" fill="#1E1E1E" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fs*.14)}">${lab}</text>`;})));return o;}
+// a corner tunnel (with its walls and side aisles) wider than the corner's diagonal rows at its first row: on curved stands the
+// corner narrows (decision 82), so the tunnel runs into the corner aisles
+function tunnelFit(){const out=[];if(!M||!M.AL)return out;M.AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>Lz.ais.forEach((a,i)=>{if(!Lz.vom[i]||!a.vr||!a.vr.field)return;const g=Lz.ch[a.i];if(!g||!segDiag(g))return;
+  const d=Lz.tr[a.vr.s||0].x/1000,len=segLen(g,d),cut=vomCut(a);if(cut>len+0.01)out.push(`${a.vomLabel||'Corner tunnel'}: ${L(cut*1000)} wide with its walls and side aisles, but the corner is only ${L(len*1000)} across at row 1, so it runs into the corner aisles. Reduce the stand curve or the tunnel width, or switch the tunnel off.`);})));return out;}
 function vomPanelHTML(){if(!M||!M.AL)return '';const on=P.vomOn||{},imp=imperial(),u=imp?'ft':'m',cv=mm=>imp?+(mm/304.8).toFixed(2):+(mm/1000).toFixed(2);
   const chip=c=>`<label style="display:inline-flex;align-items:center;gap:4px;margin:2px 10px 2px 0;white-space:nowrap"><input type="checkbox" data-vom="${c.key}"${on[c.key]?' checked':''}>${c.kind==='corner'?'T-'+c.key.slice(2):'V'+(c.ti?c.ti+1:'')+'-'+c.label.replace(' ','')}</label>`;
   let h=`<div style="margin:14px 0 6px;font-weight:600">Vomitories</div>
@@ -2491,6 +2528,7 @@ function vomPanelHTML(){if(!M||!M.AL)return '';const on=P.vomOn||{},imp=imperial
         <span class="hint" style="margin:0">Corner tunnel rows cut</span><input data-vomk="0" type="number" min="1" max="${v.nr-2}" step="1" value="${VOMK()}" style="width:52px">`:''}
         <button data-vomauto="${ti}" title="Switch on the fewest spectator voms in this tier, spread evenly, for the egress width needed">Auto voms</button><button data-vomclr="${ti}">Clear</button></div>
       ${Object.entries(groups).map(([g,cs])=>`<div style="margin:2px 0"><span class="hint" style="margin:0 8px 0 0">${g}</span>${cs.map(chip).join('')}</div>`).join('')}`;}
+  {const tw=tunnelFit();if(tw.length)h+=`<p class="hint" style="color:#C0262D">${tw.join(' ')}</p>`;}
   return h+`<p class="hint">Candidates: the interior middle aisles of each stand (on upper-tier sidelines all six aisles of the middle group) and the corner centrelines (Tier 1: player tunnels; upper tiers: spectator voms); all on by default, switch off what the stadium doesn't need. Each vom: ${L(AIS().vomW)} clear between 8" walls whose tops run 26" above the nosings, an 8" header over the top tread (26" above it), and a 36" stepped aisle along each wall (each serving the seats on its side). Spectator voms open onto a cross aisle at the tier's middle row (no seats in that row) and cut the rows above it up to the first row that clears ${L(AIS().vomH,'mm',1,true)} headroom, where the header sits. The Tier 1 corner tunnels stay at field level for players, carts and equipment, cutting the front rows, and are not counted for spectator egress.</p>`;}
 // ---------- standalone 3D viewer (.html): the live model inlined, three.js from jsDelivr; host it (e.g. on GitHub Pages) or send it ----------
 const V3HTML="<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\"><title>__TITLE__<\/title>\n<meta name=\"claude:viewport-fit-sides\" content=\"cover\">\n<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap\">\n<style>[hidden]{display:none!important}body{margin:0;font-size:14px}\n/* Layout: a full-height model frame under a slim toolbar; the bowl is the page */\n:root{\n  --bg:#F3F3F0; --panel:#FFFFFF; --fg:#1F2224; --muted:#5E656B; --line:#D9DAD4; --accent:#C2410C; --accent-fg:#FFFFFF;\n  --f-display:Archivo,system-ui,-apple-system,\"Segoe UI\",sans-serif; --f-body:Archivo,system-ui,-apple-system,\"Segoe UI\",sans-serif;\n}\n@media (prefers-color-scheme: dark){:root:not([data-theme=\"light\"]){--bg:#17191B;--panel:#202326;--fg:#ECEDEA;--muted:#A4AAAF;--line:#33383C;--accent:#F27C38;--accent-fg:#17191B;color-scheme:dark}}\n:root[data-theme=\"dark\"]{--bg:#17191B;--panel:#202326;--fg:#ECEDEA;--muted:#A4AAAF;--line:#33383C;--accent:#F27C38;--accent-fg:#17191B;color-scheme:dark}\nhtml,body{height:100%}\nbody{background:var(--bg);color:var(--fg);font-family:var(--f-body);display:flex;flex-direction:column;\n  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px;box-sizing:border-box;gap:10px}\nheader{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 18px}\nh1{font-family:var(--f-display);font-weight:600;font-size:1.55rem;letter-spacing:.01em;margin:0;text-wrap:balance}\n.sub{color:var(--muted);font-size:.86rem;margin:2px 0 0;font-variant-numeric:tabular-nums}\n.bar{display:flex;flex-wrap:wrap;gap:8px}\n.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--panel)}\n.seg button{font:500 .84rem var(--f-body);color:var(--fg);background:transparent;border:0;border-right:1px solid var(--line);padding:7px 11px;cursor:pointer}\n.seg button:last-child{border-right:0}\n.seg button[aria-pressed=\"true\"]{background:var(--accent);color:var(--accent-fg)}\n.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}\n#frame{position:relative;flex:1;min-height:360px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}\n#frame canvas{display:block;width:100%;height:100%;touch-action:none}\n#status{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:.95rem;pointer-events:none}\nfooter{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:.8rem}\n.key{display:inline-flex;align-items:center;gap:6px}\n.sw{width:12px;height:12px;border-radius:2px;border:1px solid var(--line)}\n<\/style>\n\n<header>\n  <div>\n    <h1>__H1__<\/h1>\n    <p class=\"sub\">__SUB__<\/p>\n  <\/div>\n  <div class=\"bar\">\n    <div class=\"seg\" role=\"group\" aria-label=\"Camera\">\n      <button id=\"persp\" aria-pressed=\"true\">Perspective<\/button><button id=\"ortho\" aria-pressed=\"false\">Parallel<\/button>\n    <\/div>\n    <div class=\"seg\" role=\"group\" aria-label=\"Isometric views\">\n      <button data-v=\"NW\" aria-pressed=\"false\">NW<\/button><button data-v=\"NE\" aria-pressed=\"false\">NE<\/button><button data-v=\"SW\" aria-pressed=\"false\">SW<\/button><button data-v=\"SE\" aria-pressed=\"true\">SE<\/button>\n    <\/div>\n  <\/div>\n<\/header>\n<div id=\"frame\"><div id=\"status\">Loading the bowl\u2026<\/div><\/div>\n<footer>\n  <span>Drag to rotate \u00b7 right-drag or two fingers to pan \u00b7 scroll or pinch to zoom<\/span>\n  <span class=\"key\"><i class=\"sw\" style=\"background:#CCCCCC\"><\/i>Tier 1<\/span>\n  <span class=\"key\"><i class=\"sw\" style=\"background:#999999\"><\/i>Tier 2<\/span>\n  <span class=\"key\"><i class=\"sw\" style=\"background:#80807C\"><\/i>Precast aisle steps<\/span>\n  <span class=\"key\"><i class=\"sw\" style=\"background:#FF7A00\"><\/i>Wheelchair platforms<\/span>\n  <span class=\"key\"><i class=\"sw\" style=\"background:#969692\"><\/i>Vomitory walls<\/span>\n<\/footer>\n\n<script type=\"text/plain\" id=\"glb\">__B64__<\/script>\n<script src=\"https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js\"><\/script>\n<script src=\"https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js\"><\/script>\n<script src=\"https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js\"><\/script>\n<script>\n(function(){\n  const DIRS=__DIRS__;\n  const frame=document.getElementById('frame'),status=document.getElementById('status');\n  if(!window.THREE){status.textContent='The 3D library could not load. Check the connection and reload.';return;}\n  const r=new THREE.WebGLRenderer({antialias:true});r.setPixelRatio(Math.min(2,window.devicePixelRatio||1));frame.appendChild(r.domElement);\n  const scene=new THREE.Scene(),persp=new THREE.PerspectiveCamera(32,1,0.5,5000),ortho=new THREE.OrthographicCamera(-1,1,1,-1,-5000,5000);\n  scene.add(new THREE.HemisphereLight(0xffffff,0x6f6f68,0.62));\n  const sun=new THREE.DirectionalLight(0xffffff,0.55);sun.position.set(-105,300,-165);scene.add(sun);\n  const fill=new THREE.DirectionalLight(0xffffff,0.28);fill.position.set(120,105,180);scene.add(fill);\n  const ground=new THREE.Mesh(new THREE.PlaneGeometry(2000,2000),new THREE.MeshLambertMaterial({color:0xE9E7E0}));ground.rotation.x=-Math.PI/2;ground.position.y=-0.03;scene.add(ground);\n  let cam=persp,model=null,view='SE',oh=100;\n  const ctl=new THREE.OrbitControls(cam,r.domElement);ctl.screenSpacePanning=true;ctl.maxPolarAngle=Math.PI/2;ctl.addEventListener('change',render);\n  function bg(){const v=getComputedStyle(document.documentElement).getPropertyValue('--panel').trim()||'#ffffff';r.setClearColor(new THREE.Color(v));}\n  function frustum(){const a=(frame.clientWidth||1)/(frame.clientHeight||1),h=oh/2;ortho.left=-h*a;ortho.right=h*a;ortho.top=h;ortho.bottom=-h;ortho.updateProjectionMatrix();}\n  function size(){const w=frame.clientWidth,h=frame.clientHeight;if(!w||!h)return;r.setSize(w,h,false);persp.aspect=w/h;persp.updateProjectionMatrix();frustum();render();}\n  function render(){bg();r.render(scene,cam);}\n  function press(sel,on){document.querySelectorAll(sel).forEach(b=>b.setAttribute('aria-pressed',String(on(b))));}\n  function fit(v){view=v;if(!model)return;const box=new THREE.Box3().setFromObject(model),c=box.getCenter(new THREE.Vector3()),d=new THREE.Vector3(...DIRS[v]).normalize();\n    const up=new THREE.Vector3(0,1,0),xA=up.clone().cross(d).normalize(),yA=d.clone().cross(xA),asp=(frame.clientWidth||1)/(frame.clientHeight||1),tV=Math.tan(persp.fov*Math.PI/360),tH=tV*asp;\n    let dist=0,hw=0,hh=0;for(const X of [box.min.x,box.max.x])for(const Y of [box.min.y,box.max.y])for(const Z of [box.min.z,box.max.z]){const q=new THREE.Vector3(X,Y,Z).sub(c),x=q.dot(xA),y=q.dot(yA),z=q.dot(d);dist=Math.max(dist,Math.abs(y)/tV+z,Math.abs(x)/tH+z);hw=Math.max(hw,Math.abs(x));hh=Math.max(hh,Math.abs(y));}\n    dist*=0.86;persp.position.copy(c.clone().add(d.clone().multiplyScalar(dist)));persp.near=dist/100;persp.far=dist*20;persp.zoom=1;persp.updateProjectionMatrix();\n    oh=Math.max(2*hh,2*hw/asp)*0.86;ortho.zoom=1;ortho.position.copy(persp.position);frustum();ctl.target.copy(c);ctl.update();press('[data-v]',b=>b.dataset.v===v);render();}\n  function proj(mode){const to=mode==='ortho'?ortho:persp;if(to===cam)return;const t=ctl.target,dist=cam.position.distanceTo(t);\n    if(mode==='ortho'){oh=2*dist*Math.tan(persp.fov*Math.PI/360)/(cam.zoom||1);ortho.zoom=1;frustum();ortho.position.copy(cam.position);}\n    else{const dd=oh/(2*Math.tan(persp.fov*Math.PI/360))/(cam.zoom||1),dir=cam.position.clone().sub(t).normalize();persp.position.copy(t.clone().add(dir.multiplyScalar(dd)));persp.near=dd/100;persp.far=dd*20;persp.updateProjectionMatrix();}\n    cam=to;ctl.object=to;ctl.update();press('#persp,#ortho',b=>(b.id==='ortho')===(mode==='ortho'));render();}\n  document.getElementById('persp').addEventListener('click',()=>proj('persp'));\n  document.getElementById('ortho').addEventListener('click',()=>proj('ortho'));\n  document.querySelectorAll('[data-v]').forEach(b=>b.addEventListener('click',()=>fit(b.dataset.v)));\n  new ResizeObserver(size).observe(frame);\n  window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',render);\n  const fail=()=>{status.textContent='The model file could not be loaded. Reload the page to try again.';};\n  Promise.resolve(document.getElementById('glb').textContent).then(b64=>{   // the .glb, as base64 text\n    const bin=atob(b64.trim()),buf=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);\n    new THREE.GLTFLoader().parse(buf.buffer,'',g=>{model=g.scene;model.traverse(o=>{if(o.isMesh&&o.material){const m=o.material;if(m.map)m.map.encoding=THREE.LinearEncoding;o.material=new THREE.MeshLambertMaterial({color:m.color,map:m.map||null,side:THREE.DoubleSide,flatShading:true});}});   /* the same flat shading as the app */scene.add(model);status.hidden=true;size();fit(view);},fail);}).catch(fail);\n  size();\n})();\n<\/script>\n\n<\/body><\/html>\n";
@@ -2606,14 +2644,14 @@ function secStation(S,st){const sd=S.sec,dot=q=>q[2]*sd[0]+q[3]*sd[1],mx=Math.ma
 function sectionAt(){if(!zoned(P))return secStation(SPORTS[P.sport],stations(boundary(P)));const s=rectGeo(P).side[P.sec];
   // the cut runs through the section next to the middle one, clear of the middle section, its labels and the buffer dimension
   let f=0.5;const Lz=M&&M.AL&&M.AL[0]&&M.AL[0][P.sec];
-  if(Lz){const gi=Lz.ch.findIndex(g=>g.t==='LINE'),fs=gi<0?[]:Lz.ais.filter(a=>a.i===gi&&a.f!=null).map(a=>a.f).sort((a,b)=>a-b),r=fs.map(v=>v<0.5-1e-9).lastIndexOf(true);   /* the section before the middle one, a fifth of the way in from the shared aisle */
+  if(Lz){const gi=midIdx(Lz.ch),fs=gi<0?[]:Lz.ais.filter(a=>a.i===gi&&a.f!=null).map(a=>a.f).sort((a,b)=>a-b),r=fs.map(v=>v<0.5-1e-9).lastIndexOf(true);   /* the section before the middle one, a fifth of the way in from the shared aisle */
     if(r>=0)f=r>0?fs[r]-(fs[r]-fs[r-1])*0.2:Math.max(0.03,fs[r]-0.03);}
   return [s.p[0]+(s.q[0]-s.p[0])*f,s.p[1]+(s.q[1]-s.p[1])*f,s.n[0],s.n[1]];}
 // Buffer zone in plan: from the field out to the front riser of Tier 1 on every side, in the buffer green.
 // Bowl plan dimensions: buffer depth (red line to the Tier 1 front riser) on each side, and at each corner on the diagonal.
 function bufferDims(){if(!zoned(P))return [];const G=rectGeo(P),out=[];
   GEO.forEach((k,i)=>{const r=ZR[k].find(r=>r.tier===0);if(!r)return;const d=r.x/1000,s=G.side[k],f=0.68,p=[s.p[0]+(s.q[0]-s.p[0])*f,s.p[1]+(s.q[1]-s.p[1])*f];
-    out.push({p,q:[p[0]+s.n[0]*d,p[1]+s.n[1]*d],off:0,ctl:'D:0'});
+    {const dd=d+bulgeAt(P,k,f);out.push({p,q:[p[0]+s.n[0]*dd,p[1]+s.n[1]*dd],off:0,ctl:'D:0'});}   /* on a curved stand: to the front row where it actually is */
     const nk=GEO[(i+1)%4],n2=G.side[nk].n,u=[(s.q[0]-s.p[0]),(s.q[1]-s.p[1])],ul=Math.hypot(...u),fc=[s.q[0]+u[0]/ul*G.R,s.q[1]+u[1]/ul*G.R];
     const dg=[(s.n[0]+n2[0])/Math.SQRT2,(s.n[1]+n2[1])/Math.SQRT2],rc=G.R*(Math.SQRT2-1);
     const c0=[fc[0]-dg[0]*rc,fc[1]-dg[1]*rc];out.push({p:c0,q:[c0[0]+dg[0]*d,c0[1]+dg[1]*d],off:0});});
@@ -2628,9 +2666,11 @@ function bufferFill(){if(PLAN!=='bowl')return '';
   if(!zoned(P)){const t1=ZR.T.find(r=>r.tier===0);if(!t1)return '';return `<path d="${ptsPath(offsetPts(stations(boundary(P)),t1.x/1000))}" fill="var(--grass2)"/>`;}
   const G=rectGeo(P),d=k=>{const r=ZR[k].find(r=>r.tier===0);return r?r.x/1000:0;},s=G.side;
   const x0=s.L.p[0]-d('L'),x1=s.R.p[0]+d('R'),y0=s.T.p[1]-d('T'),y1=s.B.p[1]+d('B');
-  return `<rect x="${x0.toFixed(2)}" y="${y0.toFixed(2)}" width="${(x1-x0).toFixed(2)}" height="${(y1-y0).toFixed(2)}" fill="var(--grass2)"/>`;}
+  let cv='';(CH&&CH[0]?GEO:[]).forEach(k=>{const ch=CH[0][k];if(!ch||ch==='ring')return;const g=ch.find(q=>q.side);if(!g)return;const pts=[];for(let j=0;j<=48;j++)pts.push(segPt(g,j/48,d(k)));   /* a curved stand: the buffer runs on to its front row */
+    cv+='M'+pts.map(q=>q[0].toFixed(2)+' '+q[1].toFixed(2)).join('L')+'Z';});
+  return `<rect x="${x0.toFixed(2)}" y="${y0.toFixed(2)}" width="${(x1-x0).toFixed(2)}" height="${(y1-y0).toFixed(2)}" fill="var(--grass2)"/>`+(cv?`<path d="${cv}" fill="var(--grass2)"/>`:'');}
 // row numbers sit in the middle of a seating section, clear of the aisles: the section on the stand's straight run nearest the default spot
-function labMid(k,ti,px,py,rf){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz||!zoned(P))return null;const gi=Lz.ch.findIndex(g=>g.t==='LINE');if(gi<0)return null;const g=Lz.ch[gi];
+function labMid(k,ti,px,py,rf){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz||!zoned(P))return null;const gi=midIdx(Lz.ch);if(gi<0)return null;const g0=Lz.ch[gi],g=g0.side?{p:segPt(g0,0,0),q:segPt(g0,1,0)}:g0;   /* a curved stand: along its chord (labels only) */
   const ux=g.q[0]-g.p[0],uy=g.q[1]-g.p[1],l2=ux*ux+uy*uy;if(l2<1e-9)return null;const f=0.4999;   /* the middle section of the side */
   const fs=[0,...Lz.ais.filter(a=>a.i===gi).map(a=>a.f),1].sort((a,b)=>a-b);for(let i=1;i<fs.length;i++)if(f<=fs[i]){const off=(AIS().w/2000+(rf||1.5)*1.1)/Math.sqrt(l2),m=ti%2?Math.max(fs[i]-off,(fs[i-1]+fs[i])/2):i<fs.length-1?Math.min(fs[i]+off,(fs[i]+fs[i+1])/2):Math.min(fs[i-1]+off,(fs[i-1]+fs[i])/2);   /* Tier 1 just past the middle section's aisle, Tier 2 just inside it: the two columns never meet */   /* row numbers just past the middle section, clear of its labels and of the section cut on the other side */   /* just clear of the aisle, leaving the middle for the section seat count */return [g.p[0]+ux*m,g.p[1]+uy*m];}return null;}
 // typical seats per row in each section, written in the middle of the section at the tier's middle row (a range where rows differ)
@@ -2644,7 +2684,7 @@ function sectionList(ti,AL){AL=AL||(M&&M.AL);const T=AL&&AL[ti];if(!T)return [];
     {const ps=q.mid.pieces,tot=ps.reduce((t,x)=>t+Math.max(0,x.b-x.a),0);let h=tot/2,at=null;for(const x of ps){const l=Math.max(0,x.b-x.a);if(h<=l+1e-9){at=chainPtS(x.Lz.ch,x.a+h,x.d);break;}h-=l;}q.pt=at||chainPtS(pc.Lz.ch,(pc.a+pc.b)/2,pc.d);}q.mpt=chainPtS(pc.Lz.ch,(pc.a+pc.b)/2,pc.d);q.th=Math.atan2(q.mpt[1],q.mpt[0]);return q;});
   // start: the section on the north end zone's centre line
   const nk=GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='N'),Lz=nk&&T[nk];let th0=out.length?out[0].th:0;
-  if(Lz){const gi=Lz.ch.findIndex(g=>g.t==='LINE');if(gi>=0){const r=Lz.tr[Math.min(jm,Lz.tr.length-1)],d=(r.x+r.T/2)/1000,pm=segPt(Lz.ch[gi],0.5,d);th0=Math.atan2(pm[1],pm[0]);}}
+  if(Lz){const gi=midIdx(Lz.ch);if(gi>=0){const r=Lz.tr[Math.min(jm,Lz.tr.length-1)],d=(r.x+r.T/2)/1000,pm=segPt(Lz.ch[gi],0.5,d);th0=Math.atan2(pm[1],pm[0]);}}
   const TAU=2*Math.PI,rel=q=>((q.th-th0)%TAU+TAU+1e-6)%TAU;   // clockwise on the drawing (y down): increasing angle
   const c=out.reduce((a,q)=>!a||Math.min(rel(q),TAU-rel(q))<Math.min(rel(a),TAU-rel(a))?q:a,null),tc=c?c.th:th0,rel2=q=>((q.th-tc)%TAU+TAU+1e-6)%TAU;
   out.sort((a,b)=>rel2(a)-rel2(b)).forEach((q,i)=>q.no=(ti+1)*100+i+1);
@@ -2810,7 +2850,7 @@ function codeHTML(){const B=PLB();return `<div class="seg" style="margin:6px 0;g
 $('codeBox').addEventListener('change',e=>{const t=e.target;if(t.id==='plbExtra'){PLB().extra=Math.max(0,+t.value||0);update();}else if(t.id==='plbFactor'){PLB().factor=Math.max(1,+t.value||1);update();}});
 // ---------- enlarged plan of a typical section: every seat at its true width ----------
 let ENL={tier:0,side:null},CENL={tier:0,corner:'NW'},SHOWSEATS=false;const eastKey=()=>GEO.find(k=>isSide(k)&&compassOf(P)[k]==='E')||'T',westKey=()=>GEO.find(k=>isSide(k)&&compassOf(P)[k]==='W')||'B',enlSide=()=>ENL.side||westKey();
-function enlargedData(ti,k){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz)return null;const gi=Lz.ch.findIndex(g=>g.t==='LINE');if(gi<0)return null;
+function enlargedData(ti,k){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz)return null;const gi=midIdx(Lz.ch);if(gi<0)return null;
   const fs=Lz.ais.map((a,i)=>({a,i})).filter(x=>x.a.i===gi&&x.a.f!=null).sort((p,q)=>p.a.f-q.a.f);let L0=null,R0=null;
   for(let j=1;j<fs.length;j++)if(fs[j-1].a.f<=0.5+1e-9&&fs[j].a.f>=0.5-1e-9){L0=fs[j-1];R0=fs[j];break;}   // the middle section of the side
   if(!L0)return null;return {Lz,gi,L0,R0};}
