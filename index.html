@@ -290,7 +290,7 @@ main g.ctl{cursor:pointer}main g.ctl tspan,main g.ctl text.dv{fill:#B4531A}main 
     <div class="planhead"><span class="bub" id="bub3d">G</span><h3>3D view</h3>
       <p class="capt" id="v3Note">Live model of the bowl. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom. Click (tap) a section's back rows to add or remove its wheelchair platform, its front rows to switch it off, and an open section to switch it back on.</p>
       <div><div id="v3Tabs"><div class="seg" role="group" aria-label="Camera"><button data-v3p="persp" class="on" title="Perspective">Perspective</button><button data-v3p="ortho" title="Parallel projection: no vanishing points, true for measuring (SketchUp: Camera, Parallel Projection)">Parallel</button></div>
-        <div class="seg" role="group" aria-label="Isometric views"><button data-v3="NW">NW</button><button data-v3="NE">NE</button><button data-v3="SW">SW</button><button data-v3="SE" class="on">SE</button></div>
+        <div class="seg" role="group" aria-label="Isometric views"><button data-v3="NW">NW</button><button data-v3="NE">NE</button><button data-v3="SW">SW</button><button data-v3="SE" class="on">SE</button><button data-v3="Top" title="Plan view, looking straight down, north up (vertical, as the vertical bowl plan); switches to Parallel projection">Plan</button></div>
         <div class="seg" role="group" aria-label="Download the 3D model"><button id="v3Glb" title="glTF binary: viewing and presenting">.glb</button><button id="v3Ifc" title="IFC4: BIM coordination, opens or links in Revit">.ifc</button><button id="v33dm" title="Rhino 3dm: Rhino and Grasshopper; imports into Revit and SketchUp">.3dm</button><button id="v3Html" title="A standalone 3D viewer of this bowl (one .html file): open it in any browser, send it, or upload it to your website for a share link">3D viewer (.html)</button></div></div></div></div>
     <div class="panel" id="v3d" style="height:min(88vh,1000px);min-height:440px;padding:0;overflow:hidden"></div>
     <details id="v3Fmt" style="margin-top:8px"><summary>3D model downloads: which format for what</summary><table class="fixed wrap" style="margin:6px 0"><tbody>
@@ -1634,7 +1634,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.18.01';
+const VERSION='2026.10.18.02';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2423,7 +2423,7 @@ function v3View(v){V3.view=v;if(!V3.grp)return;const T=THREE,box=new T.Box3();V3
   // fit the bowl's projected outline to the frame: view axes from the direction, the eight box corners measured on them
   const up=Math.abs(dir.y)>0.999?new T.Vector3(-d[0],0,d[1]).normalize():new T.Vector3(0,1,0),zA=dir.clone(),xA=up.clone().cross(zA).normalize(),yA=zA.clone().cross(xA);
   const pts=[];for(const X of [box.min.x,box.max.x])for(const Y of [box.min.y,box.max.y])for(const Z of [box.min.z,box.max.z]){const q=new T.Vector3(X,Y,Z).sub(c);pts.push([q.dot(xA),q.dot(yA),q.dot(zA)]);}
-  const tV=Math.tan(V3.persp.fov*Math.PI/360),tH=tV*asp,M1=0.86;let dist=0,hw=0,hh=0;pts.forEach(([x,y,z])=>{dist=Math.max(dist,Math.abs(y)/tV+z,Math.abs(x)/tH+z);hw=Math.max(hw,Math.abs(x));hh=Math.max(hh,Math.abs(y));});dist*=M1;
+  const tV=Math.tan(V3.persp.fov*Math.PI/360),tH=tV*asp,M1=v==='Top'?1.04:0.86;   /* the plan shows the whole bowl */let dist=0,hw=0,hh=0;pts.forEach(([x,y,z])=>{dist=Math.max(dist,Math.abs(y)/tV+z,Math.abs(x)/tH+z);hw=Math.max(hw,Math.abs(x));hh=Math.max(hh,Math.abs(y));});dist*=M1;
   V3.persp.up.set(0,1,0);V3.persp.position.copy(c.clone().add(dir.clone().multiplyScalar(dist)));V3.persp.near=dist/100;V3.persp.far=dist*20;V3.persp.zoom=1;V3.persp.updateProjectionMatrix();
   V3.oh=Math.max(2*hh,2*hw/asp)*M1;V3.ortho.zoom=1;V3.ortho.up.set(0,1,0);V3.ortho.position.copy(V3.persp.position);V3.ortho.near=-dist*20;V3.ortho.far=dist*20;v3Frustum();
   V3.ctl.target.copy(c);V3.ctl.update();v3Tabs();v3Render();}
@@ -2432,7 +2432,7 @@ async function v3Glb(){await v3Init();if(!V3.grp)await v3Build();await loadThree
   new THREE.GLTFExporter().parse(V3.grp,res=>{keep.forEach(o=>V3.grp.add(o));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([res],{type:'model/gltf-binary'}));a.download=`Sightline_${slug()}.glb`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('3D model downloaded (.glb)');},
     e=>{keep.forEach(o=>V3.grp.add(o));toast('Export failed: '+e);},{binary:true});}
 function v3Schedule(){if(!V3.on)return;clearTimeout(V3.tm);V3.tm=setTimeout(()=>v3Build().catch(e=>{V3.ready=null;$('v3Note').textContent='3D view unavailable: could not load three.js ('+e.message+'). Upload the vendor/three folder, or check the internet connection.';}),250);}
-$('v3Tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.v3)v3View(b.dataset.v3);else if(b.dataset.v3p)v3Proj(b.dataset.v3p);else if(b.id==='v3Glb')v3Glb();else if(b.id==='v3Ifc')exportIFC();else if(b.id==='v33dm')export3DM();else if(b.id==='v3Html')v3ViewerHTML().catch(e=>toast('Viewer export failed: '+e.message));});
+$('v3Tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.v3){if(b.dataset.v3==='Top'&&V3.proj!=='ortho')v3Proj('ortho');v3View(b.dataset.v3);}else if(b.dataset.v3p)v3Proj(b.dataset.v3p);else if(b.id==='v3Glb')v3Glb();else if(b.id==='v3Ifc')exportIFC();else if(b.id==='v33dm')export3DM();else if(b.id==='v3Html')v3ViewerHTML().catch(e=>toast('Viewer export failed: '+e.message));});
 {const io=new IntersectionObserver(es=>{if(es.some(x=>x.isIntersecting)&&!V3.on){V3.on=true;v3Schedule();}},{rootMargin:'200px'});io.observe($('v3d'));}
 // ---------- 3D model exports from the live model (switched-off sections stay open): IFC4 and Rhino .3dm ----------
 // model coordinates: metres, x and y in plan (y north), z up; origin at the centre of the field, field level
