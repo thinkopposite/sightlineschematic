@@ -33,14 +33,14 @@ footer{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:.8r
 <header>
   <div>
     <h1>College Football bowl, 48,408 seats</h1>
-    <p class="sub">Sightline Schematic 2026.10.18.03 · 3 tiers · 52 vomitories · 324 wheelchair spaces · 10/18/2026</p>
+    <p class="sub">Sightline Schematic 2026.10.18.04 · 3 tiers · 52 vomitories · 324 wheelchair spaces · 10/18/2026</p>
   </div>
   <div class="bar">
     <div class="seg" role="group" aria-label="Camera">
       <button id="persp" aria-pressed="true">Perspective</button><button id="ortho" aria-pressed="false">Parallel</button>
     </div>
-    <div class="seg" role="group" aria-label="Isometric views">
-      <button data-v="NW" aria-pressed="false">NW</button><button data-v="NE" aria-pressed="false">NE</button><button data-v="SW" aria-pressed="false">SW</button><button data-v="SE" aria-pressed="true">SE</button>
+    <div class="seg" role="group" aria-label="Views">
+      <button data-v="Top" aria-pressed="false" title="Plan view, north up, parallel camera">Plan</button><button data-v="NW" aria-pressed="false">NW</button><button data-v="NE" aria-pressed="false">NE</button><button data-v="SW" aria-pressed="false">SW</button><button data-v="SE" aria-pressed="true">SE</button>
     </div>
   </div>
 </header>
@@ -60,7 +60,7 @@ footer{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:.8r
 <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
 <script>
 (function(){
-  const DIRS={"NW":[-0.5774,0.5774,0.5774],"NE":[-0.5774,0.5774,-0.5774],"SW":[0.5774,0.5774,0.5774],"SE":[0.5774,0.5774,-0.5774]};
+  const DIRS={"Top":[0.0001,1,0],"NW":[-0.5774,0.5774,0.5774],"NE":[-0.5774,0.5774,-0.5774],"SW":[0.5774,0.5774,0.5774],"SE":[0.5774,0.5774,-0.5774]};
   const frame=document.getElementById('frame'),status=document.getElementById('status');
   if(!window.THREE){status.textContent='The 3D library could not load. Check the connection and reload.';return;}
   const r=new THREE.WebGLRenderer({antialias:true});r.setPixelRatio(Math.min(2,window.devicePixelRatio||1));frame.appendChild(r.domElement);
@@ -68,10 +68,10 @@ footer{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:.8r
   scene.add(new THREE.HemisphereLight(0xffffff,0x6f6f68,0.62));
   const sun=new THREE.DirectionalLight(0xffffff,0.55);sun.position.set(-105,300,-165);scene.add(sun);
   const fill=new THREE.DirectionalLight(0xffffff,0.28);fill.position.set(120,105,180);scene.add(fill);
-  const ground=new THREE.Mesh(new THREE.PlaneGeometry(8000,8000),new THREE.MeshBasicMaterial({color:0xE0E0E0}));ground.rotation.x=-Math.PI/2;ground.position.y=-0.03;scene.add(ground);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(8000,8000),new THREE.MeshBasicMaterial({color:0xFFFFFF}));ground.rotation.x=-Math.PI/2;ground.position.y=-0.03;scene.add(ground);
   let cam=persp,model=null,view='SE',oh=100;
   const ctl=new THREE.OrbitControls(cam,r.domElement);ctl.screenSpacePanning=true;ctl.maxPolarAngle=Math.PI/2;ctl.addEventListener('change',render);
-  function bg(){r.setClearColor(new THREE.Color('#FFFFFF'));}
+  function bg(){r.setClearColor(new THREE.Color('#C0C0C0'));}
   function frustum(){const a=(frame.clientWidth||1)/(frame.clientHeight||1),h=oh/2;ortho.left=-h*a;ortho.right=h*a;ortho.top=h;ortho.bottom=-h;ortho.updateProjectionMatrix();}
   function size(){const w=frame.clientWidth,h=frame.clientHeight;if(!w||!h)return;r.setSize(w,h,false);persp.aspect=w/h;persp.updateProjectionMatrix();frustum();render();}
   function render(){bg();r.render(scene,cam);}
@@ -79,15 +79,15 @@ footer{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:.8r
   function fit(v){view=v;if(!model)return;const box=new THREE.Box3().setFromObject(model),c=box.getCenter(new THREE.Vector3()),d=new THREE.Vector3(...DIRS[v]).normalize();
     const up=new THREE.Vector3(0,1,0),xA=up.clone().cross(d).normalize(),yA=d.clone().cross(xA),asp=(frame.clientWidth||1)/(frame.clientHeight||1),tV=Math.tan(persp.fov*Math.PI/360),tH=tV*asp;
     let dist=0,hw=0,hh=0;for(const X of [box.min.x,box.max.x])for(const Y of [box.min.y,box.max.y])for(const Z of [box.min.z,box.max.z]){const q=new THREE.Vector3(X,Y,Z).sub(c),x=q.dot(xA),y=q.dot(yA),z=q.dot(d);dist=Math.max(dist,Math.abs(y)/tV+z,Math.abs(x)/tH+z);hw=Math.max(hw,Math.abs(x));hh=Math.max(hh,Math.abs(y));}
-    dist*=0.86;persp.position.copy(c.clone().add(d.clone().multiplyScalar(dist)));persp.near=dist/100;persp.far=dist*20;persp.zoom=1;persp.updateProjectionMatrix();
-    oh=Math.max(2*hh,2*hw/asp)*0.86;ortho.zoom=1;ortho.position.copy(persp.position);frustum();ctl.target.copy(c);ctl.update();press('[data-v]',b=>b.dataset.v===v);render();}
+    const M1=v==='Top'?1.04:0.86;dist*=M1;persp.position.copy(c.clone().add(d.clone().multiplyScalar(dist)));persp.near=dist/100;persp.far=dist*20;persp.zoom=1;persp.updateProjectionMatrix();
+    oh=Math.max(2*hh,2*hw/asp)*M1;ortho.zoom=1;ortho.position.copy(persp.position);frustum();ctl.target.copy(c);ctl.update();press('[data-v]',b=>b.dataset.v===v);render();}
   function proj(mode){const to=mode==='ortho'?ortho:persp;if(to===cam)return;const t=ctl.target,dist=cam.position.distanceTo(t);
     if(mode==='ortho'){oh=2*dist*Math.tan(persp.fov*Math.PI/360)/(cam.zoom||1);ortho.zoom=1;frustum();ortho.position.copy(cam.position);}
     else{const dd=oh/(2*Math.tan(persp.fov*Math.PI/360))/(cam.zoom||1),dir=cam.position.clone().sub(t).normalize();persp.position.copy(t.clone().add(dir.multiplyScalar(dd)));persp.near=dd/100;persp.far=dd*20;persp.updateProjectionMatrix();}
     cam=to;ctl.object=to;ctl.update();press('#persp,#ortho',b=>(b.id==='ortho')===(mode==='ortho'));render();}
   document.getElementById('persp').addEventListener('click',()=>proj('persp'));
   document.getElementById('ortho').addEventListener('click',()=>proj('ortho'));
-  document.querySelectorAll('[data-v]').forEach(b=>b.addEventListener('click',()=>fit(b.dataset.v)));
+  document.querySelectorAll('[data-v]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.v==='Top')proj('ortho');fit(b.dataset.v);}));
   new ResizeObserver(size).observe(frame);
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',render);
   const fail=()=>{status.textContent='The model file could not be loaded. Reload the page to try again.';};
