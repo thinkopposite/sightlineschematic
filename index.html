@@ -1634,7 +1634,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.19.10';
+const VERSION='2026.10.19.11';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -3434,17 +3434,18 @@ function swFinish(root,sh){swBaselines(root);const u=swU(sh),R=root.getBoundingC
 const swDraw=svg=>{const t=document.createElement('div');t.innerHTML=svg;t.querySelectorAll('.appgrid').forEach(e=>e.remove());titleize(t);return t.innerHTML;};   /* the sheet grid replaces the drawing's own */   // a drawing for a Swiss sheet: title case as before
 const swSq=(u,sc)=>imperial()?u*sc.ratio/12:u*25.4*sc.ratio/1000;                                     // one grid square, in feet or metres at this scale
 // One drawing per landscape sheet at the largest standard scale that fits inside the border; graphic scale at the lower left.
-function plotOne(sh,what,maxIn,fixed,ori){ori=ori||'h';if(what==='plan'&&ori==='v'&&sh.w>sh.h)sh=Object.assign({},sh,{w:sh.h,h:sh.w});   // vertical (north up) on a portrait sheet
+function plotOne(sh,what,maxIn,fixed,ori,force){ori=ori||'h';   // force: a set scale for the plan (decision 102)
+  if(what==='plan'&&ori==='v'&&sh.w>sh.h)sh=Object.assign({},sh,{w:sh.h,h:sh.w});   // vertical (north up) on a portrait sheet
          // fixed: use exactly maxIn, even if the drawing has to run into the border
   if(what==='section')return plotSection(sh);                 // maxIn: largest scale allowed, inches per foot (e.g. 1/16)
   const A=swArea(sh),aw=A.aw,ah=A.ah;
   let fit=null,svg0=null,pv=null;
   if(what==='plan'){   // largest standard scale whose plan fits the Swiss drawing area; stand names 1/4 in clear of the bowl (1/8 in when that is what fits), then snapped to the grid
-    const scs=PLOT_SCALES().filter(sc=>!maxIn||!imperial()||sc.ratio>=12/maxIn-1e-6),draw=(sc,g)=>{const pm=sc.ratio*25.4/1000,keep=[P.planOri,PLAN];P.planOri=ori;PLAN='bowl';
+    const scs=force?[force]:PLOT_SCALES().filter(sc=>!maxIn||!imperial()||sc.ratio>=12/maxIn-1e-6),draw=(sc,g)=>{const pm=sc.ratio*25.4/1000,keep=[P.planOri,PLAN];P.planOri=ori;PLAN='bowl';
       const s0=drawPlan({tight:true,labGap:{side:g*pm,end:g*pm}});P.planOri=keep[0];PLAN=keep[1];const v=s0.match(/viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/).slice(1).map(Number);return {s0,v};};
     for(const sc of scs){const k=1/sc.ratio/25.4;let hit=null;for(const g of [0.25,0.125]){const r=draw(sc,g),w=r.v[2]*1000*k,h=r.v[3]*1000*k;if(w<=aw&&h<=ah){hit={sc,k,w,h,svg:r.s0,u:25.4*sc.ratio/1000};pv=r.v;svg0=r.s0;break;}}
       if(hit){fit=hit;break;}}
-    if(!fit&&fixed&&imperial()&&maxIn){const sc=scs[0],k=1/sc.ratio/25.4,r=draw(sc,0.125);pv=r.v;svg0=r.s0;fit={sc,k,w:pv[2]*1000*k,h:pv[3]*1000*k,svg:svg0,u:25.4*sc.ratio/1000,over:true};}}
+    if(!fit&&(force||(fixed&&imperial()&&maxIn))){const sc=scs[0],k=1/sc.ratio/25.4,r=draw(sc,0.125);pv=r.v;svg0=r.s0;fit={sc,k,w:pv[2]*1000*k,h:pv[3]*1000*k,svg:svg0,u:25.4*sc.ratio/1000,over:true};}}
   else{const rows=ZR[P.sec].filter(r=>r.tier===0);
     for(const sc of PLOT_SCALES()){const k=1/sc.ratio/25.4,svg=drawDetail(ZR[P.sec],{fs:sh.txt*25.4*sc.ratio,sparse:(rows[1]||rows[0]).T*k<sh.txt*2.2});
       const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;if(w<=aw&&h<=ah){fit={sc,k,w,h,svg,u:25.4*sc.ratio};break;}}}
@@ -3617,7 +3618,8 @@ async function exportPdfSet(kind){
     await swLoadFaces();   /* the PDF faces in the page, so text measured here matches the PDF */
     const sheets=PLOT_SHEETS(),small=sheets[0],big=kind==='archE'?sheets[1]:sheets[0];
     const t1=plotTier(big,0),tiers=[t1,...Array.from({length:P.tierCount-1},(_,i)=>plotTier(big,i+1,t1&&t1.sc))];   // Tier 2 at the Tier 1 scale
-    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,plotOne(big,'plan'),plotOne(big,'plan',0,false,'v'),   /* largest standard scale inside the Swiss frame (1" = 50' no longer fits 11 x 17 above the 1-1/2 in band) */...(M.AL&&zoned(P)?(()=>{const e=ENL,ce=CENL,set=[()=>{ENL={tier:0,side:westKey()};},...Array.from({length:P.tierCount},(_,t)=>()=>{ENL={tier:0,side:'corner'};CENL={tier:t,corner:ce.corner};})];
+    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,...(()=>{const ps=kind==='archE'?(imperial()?{ratio:300,label:'1" = 25\'-0"'}:{ratio:250,label:'1:250'}):(imperial()?{ratio:900,label:'1" = 75\'-0"'}:{ratio:750,label:'1:750'});   /* bowl plans: 1" = 75' on 11 x 17, 1" = 25' on ARCH E (decision 102) */
+      return [plotOne(big,'plan',0,false,'h',ps),plotOne(big,'plan',0,false,'v',ps)];})(),   /* largest standard scale inside the Swiss frame (1" = 50' no longer fits 11 x 17 above the 1-1/2 in band) */...(M.AL&&zoned(P)?(()=>{const e=ENL,ce=CENL,set=[()=>{ENL={tier:0,side:westKey()};},...Array.from({length:P.tierCount},(_,t)=>()=>{ENL={tier:0,side:'corner'};CENL={tier:t,corner:ce.corner};})];
       const sc=kind==='archE'?(imperial()?{ratio:60,label:'1" = 5\'-0"'}:{ratio:50,label:'1:50'}):(imperial()?{ratio:120,label:'1" = 10\'-0"'}:{ratio:100,label:'1:100'});   /* ARCH E / A0: 1" = 5'-0" (1:50), every plan on one sheet (decision 101) */   /* every enlarged plan at 1" = 10'-0" (1:100); a plan too big for one sheet runs on to the next (decision 98) */
       const out=set.flatMap(f=>{f();const r=plotEnlarged(big,sc);return Array.isArray(r)?r:[r];});ENL=e;CENL=ce;return out.filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
     if(draws.some(p=>!p))throw new Error('A drawing does not fit its sheet at any standard scale.');
