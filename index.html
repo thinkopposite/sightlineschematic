@@ -1634,7 +1634,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.18.04';
+const VERSION='2026.10.19.10';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -1911,7 +1911,18 @@ const COL={pass:'var(--pass)',reduced:'var(--warn)',fail:'var(--fail)',front:'va
 // 45 degree ticks, thin extension lines with a small gap at the object, and the text parallel to the dimension line in two
 // lines: the label (smaller) above the value (bold). Text is placed clear of text already placed, sliding along the line and
 // then to the other side; when it slides past the end, the dimension line runs out to it as a leader.
-function SecDim(X,Y,fs,frame){   /* frame [W,H]: text never leaves the drawing */
+var SWG=0,SWORIG=null;   // during a PDF plot: model units per grid square for dimension snapping; the drawing's 0,0
+// PDF sheets on the Swiss grid: while SWG is set (model units per 1/4 in or 1/2 in grid square at the plot scale), every straight
+// dimension line moves outward onto the next grid line, never sharing a line with an overlapping dimension; 0,0 is recorded for placement.
+function SecDim(X,Y,fs,frame){const K=SecDim0(X,Y,fs,frame);if(!SWG)return K;if(!SWORIG)SWORIG=[+X(0),+Y(0)];const G=SWG,used=[],d0=K.dim0;
+  const pick=(c,lo,hi,dir,kind)=>{let v=dir>0?Math.ceil(c/G-1e-6)*G:Math.floor(c/G+1e-6)*G;
+    while(used.some(q=>q.kind===kind&&Math.abs(q.c-v)<1&&Math.min(q.hi,hi)-Math.max(q.lo,lo)>1))v+=dir*G;used.push({kind,c:v,lo,hi});return v;};
+  K.dim0=(a,b,o={})=>{const ref=o.eb||o.ea;
+    if(Math.abs(a[1]-b[1])<1){const dir=ref?(a[1]>=ref[1]?1:-1):1,z=pick(a[1],Math.min(a[0],b[0]),Math.max(a[0],b[0]),dir,'h');a=[a[0],z];b=[b[0],z];}
+    else if(Math.abs(a[0]-b[0])<1){const dir=ref?(a[0]>=ref[0]?1:-1):-1,x=pick(a[0],Math.min(a[1],b[1]),Math.max(a[1],b[1]),dir,'v');a=[x,a[1]];b=[x,b[1]];}
+    return d0(a,b,o);};
+  return K;}
+function SecDim0(X,Y,fs,frame){   /* frame [W,H]: text never leaves the drawing */
   const c='var(--dim)',f1=v=>(+v).toFixed(1),tk=fs*.3,LS=fs*.5,VS=fs*.6,boxes=[];let g='',t='';
   const tw=(s,sz)=>String(s).replace(/<[^>]*>/g,'').length*sz*.56;
   const tw2=(s,sz)=>{let w=0;for(const ch of String(s).replace(/<[^>]*>/g,''))w+=/[ilj.,:;'|!]/.test(ch)?.25:/[ \-trf()"]/.test(ch)?.34:/[mwMW]/.test(ch)?.8:/[A-Z]/.test(ch)?.63:/[0-9]/.test(ch)?.57:.54;return w*sz;};   /* closer width, condensed face: one-row layout */
@@ -1982,8 +1993,8 @@ function drawSection(rows,o={}){
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Bowl section with sightlines">`;
   const GS=imperial()?20*304.8:5000,gl=g=>imperial()?`${Math.round(g/304.8)}'`:fmode()==='m-dec'||fmode()==='mm-m'&&g>=10000?`${Math.round(g/1000)} m`:fmode()==='cm'?`${EN(g/10)} cm`:`${EN(g)} mm`;
   s+=gridBg(X0,X1,Z0,Z1,X,Y);
-  for(let g=Math.ceil(X0/GS)*GS;g<=X1;g+=GS)s+=`<line x1="${X(g)}" y1="0" x2="${X(g)}" y2="${H}" stroke="var(--edge)" stroke-width="0.8" opacity=".7" vector-effect="non-scaling-stroke"/><text x="${X(g)}" y="${H-fs*.35}" font-size="${fs*.8}" fill="var(--muted)" text-anchor="middle">${gl(g)}</text>`;
-  for(let g=0;g<=Z1;g+=GS)s+=`<line x1="0" y1="${Y(g)}" x2="${W}" y2="${Y(g)}" stroke="var(--edge)" stroke-width="0.8" opacity=".7" vector-effect="non-scaling-stroke"/>${g?`<text x="${fs*.4}" y="${+Y(g)-fs*.3}" font-size="${fs*.8}" fill="var(--muted)">${gl(g)}</text>`:''}`;
+  for(let g=Math.ceil(X0/GS)*GS;g<=X1;g+=GS)s+=`<line class="appgrid" x1="${X(g)}" y1="0" x2="${X(g)}" y2="${H}" stroke="var(--edge)" stroke-width="0.8" opacity=".7" vector-effect="non-scaling-stroke"/><text class="appgrid" x="${X(g)}" y="${H-fs*.35}" font-size="${fs*.8}" fill="var(--muted)" text-anchor="middle">${gl(g)}</text>`;
+  for(let g=0;g<=Z1;g+=GS)s+=`<line class="appgrid" x1="0" y1="${Y(g)}" x2="${W}" y2="${Y(g)}" stroke="var(--edge)" stroke-width="0.8" opacity=".7" vector-effect="non-scaling-stroke"/>${g?`<text class="appgrid" x="${fs*.4}" y="${+Y(g)-fs*.3}" font-size="${fs*.8}" fill="var(--muted)">${gl(g)}</text>`:''}`;
   const fx=rows[0].x,bf=Math.min(fs*.6,band*.62);
   s+=`<rect x="0" y="${Y(0)}" width="${X(0)}" height="${band}" fill="var(--pitch)"/><rect x="${X(0)}" y="${Y(0)}" width="${(fx).toFixed(0)}" height="${band}" fill="var(--grass2)"/>`;
   s+=`<text x="${+X(0)/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(0)}" fill="#fff" text-anchor="middle" font-weight="600">${surf()}</text>`;
@@ -2040,7 +2051,7 @@ function inchText(v){if(!imperial())return fmode()==='mm-m'?plain(v):`${EN(Math.
 function gridBg(X0,X1,Z0,Z1,X,Y,ox=0,oz=0){const mi=imperial()?304.8:1000,ma=imperial()?3048:5000;let a='',b='';   // ox, oz: the grid's 0,0
   for(let g=ox+Math.ceil((X0-ox)/mi)*mi;g<=X1+1e-6;g+=mi){const k=(g-ox)/ma,major=Math.abs(k-Math.round(k))<1e-6,seg=`M${X(g)} ${Y(Z0)}V${Y(Z1)}`;if(major)b+=seg;else a+=seg;}
   for(let g=oz+Math.ceil((Z0-oz)/mi)*mi;g<=Z1+1e-6;g+=mi){const k=(g-oz)/ma,major=Math.abs(k-Math.round(k))<1e-6,seg=`M${X(X0)} ${Y(g)}H${X(X1)}`;if(major)b+=seg;else a+=seg;}
-  return `<path d="${a}" fill="none" stroke="var(--grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><path d="${b}" fill="none" stroke="var(--edge)" stroke-width="0.6" opacity=".55" vector-effect="non-scaling-stroke"/>`;}
+  return `<path class="appgrid" d="${a}" fill="none" stroke="var(--grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><path class="appgrid" d="${b}" fill="none" stroke="var(--edge)" stroke-width="0.6" opacity=".55" vector-effect="non-scaling-stroke"/>`;}
 function drawDetail(all,o={}){
   const ti=o.tier||0,rs=all.filter(r=>r.tier===ti);if(!rs.length)return `<p class="empty" style="padding:16px">No Tier ${ti+1} rows.</p>`;
   const bufX=(all.find(r=>r.tier===0)||rs[0]).x;                 // the buffer always ends at the Tier 1 front riser
@@ -2532,10 +2543,10 @@ function vomSolids(){const out=[];if(!M||!M.AL)return out;const t=vomWall()/1000
     out.push({tri,name:`Vomitory ${lab}`,meta:{ti,mark:'V-'+lab,props:{Vomitory:lab,Tier:ti+1,Type:a.vomC>AIS().vomW?'Corner tunnel':'Spectator vom','Clear width':+(vomClear(a)/1000).toFixed(4),'Rows cut':`${s+1}–${s+k}`,'Wall thickness':+t.toFixed(4)}},key:a.vomKey,ch:Lz.ch,a,k,s,tr});})));
   return out;}
 // plan labels: V-<stand><n> (Tier 1), V2-<stand><n> (Tier 2), T-<corner> for corner tunnels, just in front of each opening
-function vomLabels(rf,t){if(!M||!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>v.toFixed(2),fs=rf*.95,done=new Set();
-  M.AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>Lz.ais.forEach((a,i)=>{if(!Lz.vom[i]||done.has(a.id)||!a.vr)return;done.add(a.id);const s=(a.vr&&a.vr.s)||0,d=Lz.tr[s].x/1000-fs*1.25,p=chainPtS(Lz.ch,chainS(Lz.ch,a,d),d),[x,y]=rotPt(p[0],p[1],t);
+function vomLabels(rf,t,plain){if(!M||!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>v.toFixed(2),fs=rf*.95,done=new Set();   // centred on the opening (its first to last row)
+  M.AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>Lz.ais.forEach((a,i)=>{if(!Lz.vom[i]||done.has(a.id)||!a.vr)return;done.add(a.id);const s=(a.vr&&a.vr.s)||0,e=Math.min(Lz.tr.length-1,s+Math.max(1,a.vr.k||1)-1),d=(Lz.tr[s].x+Lz.tr[e].x+Lz.tr[e].T)/2000,p=chainPtS(Lz.ch,chainS(Lz.ch,a,d),d),[x,y]=rotPt(p[0],p[1],t);
     const lab=a.vomC>AIS().vomW?'T-'+(a.vomKey||'').replace('C.',''):'V'+(ti?ti+1:'')+'-'+(a.vomLabel||'').replace(' ','');
-    o+=`<text x="${f(x)}" y="${f(y)}" font-size="${f(fs)}" font-weight="700" fill="#1E1E1E" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fs*.14)}">${lab}</text>`;})));return o;}
+    o+=`<text x="${f(x)}" y="${f(y)}" font-size="${f(fs*.72)}" font-weight="${plain?400:700}" fill="#DA291C" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fs*.14)}">${lab}</text>`;})));return o;}
 // a corner tunnel (with its walls and side aisles) wider than the corner's diagonal rows at its first row: on curved stands the
 // corner narrows (decision 82), so the tunnel runs into the corner aisles
 function tunnelFit(){const out=[];if(!M||!M.AL)return out;M.AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>Lz.ais.forEach((a,i)=>{if(!Lz.vom[i]||!a.vr||!a.vr.field)return;const g=Lz.ch[a.i];if(!g||!segDiag(g))return;
@@ -2690,7 +2701,7 @@ function planGrid(){const mi=imperial()?10*0.3048:5,ma=imperial()?50*0.3048:25,b
   const hx=Math.ceil(((P.L||100)/2+back)/ma)*ma,hy=Math.ceil(((P.W||60)/2+back)/ma)*ma;let a='',b='';
   for(let v=-hx;v<=hx+1e-6;v+=mi){const major=Math.abs(v/ma-Math.round(v/ma))<1e-6,seg=`M${v.toFixed(3)} ${-hy}V${hy}`;if(major)b+=seg;else a+=seg;}
   for(let v=-hy;v<=hy+1e-6;v+=mi){const major=Math.abs(v/ma-Math.round(v/ma))<1e-6,seg=`M${-hx} ${v.toFixed(3)}H${hx}`;if(major)b+=seg;else a+=seg;}
-  return `<path d="${a}" fill="none" stroke="var(--grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><path d="${b}" fill="none" stroke="var(--edge)" stroke-width="0.6" opacity=".55" vector-effect="non-scaling-stroke"/>`;}
+  return `<path class="appgrid" d="${a}" fill="none" stroke="var(--grid)" stroke-width="0.5" vector-effect="non-scaling-stroke"/><path class="appgrid" d="${b}" fill="none" stroke="var(--edge)" stroke-width="0.6" opacity=".55" vector-effect="non-scaling-stroke"/>`;}
 function bufferFill(){if(PLAN!=='bowl')return '';
   if(!zoned(P)){const t1=ZR.T.find(r=>r.tier===0);if(!t1)return '';return `<path d="${ptsPath(offsetPts(stations(boundary(P)),t1.x/1000))}" fill="var(--grass2)"/>`;}
   const G=rectGeo(P),d=k=>{const r=ZR[k].find(r=>r.tier===0);return r?r.x/1000:0;},s=G.side;
@@ -2983,23 +2994,31 @@ function seatsSvg(){if(!SHOWSEATS||!M.AL||PLAN!=='bowl')return '';const A=AIS(),
       p+=`M${f(P1[0])} ${f(P1[1])}L${f(P2[0])} ${f(P2[1])}L${f(P3[0])} ${f(P3[1])}L${f(P4[0])} ${f(P4[1])}Z`;}});});
   return `<path d="${p}" fill="none" stroke="var(--ink)" stroke-width="0.25" opacity=".7" vector-effect="non-scaling-stroke"/>`;}
 // PDF sheet: the enlarged section plan at the largest standard scale that fits
-function plotEnlarged(sh){const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=sh.txt*3.2,aw=sh.w-2*B,ah=sh.h-2*B-title-sb;let fit=null;
-  const scs=enlSide()==='corner'?[cornerScale(sh,aw,ah)].filter(Boolean):PLOT_SCALES();
-  for(const sc of scs){const kk=1/sc.ratio/25.4,svg=drawEnlarged({fs:sh.txt*25.4*sc.ratio}),v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);if(!v)return null;const w=+v[1]*kk,h=+v[2]*kk;
-    if(w<=aw&&h<=ah){fit={sc,k:kk,w,h,svg,u:25.4*sc.ratio};break;}}
+function plotEnlarged(sh,force){const A=swArea(sh),aw=A.aw,ah=A.ah;let fit=null;   // force: the common scale of the set's enlarged plans
+  const ti=Math.min((enlSide()==='corner'?CENL:ENL).tier,P.tierCount-1),sw=P.zt[ti].z.T.seatW,r=sw/(A.u*25.4);   // one seat = one grid square (decision 93)
+  const seatSc={ratio:r,label:imperial()?(()=>{const t=Math.round(r*4)/4,ft=Math.floor(t/12),inch=+(t-ft*12).toFixed(2);return `1" = ${ft}'-${inch}"`;})():`1:${Math.round(r)}`,seat:1};
+  const scs=enlSide()==='corner'?[seatSc,cornerScale(sh,aw,ah)].filter(Boolean):[seatSc,...PLOT_SCALES()];
+  const lab=r=>imperial()?(()=>{const t=Math.ceil(r*4-1e-6)/4,ft=Math.floor(t/12),inch=+(t-ft*12).toFixed(2);return `1" = ${ft}'-${inch}"`;})():`1:${Math.ceil(r-1e-6)}`;
+  const tryS=sc=>{const kk=1/sc.ratio/25.4,svg=drawEnlarged({fs:sh.txt*25.4*sc.ratio,own:true}),v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);if(!v)return null;return {sc,k:kk,w:+v[1]*kk,h:+v[2]*kk,svg,u:25.4*sc.ratio};};
+  if(force)fit=tryS(force);
+  else{let t=tryS(seatSc);if(t&&t.w<=aw&&t.h<=ah)fit=t;   // a seat one grid square wide; failing that, the largest scale that fills the area (on a 1/4 in step)
+   else if(t)for(let i=0;i<6&&!fit;i++){const r0=t.sc.ratio*Math.max(t.w/aw,t.h/ah)*1.002,r=imperial()?Math.ceil(r0*4)/4:Math.ceil(r0);t=tryS({ratio:r,label:lab(r)});if(t&&t.w<=aw&&t.h<=ah)fit=t;}}
+  if(!fit)for(const sc of scs.slice(1)){const t=tryS(sc);if(t&&t.w<=aw&&t.h<=ah){fit=t;break;}}
   if(!fit)return null;
-  const x=B+(aw-fit.w)/2,y=B+(ah-fit.h)/2,per=(imperial()?304.8:1000)*fit.k,divs=[1,2,5,10,20,25,50,100];let u=divs[0];for(const q of divs)if(q*5*per<=sh.w*.22)u=q;
-  const gy=sh.h-B-title-sb+sh.txt*1.6,bh=sh.txt*.7;let g=`<text x="${f(B)}" y="${f(gy)}" font-size="${f(sh.txt*1.1)}" font-weight="700">Scale ${fit.sc.label}</text>`;
-  for(let i=0;i<5;i++)g+=`<rect x="${f(B+i*u*per)}" y="${f(gy+sh.txt*.5)}" width="${f(u*per)}" height="${f(bh)}" fill="${i%2?'#fff':'#000'}" stroke="#000" stroke-width="${f(sh.txt*.06)}"/>`;
-  for(let i=0;i<=5;i++)g+=`<text x="${f(B+i*u*per)}" y="${f(gy+sh.txt*.5+bh+sh.txt*1.05)}" font-size="${f(sh.txt*.85)}" text-anchor="middle">${i*u}</text>`;
-  g+=`<text x="${f(B+5*u*per+sh.txt*.5)}" y="${f(gy+sh.txt*.5+bh*.9)}" font-size="${f(sh.txt*.85)}">${imperial()?'feet':'metres'}</text>`;if(enlSide()==='corner')g='';   // a non-standard scale: no graphic scale bar
-  
-  const Sp=SPORTS[P.sport],ty=sh.h-B-sh.txt*.4;
-  const tb=`<text x="${f(sh.w*.5)}" y="${f(ty-sh.txt*1.6)}" font-size="${f(sh.txt*1.5)}" font-weight="800" text-anchor="start">Sightline Schematic: ${enlargedTitle()}</text>`
-    +`<text x="${f(sh.w*.5)}" y="${f(ty)}" font-size="${f(sh.txt*.95)}" text-anchor="start">${Sp.name} (${Sp.org}) | ${optName()} | Scale ${fit.sc.label} | ${sh.name} landscape | ${new Date().toLocaleDateString()}</text>`;
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(sh.w)}in" height="${f(sh.h)}in" viewBox="0 0 ${f(sh.w)} ${f(sh.h)}" font-family="Archivo, 'Arial Narrow', Arial, sans-serif"><rect width="${f(sh.w)}" height="${f(sh.h)}" fill="#fff"/>`
-    +trueStrokes(fit.svg,fit.u).replace('<svg ',`<svg x="${f(x)}" y="${f(y)}" width="${f(fit.w)}" height="${f(fit.h)}" preserveAspectRatio="xMidYMid meet" `)+g+tb+'</svg>';
-  const tmp=document.createElement('div');tmp.innerHTML=svg;titleize(tmp);return {svg:tmp.innerHTML,scale:fit.sc.label,sheet:sh,what:'enlarged'};}
+  const title=enlargedTitle(),corner=enlSide()==='corner',sc=swScale(sh,fit.sc.label,fit.k);if(fit.sc.seat)sc.note='One seat = one grid square.';
+  const nx=Math.max(1,Math.ceil(fit.w/aw-1e-6)),ny=Math.max(1,Math.ceil(fit.h/ah-1e-6)),base=swDraw(trueStrokes(fit.svg,fit.u)),vb=base.match(/viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/).slice(1).map(Number);
+  if(nx*ny===1)return {svg:swissSheet(sh,{title,big:['Enlarged','Plan'],draws:[{svg:base,w:fit.w,h:fit.h}],scale:sc}),scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'enlarged',title};
+  // too big for one sheet at the set scale. A corner splits at its middle aisle (decision 99): left and right of it, each on its own sheet, clipped to its part
+  const cx=+((base.match(/data-cx="([-\d.]+)"/)||[])[1]);
+  if(corner&&cx>0&&cx<vb[2]&&cx*fit.k<=aw&&(vb[2]-cx)*fit.k<=aw)return [[0,cx,'left of the middle aisle'],[cx,vb[2],'right of the middle aisle']].flatMap(([a,b,nm])=>{const hs=[];   // each side, top and bottom halves too when it is still too tall
+      for(let j=0;j<ny;j++){const t=`${title} (${nm}${ny===2?(j?', bottom half':', top half'):ny>1?`, part ${j+1} of ${ny}`:''})`,ph=vb[3]/ny,svg=base.replace(/viewBox="[^"]*"/,`viewBox="${a.toFixed(1)} ${(vb[1]+j*ph).toFixed(1)} ${(b-a).toFixed(1)} ${ph.toFixed(1)}"`);
+        hs.push({svg:swissSheet(sh,{title:t,big:['Enlarged','Plan'],draws:[{svg,w:(b-a)*fit.k,h:fit.h/ny,clip:1}],scale:sc}),scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'enlarged',title:t});}return hs;});
+  // otherwise equal parts, top to bottom (and left to right)
+  const parts=[],n=nx*ny,pw=vb[2]/nx,ph=vb[3]/ny,names=ny===2&&nx===1?['top half','bottom half']:nx===2&&ny===1?['left half','right half']:null;
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const q=j*nx+i,t=`${title} (${names?names[q]:`part ${q+1} of ${n}`})`,svg=base.replace(/viewBox="[^"]*"/,`viewBox="${(vb[0]+i*pw).toFixed(1)} ${(vb[1]+j*ph).toFixed(1)} ${pw.toFixed(1)} ${ph.toFixed(1)}"`);
+    parts.push({svg:swissSheet(sh,{title:t,big:['Enlarged','Plan'],draws:[{svg,w:fit.w/nx,h:fit.h/ny,clip:1}],scale:sc}),scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'enlarged',title:t});}
+  return parts;}
+
 // rows whose section holds more seats than the IBC maximum per row (Irwin 14 in seat: 47 at 20 in clear) shaded light red, usually at the corners
 function overRowsSvg(){if(!M.AL||PLAN!=='bowl'||!imperial())return '';let p='';const f=v=>v.toFixed(3);
   for(let ti=0;ti<M.AL.length;ti++){const T=M.AL[ti],zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)continue;
@@ -3026,7 +3045,7 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.tier??CENL.tier,P.tierCoun
   // frame: origin on the corner aisle at the front row, v outward along the aisle, u across it
   const g=Lz.ch[di],dF=Lz.tr[0].x/1000,dB=(Lz.tr[Lz.tr.length-1].x+Lz.tr[Lz.tr.length-1].T)/1000,O=segPt(g,0.5,dF),O2=segPt(g,0.5,dB);   // frame on the corner's centreline
   let dv=[O2[0]-O[0],O2[1]-O[1]];const dl=Math.hypot(...dv);dv=[dv[0]/dl,dv[1]/dl];const pr=[-dv[1],dv[0]];
-  const loc=p=>[((p[0]-O[0])*pr[0]+(p[1]-O[1])*pr[1])*1000,-((p[0]-O[0])*dv[0]+(p[1]-O[1])*dv[1])*1000];   // mm, y down on the drawing
+  const loc=p=>[((p[0]-O[0])*pr[0]+(p[1]-O[1])*pr[1])*1000,-((p[0]-O[0])*dv[0]+(p[1]-O[1])*dv[1])*1000];   // mm, y down: the corner's middle aisle vertical (north-up turned 45 degrees clockwise for the north-west corner; decision 99)
   // the two sections beside the corner aisle, row by row
   const rows=[];let bothIds=new Set(ids);
   for(let j=0;j<nr;j++){const secs=ringSecs(ti,j).filter(sc=>inC(sc.l)||inC(sc.r));secs.forEach(sc=>{if(sc.l!=null)bothIds.add(sc.l);if(sc.r!=null)bothIds.add(sc.r);});rows.push(secs);}
@@ -3064,8 +3083,8 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.tier??CENL.tier,P.tierCoun
   const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=minOf(xs),x1=maxOf(xs),y0=minOf(ys),y1=maxOf(ys);
   if(o.measure)return {w:x1-x0,h:y1-y0};
   // one frame for every tier, the largest corner's, so Tier 1 and Tier 2 draw at the same scale (web and PDF)
-  let Wc=x1-x0,Hc=y1-y0;for(let t=0;t<P.tierCount;t++){if(t===ti)continue;const b=drawCornerEnlarged({measure:true,tier:t});if(b&&b.w){Wc=Math.max(Wc,b.w);Hc=Math.max(Hc,b.h);}}
-  const fs=o.fs||Wc/58,m=fs*7,VX=(x0+x1)/2-Wc/2-m,VY=y1-Hc-fs*5,W=Wc+2*m,H=Hc+fs*5+fs*8;   // centred across, front rows on a common line
+  let Wc=x1-x0,Hc=y1-y0;if(!o.own)for(let t=0;t<P.tierCount;t++){if(t===ti)continue;const b=drawCornerEnlarged({measure:true,tier:t});if(b&&b.w){Wc=Math.max(Wc,b.w);Hc=Math.max(Hc,b.h);}}
+  const fs=o.fs||Wc/58,m=fs*7,mt=o.own?fs*.8:fs*5,mb=o.own?fs*2.2:fs*8,VX=(x0+x1)/2-Wc/2-m,VY=y1-Hc-mt,W=Wc+2*m,H=Hc+mt+mb;   /* PDF sheets: tight above and below */   // centred across, front rows on a common line
   // row numbers in the corner aisle; seats per row beside each outer aisle
   const ftx=(p,t,sz,an='middle',col='var(--ink)',fw=400)=>`<text x="${F(p[0])}" y="${F(p[1])}" font-size="${F(sz)}" font-weight="${fw}" fill="${col}" text-anchor="${an}" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${F(sz*.12)}">${t}</text>`;
   {const ra=ca.cl?(Lz.ais.find(a=>a.ray&&a.i===ca.i-1&&ids.includes(a.id))||ca):ca;Lz.tr.forEach(r=>{const d=(r.x+r.T/2)/1000;txt+=ftx(loc(chainPtS(Lz.ch,chainS(Lz.ch,ra,d),d)),r.row,Wc/58*.48);});}   // row numbers in the corner aisle (the left edge aisle where the centreline is a section line)
@@ -3078,10 +3097,10 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.tier??CENL.tier,P.tierCoun
   const X=v=>F(v-VX),Y=v=>F(v-VY),K=SecDim(u=>(+u-VX).toFixed(1),v=>(+v-VY).toFixed(1),fs*.9,[W,H]);
   if(ids.length===1){const d=dF,s=chainS(Lz.ch,ca,d),w=cutW(ca,wA),a=loc(chainPtS(Lz.ch,s-w/2,d)),b=loc(chainPtS(Lz.ch,s+w/2,d)),off=fs*2.4;
     K.dim([a[0],a[1]+off],[b[0],b[1]+off],{lab:'Corner aisle',val:L(w*1000),ea:a,eb:b,ref:'aisle'});}
-  const key=`<g font-size="${F(fs*.6)}" fill="var(--ink)"><rect x="${F(fs)}" y="${F(H-fs*2.6)}" width="${F(fs*1.2)}" height="${F(fs*.7)}" fill="#FF8A8A" fill-opacity=".45" stroke="var(--ink)" stroke-width="0.4" vector-effect="non-scaling-stroke"/><text x="${F(fs*2.6)}" y="${F(H-fs*2.0)}">Row over the IBC maximum of ${ibc} seats per row</text>`
+  const key=`<g font-size="${F(fs*.6)}" fill="var(--ink)"><rect x="${F(fs)}" y="${F(H-(o.own?fs*1.4:fs*2.6))}" width="${F(fs*1.2)}" height="${F(fs*.7)}" fill="#FF8A8A" fill-opacity=".45" stroke="var(--ink)" stroke-width="0.4" vector-effect="non-scaling-stroke"/><text x="${F(fs*2.6)}" y="${F(H-(o.own?fs*.8:fs*2.0))}">Row over the IBC maximum of ${ibc} seats per row</text>`
     +`<path d="M${F(fs*1.1)} ${F(H-fs*1.4)}h${F(fs)}v${F(fs*.6)}h${F(-fs)}Z" fill="none" stroke="#C0392B" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/><text x="${F(fs*2.6)}" y="${F(H-fs*.95)}">Seat left out by the ${cap}-seat section cap, at the far end of the row (red +n beside the row)</text></g>`;
   const tr=s=>s.replace(/(M|L)(-?[\d.]+) (-?[\d.]+)/g,(m0,c,x,y)=>`${c}${X(+x)} ${Y(+y)}`).replace(/x="(-?[\d.]+)" y="(-?[\d.]+)"/g,(m0,x,y)=>`x="${X(+x)}" y="${Y(+y)}"`);
-  return `<svg viewBox="0 0 ${F(W)} ${F(H)}" role="img" aria-label="Enlarged plan of a corner">`+tr(rowsSvg+aisSvg+seatSvg+omitSvg+txt)+K.out()+key+'</svg>';}
+  return `<svg viewBox="0 0 ${F(W)} ${F(H)}" data-cx="${F(-VX)}" role="img" aria-label="Enlarged plan of a corner">`+tr(rowsSvg+aisSvg+seatSvg+omitSvg+txt)+K.out()+key+'</svg>';}
 function cornerTitle(){const ti=Math.min(CENL.tier,P.tierCount-1),C=cornerData(ti);let nos='';
   if(C){const l=[...new Set(sectionList(ti).filter(q=>q.key.split('_').map(Number).some(x=>C.ids.includes(x))).map(q=>q.no))].sort((a,b)=>a-b);if(l.length)nos=' '+(l.length>2?l.slice(0,-1).join(', ')+' and '+l[l.length-1]:l.join(' and '));}
   return `Enlarged plan: typical corner, sections${nos}, Tier ${ti+1} ${CORNERS[enlCorner()]} corner`;}
@@ -3127,13 +3146,13 @@ function drawPlan(o={}){
       tr.forEach((r,i)=>{if(!(i===0||i===tr.length-1||(r.row%every===0&&tr.length-1-i>=every&&i>=every*.6)))return;
         const d=(r.x+r.T/2)/1000,[rx,ry]=rotPt(px+nx*d,py+ny*d,t);
         over+=`<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${rf.toFixed(2)}" font-weight="600" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${(rf*.12).toFixed(2)}">${r.row}</text>`;});}
-    over+=sectLabels(o.tight?rf*1.2:rf,t,!!o.tight);over+=vomLabels(o.tight?rf*1.2:rf,t);   // the PDF sheets read at paper size: a little larger than on screen, in plain (regular) text
+    over+=sectLabels(o.tight?rf*1.2:rf,t,!!o.tight);over+=vomLabels(o.tight?rf*1.2:rf,t,!!o.tight);   // the PDF sheets read at paper size: a little larger than on screen, in plain (regular) text
     over+=labels.map(([x,y,tx,ang])=>{const [rx,ry]=rotPt(x,y,t);let a=(ang||0)+t;while(a>90)a-=180;while(a<=-90)a+=180;   // parallel to the stand, reading upright
       return `<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${(lf*.7).toFixed(2)}" font-weight="400" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle"${a?` transform="rotate(${a.toFixed(1)} ${rx.toFixed(2)} ${ry.toFixed(2)})"`:''}>${tx}</text>`;}).join('');
 
   }
   else{if(P.sport!=='nfl'&&P.sport!=='ncaafb'&&S.shape!=='fan'&&S.shape!=='track'&&dims.length>1){dims[0].ctl='L';dims[1].ctl='W';}body+=drawDims(dims,g,fs);}
-  {const sc=sectionAt(),[sx,sy,nx,ny]=sc,reach=PLAN==='bowl'?Rmax+1.5:Math.max(4,S.pad*.75),inn=PLAN==='bowl'?8:Math.max(3,S.pad*.4),al=(x1-x0)/40,BL='#1E5BD8',hw=al*.75*Math.tan(10*Math.PI/180);   // 20 degree heads
+  {const sc=sectionAt(),[sx,sy,nx,ny]=sc,reach=PLAN==='bowl'?Rmax+1.5:Math.max(4,S.pad*.75),inn=PLAN==='bowl'?16:Math.max(3,S.pad*.4),al=(x1-x0)/40,BL='#1E5BD8',hw=al*.75*Math.tan(10*Math.PI/180);   // 20 degree heads
     const ax=sx-nx*inn,ay=sy-ny*inn,bx=sx+nx*reach,by=sy+ny*reach,vx=ny,vy=-nx,fx=v=>v.toFixed(2);   // cut line from the field out through the stand; v: viewing direction, field on the viewer's left as drawn
     const arrow=(x,y)=>`<line x1="${fx(x)}" y1="${fx(y)}" x2="${fx(x+vx*al*.9)}" y2="${fx(y+vy*al*.9)}" stroke="${BL}" stroke-width="2.2" vector-effect="non-scaling-stroke"/>`
       +`<path d="M${fx(x+vx*al*1.5)} ${fx(y+vy*al*1.5)}L${fx(x+vx*al*.75+nx*hw)} ${fx(y+vy*al*.75+ny*hw)}L${fx(x+vx*al*.75-nx*hw)} ${fx(y+vy*al*.75-ny*hw)}Z" fill="${BL}"/>`;
@@ -3329,101 +3348,158 @@ const DETAIL_SCALES=()=>imperial()?[...REVIT_ENLARGED,...REVIT_STD].map(([v,t])=
 const PLOT_SCALES=()=>imperial()?REVIT_STD.map(([v,t])=>({ratio:12/v,label:t})):[20,25,50,100,200,250,500,750,1000,1250,1500,2000,2500,5000].map(r=>({ratio:r,label:`1:${r}`}));   /* metric: ISO series plus the common intermediates 1:750, 1:1250, 1:1500, 1:2500 */
 function trueStrokes(svg,unitPerIn){                           // screen-pixel line weights become paper weights (1 px = 1/96 in)
   return svg.replace(/stroke-width="([\d.]+)"( stroke-dasharray="[^"]*")?( opacity="[^"]*")? vector-effect="non-scaling-stroke"/g,(m,w,d,o)=>`stroke-width="${(Math.max(+w,0.5)/96*unitPerIn).toFixed(4)}"${d?d.replace(/"([\d. ]+)"/,(q,v)=>'"'+v.split(' ').map(n=>(+n/96*unitPerIn).toFixed(3)).join(' ')+'"'):''}${o||''}`);}
+// ---------- Swiss sheet frame (decisions 91-92): International Typographic Style on a 1/4 in grid (1/2 in on ARCH E / A0) ----------
+// Every sheet: warm paper, the grid to the Phase 8 margins (1 square top, left and right; 6 squares at the bottom), a header
+// (two label rows and a rule), a numbered heading with a red square, the drawing, and a band below the grid: big title with the
+// key word in red, four tiles (scale with a bar, two figures, the sheet number in black) and a running footer.
+// Placeholders %%NO%% and %%N%% take the sheet number and count when the set is assembled.
+const SW={paper:'#F6F5F2',grid:'#E6E5DF',ink:'#111111',red:'#DA291C',grey:'#6B6B68',font:'ARC'};
+const swU=sh=>sh.w>30||sh.h>30?0.5:0.25;
+function swArea(sh){const u=swU(sh);return {u,x0:2*u,y0:5*u,aw:sh.w-4*u,ah:sh.h-11*u};}
+function swT(x,y,s,o={}){const k=o.k||1,sz=(o.pt||7)*k/72,ls='';   /* svg2pdf ignores letter-spacing (and would misplace centred text): none */
+  return `<text x="${(+x).toFixed(4)}" y="${(+y).toFixed(4)}" font-family="${SW.font}" font-size="${sz.toFixed(4)}" font-weight="${o.b?'bold':'normal'}" fill="${o.fill||SW.ink}"${o.a?` text-anchor="${o.a}"`:''}${ls}>${String(s).replace(/&(?!amp;|lt;|gt;)/g,'&amp;').replace(/</g,'&lt;')}</text>`;}
+const swBase=(top,h,pt,k)=>top+h/2+0.36*pt*(k||1)/72;                   // baseline that centres capitals in a row
+function swRect(x,y,w,h,fill,stroke,sw){return `<rect x="${(+x).toFixed(4)}" y="${(+y).toFixed(4)}" width="${(+w).toFixed(4)}" height="${(+h).toFixed(4)}" fill="${fill||'none'}"${stroke?` stroke="${stroke}" stroke-width="${sw}"`:''}/>`;}
+function swGrid(sh){const u=swU(sh),gw=sh.w-2*u,gh=sh.h-7*u;let d='';
+  for(let i=0;i<=Math.round(gw/u);i++)d+=`M${(u+i*u).toFixed(3)} ${u}V${(u+gh).toFixed(3)}`;for(let j=0;j<=Math.round(gh/u);j++)d+=`M${u} ${(u+j*u).toFixed(3)}H${(u+gw).toFixed(3)}`;
+  return `<g class="swgrid"><path d="${d}" fill="none" stroke="${SW.grid}" stroke-width="${(0.011*u/0.25).toFixed(4)}"/></g>`;}
+function swBarTxt(per){const divs=[1,2,5,10,20,25,50,100,200,500,1000];return {divs,per};}
+// the drawing area is fixed by the frame; plot functions fit their scale to it
+function swissSheet(sh,o){const u=swU(sh),k=u/0.25,A=swArea(sh),W=sh.w,H=sh.h,f=v=>(+v).toFixed(4),Sp=SPORTS[P.sport],L=2*u,R=o.R||W-2*u,N=Math.round((R-L)/u);
+  let s=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}in" height="${f(H)}in" viewBox="0 0 ${f(W)} ${f(H)}">`+swRect(0,0,W,H,SW.paper)+swGrid(sh);
+  const lab={pt:7,b:1,ls:.14,k},orient=W>H?'landscape':'portrait';
+  s+=swT(L,swBase(u,u,7,k),'SIGHTLINE SCHEMATIC — DESIGN STUDY',lab)+swT(L,swBase(2*u,u,6.5,k),`REF: ${Sp.org} ${Sp.name} / ${optName()} / ${P.tierCount} TIER${P.tierCount>1?'S':''} / ${fmt(M.cap)} SEATS`.toUpperCase(),{pt:6.5,ls:.06,k,fill:SW.grey})
+    +swT(R,swBase(u,u,7,k),`FORMAT: ${imperial()?`${Math.min(W,H)} × ${Math.max(W,H)} `:''}${sh.name.toUpperCase()} ${orient.toUpperCase()}`,{...lab,a:'end'})+swRect(L,3*u-1.5*k/72,R-L,1.5*k/72,SW.ink);
+  if(!o.noHeading)s+=swRect(L,4*u+u/4,u/2,u/2,SW.red)+swT(3*u,swBase(4*u,u,13,k),`%%NO%%. ${String(o.title).toUpperCase()}`,{pt:13,b:1,k});
+  // drawing: centred in the area; its 0,0 (point of focus or field centre) on a grid point when known
+  let org=null;(o.draws||[]).forEach(d=>{let x=d.x!=null?d.x:A.x0+(A.aw-d.w)/2,y=d.y!=null?d.y:A.y0+(A.ah-d.h)/2;
+    if(d.ox!=null){const gx=x+d.ox,gy=y+d.oy;x+=Math.round(gx/u)*u-gx;y+=Math.round(gy/u)*u-gy;org={x:x+d.ox,y:y+d.oy,sq:d.sq,plan:d.plan};}
+    s+=`<g class="swdraw" font-family="Archivo, 'Arial Narrow', Arial, sans-serif">`+d.svg.replace('<svg ',`<svg x="${f(x)}" y="${f(y)}" width="${f(d.w)}" height="${f(d.h)}" preserveAspectRatio="xMidYMid meet"${d.clip?'':' overflow="visible"'} `)+'</g>';});
+  s+=o.extra||'';
+  // scaled measurements on the grid border, every 5 squares from the drawing's 0,0
+  if(org&&org.sq){const gx0=u,gx1=W-u,gy0=u,gy1=H-6*u,tp={pt:5.5,k,fill:'#55554F',ls:.04},un=imperial()?"'":' m',lb=n=>n===0?'0':`${+(Math.abs(n)*org.sq).toFixed(2)}${un}`,ls=n=>n===0?'0':`${+(n*org.sq).toFixed(2)}${un}`;
+    for(let n=Math.ceil((gx0-org.x)/u);n<=Math.floor((gx1-org.x)/u);n++){if(n%5)continue;const x=org.x+n*u;s+=swT(x,u*0.62,org.plan?lb(n):ls(n),{...tp,a:'middle'})+swRect(x-.004*k,u,.008*k,.3*u,SW.ink);}
+    for(let m=Math.ceil((org.y-gy1)/u);m<=Math.floor((org.y-gy0)/u);m++){if(m%5)continue;const y=org.y-m*u,t=org.plan?lb(m):ls(m);
+      s+=swT(u-.03*k,y+.028*k,t,{...tp,a:'end'})+swRect(u,y-.004*k,.3*u,.008*k,SW.ink)+swT(W-u+.03*k,y+.028*k,t,tp)+swRect(W-u-.3*u,y-.004*k,.3*u,.008*k,SW.ink);}}
+  // band below the grid
+  const y0=H-6*u,tw=Math.floor((N-4-Math.floor(N/4))/4),tt=N-4-4*tw;
+  s+=swRect(L,y0,R-L,.75*k/72,SW.ink);
+  const tpt=Math.min(26*k,tt*u*72/(Math.max(String(o.big[0]).length,String(o.big[1]).length+1)*0.68))/k;   // the title fits its columns
+  s+=swT(L,y0+2.25*u,String(o.big[0]).toUpperCase(),{pt:tpt,b:1,k})+swT(L,y0+3.75*u,String(o.big[1]).toUpperCase()+'.',{pt:tpt,b:1,k,fill:SW.red});
+  const sc=o.scale,tiles=o.tiles||[sc?[sc.label,'SCALE',sc.bar?'':(sc.note||'')]:['N.T.S.','SCALE','Not to scale.'],[fmt(M.cap),'SEATS',`${P.tierCount} tier${P.tierCount>1?'s':''}, all stands.`],o.tile3||[String(P.tierCount),'TIERS',`${SPORTS[P.sport].name}.`],['%%NO%%','SHEET','OF %%N%%.',1]];
+  tiles.forEach((t,i)=>{const x=L+(tt+1)*u+i*(tw+1)*u,y=y0+u,w=tw*u,h=3*u,inv=t[3];
+    s+=swRect(x,y,w,h,inv?SW.ink:'#FFFFFF',inv?null:SW.ink,.75*k/72);
+    const vpt=Math.min(15,w*72/(String(t[0]).length*0.62)/k);
+    s+=swT(x+.5*u,y+1.35*u,t[0],{pt:vpt,b:1,k,fill:SW.red})+swT(x+.5*u,y+1.98*u,t[1],{pt:5.8,b:1,ls:.12,k,fill:inv?'#FFFFFF':SW.ink});
+    if(i===0&&sc&&sc.bar){const b=sc.bar,bw=b.seg;for(let j=0;j<5;j++)s+=swRect(x+.5*u+j*bw,y+2.32*u,bw,.18*u,j%2?'#FFFFFF':SW.ink,SW.ink,.4*k/72);
+      s+=swT(x+.5*u+5*bw+.15*u,y+2.5*u,`0–${b.len} ${imperial()?'FEET':'METRES'}`,{pt:5.5,k,fill:SW.grey});}
+    else s+=swT(x+.5*u,y+2.5*u,t[2],{pt:5.8,k,fill:inv?'#C9C9C5':SW.grey});});
+  s+=swRect(L,H-1.5*u,R-L,.5*k/72,SW.ink);const fy=swBase(H-1.5*u,u,6,k),fp={pt:6,ls:.1,k};
+  s+=swT(L,fy,`PLATE %%NO%% — ${String(o.title).toUpperCase()}`,fp)+swT((L+R)/2,fy,`SIGHTLINE SCHEMATIC ${VERSION} · ${optName().toUpperCase()} · ${new Date().toLocaleDateString()}`,{...fp,a:'middle'})+swT(R,fy,'SHEET %%NO%% OF %%N%%',{...fp,a:'end'});
+  return s+'</svg>';}
+// scale tile: label and a five-segment bar no longer than the tile allows (per = paper inches per model mm)
+function swScale(sh,label,per){const u=swU(sh),A=swArea(sh),N=Math.round((sh.w-4*u)/u),tw=Math.floor((N-4-Math.floor(N/4))/4),room=(tw-1)*u*0.62,
+  divs=imperial()?[1,2,5,10,20,25,50,100,200,500]:[1,2,5,10,20,25,50,100,200,500],m=imperial()?304.8:1000;let d=divs[0];for(const q of divs)if(q*5*m*per<=room)d=q;
+  return {label,bar:per?{seg:d*m*per,len:5*d}:null};}
+// set-level pass, in the page: snap dimension numbers into grid cells beside their lines (paper knockout on the grid only),
+// and East / West / end-zone names onto the axis grid lines
+// jsPDF misreads Archivo's advance widths for centred and right-aligned text: measure in the page (canvas, the face loaded) and place left-aligned
+async function swLoadFaces(){if(!document.getElementById('pdffaces')){const st=document.createElement('style');st.id='pdffaces';
+    st.textContent="@font-face{font-family:DVS;src:url(vendor/fonts/DejaVuSansCondensed.ttf)}@font-face{font-family:DVS;font-weight:bold;src:url(vendor/fonts/DejaVuSansCondensed-Bold.ttf)}@font-face{font-family:ARC;src:url(vendor/fonts/Archivo-400.ttf)}@font-face{font-family:ARC;font-weight:bold;src:url(vendor/fonts/Archivo-700.ttf)}";document.head.appendChild(st);}
+  await Promise.all(['DVS','ARC'].flatMap(f=>[document.fonts.load(`10px ${f}`),document.fonts.load(`bold 10px ${f}`)])).catch(()=>{});}
+let SWCTX=null;function swW(t,size,bold,fam){SWCTX=SWCTX||document.createElement('canvas').getContext('2d');SWCTX.font=`${bold?'bold ':''}100px ${fam||'ARC'}`;return SWCTX.measureText(String(t)).width/100*size;}   // width in the size's units
+function swAnchors(root){root.querySelectorAll('text[font-family="ARC"][text-anchor]').forEach(t=>{const a=t.getAttribute('text-anchor');if(a!=='middle'&&a!=='end')return;
+  const w=swW(t.textContent,+t.getAttribute('font-size'),t.getAttribute('font-weight')==='bold');t.setAttribute('x',(+t.getAttribute('x')-(a==='end'?w:w/2)).toFixed(4));t.removeAttribute('text-anchor');});}
+// svg2pdf draws every text on its baseline and ignores dominant-baseline: move "middle" texts down by 0.35 em so the PDF matches the screen
+function swBaselines(root){root.querySelectorAll('text[dominant-baseline]').forEach(t=>{const v=t.getAttribute('dominant-baseline');if(v!=='middle'&&v!=='central')return;
+  const fs=+t.getAttribute('font-size')||0;t.removeAttribute('dominant-baseline');if(!fs)return;const sh=0.35*fs;
+  if(t.hasAttribute('y'))t.setAttribute('y',(+t.getAttribute('y')+sh).toFixed(3));t.querySelectorAll('tspan[y]').forEach(q=>q.setAttribute('y',(+q.getAttribute('y')+sh).toFixed(3)));});}
+// set-level pass, in the page (measured with the PDF faces): dimension numbers centred in a grid cell beside their line, larger, on a paper
+// knockout of the grid only; East / West / end-zone names centred on the axis grid lines (plans) or in grid cells (isometric views)
+function swFinish(root,sh){swBaselines(root);const u=swU(sh),R=root.getBoundingClientRect(),px=R.width/sh.w,grid=root.querySelector('.swgrid');if(!grid)return;
+  const cell=v=>(Math.round((v/px-1.5*u)/u)*u+1.5*u)*px,line=v=>(Math.round((v/px-u)/u)*u+u)*px,NS='http://www.w3.org/2000/svg',placed=[],hit=q=>placed.some(o=>q.l<o.r&&q.r>o.l&&q.t<o.b&&q.b>o.t);
+  const knock=q=>{const r=document.createElementNS(NS,'rect');r.setAttribute('x',((q.l-R.left)/px).toFixed(4));r.setAttribute('y',((q.t-R.top)/px).toFixed(4));r.setAttribute('width',((q.r-q.l)/px).toFixed(4));r.setAttribute('height',((q.b-q.t)/px).toFixed(4));r.setAttribute('fill',SW.paper);grid.appendChild(r);};
+  root.querySelectorAll('.swdraw > svg').forEach(svg=>{const vb=svg.viewBox.baseVal,S=svg.getBoundingClientRect();if(!vb||!vb.width)return;const uu=vb.width/S.width;
+    if(svg.dataset.dims){[...new Set([...svg.querySelectorAll('g[transform^="rotate"] > text')].map(t=>t.parentNode))].forEach(g=>{const t=g.querySelector('text'),vert=/rotate\(-90/.test(g.getAttribute('transform')||''),b=g.getBoundingClientRect(),tb=t.getBoundingClientRect();
+      if(!b.width||!b.height)return;const th=(vert?tb.width:tb.height)/px,sc=Math.max(1,Math.min(2.6,0.12*u/0.25/th)),cx=b.left+b.width/2,cy=b.top+b.height/2,W2=b.width*sc/2,H2=b.height*sc/2;
+      let nx=cell(cx),ny=cell(cy);const box=()=>({l:nx-W2-2,r:nx+W2+2,t:ny-H2-2,b:ny+H2+2});
+      for(let i=0;i<12&&hit(box());i++){if(vert)ny-=u*px;else nx+=u*px;}const q=box();placed.push(q);
+      const ux=vb.x+(cx-S.left)*uu,uy=vb.y+(cy-S.top)*uu,w=document.createElementNS(NS,'g');w.setAttribute('transform',`translate(${(ux+(nx-cx)*uu).toFixed(2)} ${(uy+(ny-cy)*uu).toFixed(2)}) scale(${sc.toFixed(3)}) translate(${(-ux).toFixed(2)} ${(-uy).toFixed(2)})`);
+      g.parentNode.insertBefore(w,g);w.appendChild(g);knock(q);});}
+    if(svg.dataset.compass){const iso=svg.dataset.compass==='iso';[...svg.querySelectorAll('text')].filter(t=>/^(East|West|North|South|NEZ|SEZ|NWZ|SWZ)$/i.test(t.textContent.trim())).forEach(t=>{const b0=t.getBoundingClientRect();if(!b0.width)return;
+      if(Math.max(b0.width,b0.height)/px<0.08)return;const onV=b0.width>=b0.height;   // a label above or below the field sits on the vertical axis, beside it on the horizontal one
+      t.removeAttribute('transform');const b=t.getBoundingClientRect();   // read across the sheet, parallel to the grid
+      const cx=b.left+b.width/2,cy=b.top+b.height/2,nx=iso?cell(cx):onV?line(cx):cell(cx),ny=iso?cell(cy):onV?cell(cy):line(cy),w=document.createElementNS(NS,'g');
+      w.setAttribute('transform',`translate(${((nx-cx)*uu).toFixed(3)} ${((ny-cy)*uu).toFixed(3)})`);t.parentNode.insertBefore(w,t);w.appendChild(t);knock({l:nx-b.width/2-3,r:nx+b.width/2+3,t:ny-b.height/2-3,b:ny+b.height/2+3});});}});}
+const swDraw=svg=>{const t=document.createElement('div');t.innerHTML=svg;t.querySelectorAll('.appgrid').forEach(e=>e.remove());titleize(t);return t.innerHTML;};   /* the sheet grid replaces the drawing's own */   // a drawing for a Swiss sheet: title case as before
+const swSq=(u,sc)=>imperial()?u*sc.ratio/12:u*25.4*sc.ratio/1000;                                     // one grid square, in feet or metres at this scale
 // One drawing per landscape sheet at the largest standard scale that fits inside the border; graphic scale at the lower left.
 function plotOne(sh,what,maxIn,fixed,ori){ori=ori||'h';if(what==='plan'&&ori==='v'&&sh.w>sh.h)sh=Object.assign({},sh,{w:sh.h,h:sh.w});   // vertical (north up) on a portrait sheet
          // fixed: use exactly maxIn, even if the drawing has to run into the border
   if(what==='section')return plotSection(sh);                 // maxIn: largest scale allowed, inches per foot (e.g. 1/16)
-  const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=sh.txt*3.2,aw=sh.w-2*B,ah=sh.h-2*B-title-sb;
-  let fit=null,svg0=null;
-  if(what==='plan'){const FT=imperial()?0.3048:1/3.28084;
-    const G=[1,0.75,0.5,0.25];let gi={side:0,end:0},r=maxIn?12/maxIn:600;   // stand names 1 in (on paper) clear of the bowl; closer, on the tight axis only, when the sheet is tight
-    for(let tries=0;tries<10;tries++){const pm=r*25.4/1000;   // paper inches to metres at the current scale
-      const keep=[P.planOri,PLAN];P.planOri=ori;PLAN='bowl';svg0=drawPlan({tight:true,labGap:{side:G[gi.side]*pm,end:G[gi.end]*pm}});P.planOri=keep[0];PLAN=keep[1];fit=null;
-      const pv=svg0.match(/viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/).slice(1).map(Number);
-      for(const sc of PLOT_SCALES().filter(sc=>!maxIn||!imperial()||sc.ratio>=12/maxIn-1e-6)){const k=1/sc.ratio/25.4,w=pv[2]*1000*k,h=pv[3]*1000*k;
-        if((w<=aw&&h<=ah)||(fixed&&imperial())){fit={sc,k,w,h,svg:svg0,u:25.4*sc.ratio/1000,over:w>aw||h>ah};break;}}
-      if(fit&&Math.abs(fit.sc.ratio-r)>1e-6&&!fit.over){r=fit.sc.ratio;continue;}   // a different scale: redo the gap for it
-      if(!fit||!fit.over)break;
-      const sideAxisW=ori==='v',ow=fit.w>aw,oh=fit.h>ah,moved=[];   // vertical: the sidelines face across the sheet; landscape: up and down
-      if((sideAxisW&&ow)||(!sideAxisW&&oh))moved.push('side');if((sideAxisW&&oh)||(!sideAxisW&&ow))moved.push('end');
-      let any=false;moved.forEach(q=>{if(gi[q]<G.length-1){gi[q]++;any=true;}});if(!any)break;}}
+  const A=swArea(sh),aw=A.aw,ah=A.ah;
+  let fit=null,svg0=null,pv=null;
+  if(what==='plan'){   // largest standard scale whose plan fits the Swiss drawing area; stand names 1/4 in clear of the bowl (1/8 in when that is what fits), then snapped to the grid
+    const scs=PLOT_SCALES().filter(sc=>!maxIn||!imperial()||sc.ratio>=12/maxIn-1e-6),draw=(sc,g)=>{const pm=sc.ratio*25.4/1000,keep=[P.planOri,PLAN];P.planOri=ori;PLAN='bowl';
+      const s0=drawPlan({tight:true,labGap:{side:g*pm,end:g*pm}});P.planOri=keep[0];PLAN=keep[1];const v=s0.match(/viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/).slice(1).map(Number);return {s0,v};};
+    for(const sc of scs){const k=1/sc.ratio/25.4;let hit=null;for(const g of [0.25,0.125]){const r=draw(sc,g),w=r.v[2]*1000*k,h=r.v[3]*1000*k;if(w<=aw&&h<=ah){hit={sc,k,w,h,svg:r.s0,u:25.4*sc.ratio/1000};pv=r.v;svg0=r.s0;break;}}
+      if(hit){fit=hit;break;}}
+    if(!fit&&fixed&&imperial()&&maxIn){const sc=scs[0],k=1/sc.ratio/25.4,r=draw(sc,0.125);pv=r.v;svg0=r.s0;fit={sc,k,w:pv[2]*1000*k,h:pv[3]*1000*k,svg:svg0,u:25.4*sc.ratio/1000,over:true};}}
   else{const rows=ZR[P.sec].filter(r=>r.tier===0);
     for(const sc of PLOT_SCALES()){const k=1/sc.ratio/25.4,svg=drawDetail(ZR[P.sec],{fs:sh.txt*25.4*sc.ratio,sparse:(rows[1]||rows[0]).T*k<sh.txt*2.2});
       const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;if(w<=aw&&h<=ah){fit={sc,k,w,h,svg,u:25.4*sc.ratio};break;}}}
   if(!fit)return null;
-  const x=B+(aw-fit.w)/2,y=B+(ah-fit.h)/2,name=what==='plan'?(ori==='v'?'Bowl plan, vertical (north up)':'Bowl plan, landscape (north left)'):`Tier 1 sightline detail (${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'})`;
-  const per=(imperial()?304.8:1000)*fit.k,divs=[1,2,5,10,20,25,50,100,200,500];let u=divs[0];for(const q of divs)if(q*5*per<=sh.w*.22)u=q;
-  const gy=sh.h-B-title-sb+sh.txt*1.6,bh=sh.txt*.7;
-  let g=`<text x="${f(B)}" y="${f(gy)}" font-size="${f(sh.txt*1.1)}" font-weight="700">Scale ${fit.sc.label}</text>`;
-  for(let i=0;i<5;i++)g+=`<rect x="${f(B+i*u*per)}" y="${f(gy+sh.txt*.5)}" width="${f(u*per)}" height="${f(bh)}" fill="${i%2?'#fff':'#000'}" stroke="#000" stroke-width="${f(sh.txt*.06)}"/>`;
-  for(let i=0;i<=5;i++)g+=`<text x="${f(B+i*u*per)}" y="${f(gy+sh.txt*.5+bh+sh.txt*1.05)}" font-size="${f(sh.txt*.85)}" text-anchor="middle">${i*u}</text>`;
-  g+=`<text x="${f(B+5*u*per+sh.txt*.5)}" y="${f(gy+sh.txt*.5+bh*.9)}" font-size="${f(sh.txt*.85)}">${imperial()?'feet':'metres'}</text>`;
-  const Sp=SPORTS[P.sport],ty=sh.h-B-sh.txt*.4;
-  const tb=`<text x="${f(sh.w*.5)}" y="${f(ty-sh.txt*1.6)}" font-size="${f(sh.txt*1.5)}" font-weight="800" text-anchor="start">Sightline Schematic: ${name}</text>`
-    +`<text x="${f(sh.w*.5)}" y="${f(ty)}" font-size="${f(sh.txt*.95)}" text-anchor="start">${Sp.name} (${Sp.org}) | ${optName()} | ${fmt(M.cap)} seats | Scale ${fit.sc.label} | ${sh.name} ${sh.w>sh.h?'landscape':'portrait'} | ${new Date().toLocaleDateString()}</text>`;
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(sh.w)}in" height="${f(sh.h)}in" viewBox="0 0 ${f(sh.w)} ${f(sh.h)}" font-family="Archivo, 'Arial Narrow', Arial, sans-serif"><rect width="${f(sh.w)}" height="${f(sh.h)}" fill="#fff"/>`
-    +trueStrokes(fit.svg,fit.u).replace('<svg ',`<svg x="${f(x)}" y="${f(y)}" width="${f(fit.w)}" height="${f(fit.h)}" preserveAspectRatio="xMidYMid meet" `)+g+tb+'</svg>';
-  const tmp=document.createElement('div');tmp.innerHTML=svg;titleize(tmp);return {svg:tmp.innerHTML,scale:fit.sc.label,sheet:sh,what};
+  const name=what==='plan'?(ori==='v'?'Bowl plan, vertical (north up)':'Bowl plan, landscape (north left)'):`Tier 1 sightline detail (${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'})`;
+  const plan=what==='plan',d={svg:swDraw(trueStrokes(fit.svg,fit.u)).replace('<svg ',plan?'<svg data-compass="1" ':'<svg '),w:fit.w,h:fit.h};
+  if(plan)Object.assign(d,{ox:-pv[0]*1000*fit.k,oy:-pv[1]*1000*fit.k,sq:swSq(A.u,fit.sc),plan:true});
+  const svg=swissSheet(sh,{title:name,big:plan?['Bowl','Plan']:['Tier 1','Detail'],draws:[d],scale:swScale(sh,fit.sc.label,fit.k),
+    tile3:plan?[String(vomSolids().length),'VOMITORIES','Middle aisles and corners.']:null});
+  return {svg,scale:fit.sc.label,sheet:sh,what,title:name,draw:d,ori};
 }
 // Isometric view on one landscape sheet, fitted to the sheet (isometric drawings are not to scale).
 function plotIso(sh,view){const keep=ISOVIEW;ISOVIEW=view;const svg0=drawIso();ISOVIEW=keep;
-  const B=sh.B,f=v=>(+v).toFixed(4),title=sh.txt*3.2,aw=sh.w-2*B,ah=sh.h-2*B-title,vb=svg0.match(/viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/).slice(1).map(Number);
-  const k=Math.min(aw/vb[2],ah/vb[3]),w=vb[2]*k,h=vb[3]*k,x=B+(aw-w)/2,y=B+(ah-h)/2,names={SE:'south-east',SW:'south-west',NW:'north-west',NE:'north-east'},Sp=SPORTS[P.sport],ty=sh.h-B-sh.txt*.4;
-  const tb=`<text x="${f(sh.w*.5)}" y="${f(ty-sh.txt*1.6)}" font-size="${f(sh.txt*1.5)}" font-weight="800" text-anchor="start">Sightline Schematic: Isometric view from the ${names[view]}</text>`
-    +`<text x="${f(sh.w*.5)}" y="${f(ty)}" font-size="${f(sh.txt*.95)}" text-anchor="start">${Sp.name} (${Sp.org}) | ${optName()} | ${fmt(M.cap)} seats | Not to scale | ${sh.name} landscape | ${new Date().toLocaleDateString()}</text>`;
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(sh.w)}in" height="${f(sh.h)}in" viewBox="0 0 ${f(sh.w)} ${f(sh.h)}" font-family="Archivo, 'Arial Narrow', Arial, sans-serif"><rect width="${f(sh.w)}" height="${f(sh.h)}" fill="#fff"/>`
-    +trueStrokes(svg0,1/k).replace('<svg ',`<svg x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" preserveAspectRatio="xMidYMid meet" `)+tb+'</svg>';
-  const tmp=document.createElement('div');tmp.innerHTML=svg;titleize(tmp);return {svg:tmp.innerHTML,scale:'not to scale',sheet:sh,what:'iso'};}
+  const A=swArea(sh),vb=svg0.match(/viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/).slice(1).map(Number);
+  const k=Math.min(A.aw/vb[2],A.ah/vb[3]),w=vb[2]*k,h=vb[3]*k,names={SE:'south-east',SW:'south-west',NW:'north-west',NE:'north-east'},title=`Isometric view from the ${names[view]}`;
+  const svg=swissSheet(sh,{title,big:['Isometric',names[view]],draws:[{svg:swDraw(trueStrokes(svg0,1/k)).replace('<svg ','<svg data-compass="iso" '),w,h}],scale:null});
+  return {svg,scale:'not to scale',sheet:sh,what:'iso',title};}
 // One tier's sightline section (East), with its sightlines, C-values, risers and dimensions, at the largest standard scale that fits.
-function plotTier(sh,ti,fixScale){/* fixScale: use this scale (Tier 2 follows Tier 1); later tiers drop the point of focus */const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=sh.txt*3.2,aw=sh.w-2*B,ah=sh.h-2*B-title-sb,rows=ZR.T.filter(r=>r.tier===ti);let fit=null;
-  for(const sc of (fixScale?[fixScale]:PLOT_SCALES())){const k=1/sc.ratio/25.4,svg=drawDetail(ZR.T,{tier:ti,noFocus:ti>0,fs:sh.txt*25.4*sc.ratio,sparse:(rows[1]||rows[0]).T*k<sh.txt*2.2}),v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;
-    if((w<=aw&&h<=ah)||fixScale){fit={sc,k,w,h,svg,u:25.4*sc.ratio};break;}}
+function plotTier(sh,ti,fixScale){/* fixScale: use this scale (Tier 2 follows Tier 1); later tiers drop the point of focus */const A=swArea(sh),rows=ZR.T.filter(r=>r.tier===ti);let fit=null;
+  for(const sc of (fixScale?[fixScale]:PLOT_SCALES())){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawDetail(ZR.T,{tier:ti,noFocus:ti>0,fs:sh.txt*25.4*sc.ratio,sparse:(rows[1]||rows[0]).T*k<sh.txt*2.2}),o=SWORIG;SWG=0;SWORIG=null;
+    const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;
+    if((w<=A.aw&&h<=A.ah)||fixScale){fit={sc,k,w,h,svg,u:25.4*sc.ratio,o};break;}}
   if(!fit)return null;
-  const x=B+(aw-fit.w)/2,y=B+(ah-fit.h)/2,Sp=SPORTS[P.sport],ty=sh.h-B-sh.txt*.4;
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(sh.w)}in" height="${f(sh.h)}in" viewBox="0 0 ${f(sh.w)} ${f(sh.h)}" font-family="Archivo, 'Arial Narrow', Arial, sans-serif"><rect width="${f(sh.w)}" height="${f(sh.h)}" fill="#fff"/>`
-    +trueStrokes(fit.svg,fit.u).replace('<svg ',`<svg x="${f(x)}" y="${f(y)}" width="${f(fit.w)}" height="${f(fit.h)}" preserveAspectRatio="xMidYMid meet" `)+scaleBar(sh,fit)
-    +`<text x="${f(sh.w*.5)}" y="${f(ty-sh.txt*1.6)}" font-size="${f(sh.txt*1.5)}" font-weight="800" text-anchor="start">Sightline Schematic: Bowl section, Tier ${ti+1}, ${zoneName(P,'T')}, ${DETMODE==='stand'?'standing':'sitting'}</text>`
-    +`<text x="${f(sh.w*.5)}" y="${f(ty)}" font-size="${f(sh.txt*.95)}" text-anchor="start">${Sp.name} (${Sp.org}) | ${optName()} | Scale ${fit.sc.label} | ${sh.name} landscape | ${new Date().toLocaleDateString()}</text></svg>`;
-  const tmp=document.createElement('div');tmp.innerHTML=svg;titleize(tmp);return {svg:tmp.innerHTML,scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'tier'};}
+  const title=`Bowl section, Tier ${ti+1}, ${zoneName(P,'T')}, ${DETMODE==='stand'?'standing':'sitting'}`,cs=rows.filter(r=>r.C!=null),lo=cs.reduce((a,r)=>!a||r.C<a.C?r:a,null);
+  const d={svg:swDraw(trueStrokes(fit.svg,fit.u)).replace('<svg ','<svg data-dims="1" '),w:fit.w,h:fit.h};if(fit.o)Object.assign(d,{ox:fit.o[0]*fit.k,oy:fit.o[1]*fit.k,sq:swSq(A.u,fit.sc)});
+  const svg=swissSheet(sh,{title,big:[`Tier ${ti+1}`,'Sightlines'],draws:[d],scale:swScale(sh,fit.sc.label,fit.k),tile3:lo?[CV(lo.C),'LOWEST C-VALUE',`Row ${lo.row}, ${DETMODE==='stand'?'standing':'sitting'}.`]:null});
+  return {svg,scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'tier',title};}
 function scaleBar(sh,fit){const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=sh.txt*3.2,per=(imperial()?304.8:1000)*fit.k,divs=[1,2,5,10,20,25,50,100,200,500];let u=divs[0];for(const q of divs)if(q*5*per<=sh.w*.22)u=q;
   const gy=sh.h-B-title-sb+sh.txt*1.6,bh=sh.txt*.7;let g=`<text x="${f(B)}" y="${f(gy)}" font-size="${f(sh.txt*1.1)}" font-weight="700">Scale ${fit.sc.label}</text>`;
   for(let i=0;i<5;i++)g+=`<rect x="${f(B+i*u*per)}" y="${f(gy+sh.txt*.5)}" width="${f(u*per)}" height="${f(bh)}" fill="${i%2?'#fff':'#000'}" stroke="#000" stroke-width="${f(sh.txt*.06)}"/>`;
   for(let i=0;i<=5;i++)g+=`<text x="${f(B+i*u*per)}" y="${f(gy+sh.txt*.5+bh+sh.txt*1.05)}" font-size="${f(sh.txt*.85)}" text-anchor="middle">${i*u}</text>`;
   return g+`<text x="${f(B+5*u*per+sh.txt*.5)}" y="${f(gy+sh.txt*.5+bh*.9)}" font-size="${f(sh.txt*.85)}">${imperial()?'feet':'metres'}</text>`;}
 // Sitting and standing spectators side by side at one standard scale, with the eye sight values listed under each.
-function plotSpectators(sh){const B=sh.B,f=v=>(+v).toFixed(4),title=sh.txt*3.2,info=sh.txt*9.5,aw=sh.w-2*B,ah=sh.h-2*B-title-info-sh.txt*2.4;
-  const modes=SPECT_MODES,names=SPECT_NAMES;let fit=null;
+function plotSpectators(sh){const A=swArea(sh),u=A.u,k2=u/0.25,modes=SPECT_MODES,names=SPECT_NAMES;let fit=null;
+  const nInfo=Math.max(...modes.map(m=>Math.ceil(spectatorInfo(m).length/2))),infoH=(nInfo+1)*u,ah=A.ah-infoH;   // two columns of eye-sight values under the view, one grid row each
   for(const sc of DETAIL_SCALES()){const k=1/sc.ratio/25.4,fs=sh.txt*1.7*25.4*sc.ratio,d=modes.map(m=>drawSpectator(m,{fs}));   // one scale for every enlarged view
     const v=d.map(x=>x.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number));
-    if(v.every(([w,h])=>w*k<=aw&&h*k<=ah)){fit={sc,k,d,v,u:25.4*sc.ratio};break;}}
+    if(v.every(([w,h])=>w*k<=A.aw&&h*k<=ah)){fit={sc,k,d,v,u:25.4*sc.ratio};break;}}
   if(!fit)return [null];
-  const Sp=SPORTS[P.sport],ty=sh.h-B-sh.txt*.4;
-  return modes.map((m,i)=>{const [w0,h0]=fit.v[i],w=w0*fit.k,h=h0*fit.k,x=B+(aw-w)/2,y=B+sh.txt*2.4+(ah-h)/2;
-    let svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(sh.w)}in" height="${f(sh.h)}in" viewBox="0 0 ${f(sh.w)} ${f(sh.h)}" font-family="Archivo, 'Arial Narrow', Arial, sans-serif"><rect width="${f(sh.w)}" height="${f(sh.h)}" fill="#fff"/>`
-      +`<text x="${f(B)}" y="${f(B+sh.txt*1.4)}" font-size="${f(sh.txt*1.5)}" font-weight="800">${names[m]}, ${enlargedWhere(m)}</text>`
-      +trueStrokes(fit.d[i],fit.u).replace('<svg ',`<svg x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" preserveAspectRatio="xMidYMid meet" `);
-    const it=spectatorInfo(m),half=Math.ceil(it.length/2);
-    it.forEach(([k2,v2],j)=>{const col=j<half?0:1,xx=B+col*sh.w*.42,yy=B+sh.txt*2.4+ah+sh.txt*(1.6+(j%half)*1.35);
-      svg+=`<text x="${f(xx)}" y="${f(yy)}" font-size="${f(sh.txt*.95)}" font-weight="700">${k2}</text><text x="${f(xx+sh.txt*22)}" y="${f(yy)}" font-size="${f(sh.txt*.95)}">${v2}</text>`;});
-    svg+=`<text x="${f(sh.w*.5)}" y="${f(ty-sh.txt*1.6)}" font-size="${f(sh.txt*1.5)}" font-weight="800" text-anchor="start">Sightline Schematic: Enlarged spectators ${i+1} of ${modes.length}</text>`
-      +`<text x="${f(sh.w*.5)}" y="${f(ty)}" font-size="${f(sh.txt*.95)}" text-anchor="start">${Sp.name} (${Sp.org}) | ${optName()} | Scale ${fit.sc.label} | ${sh.name} landscape | ${new Date().toLocaleDateString()}</text></svg>`;
-    const tmp=document.createElement('div');tmp.innerHTML=svg;titleize(tmp);return {svg:tmp.innerHTML,scale:fit.sc.label,sheet:sh,what:'spect'};});}
+  return modes.map((m,i)=>{const [w0,h0]=fit.v[i],w=w0*fit.k,h=h0*fit.k,title=`${names[m].replace(/^\d+\.\s*/,'')}, ${enlargedWhere(m)}`;
+    const it=spectatorInfo(m),half=Math.ceil(it.length/2),y1=A.y0+ah+u;let extra=swRect(A.x0,y1-.5*u,A.aw,.6*k2/72,SW.ink);
+    it.forEach(([a,b],j)=>{const col=j<half?0:1,x=A.x0+col*A.aw/2,y=y1+(j%half)*u;extra+=swT(x,swBase(y,u,6,k2),a,{pt:6,b:1,k:k2})+swT(x+1.5*k2,swBase(y,u,6,k2),b,{pt:6,k:k2});});
+    const svg=swissSheet(sh,{title,big:['Enlarged','Spectators'],draws:[{svg:swDraw(trueStrokes(fit.d[i],fit.u)),w,h,x:A.x0+(A.aw-w)/2,y:A.y0+(ah-h)/2}],extra,scale:swScale(sh,fit.sc.label,fit.k),
+      tile3:[`${i+1} / ${modes.length}`,'VIEW',names[m].replace(/^\d+\.\s*/,'')]});
+    return {svg,scale:fit.sc.label,sheet:sh,what:'spect',title};});}
 // Bowl section (both tiers, the side picked above the section) on one landscape sheet, largest standard scale that fits.
-function plotSection(sh,zone){const Z=ZR[zone||P.sec];const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=sh.txt*3.2,aw=sh.w-2*B,ah=sh.h-2*B-title-sb;let fit=null;
-  for(const sc of PLOT_SCALES()){const k=1/sc.ratio/25.4,svg=drawSection(Z,{fs:sh.txt*25.4*sc.ratio}),v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;
-    if(w<=aw&&h<=ah){fit={sc,k,w,h,svg,u:25.4*sc.ratio};break;}}
+function plotSection(sh,zone){const Z=ZR[zone||P.sec],A=swArea(sh);let fit=null;
+  for(const sc of PLOT_SCALES()){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawSection(Z,{fs:sh.txt*25.4*sc.ratio}),o=SWORIG;SWG=0;SWORIG=null;
+    const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;
+    if(w<=A.aw&&h<=A.ah){fit={sc,k,w,h,svg,u:25.4*sc.ratio,o};break;}}
   if(!fit)return null;
-  const x=B+(aw-fit.w)/2,y=B+(ah-fit.h)/2,per=(imperial()?304.8:1000)*fit.k,divs=[1,2,5,10,20,25,50,100,200,500];let u=divs[0];for(const q of divs)if(q*5*per<=sh.w*.22)u=q;
-  const gy=sh.h-B-title-sb+sh.txt*1.6,bh=sh.txt*.7;let g=`<text x="${f(B)}" y="${f(gy)}" font-size="${f(sh.txt*1.1)}" font-weight="700">Scale ${fit.sc.label}</text>`;
-  for(let i=0;i<5;i++)g+=`<rect x="${f(B+i*u*per)}" y="${f(gy+sh.txt*.5)}" width="${f(u*per)}" height="${f(bh)}" fill="${i%2?'#fff':'#000'}" stroke="#000" stroke-width="${f(sh.txt*.06)}"/>`;
-  for(let i=0;i<=5;i++)g+=`<text x="${f(B+i*u*per)}" y="${f(gy+sh.txt*.5+bh+sh.txt*1.05)}" font-size="${f(sh.txt*.85)}" text-anchor="middle">${i*u}</text>`;
-  g+=`<text x="${f(B+5*u*per+sh.txt*.5)}" y="${f(gy+sh.txt*.5+bh*.9)}" font-size="${f(sh.txt*.85)}">${imperial()?'feet':'metres'}</text>`;
-  const Sp=SPORTS[P.sport],ty=sh.h-B-sh.txt*.4;
-  const tb=`<text x="${f(sh.w*.5)}" y="${f(ty-sh.txt*1.6)}" font-size="${f(sh.txt*1.5)}" font-weight="800" text-anchor="start">Sightline Schematic: Bowl section, overall, ${zoneName(P,zone||P.sec)}${zoned(P)?' (four sides identical)':''}, ${P.eyeMode==='stand'?'standing':'sitting'}</text>`
-    +`<text x="${f(sh.w*.5)}" y="${f(ty)}" font-size="${f(sh.txt*.95)}" text-anchor="start">${Sp.name} (${Sp.org}) | ${optName()} | ${fmt(M.cap)} seats | Scale ${fit.sc.label} | ${sh.name} landscape | ${new Date().toLocaleDateString()}</text>`;
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(sh.w)}in" height="${f(sh.h)}in" viewBox="0 0 ${f(sh.w)} ${f(sh.h)}" font-family="Archivo, 'Arial Narrow', Arial, sans-serif"><rect width="${f(sh.w)}" height="${f(sh.h)}" fill="#fff"/>`
-    +trueStrokes(fit.svg,fit.u).replace('<svg ',`<svg x="${f(x)}" y="${f(y)}" width="${f(fit.w)}" height="${f(fit.h)}" preserveAspectRatio="xMidYMid meet" `)+g+tb+'</svg>';
-  const tmp=document.createElement('div');tmp.innerHTML=svg;titleize(tmp);return {svg:tmp.innerHTML,scale:fit.sc.label,sheet:sh,what:'section'};}
+  const title=`Bowl section, overall, ${zoneName(P,zone||P.sec)}${zoned(P)?' (four sides identical)':''}, ${P.eyeMode==='stand'?'standing':'sitting'}`;
+  const d={svg:swDraw(trueStrokes(fit.svg,fit.u)).replace('<svg ','<svg data-dims="1" '),w:fit.w,h:fit.h};if(fit.o)Object.assign(d,{ox:fit.o[0]*fit.k,oy:fit.o[1]*fit.k,sq:swSq(A.u,fit.sc)});
+  const svg=swissSheet(sh,{title,big:['Bowl','Section'],draws:[d],scale:swScale(sh,fit.sc.label,fit.k),tile3:M.steep?[`${M.steep.rake.toFixed(1)}°`,'STEEPEST RAKE',`Top row ${L(M.height*1000)} above the field.`]:null});
+  return {svg,scale:fit.sc.label,sheet:sh,what:'section',title};}
 // Seat count, one 11 x 17 portrait page per tier; the grand totals go on the last tier's page.
 function tablePages(){const {head,out}=seatCount(),Sp=SPORTS[P.sport],pages=[];
   const full=countTableHTML().match(/<tbody>([\s\S]*)<\/tbody>/)[1],trs=full.match(/<tr[\s\S]*?<\/tr>/g),thead=countTableHTML().match(/<thead>[\s\S]*<\/thead>/)[0];
@@ -3461,24 +3537,105 @@ function pdfReadySvg(svg){                                       // light-theme 
   for(let i=0;i<3;i++)svg=svg.replace(/var\((--[\w-]+)\)/g,(m,k)=>vars[k]||'#888888');
   svg=svg.replace(/ textLength="[^"]*"| lengthAdjust="[^"]*"/g,'');                  // svg2pdf can turn fitted text widths into Infinity
   svg=svg.replace(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*[\d.]+\s*)?\)/g,(m,r,g,b)=>'#'+[r,g,b].map(v=>(+v).toString(16).padStart(2,'0')).join(''));   // svg2pdf wants hex colours
-  return svg.replace(/ paint-order="stroke" stroke="[^"]*" stroke-width="[^"]*"( stroke-linejoin="round")?/g,'').replace(/font-family="[^"]*"/g,'font-family="DVS"')
+  return svg.replace(/ paint-order="stroke" stroke="[^"]*" stroke-width="[^"]*"( stroke-linejoin="round")?/g,'').replace(/font-family="(?!ARC")[^"]*"/g,'font-family="DVS"')
     .replace(/font-weight="(\d+)"/g,(m,w)=>`font-weight="${+w>=600?'bold':'normal'}"`);}   // the PDF fonts are regular and bold
+// ---------- cover: project information summary on the 1/4 in grid (decision 92) ----------
+// 39 squares of content: key figures in four 9-square tiles, the seat count by tier, the bowl and the sheet index side by side,
+// the method and the key plan. Text rows sit one per grid row; the title's baselines sit on grid lines.
+function swCover(sh,index,keyPlan){const u=swU(sh),G=n=>n*u,k=u/0.25,Sp=SPORTS[P.sport],W=sh.w,LX=G(2),R=G(41),f=v=>(+v).toFixed(4);
+  const row=(x,y,txt,o={})=>swT(o.a==='end'?G(x):G(x),swBase(G(y),G(o.h||1),o.pt||7,k),txt,{k,...o});
+  const head=(x,y,no,txt)=>swRect(G(x),G(y)+u/4,u/2,u/2,SW.red)+row(x+1,y,`${String(no).padStart(2,'0')}. ${txt.toUpperCase()}`,{pt:13,b:1});
+  const table=(x,y,w,cols,rows,o={})=>{let t='';const cw=cols.map(c=>c[1]),tot=cw.reduce((a,b)=>a+b,0),X=[G(x)];cw.forEach((c,i)=>X.push(X[i]+c/tot*G(w)));
+    t+=swRect(G(x),G(y),G(w),u,SW.ink);cols.forEach((c,i)=>{const al=c[2]==='r';t+=swT(al?X[i+1]-u/2:X[i]+u/2,swBase(G(y),u,6.5,k),c[0].toUpperCase(),{pt:6.5,b:1,ls:.12,k,fill:'#FFFFFF',a:al?'end':null});});
+    rows.forEach((r,j)=>{const yy=G(y+1+j),last=o.tot&&j===rows.length-1;t+=swRect(G(x),yy,G(w),u,'#FFFFFF')+swRect(G(x),yy+u-(last?1.4:.6)*k/72,G(w),(last?1.4:.6)*k/72,last?SW.ink:'#9A9A96');
+      r.forEach((v,i)=>{const al=cols[i][2]==='r',red=o.redLast&&last&&i===r.length-1;t+=swT(al?X[i+1]-u/2:X[i]+u/2,swBase(yy,u,7.5,k),v,{pt:7.5,b:last?1:0,k,a:al?'end':null,fill:red?SW.red:SW.ink});});});return t;};
+  let b='';
+  // title: three rows of three squares, baselines on grid lines; description beside it
+  const words=Sp.name.split(' '),lines=words.length>1?[words[0],words.slice(1).join(' '),'Bowl.']:[Sp.name,'Bowl.'],tpt=Math.min(58,G(26)*72/(Math.max(...lines.map(t=>t.length))*0.7));
+  lines.forEach((t,i)=>{b+=swT(LX,G(8+3*i),t.toUpperCase(),{pt:tpt/k,b:1,k,fill:i===1?SW.red:SW.ink});});
+  const desc=`Schematic bowl study on a full ${Sp.org} field: ${P.tierCount} tiers, ${vomSolids().length} vomitories, and every riser solved row by row so each seat sees over the head in front.`,dl=[];let cur='';
+  desc.split(' ').forEach(w=>{if((cur+' '+w).trim().length>40){dl.push(cur.trim());cur=w;}else cur+=' '+w;});dl.push(cur.trim());
+  b+=swRect(G(29),G(5),1.5*k/72,G(dl.length+2),SW.ink);dl.forEach((t,i)=>{b+=row(30,5+i,t,{pt:9,b:1});});
+  b+=swRect(G(30),G(dl.length+6),G(6),u,SW.ink)+swT(G(33),swBase(G(dl.length+6),u,6.5,k),'PROJECT INFORMATION',{pt:6.5,b:1,ls:.12,k,fill:'#FFFFFF',a:'middle'});
+  // 01 key figures
+  let y=15;b+=head(2,y,1,'Key figures');y+=2;
+  const w0=M.worst,vd=imperial()?`${Math.round(M.vd/0.3048)}'`:`${Math.round(M.vd)} m`;
+  [[fmt(M.cap),'SEATS',`${P.tierCount} tiers, four stands, four corners.`],[w0?CV(w0.C):'n/a','LOWEST C-VALUE',w0?`${P.eyeMode==='stand'?'Standing':'Sitting'}, Tier ${w0.tier+1}, row ${w0.row}.`:''],
+   [vd,'FARTHEST VIEWING DISTANCE','Eye to the farthest point of the field.'],[fmt(M.ADA?M.ADA.req:0),'WHEELCHAIR SPACES REQUIRED',imperial()?'IBC 1108.2.2.1 / ADA 221.2.1.1.':'Accessible spaces required.',1]].forEach((t,i)=>{const x=2+10*i,inv=t[3];
+    b+=swRect(G(x),G(y),G(9),G(6),inv?SW.ink:'#FFFFFF',inv?null:SW.ink,.75*k/72)+swT(G(x+1),swBase(G(y+1),G(2),34,k),t[0],{pt:Math.min(34,G(8)*72/(String(t[0]).length*0.62)/k),b:1,k,fill:SW.red})
+      +row(x+1,y+3,t[1],{pt:6.2,b:1,ls:.12,fill:inv?'#FFFFFF':SW.ink})+row(x+1,y+4,t[2],{pt:6.2,fill:inv?'#C9C9C5':SW.grey});});
+  y+=8;
+  // 02 seat count by tier
+  const {head:hd,out}=seatCount(),subs=out.filter(o=>o.kind==='sub'),tots=out.filter(o=>o.kind==='tot');b+=head(2,y,2,'Seat count by tier');y+=2;
+  const sr=subs.map((o,i)=>[`Tier ${i+1}, all seats`,String(ZR.T.filter(r=>r.tier===i).length),...o.v.map(fmt),fmt(o.t)]);
+  tots.forEach((o,i)=>sr.push([i?'Total less aisles':'Total, all seats',i?'':String(ZR.T.length),...o.v.map(fmt),fmt(o.t)]));
+  b+=table(2,y,39,[['Tier',2.4],['Rows',.8,'r'],...hd.map(h=>[({E:'East',W:'West',NEZ:'North end zone',SEZ:'South end zone'})[h]||h,1.3,'r']),['Total',1,'r']],sr,{tot:1,redLast:1});y+=sr.length+3;
+  // 03 bowl (left) and 04 sheet index (right)
+  b+=head(2,y,3,'Bowl')+head(22,y,4,'Sheet index');y+=2;
+  const fig=[['Sport / field',`${Sp.name} (${Sp.org})`],['Tiers',String(P.tierCount)],['Vomitories',String(vomSolids().length)],['Steepest rake',M.steep?M.steep.rake.toFixed(1)+'°':'n/a'],
+    [`Top row above the ${surfLow()}`,L(M.height*1000)],[`Lowest C-value (${P.eyeMode==='stand'?'standing':'sitting'})`,w0?CV(w0.C):'n/a']];
+  b+=table(2,y,19,[['Item',1.25],['Value',1]],fig);
+  const room=62-y-1,idx=index.length>room?index.slice(0,room-1).concat([[`${index[room-1][0]}–${index[index.length-1][0]}`,'Further sheets','']]):index;
+  b+=table(22,y,19,[['Sheet',.42],['Title',2.1],['Scale',1.15,'r']],idx.map(r=>[r[0],String(r[1]).length>44?String(r[1]).slice(0,43)+'…':r[1],r[2]]));
+  // 05 method and 06 key plan under the bowl table
+  let yl=y+fig.length+2;b+=head(2,yl,5,'Method');yl+=1;
+  b+=swRect(G(2),G(yl),G(19),G(4),SW.ink)+swRect(G(2),G(yl),5*k/72,G(4),SW.red)
+    +row(3,yl+0.5,'“Every riser is solved so the C-value is not',{pt:10.5,b:1,fill:'#FFFFFF'})+row(3,yl+1.5,'less than the target: N = (R + C)(D + T) / D − R.”',{pt:10.5,b:1,fill:'#FFFFFF'})
+    +row(3,yl+2.5,'— SIGHTLINE METHOD · GREEN GUIDE · STADIA, POPULOUS',{pt:6,b:1,ls:.12,fill:SW.red});yl+=5;   /* four rows: room for a larger key plan */
+  if(keyPlan&&62-yl>=6){b+=head(2,yl,6,'Key plan');yl+=1;const bh=62-yl,bw=19;
+    b+=swRect(G(2),G(yl),G(bw),G(bh),'none',SW.ink,.75*k/72);const sc=Math.min((G(bw)-0.12)/keyPlan.w,(G(bh)-0.12)/keyPlan.h),w=keyPlan.w*sc,h=keyPlan.h*sc;   // outline only: the grid shows through
+    b+=`<g font-family="Archivo, 'Arial Narrow', Arial, sans-serif">`+keyPlan.svg.replace(/ data-compass="1"/,'').replace('<svg ',`<svg x="${f(G(2)+(G(bw)-w)/2)}" y="${f(G(yl)+(G(bh)-h)/2)}" width="${f(w)}" height="${f(h)}" preserveAspectRatio="xMidYMid meet" `)+'</g>'
+      +swT(G(2)+0.08,G(yl)+0.16,`NOT TO SCALE · SHEET ${keyPlan.no}`,{pt:5.5,k,fill:SW.grey});}   // the note inside the box, top left
+  return swissSheet(sh,{title:'Project information',big:['Project','Information'],noHeading:1,R,extra:b,draws:[],
+    tiles:[[Sp.org,'FIELD',`${Sp.name} rules.`],[String(P.tierCount),'TIERS','Foundation for tiers 3–5.'],[String(vomSolids().length),'VOMITORIES','All on by default.'],['%%NO%%','SHEET','OF %%N%%.',1]]});}
+// ---------- text pages on the same frame (jsPDF): paper, grid, header, numbered heading, band and footer ----------
+let SWN=0,SWFONT='DVS',SWLOG=null,SWOFF=0;   // set while the set is built: sheet count, frame face, titles of the text pages (dry run)
+function swPdfFrame(doc,title,big){const pw=doc.internal.pageSize.getWidth(),ph=doc.internal.pageSize.getHeight(),u=0.25,k=1,L=2*u,R=pw-2*u,N=Math.round((R-L)/u),no=String(doc.getNumberOfPages()-SWOFF).padStart(2,'0'),tot=String(SWN||doc.getNumberOfPages()).padStart(2,'0'),Sp=SPORTS[P.sport];
+  if(SWLOG)SWLOG.push(title);const raw=doc._raw||doc.text.bind(doc);
+  const T=(t,x,y,o={})=>{doc.setFont(SWFONT,o.b?'bold':'normal');doc.setFontSize(o.pt||7);const c=o.fill||[17,17,17];doc.setTextColor(...c);const w=o.a?swW(t,(o.pt||7)/72,o.b,SWFONT):0;raw(String(t),x-(o.a==='right'?w:o.a==='center'?w/2:0),y);};
+  const base=(top,h,pt)=>top+h/2+0.36*pt/72;
+  doc.setFillColor(246,245,242);doc.rect(0,0,pw,ph,'F');doc.setDrawColor(230,229,223);doc.setLineWidth(0.011);
+  for(let x=u;x<=pw-u+1e-6;x+=u)doc.line(x,u,x,ph-6*u);for(let y=u;y<=ph-6*u+1e-6;y+=u)doc.line(u,y,pw-u,y);
+  T('SIGHTLINE SCHEMATIC — DESIGN STUDY',L,base(u,u,7),{pt:7,b:1,ls:.14});T(`REF: ${Sp.org} ${Sp.name} / ${optName()} / ${P.tierCount} TIERS / ${fmt(M.cap)} SEATS`.toUpperCase(),L,base(2*u,u,6.5),{pt:6.5,ls:.06,fill:[107,107,104]});
+  T(`FORMAT: ${imperial()?'11 × 17 TABLOID':'A3'} PORTRAIT`,R,base(u,u,7),{pt:7,b:1,ls:.14,a:'right'});doc.setFillColor(17,17,17);doc.rect(L,3*u-1.5/72,R-L,1.5/72,'F');
+  doc.setFillColor(218,41,28);doc.rect(L,4*u+u/4,u/2,u/2,'F');T(`${no}. ${title.toUpperCase()}`,3*u,base(4*u,u,13),{pt:13,b:1});
+  const y0=ph-6*u,tw=Math.floor((N-4-Math.floor(N/4))/4),tt=N-4-4*tw;doc.setFillColor(17,17,17);doc.rect(L,y0,R-L,.75/72,'F');
+  const tpt=Math.min(26,tt*u*72/(Math.max(big[0].length,big[1].length+1)*0.68));T(big[0].toUpperCase(),L,y0+2.25*u,{pt:tpt,b:1});T(big[1].toUpperCase()+'.',L,y0+3.75*u,{pt:tpt,b:1,fill:[218,41,28]});
+  [[imperial()?'IMPERIAL':'METRIC','UNITS',imperial()?'Feet and inches.':'Millimetres and metres.'],[fmt(M.cap),'SEATS',`${P.tierCount} tiers, all stands.`],[String(P.tierCount),'TIERS',`${Sp.name}.`],[no,'SHEET',`OF ${tot}.`,1]].forEach((t,i)=>{
+    const x=L+(tt+1)*u+i*(tw+1)*u,y=y0+u,w=tw*u,inv=t[3];if(inv){doc.setFillColor(17,17,17);doc.rect(x,y,w,3*u,'F');}else{doc.setFillColor(255,255,255);doc.setDrawColor(17,17,17);doc.setLineWidth(.75/72);doc.rect(x,y,w,3*u,'FD');}
+    T(t[0],x+.5*u,y+1.35*u,{pt:Math.min(15,w*72/(String(t[0]).length*0.62)),b:1,fill:[218,41,28]});T(t[1],x+.5*u,y+1.98*u,{pt:5.8,b:1,ls:.12,fill:inv?[255,255,255]:[17,17,17]});T(t[2],x+.5*u,y+2.5*u,{pt:5.8,fill:inv?[201,201,197]:[107,107,104]});});
+  doc.setFillColor(17,17,17);doc.rect(L,ph-1.5*u,R-L,.5/72,'F');const fy=base(ph-1.5*u,u,6);
+  T(`PLATE ${no} — ${title.toUpperCase()}`,L,fy,{pt:6,ls:.1});T(`SIGHTLINE SCHEMATIC ${VERSION} · ${optName().toUpperCase()} · ${new Date().toLocaleDateString()}`,(L+R)/2,fy,{pt:6,ls:.1,a:'center'});T(`SHEET ${no} OF ${tot}`,R,fy,{pt:6,ls:.1,a:'right'});
+  doc.setTextColor(0);doc.setDrawColor(0);return 6*u;}   // first content row
+const swBig=t=>{const w=t.replace(/^Sightline Schematic:\s*/,'').replace(/\(.*?\)/g,'').split(/[ ,]+/).filter(Boolean);const q=(t.match(/\(([^)]*)\)/)||[])[1];return [w[0],w[1]||(q?q.split(' ').pop():'Sheet')];};   // two words: black, then red
 async function exportPdfSet(kind){
   const btn=$(kind==='archE'?'dlArch':'dlTab');btn.disabled=true;toast('Building the project set…');
   try{
     await loadJS('vendor/jspdf.umd.min.js');await loadJS('vendor/svg2pdf.umd.min.js');
     const [reg,bold]=await Promise.all([loadB64('vendor/fonts/DejaVuSansCondensed.ttf'),loadB64('vendor/fonts/DejaVuSansCondensed-Bold.ttf')]);
+    const arc=await Promise.all([loadB64('vendor/fonts/Archivo-400.ttf'),loadB64('vendor/fonts/Archivo-700.ttf')]).catch(()=>null);   // the sheet frame face; DejaVu if missing
+    await swLoadFaces();   /* the PDF faces in the page, so text measured here matches the PDF */
     const sheets=PLOT_SHEETS(),small=sheets[0],big=kind==='archE'?sheets[1]:sheets[0];
     const t1=plotTier(big,0),tiers=[t1,...Array.from({length:P.tierCount-1},(_,i)=>plotTier(big,i+1,t1&&t1.sc))];   // Tier 2 at the Tier 1 scale
-    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,...(kind!=='archE'&&imperial()&&P.tierCount<3?[plotOne(big,'plan',1/50,true),plotOne(big,'plan',1/50,true,'v')]:[plotOne(big,'plan'),plotOne(big,'plan',0,false,'v')]),   /* 11 x 17: both bowl plans at 1" = 50' */...(M.AL&&zoned(P)?(()=>{const e=ENL;const ce=CENL;ENL={tier:0,side:westKey()};const r=[plotEnlarged(big)];for(let t=0;t<P.tierCount;t++){ENL={tier:0,side:'corner'};CENL={tier:t,corner:ce.corner};r.push(plotEnlarged(big));}ENL=e;CENL=ce;return r.filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
+    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,plotOne(big,'plan'),plotOne(big,'plan',0,false,'v'),   /* largest standard scale inside the Swiss frame (1" = 50' no longer fits 11 x 17 above the 1-1/2 in band) */...(M.AL&&zoned(P)?(()=>{const e=ENL,ce=CENL,set=[()=>{ENL={tier:0,side:westKey()};},...Array.from({length:P.tierCount},(_,t)=>()=>{ENL={tier:0,side:'corner'};CENL={tier:t,corner:ce.corner};})];
+      const sc=kind==='archE'?(imperial()?{ratio:60,label:'1" = 5\'-0"'}:{ratio:50,label:'1:50'}):(imperial()?{ratio:120,label:'1" = 10\'-0"'}:{ratio:100,label:'1:100'});   /* ARCH E / A0: 1" = 5'-0" (1:50), every plan on one sheet (decision 101) */   /* every enlarged plan at 1" = 10'-0" (1:100); a plan too big for one sheet runs on to the next (decision 98) */
+      const out=set.flatMap(f=>{f();const r=plotEnlarged(big,sc);return Array.isArray(r)?r:[r];});ENL=e;CENL=ce;return out.filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
     if(draws.some(p=>!p))throw new Error('A drawing does not fit its sheet at any standard scale.');
-    const port={pw:small.h,ph:small.w,m:0.25};                                             // 11 x 17 (A3) portrait pages
-    const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'l',unit:'in',format:[draws[0].sheet.w,draws[0].sheet.h]});
-    doc.addFileToVFS('DVS.ttf',reg);doc.addFont('DVS.ttf','DVS','normal');doc.addFileToVFS('DVSB.ttf',bold);doc.addFont('DVSB.ttf','DVS','bold');
+    const port={pw:small.h,ph:small.w,m:0.5};                                             // 11 x 17 (A3) portrait pages
+    const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'p',unit:'in',format:[port.pw,port.ph]});   /* page 1: the cover */
+    const fonts=d=>{d.addFileToVFS('DVS.ttf',reg);d.addFont('DVS.ttf','DVS','normal');d.addFileToVFS('DVSB.ttf',bold);d.addFont('DVSB.ttf','DVS','bold');
+      if(arc){d.addFileToVFS('ARC.ttf',arc[0]);d.addFont('ARC.ttf','ARC','normal');d.addFileToVFS('ARCB.ttf',arc[1]);d.addFont('ARCB.ttf','ARC','bold');}};fonts(doc);
+    SWFONT=arc?'ARC':'DVS';SWLOG=[];SWN=0;SWOFF=0;const dry=new jsPDF({orientation:'p',unit:'in',format:[port.pw,port.ph]});fonts(dry);pdfTitleCase(dry);pdfProjectInfo(dry,port);pdfReferences(dry,port);pdfRowSchedule(dry,port,'T');pdfTables(dry,{...port,fit:true});
+    const texts=SWLOG;SWLOG=null;const nText=dry.getNumberOfPages()-1,NT=1+draws.length+nText;SWN=NT;   /* sheet n of N across the whole set: cover, drawings, text pages */
     const host=document.createElement('div');host.style.cssText='position:fixed;left:-99999px;top:0;width:10px;height:10px;overflow:hidden';document.body.appendChild(host);
     host.className='pdfhost';
-    for(let i=0;i<draws.length;i++){const p=draws[i];if(i)doc.addPage([p.sheet.w,p.sheet.h],p.sheet.w>p.sheet.h?'l':'p');
-      host.innerHTML=pdfReadySvg(p.svg);{const w=document.createTreeWalker(host,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode()))n.data=capWords(n.data);}await doc.svg(host.firstElementChild,{x:0,y:0,width:p.sheet.w,height:p.sheet.h});}
+    const no=i=>String(i).padStart(2,'0'),index=[[no(1),'Project information (summary)','—'],...draws.map((p,i)=>[no(i+2),p.title,p.scale==='not to scale'?'N.T.S.':p.scale]),...texts.map((t,i)=>[no(draws.length+2+i),t,'—'])];
+    const kp=draws.find(p=>p.what==='plan'&&p.ori==='h'),kpi=draws.indexOf(kp);
+    {const csh={name:imperial()?'Tabloid':'A3',w:port.pw,h:port.ph,B:0.25,txt:0.07};let cv=pdfReadySvg(swCover(csh,index,kp?{...kp.draw,no:no(kpi+2)}:null).replace(/%%NO%%/g,'01').replace(/%%N%%/g,no(NT)));if(!arc)cv=cv.replace(/font-family="ARC"/g,'font-family="DVS"');
+      host.innerHTML=cv;swBaselines(host.firstElementChild);if(arc)swAnchors(host.firstElementChild);await doc.svg(host.firstElementChild,{x:0,y:0,width:port.pw,height:port.ph});}
+    for(let i=0;i<draws.length;i++){const p=draws[i];doc.addPage([p.sheet.w,p.sheet.h],p.sheet.w>p.sheet.h?'l':'p');
+      let sv=pdfReadySvg(p.svg.replace(/%%NO%%/g,no(i+2)).replace(/%%N%%/g,no(NT)));if(!arc)sv=sv.replace(/font-family="ARC"/g,'font-family="DVS"');
+      host.innerHTML=sv;{const w=document.createTreeWalker(host,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode()))if(!n.parentElement.closest('[font-family="ARC"]'))n.data=capWords(n.data);}swFinish(host.firstElementChild,p.sheet);if(arc)swAnchors(host.firstElementChild);await doc.svg(host.firstElementChild,{x:0,y:0,width:p.sheet.w,height:p.sheet.h});}
     host.remove();
     pdfTitleCase(doc);pdfProjectInfo(doc,port);pdfReferences(doc,port);   /* same paper as Project Information: 11 x 17, or A3 in metric */pdfRowSchedule(doc,port,'T');pdfTables(doc,{...port,fit:true});
     const name=`${SPORTS[P.sport].name}_${slug()}_${kind==='archE'?'ARCH-E':'Tabloid'}.pdf`;offer(name,doc.output('blob'));
@@ -3492,8 +3649,8 @@ function capWords(str){const parts=String(str).split(/(\s+)/);let prev='';   // 
     return unit?t:t.replace(/^([^A-Za-z]*)([a-z])/,(m,p,c)=>p+c.toUpperCase());}).join('');}
 function pdfTitleCase(doc){if(doc._tc)return doc;const tx=doc.text.bind(doc);doc._tc=1;doc._raw=tx;
   doc.text=(t,...a)=>tx(Array.isArray(t)?t.map(v=>capWords(v)):capWords(t),...a);return doc;}
-function pdfHeader(doc,title,sub,m,k){let y=m+0.3*k;doc.setFont('DVS','bold');doc.setFontSize(16*k);doc.setTextColor(0);doc.text(title,m,y);y+=0.28*k;
-  doc.setFont('DVS','normal');doc.setFontSize(9*k);doc.setTextColor(60);doc.text(sub,m,y);return y+0.42*k;}
+const SWB=0.165;   // baseline offset inside a 1/4 in row
+function pdfHeader(doc,title,sub,m,k){const t=title.replace(/^Sightline Schematic:\s*/,'');return swPdfFrame(doc,t,swBig(t))+0.25+SWB;}   // the Swiss frame; the subtitle's facts live in the header and footer
 // ---------- references: every critical dimension carries a numbered bubble that points to its basis here ----------
 // Section numbers: IBC 2024 and ICC A117.1-2017 (the edition IBC 2024 references). Confirm against the edition the AHJ has adopted.
 const REF_KEYS=['cval','pof','sit','stand','head','tread','wceye','wcplat','wcfront','wcoff','setback','guard','leg','headroom','rowseats','aisle','egress'];
@@ -3581,35 +3738,35 @@ function refTableHTML(){return '<thead><tr><th>Ref.</th><th>Dimension</th><th>Cu
   +refList().map(r=>`<tr><td><span class="refb">${r.no}</span></td><td><b>${r.item}</b><br><span class="reft">${r.typeName}</span></td><td>${r.val}</td><td>${r.basis}</td><td>${r.cite}</td></tr>`).join('')+'</tbody>';}
 // Reference page: 11 x 17 portrait (A3 in metric, matching Project Information), in both project set PDFs
 function pdfReferences(doc,o){const {pw,ph}=o,m=0.5,Sp=SPORTS[P.sport],k=Math.min(1.25,(pw-2*m)/10);doc.addPage([pw,ph],'p');
-  const raw0=doc._raw||doc.text.bind(doc),raw=(t,x,y)=>{(Array.isArray(t)?t:[t]).forEach((v,i)=>raw0(v,x,y+i*0.15*k));};   /* our own line spacing */
+  const raw0=doc._raw||doc.text.bind(doc),raw=(t,x,y)=>{(Array.isArray(t)?t:[t]).forEach((v,i)=>raw0(v,x,y+i*0.25));};   /* one grid row per line (decision 93) */
   let y=pdfHeader(doc,imperial()?'Sightline Schematic: References (US Codes)':'Sightline Schematic: References (International)',`${Sp.name} (${Sp.org}) | ${optName()} | ${new Date().toLocaleString()} | Version ${VERSION}`,m,k);
   doc.setFont('DVS','normal');doc.setFontSize(9*k);doc.setTextColor(60);
   {const ls=doc.splitTextToSize('Each numbered bubble on the drawings points to the row below with the same number. It records where the dimension comes from, so its meaning travels with the set. Code requirement: a minimum or maximum the code sets. Code basis (average): a value the code formula is built on, not itself a requirement. Industry standard: published practice, not code. Design criterion: a project input chosen by the design team.',pw-2*m);
-   raw(ls,m,y);y+=ls.length*0.15*k+0.25*k;}
-  const cols=[['Ref.',0.55],['Dimension and current value',2.65],['Basis',3.75],['Source',3.05]],sc=(pw-2*m)/cols.reduce((a,c)=>a+c[1],0),W=cols.map(c=>c[1]*sc),X=[m];W.forEach((w,i)=>X.push(X[i]+w));
-  const head=()=>{doc.setFont('DVS','bold');doc.setFontSize(9*k);doc.setTextColor(0);cols.forEach((c,i)=>doc.text(c[0],X[i]+0.05,y));y+=0.08*k;doc.setDrawColor(0);doc.setLineWidth(0.015);doc.line(m,y,pw-m,y);y+=0.3*k;};
-  head();const lh=0.15*k,col={code:[178,58,38],avg:[156,74,46],ind:[59,95,140],des:[90,90,86]};
+   raw(ls,m,y);y+=ls.length*0.25+0.25;}
+  const cols=[['Ref.',0.55],['Dimension and current value',2.65],['Basis',3.75],['Source',3.05]],sc=(pw-2*m)/cols.reduce((a,c)=>a+c[1],0),W=cols.map(c=>c[1]*sc),X=[m];W.forEach((w,i)=>X.push(X[i]+w));X[1]-=0.25;X[2]-=0.25;W.forEach((w,i)=>W[i]=X[i+1]-X[i]);   /* Ref., Dimension and Basis one grid square to the left (decision 96) */
+  const head=()=>{doc.setFillColor(17,17,17);doc.rect(m,y-SWB,pw-2*m,0.25,'F');doc.setFont(SWFONT,'bold');doc.setFontSize(6.5);doc.setTextColor(255);cols.forEach((c,i)=>(doc._raw||doc.text)(c[0].toUpperCase(),X[i]+0.08,y,{charSpace:0.012}));doc.setTextColor(0);y+=0.5;};   /* the bar, then one blank grid row */
+  head();const lh=0.25,col={code:[178,58,38],avg:[156,74,46],ind:[59,95,140],des:[90,90,86]};
   refList().forEach(r=>{doc.setFontSize(8.6*k);
     doc.setFont('DVS','bold');const it=doc.splitTextToSize(r.item,W[1]-0.12);doc.setFont('DVS','normal');const vl=doc.splitTextToSize(r.val,W[1]-0.12),bl=doc.splitTextToSize(r.basis,W[2]-0.14),cl=doc.splitTextToSize(r.cite,W[3]-0.1);
-    const n1=it.length+1+vl.length,h=Math.max(n1,bl.length,cl.length)*lh+0.07*k;
-    if(y+h>ph-m-0.6*k){doc.addPage([pw,ph],'p');y=m+0.3*k;head();}
-    const rr=0.12*k,cx=X[0]+0.05+rr,cy=y-0.73*8.6*k/72+rr;   /* circle top on the cap height of the first line */doc.setDrawColor(181,83,60);doc.setLineWidth(0.012);doc.circle(cx,cy,rr,'S');
+    const n1=it.length+1+vl.length,h=Math.max(n1,bl.length,cl.length)*lh;
+    if(y+h>ph-1.75){doc.addPage([pw,ph],'p');y=swPdfFrame(doc,'References (continued)',['References','Codes'])+0.25+SWB;head();}
+    const rr=0.1,cx=X[0]+0.125,cy=y-SWB+0.125;   /* centred in the grid cell beside the column's first grid line */   /* circle top on the cap height of the first line */doc.setDrawColor(181,83,60);doc.setLineWidth(0.012);doc.circle(cx,cy,rr,'S');
     doc.setFont('DVS','bold');doc.setFontSize(8*k);doc.setTextColor(181,83,60);doc.text(String(r.no),cx,cy+rr*0.38,{align:'center'});
     doc.setFontSize(8.6*k);doc.setTextColor(0);it.forEach((v,i)=>doc.text(v,X[1]+0.05,y+i*lh));let yy=y+it.length*lh;
     doc.setFontSize(7.4*k);doc.setTextColor(...col[r.type]);doc.text(r.typeName,X[1]+0.05,yy);yy+=lh;
     doc.setFont('DVS','normal');doc.setFontSize(8.6*k);doc.setTextColor(0);raw(vl,X[1]+0.05,yy);
-    doc.setTextColor(30);raw(bl,X[2]+0.07,y);raw(cl,X[3]+0.05,y);
-    y+=h;doc.setDrawColor(190);doc.setLineWidth(0.006);doc.line(m,y-lh*0.55,pw-m,y-lh*0.55);y+=0.11*k;});   /* room for the next bubble below the line */
-  y+=0.1*k;doc.setFont('DVS','normal');doc.setFontSize(8*k);doc.setTextColor(80);
+    doc.setTextColor(30);raw(bl,X[2]+0.07,y);doc.setTextColor(218,41,28);raw(cl,X[3]+0.05,y);doc.setTextColor(30);   /* the Source column in red (decision 97) */
+    y+=h;doc.setDrawColor(154,154,150);doc.setLineWidth(0.006);doc.line(m,y-SWB,pw-m,y-SWB);});   /* rule on the grid line under the row */   /* room for the next bubble below the line */
+  y+=0.25;doc.setFont('DVS','normal');doc.setFontSize(8*k);doc.setTextColor(80);
   const nt=doc.splitTextToSize(imperial()?'Section numbers follow IBC 2024 and ICC A117.1-2017, the edition IBC 2024 references. The 2027 IBC and later A117.1 editions may renumber these sections; confirm every citation against the editions the authority having jurisdiction has adopted before issue. Values shown are the current inputs of this option.':'International references (metric units): Guide to Safety at Sports Grounds 6th ed. (SGSA 2018), BS EN 13200 series, BS 8300-2:2018, BS 6180:2011, SGSA Accessible Stadia guide, Approved Documents B and K (England). Where a UK or European document sets no method, the US method is shown as a comparative check and labelled as such. Confirm the national standards and local authority requirements for the project location before issue. Values shown are the current inputs of this option.',pw-2*m);
-  if(y+nt.length*0.15*k>ph-m){doc.addPage([pw,ph],'p');y=m+0.3*k;}raw(nt,m,y);}
+  if(y+nt.length*0.25>ph-1.75){doc.addPage([pw,ph],'p');y=swPdfFrame(doc,'References (continued)',['References','Codes'])+0.25+SWB;}raw(nt,m,y);}
 // Project information: one portrait page of the inputs and results that define the bowl
 function pdfProjectInfo(doc,o){const {pw,ph,m}=o,Sp=SPORTS[P.sport],k=Math.min(1.25,(pw-2*m)/8.5),E=P.eye;doc.addPage([pw,ph],'p');
   let y=pdfHeader(doc,'Sightline Schematic: Project Information',`${Sp.name} (${Sp.org}) | ${optName()} | ${new Date().toLocaleString()} | Version ${VERSION}`,m,k);
-  const sec=(t,rows)=>{if(y+(rows.length+2)*0.24*k>ph-m){doc.addPage([pw,ph],'p');y=m+0.3*k;}   /* next page when a section won't fit */
-    doc.setFont('DVS','bold');doc.setFontSize(11.5*k);doc.setTextColor(0);doc.text(t,m,y);y+=0.08*k;doc.setDrawColor(0);doc.setLineWidth(0.01);doc.line(m,y,pw-m,y);y+=0.24*k;
-    doc.setFontSize(9.5*k);rows.forEach(([a,b])=>{doc.setFont('DVS','bold');doc.text(String(a),m,y);doc.setFont('DVS','normal');
-      const ls=doc.splitTextToSize(String(b),pw-m-(m+3.2*k));ls.forEach((t,i)=>doc.text(t,m+3.2*k,y+i*0.19*k));y+=0.22*k+(ls.length-1)*0.19*k;});y+=0.16*k;};   // long values wrap
+  const sec=(t,rows)=>{if(y+(rows.length+2)*0.25>ph-1.75){doc.addPage([pw,ph],'p');y=swPdfFrame(doc,'Project information (continued)',['Project','Information'])+0.25+SWB;}   /* next page when a section won't fit */
+    doc.setFillColor(218,41,28);doc.rect(m,y-SWB+0.0625,0.125,0.125,'F');doc.setFont(SWFONT,'bold');doc.setFontSize(10);doc.setTextColor(17,17,17);(doc._raw||doc.text)(t.toUpperCase(),m+0.25,y);doc.setFillColor(17,17,17);doc.rect(m,y-SWB+0.25-0.75/72,pw-2*m,0.75/72,'F');y+=0.25;
+    doc.setFontSize(8.5);rows.forEach(([a,b])=>{doc.setFont('DVS','bold');doc.text(String(a),m,y);doc.setFont('DVS','normal');
+      const ls=doc.splitTextToSize(String(b),pw-m-(m+3.25));ls.forEach((t,i)=>doc.text(t,m+3.25,y+i*0.25));y+=0.25*ls.length;});y+=0.25;};   // one grid row per line   // long values wrap
   const t1=ZR.T.filter(r=>r.tier===0),t2=ZR.T.filter(r=>r.tier===1),cv=cvSet(P.sport);
   sec('Project',[['Sport and governing rules',`${Sp.name} (${Sp.org}), ${Sp.rule}`],['Option',optName()],['Units',imperial()?fmode()==='arch'?'Imperial (inches to 2 decimals below 10\'-0"; feet and inches at or above)':'Imperial (feet and inches)':fmode()==='mm-m'?'Metric (millimetres below 10 m; metres at or above; 1000 mm = 1 m)':fmode()==='mm'?'Metric (millimetres; 1000 mm = 1 m)':'Metric'],
     ['Field orientation',P.planOri==='h'?'Landscape, north left':'Vertical, north up'],['Field',fieldDesc(P)],['Seating capacity range',(()=>{const [lo,hi]=capLim(P.sport);return `${fmt(lo)} to ${fmt(hi)} seats (target ${fmt(P.capTarget)})`;})()]]);
@@ -3637,32 +3794,31 @@ function pdfProjectInfo(doc,o){const {pw,ph,m}=o,Sp=SPORTS[P.sport],k=Math.min(1
 // Row schedule for one side (all tiers), fitted to the page width
 function pdfRowSchedule(doc,o,zone){const {pw,ph,m}=o,Sp=SPORTS[P.sport],rows=ZR[zone];
   const cols0=[['Row',1.5,'left'],['Riser from focus',1.45],['Tread height',1.25],['Tread depth',1.05],['Riser',0.85],['Rake',0.75],['C sitting',1.05],['C standing',1.1]],w0=cols0.reduce((a,c)=>a+c[1],0);
-  const k=(pw-2*m)/w0,cols=cols0.map(([n,w,a])=>[n,w*k,a]),rh=0.22*k,ci=v=>v==null?'':CV(v);
-  doc.addPage([pw,ph],'p');let y=pdfHeader(doc,`Sightline Schematic: Row Schedule, ${zoneName(P,zone)}`,`${Sp.name} (${Sp.org}) | ${optName()} | ${new Date().toLocaleString()}`,m,k);
-  const line=(vals,bold,colors)=>{let x=m;doc.setFont('DVS',bold?'bold':'normal');doc.setFontSize(9.5*k);
-    cols.forEach(([n,w,al],i)=>{doc.setTextColor(...((colors&&colors[i])||[0,0,0]));const v=String(vals[i]??'');if(al==='left')doc.text(v,x+0.04,y);else doc.text(v,x+w-0.04,y,{align:'right'});x+=w;});
-    doc.setDrawColor(190);doc.setLineWidth(0.005);doc.line(m,y+rh*.3,pw-m,y+rh*.3);y+=rh;
-    if(y>ph-m){doc.addPage([pw,ph],'p');y=m+rh;}};
-  line(cols.map(c=>c[0]),true);
+  const k=(pw-2*m)/w0,cols=cols0.map(([n,w,a])=>[n,w*k,a]),rh=0.25,ci=v=>v==null?'':CV(v);
+  doc.addPage([pw,ph],'p');const rsT=`Row schedule, ${zoneName(P,zone)}`;let y=pdfHeader(doc,rsT,`${Sp.name} (${Sp.org}) | ${optName()} | ${new Date().toLocaleString()}`,m,k);
+  const line=(vals,bold,colors,bar)=>{let x=m;doc.setFont(bar?SWFONT:'DVS',bold?'bold':'normal');doc.setFontSize(bar?6.5:8.5);if(bar){doc.setFillColor(17,17,17);doc.rect(m,y-SWB,pw-2*m,rh,'F');}
+    cols.forEach(([n,w,al],i)=>{doc.setTextColor(...(bar?[255,255,255]:(colors&&colors[i])||[0,0,0]));const v=bar?String(vals[i]??'').toUpperCase():String(vals[i]??''),tx=doc._raw&&bar?doc._raw:doc.text.bind(doc);if(al==='left')tx(v,x+0.06,y);else if(bar)tx(v,x+w-0.06-swW(v,6.5/72,1,SWFONT),y);else tx(v,x+w-0.06,y,{align:'right'});x+=w;});
+    if(!bar){doc.setDrawColor(154,154,150);doc.setLineWidth(0.006);doc.line(m,y-SWB+rh,pw-m,y-SWB+rh);}y+=rh;
+    if(y>ph-1.75){doc.addPage([pw,ph],'p');y=swPdfFrame(doc,rsT+' (continued)',swBig(rsT))+0.25+SWB;line(cols.map(c=>c[0]),true,null,1);}};
+  line(cols.map(c=>c[0]),true,null,1);
   rows.forEach(r=>{const tr=rows.filter(q=>q.tier===r.tier),j=tr.indexOf(r),cs=rowC(tr,j,'sit'),ct=rowC(tr,j,'stand'),col=v=>v==null?null:v<r.target-0.05?[255,0,0]:[0,0,0];
     line([`Tier ${r.tier+1}, row ${r.row}`,L(r.x),L(r.z),inchText(r.T),r.riser==null?'':inchText(r.riser),r.rake==null?'':r.rake.toFixed(1)+'°',ci(cs),ci(ct)],false,[null,null,null,null,null,null,col(cs),col(ct)]);});}
 function pdfTables(doc,o={}){
   const {head,out}=seatCount(),Sp=SPORTS[P.sport],pw=o.pw||(imperial()?11:297/25.4),ph=o.ph||(imperial()?17:420/25.4),m=o.m??0.6;
   const rows=out.filter(o=>o.kind==='row'),mins=['cs','ct'].map(k=>Math.min(...rows.map(o=>o[k]).filter(v=>v!=null)));
   const cols0=[['Row',2.3,'left'],['C sitting',1.05],['C standing',1.1],...head.map(h=>[h,0.85]),['Row total',1.0]],w0=cols0.reduce((a,c)=>a+c[1],0);
-  const k=o.fit?(pw-2*m)/w0:1,cols=cols0.map(([n,w,al])=>[n,w*k,al]),rh=0.24*k,fz=10*k;   // fit to the paper width
+  const k=o.fit?(pw-2*m)/w0:1,cols=cols0.map(([n,w,al])=>[n,w*k,al]),rh=0.25,fz=8.5;   // fit to the paper width
   const cfmt=v=>v==null?'':CV(v);
   const groups=[];let cur=[],ti=0;out.forEach(o=>{cur.push(o);if(o.kind==='sub'){ti++;if(ti<P.tierCount){groups.push(cur);cur=[];}}});groups.push(cur);
-  groups.forEach((g,gi)=>{doc.addPage([pw,ph],'p');let y=m+0.3*k;
-    doc.setFont('DVS','bold');doc.setFontSize(16*k);doc.setTextColor(0);doc.text(`Sightline Schematic: Seat Count, Tier ${gi+1}`,m,y);y+=0.28*k;
-    doc.setFont('DVS','normal');doc.setFontSize(9*k);doc.setTextColor(60);
-    doc.text(`${Sp.name} (${Sp.org}) | ${optName()} | Seats Lost to ${titleCase(lossTxt())} | C-Values: Lowest Blue, Below the Minimum Red | ${new Date().toLocaleString()}`,m,y);y+=0.42*k;
-    const cell=(vals,bold,fill,colors)=>{if(fill){doc.setFillColor(238,242,248);doc.rect(m,y-rh*.72,pw-2*m,rh,'F');}
-      let x=m;doc.setFont('DVS',bold?'bold':'normal');doc.setFontSize(fz);
-      cols.forEach(([n,w,al],i)=>{const c=(colors&&colors[i])||[0,0,0];doc.setTextColor(...c);
-        const v=String(vals[i]??'');if(al==='left')doc.text(v,x+0.05,y);else doc.text(v,x+w-0.05,y,{align:'right'});x+=w;});
-      doc.setDrawColor(190);doc.setLineWidth(0.005);doc.line(m,y+rh*.28,m+cols.reduce((a,c)=>a+c[1],0),y+rh*.28);y+=rh;};
-    cell(cols.map(c=>c[0]),true);doc.setDrawColor(0);doc.setLineWidth(0.015);doc.line(m,y-rh*.72,m+cols.reduce((a,c)=>a+c[1],0),y-rh*.72);
+  groups.forEach((g,gi)=>{doc.addPage([pw,ph],'p');let y=swPdfFrame(doc,`Seat count, Tier ${gi+1}`,['Seat','Count'])+0.25+SWB;
+    doc.setFont('DVS','normal');doc.setFontSize(8);doc.setTextColor(107,107,104);
+    doc.text(`Seats Lost to ${titleCase(lossTxt())} | C-Values: Lowest Blue, Below the Minimum Red`,m,y);y+=0.5;
+    const cell=(vals,bold,fill,colors,bar)=>{if(fill){doc.setFillColor(232,231,226);doc.rect(m,y-SWB,pw-2*m,rh,'F');}if(bar){doc.setFillColor(17,17,17);doc.rect(m,y-SWB,pw-2*m,rh,'F');}
+      let x=m;doc.setFont(bar?SWFONT:'DVS',bold?'bold':'normal');doc.setFontSize(bar?6.5:fz);
+      cols.forEach(([n,w,al],i)=>{const c=bar?[255,255,255]:(colors&&colors[i])||[0,0,0];doc.setTextColor(...c);
+        const v=bar?String(vals[i]??'').toUpperCase():String(vals[i]??''),tx=bar&&doc._raw?doc._raw:doc.text.bind(doc);if(al==='left')tx(v,x+0.06,y);else if(bar)tx(v,x+w-0.06-swW(v,6.5/72,1,SWFONT),y);else tx(v,x+w-0.06,y,{align:'right'});x+=w;});
+      if(!bar){doc.setDrawColor(154,154,150);doc.setLineWidth(0.006);doc.line(m,y-SWB+rh,m+cols.reduce((a,c)=>a+c[1],0),y-SWB+rh);}y+=rh;};
+    cell(cols.map(c=>c[0]),true,false,null,1);
     g.forEach(o=>{const col=k=>{const v=o[k],i=k==='cs'?0:1;if(v==null)return null;return Math.abs(v-mins[i])<1e-6?[0,0,255]:v<o.tg-0.05?[255,0,0]:[0,0,0];};
       const vals=[titleCase(o.label),o.kind==='row'?cfmt(o.cs):'',o.kind==='row'?cfmt(o.ct):'',...o.v.map(fmt),fmt(o.t)];
       cell(vals,o.kind!=='row',o.kind==='sub',o.kind==='row'?[null,col('cs'),col('ct')]:null);});});
@@ -3699,9 +3855,11 @@ $('cntXlsx').onclick=()=>{const {head,out}=seatCount(),Sp=SPORTS[P.sport];
 $('cntPrint').onclick=async()=>{const btn=$('cntPrint');btn.disabled=true;toast('Building the seat count PDF…');
   try{await loadJS('vendor/jspdf.umd.min.js');
     const [reg,bold]=await Promise.all([loadB64('vendor/fonts/DejaVuSansCondensed.ttf'),loadB64('vendor/fonts/DejaVuSansCondensed-Bold.ttf')]);
+    const arc=await Promise.all([loadB64('vendor/fonts/Archivo-400.ttf'),loadB64('vendor/fonts/Archivo-700.ttf')]).catch(()=>null);   // the sheet frame face; DejaVu if missing
     const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'p',unit:'in',format:imperial()?[11,17]:[297/25.4,420/25.4]});
-    doc.addFileToVFS('DVS.ttf',reg);doc.addFont('DVS.ttf','DVS','normal');doc.addFileToVFS('DVSB.ttf',bold);doc.addFont('DVSB.ttf','DVS','bold');
-    pdfTitleCase(doc);pdfTables(doc,{m:0.25,fit:true});doc.deletePage(1);                       // one page per tier, fitted to the width
+    const fonts=d=>{d.addFileToVFS('DVS.ttf',reg);d.addFont('DVS.ttf','DVS','normal');d.addFileToVFS('DVSB.ttf',bold);d.addFont('DVSB.ttf','DVS','bold');
+      if(arc){d.addFileToVFS('ARC.ttf',arc[0]);d.addFont('ARC.ttf','ARC','normal');d.addFileToVFS('ARCB.ttf',arc[1]);d.addFont('ARCB.ttf','ARC','bold');}};fonts(doc);
+    await swLoadFaces();SWFONT=arc?'ARC':'DVS';SWN=P.tierCount;SWOFF=1;pdfTitleCase(doc);pdfTables(doc,{m:0.5,fit:true});SWOFF=0;SWN=0;doc.deletePage(1);                       // one page per tier, fitted to the width
     offer('C-Value_'+slug()+'.pdf',doc.output('blob'));toast('Seat count PDF saved.');
   }catch(e){toast('The seat count PDF could not be built: '+e.message);}finally{btn.disabled=false;}};
 const cntPrintDialog=()=>{const Sp=SPORTS[P.sport],tmp=document.createElement('div');
