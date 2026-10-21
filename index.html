@@ -1710,7 +1710,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.21.03';
+const VERSION='2026.10.21.04';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -3762,7 +3762,7 @@ async function exportPdfSet(kind){
     const sheets=PLOT_SHEETS(),small=sheets[0],big=kind==='archE'?sheets[1]:sheets[0];
     const secSc=catScale([sc=>plotSection(big,'T',sc)]),tierSc=catScale(Array.from({length:P.tierCount},(_,i)=>sc=>plotTier(big,i,sc)));   /* overall section and the enlarged tier sections: two categories, one scale each (decision 112) */
     const tiers=Array.from({length:P.tierCount},(_,i)=>plotTier(big,i,tierSc));
-    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T',secSc),...tiers,...(()=>{const ps=kind!=='archE'&&imperial()?{ratio:900,label:'1" = 75\'-0"'}:catScale([sc=>plotOne(big,'plan',0,false,'h',sc),sc=>plotOne(big,'plan',0,false,'v',sc)]);   /* 11 x 17: Joseph's choice 1" = 75'-0" (decision 116) */   /* bowl plans: one scale (decision 110) */   /* bowl plans: 1/64" = 1'-0" on 11 x 17 (decision 104), 1" = 25' on ARCH E (decision 102) */
+    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T',secSc),...tiers,...(()=>{const ps=catScale([sc=>plotOne(big,'plan',0,false,'h',sc),sc=>plotOne(big,'plan',0,false,'v',sc)]);   /* the largest permitted scale that fits (decision 117) */   /* bowl plans: one scale (decision 110) */   /* bowl plans: 1/64" = 1'-0" on 11 x 17 (decision 104), 1" = 25' on ARCH E (decision 102) */
       return [plotOne(big,'plan',0,false,'h',ps),plotOne(big,'plan',0,false,'v',ps)];})(),   /* largest standard scale inside the Swiss frame (1" = 50' no longer fits 11 x 17 above the 1-1/2 in band) */...(M.AL&&zoned(P)?(()=>{const e=ENL,ce=CENL,set=[()=>{ENL={tier:0,side:westKey()};}];   /* the typical section, then every other unique section on its own, square to the sheet (decision 109) */
       {const shown=new Set(),add=nos=>nos.forEach(n=>shown.add(n));   /* every unique section in the set once (decision 108): the typical and corner sheets count for theirs */
         {const E=enlargedData(0,westKey());if(E){const q=sectionList(0).find(x=>x.key===E.L0.a.id+'_'+E.R0.a.id);if(q)shown.add(q.no);}}
