@@ -1710,7 +1710,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.21.01';
+const VERSION='2026.10.21.02';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -3484,7 +3484,7 @@ const DETAIL_SCALES=()=>imperial()?SET_SCALES():[5,10,20,25,50,100].map(r=>({rat
 const PLOT_SCALES=()=>imperial()?REVIT_STD.map(([v,t])=>({ratio:12/v,label:t})):[20,25,50,100,200,250,500,750,1000,1250,1500,2000,2500,5000].map(r=>({ratio:r,label:`1:${r}`}));   /* metric: ISO series plus the common intermediates 1:750, 1:1250, 1:1500, 1:2500 */
 // PDF set scales (decision 110): Joseph's architectural and engineering scales only, largest first (paper inches per model foot)
 const SET_ARCH=[[12,'12" = 1\'-0"'],[6,'6" = 1\'-0"'],[3,'3" = 1\'-0"'],[1.5,'1 1/2" = 1\'-0"'],[1,'1" = 1\'-0"'],[3/4,'3/4" = 1\'-0"'],[1/2,'1/2" = 1\'-0"'],[3/8,'3/8" = 1\'-0"'],[1/4,'1/4" = 1\'-0"'],[3/16,'3/16" = 1\'-0"'],
-  [1/8,'1/8" = 1\'-0"'],[1/10,'1" = 10\'-0"'],[3/32,'3/32" = 1\'-0"'],[1/16,'1/16" = 1\'-0"'],[1/20,'1" = 20\'-0"'],[1/25,'1" = 25\'-0"'],[1/32,'1/32" = 1\'-0"'],[1/50,'1" = 50\'-0"'],[1/64,'1/64" = 1\'-0"'],[1/100,'1" = 100\'-0"'],[1/128,'1/128" = 1\'-0"'],[1/200,'1" = 200\'-0"']];
+  [1/8,'1/8" = 1\'-0"'],[1/10,'1" = 10\'-0"'],[3/32,'3/32" = 1\'-0"'],[1/16,'1/16" = 1\'-0"'],[1/20,'1" = 20\'-0"'],[1/25,'1" = 25\'-0"'],[1/32,'1/32" = 1\'-0"'],[1/50,'1" = 50\'-0"'],[1/64,'1/64" = 1\'-0"'],[1/75,'1" = 75\'-0"'],[1/100,'1" = 100\'-0"'],[1/125,'1" = 125\'-0"'],[1/128,'1/128" = 1\'-0"'],[1/150,'1" = 150\'-0"'],[1/200,'1" = 200\'-0"']];   /* + 1" = 75', 125', 150' (decision 115) */
 const SET_SCALES=()=>imperial()?SET_ARCH.map(([v,t])=>({ratio:12/v,label:t})):[1,2,5,10,20,25,50,100,200,250,500,750,1000,1250,1500,2000,2500,5000].map(r=>({ratio:r,label:`1:${r}`}));
 // one scale for a category: each view's largest permitted scale that fits, then the smallest of those for all (decision 110)
 function catScale(fns){const L=SET_SCALES(),ok=(fn,i)=>{const r=fn(L[i]);return !!(r&&!Array.isArray(r)&&r.fits);};let lo=0;   /* fitting only gets easier down the list: a binary search per view, starting from the worst so far */
