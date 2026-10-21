@@ -1710,7 +1710,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.20.09';
+const VERSION='2026.10.21.01';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -3227,12 +3227,12 @@ function uniqueSections(){const out=[];if(!M.AL)return out;const S=P.secs||{};
 function keyPlanSvg(rep,same){if(!M||!M.AL)return '';const RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),gone=goneAisles(M.AL),keep=id=>!gone.has(+id),S=P.secs||{},t=planRot(),pts=[],shapes=[];
   const sm=new Set(same||[]);M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));
     sectionList(ti).forEach(q=>{if(S[q.no]&&S[q.no].off)return;const g=secGeom(ti,q.key,0,nr-1,RS,keep);(g.polys||[]).forEach(pl=>{const r=pl.map(p=>rotPt(p[0],-p[1],t));pts.push(...r);
-      shapes.push({r,fill:q.no===rep?'#DA291C':['#D4D4D4','#AFAFAF','#8C8C8C'][ti]||'#8C8C8C',dash:sm.has(q.no)});});});});
+      shapes.push({r,fill:q.no===rep||sm.has(q.no)?'#DA291C':['#D4D4D4','#AFAFAF','#8C8C8C'][ti]||'#8C8C8C'}   /* the drawn section and every identical one: solid red (decision 114) */);});});});
   if(!pts.length)return '';const fb=(boundary(P)||[]).map(p=>rotPt(p[0],-p[1],t));
   const x0=minOf(pts.map(p=>p[0])),x1=maxOf(pts.map(p=>p[0])),y0=minOf(pts.map(p=>p[1])),y1=maxOf(pts.map(p=>p[1])),m=(x1-x0)*0.03,F=v=>v.toFixed(2),d=r=>'M'+r.map(p=>F(p[0])+' '+F(p[1])).join('L')+'Z';
   return `<svg viewBox="${F(x0-m)} ${F(y0-m)} ${F(x1-x0+2*m)} ${F(y1-y0+2*m)}">`+(fb.length?`<path d="${d(fb)}" fill="#EDEDED" stroke="#111111" stroke-width="${F((x1-x0)/300)}"/>`:'')
     +shapes.map(s=>`<path d="${d(s.r)}" fill="${s.fill}" stroke="#111111" stroke-width="${F((x1-x0)/600)}"/>`).join('')
-    +shapes.filter(s=>s.dash).map(s=>`<path d="${d(s.r)}" fill="none" stroke="#DA291C" stroke-width="${F((x1-x0)/160)}" stroke-dasharray="${F((x1-x0)/90)} ${F((x1-x0)/160)}" stroke-linejoin="round"/>`).join('')+'</svg>';}   /* identical sections: red dashed outline (decision 113) */
++'</svg>';}
 function secRows(ti,key){const T=M.AL[ti],zs=GEO.map(k=>T[k]).filter(Boolean),nr=Math.max(...zs.map(z=>z.tr.length)),lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k]))),a=[];
   for(let j=0;j<nr;j++){const sc=ringSecs(ti,j).find(x=>x.l+'_'+x.r===key);if(sc)a.push(Math.min(sc.n,lim));}return a;}
 function oneTitle(one){const q=sectionList(one.ti).find(x=>x.key===one.key),pc=q&&q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a);
