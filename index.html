@@ -1710,7 +1710,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.20.05';
+const VERSION='2026.10.20.07';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -3077,7 +3077,7 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
     det+=K2.out();}
   const lo3=Math.min(...counts),hi3=Math.max(...counts);
   const fC=Math.max(fs,(span+2*side)/62),cap=`<text x="${X(span/2)}" y="${Y(depth)-fC*1.4}" font-size="${f(fC*1.15)}" font-weight="700" text-anchor="middle" fill="#1E5BD8">${lo3===hi3?lo3:lo3+'–'+hi3} seats per row, ${tr.length} rows: ${fmt(counts.reduce((a,b)=>a+b,0))} seats</text>`;
-  return `<svg viewBox="0 0 ${f(W)} ${f(H)}" role="img" aria-label="Enlarged plan of a typical section">`+g+nb+seats+rn+K.out()+det+cap+'</svg>';}
+  return `<svg viewBox="0 0 ${f(W)} ${f(H)}" role="img" aria-label="Enlarged plan of a typical section">`+g+nb+seats+rn+K.out()+det+(o.own?'':cap)+'</svg>';}   /* PDF: the sheet carries the section label */
 function enlargedTitle(){if(ENL.one)return oneTitle(ENL.one);if(enlSide()==='corner')return cornerTitle();const ti=Math.min(ENL.tier,P.tierCount-1),E=enlargedData(ti,enlSide()),no=E?(sectionList(ti).find(q=>q.key===E.L0.a.id+'_'+E.R0.a.id)||{}).no:null;return `Enlarged plan: typical section${no?' '+no:''}, Tier ${ti+1} ${zoneName(P,enlSide())} (middle section)`;}
 // corner sheets: one scale for every tier, not necessarily a standard one, the largest that fits the paper (the common frame is the largest tier's corner)
 function cornerScale(sh,aw,ah){let Wc=0,Hc=0;for(let t=0;t<P.tierCount;t++){const b=drawCornerEnlarged({measure:true,tier:t});if(b&&b.w){Wc=Math.max(Wc,b.w);Hc=Math.max(Hc,b.h);}}
@@ -3093,24 +3093,27 @@ function seatsSvg(){if(!SHOWSEATS||!M.AL||PLAN!=='bowl')return '';const A=AIS(),
       p+=`M${f(P1[0])} ${f(P1[1])}L${f(P2[0])} ${f(P2[1])}L${f(P3[0])} ${f(P3[1])}L${f(P4[0])} ${f(P4[1])}Z`;}});});
   return `<path d="${p}" fill="none" stroke="var(--ink)" stroke-width="0.25" opacity=".7" vector-effect="non-scaling-stroke"/>`;}
 // PDF sheet: the enlarged section plan at the largest standard scale that fits
-function plotEnlarged(sh,force){const A=swArea(sh),aw=A.aw,ah=A.ah;let fit=null;   // force: the common scale of the set's enlarged plans
+function plotEnlarged(sh,force,test){const A=swArea(sh),aw=A.aw-13*A.u,ah=A.ah-4*A.u;   /* beside the key plan, below the section label (decision 111) */let fit=null;   /* the drawing area beside the key plan */   // force: the common scale of the set's enlarged plans
   const ti=Math.min(ENL.one?ENL.one.ti:(enlSide()==='corner'?CENL:ENL).tier,P.tierCount-1),sw=P.zt[ti].z.T.seatW,r=sw/(A.u*25.4);   // one seat = one grid square (decision 93)
   const seatSc={ratio:r,label:imperial()?(()=>{const t=Math.round(r*4)/4,ft=Math.floor(t/12),inch=+(t-ft*12).toFixed(2);return `1" = ${ft}'-${inch}"`;})():`1:${Math.round(r)}`,seat:1};
   const scs=enlSide()==='corner'?[seatSc,cornerScale(sh,aw,ah)].filter(Boolean):[seatSc,...PLOT_SCALES()];
   const lab=r=>imperial()?(()=>{const t=Math.ceil(r*4-1e-6)/4,ft=Math.floor(t/12),inch=+(t-ft*12).toFixed(2);return `1" = ${ft}'-${inch}"`;})():`1:${Math.ceil(r-1e-6)}`;
   const tryS=sc=>{const kk=1/sc.ratio/25.4,svg=drawEnlarged({fs:sh.txt*25.4*sc.ratio,own:true}),v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);if(!v)return null;return {sc,k:kk,w:+v[1]*kk,h:+v[2]*kk,svg,u:25.4*sc.ratio};};
   if(force)fit=tryS(force);
-  else{let t=tryS(seatSc);if(t&&t.w<=aw&&t.h<=ah)fit=t;   // a seat one grid square wide; failing that, the largest scale that fills the area (on a 1/4 in step)
+  else if(0){let t=tryS(seatSc);if(t&&t.w<=aw&&t.h<=ah)fit=t;   // a seat one grid square wide; failing that, the largest scale that fills the area (on a 1/4 in step)
    else if(t)for(let i=0;i<6&&!fit;i++){const r0=t.sc.ratio*Math.max(t.w/aw,t.h/ah)*1.002,r=imperial()?Math.ceil(r0*4)/4:Math.ceil(r0);t=tryS({ratio:r,label:lab(r)});if(t&&t.w<=aw&&t.h<=ah)fit=t;}}
-  if(!fit)for(const sc of scs.slice(1)){const t=tryS(sc);if(t&&t.w<=aw&&t.h<=ah){fit=t;break;}}
+  if(!fit&&!force)for(const sc of SET_SCALES()){const t=tryS(sc);if(t&&t.w<=aw&&t.h<=ah){fit=t;break;}}
   if(!fit)return null;
   const title=enlargedTitle(),corner=enlSide()==='corner'&&!ENL.one,sc=swScale(sh,fit.sc.label,fit.k);if(fit.sc.seat)sc.note='One seat = one grid square.';
-  const nx=Math.max(1,Math.ceil(fit.w/aw-1e-6)),ny=Math.max(1,Math.ceil(fit.h/ah-1e-6)),base=swDraw(trueStrokes(fit.svg,fit.u)),vb=base.match(/viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/).slice(1).map(Number);
+  const nx=Math.max(1,Math.ceil(fit.w/aw-1e-6)),ny=Math.max(1,Math.ceil(fit.h/ah-1e-6));if(test)return {fits:nx*ny===1};const base=swDraw(trueStrokes(fit.svg,fit.u)),vb=base.match(/viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/).slice(1).map(Number);
   const u=A.u,kw=12*u,kp=(()=>{let rep=null,same=[];if(ENL.one){rep=ENL.one.no;same=ENL.one.same;}else if(!corner){const E=enlargedData(Math.min(ENL.tier,P.tierCount-1),enlSide());if(E){const q=sectionList(Math.min(ENL.tier,P.tierCount-1)).find(x=>x.key===E.L0.a.id+'_'+E.R0.a.id);if(q){rep=q.no;same=(uniqueSections().find(g=>g.nos.includes(q.no))||{nos:[]}).nos.filter(n=>n!==q.no);}}}
     const ks=rep?keyPlanSvg(rep,same):'';if(!ks)return null;const v=ks.match(/viewBox="[-\d.]+ [-\d.]+ ([\d.]+) ([\d.]+)"/).slice(1).map(Number),kh=Math.min(kw*v[1]/v[0],A.ah*0.6),kx=A.x0+A.aw-kw,ky=A.y0;
     return {w:kw,svg:swRect(kx,ky,kw,kh+u,'none','#111111',.75*u/0.25/72)+swT(kx+u/3,ky+u*0.65,'KEY PLAN',{pt:5.5,b:1,k:u/0.25})+ks.replace('<svg ',`<svg x="${(kx+u/4).toFixed(4)}" y="${(ky+u).toFixed(4)}" width="${(kw-u/2).toFixed(4)}" height="${(kh-u/4).toFixed(4)}" preserveAspectRatio="xMidYMid meet" `)};})();
-  const kx0=kp?kp.w+u:0,dx=A.x0+(A.aw-kx0-fit.w)/2;   /* the drawing centred beside the key plan */
-  if(nx*ny===1)return {svg:swissSheet(sh,{title,big:['Enlarged','Plan'],draws:[{svg:base,w:fit.w,h:fit.h,x:fit.w<=A.aw-kx0?dx:undefined}],extra:kp?kp.svg:'',scale:sc}),scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'enlarged',title};
+  const kx0=kp?kp.w+u:0,dx=A.x0+(A.aw-kx0-fit.w)/2,dy=A.y0+4*u+(ah-fit.h)/2;
+  const lb=(()=>{let ti,key,no;if(ENL.one){ti=ENL.one.ti;key=ENL.one.key;no=ENL.one.no;}else{ti=Math.min(ENL.tier,P.tierCount-1);const E=enlargedData(ti,enlSide());if(!E)return '';key=E.L0.a.id+'_'+E.R0.a.id;const q=sectionList(ti).find(x=>x.key===key);if(!q)return '';no=q.no;}
+    const rs=secRows(ti,key),on=rs.filter(n=>n>0),lo=Math.min(...on),hi=Math.max(...on),tot=rs.reduce((a,b)=>a+b,0),k2=u/0.25;
+    return swT(A.x0,A.y0+1.9*u,`SECTION ${no}`,{pt:26,b:1,k:k2})+swT(A.x0,A.y0+3*u,`${lo===hi?lo:lo+'–'+hi} SEATS PER ROW · ${rs.length} ROWS · ${fmt(tot)} SEATS`,{pt:9,b:1,k:k2,fill:SW.red});})();   /* outside the seating block, the same place on every enlarged sheet */   /* the drawing centred beside the key plan */
+  if(nx*ny===1)return {svg:swissSheet(sh,{title,big:['Enlarged','Plan'],draws:[{svg:base,w:fit.w,h:fit.h,x:fit.w<=A.aw-kx0?dx:undefined,y:dy}],extra:(kp?kp.svg:'')+lb,scale:sc}),scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'enlarged',title,fits:true};
   // too big for one sheet at the set scale. A corner splits at its middle aisle (decision 99): left and right of it, each on its own sheet, clipped to its part
   const cx=+((base.match(/data-cx="([-\d.]+)"/)||[])[1]);
   if(corner&&cx>0&&cx<vb[2]&&cx*fit.k<=aw&&(vb[2]-cx)*fit.k<=aw)return [[0,cx,'left of the middle aisle'],[cx,vb[2],'right of the middle aisle']].flatMap(([a,b,nm])=>{const hs=[];   // each side, top and bottom halves too when it is still too tall
@@ -3195,7 +3198,7 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CE
   rows.forEach((secs,j)=>secs.forEach(sc=>{const k=sc.l+'_'+sc.r;(labs[k]=labs[k]||[]).push(sc);if(inC(sc.l)&&inC(sc.r))return;const oid=inC(sc.l)?sc.r:sc.l,f=findAisle(T,oid);if(!f)return;const r=f.Lz.tr[Math.min(j,f.Lz.tr.length-1)],d=(r.x+r.T/2)/1000,s=chainS(f.Lz.ch,f.a,d),side=inC(sc.l)?1:-1,
       p=loc(chainPtS(f.Lz.ch,s+side*(wA/2+0.35),d)),shown=Math.min(sc.n,cap);
       txt+=ftx(p,shown+(sc.n>cap?`<tspan fill="#C0392B">+${sc.n-cap}</tspan>`:''),Wc/58*.5,side>0?'start':'end',sc.n>ibc?'#C0392B':'#1E5BD8',700);}));
-  Object.keys(labs).forEach(k=>{const q=secList.find(x=>x.key===k);if(!q)return;const p=loc(q.mpt);const fL=Wc/58;txt+=ftx([p[0],p[1]-fL*.7],q.no,fL*1.05,'middle','var(--ink)',800)+ftx([p[0],p[1]+fL*.6],q.lo===q.hi?q.lo:q.lo+'–'+q.hi,fL*.9,'middle','#1E5BD8',700);});   // sized to the drawing, as on screen, also on the PDF
+  if(!only)Object.keys(labs).forEach(k=>{const q=secList.find(x=>x.key===k);if(!q)return;const p=loc(q.mpt);const fL=Wc/58;txt+=ftx([p[0],p[1]-fL*.7],q.no,fL*1.05,'middle','var(--ink)',800)+ftx([p[0],p[1]+fL*.6],q.lo===q.hi?q.lo:q.lo+'–'+q.hi,fL*.9,'middle','#1E5BD8',700);});   // sized to the drawing, as on screen, also on the PDF
   // corner aisle width at the front row
   const X=v=>F(v-VX),Y=v=>F(v-VY),K=SecDim(u=>(+u-VX).toFixed(1),v=>(+v-VY).toFixed(1),fs*.9,[W,H]);
   if(ids.length===1&&!only){const d=dF,s=chainS(Lz.ch,ca,d),w=cutW(ca,wA),a=loc(chainPtS(Lz.ch,s-w/2,d)),b=loc(chainPtS(Lz.ch,s+w/2,d)),off=fs*2.4;
@@ -3224,11 +3227,13 @@ function uniqueSections(){const out=[];if(!M.AL)return out;const S=P.secs||{};
 function keyPlanSvg(rep,same){if(!M||!M.AL)return '';const RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),gone=goneAisles(M.AL),keep=id=>!gone.has(+id),S=P.secs||{},t=planRot(),pts=[],shapes=[];
   const sm=new Set(same||[]);M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));
     sectionList(ti).forEach(q=>{if(S[q.no]&&S[q.no].off)return;const g=secGeom(ti,q.key,0,nr-1,RS,keep);(g.polys||[]).forEach(pl=>{const r=pl.map(p=>rotPt(p[0],-p[1],t));pts.push(...r);
-      shapes.push({r,fill:q.no===rep?'#DA291C':sm.has(q.no)?'#F2A39C':tierFill(ti)});});});});
+      shapes.push({r,fill:q.no===rep?'#DA291C':['#D4D4D4','#AFAFAF','#8C8C8C'][ti]||'#8C8C8C'});});});});
   if(!pts.length)return '';const fb=(boundary(P)||[]).map(p=>rotPt(p[0],-p[1],t));
   const x0=minOf(pts.map(p=>p[0])),x1=maxOf(pts.map(p=>p[0])),y0=minOf(pts.map(p=>p[1])),y1=maxOf(pts.map(p=>p[1])),m=(x1-x0)*0.03,F=v=>v.toFixed(2),d=r=>'M'+r.map(p=>F(p[0])+' '+F(p[1])).join('L')+'Z';
-  return `<svg viewBox="${F(x0-m)} ${F(y0-m)} ${F(x1-x0+2*m)} ${F(y1-y0+2*m)}">`+(fb.length?`<path d="${d(fb)}" fill="#8EB03E" stroke="#111111" stroke-width="${F((x1-x0)/300)}"/>`:'')
+  return `<svg viewBox="${F(x0-m)} ${F(y0-m)} ${F(x1-x0+2*m)} ${F(y1-y0+2*m)}">`+(fb.length?`<path d="${d(fb)}" fill="#EDEDED" stroke="#111111" stroke-width="${F((x1-x0)/300)}"/>`:'')
     +shapes.map(s=>`<path d="${d(s.r)}" fill="${s.fill}" stroke="#111111" stroke-width="${F((x1-x0)/600)}"/>`).join('')+'</svg>';}
+function secRows(ti,key){const T=M.AL[ti],zs=GEO.map(k=>T[k]).filter(Boolean),nr=Math.max(...zs.map(z=>z.tr.length)),lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k]))),a=[];
+  for(let j=0;j<nr;j++){const sc=ringSecs(ti,j).find(x=>x.l+'_'+x.r===key);if(sc)a.push(Math.min(sc.n,lim));}return a;}
 function oneTitle(one){const q=sectionList(one.ti).find(x=>x.key===one.key),pc=q&&q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a);
   return `Enlarged plan: section ${one.no}${one.same.length?` (also ${one.same.length>1?one.same.slice(0,-1).join(', ')+' and '+one.same[one.same.length-1]:one.same[0]})`:''}, Tier ${one.ti+1}${pc?' '+zoneName(P,pc.Lz.k):''}`;}
 function cornerTitle(){const ti=Math.min(CENL.tier,P.tierCount-1),C=cornerData(ti);let nos='';
@@ -3474,8 +3479,15 @@ const REVIT_STD=[[1/2,'1/2" = 1\'-0"'],[3/8,'3/8" = 1\'-0"'],[1/4,'1/4" = 1\'-0"
   [3/32,'3/32" = 1\'-0"'],[1/16,'1/16" = 1\'-0"'],[1/20,'1" = 20\'-0"'],[3/64,'3/64" = 1\'-0"'],[1/32,'1/32" = 1\'-0"'],[1/50,'1" = 50\'-0"'],
   [1/64,'1/64" = 1\'-0"'],[1/100,'1" = 100\'-0"'],[1/200,'1" = 200\'-0"']];
 const REVIT_ENLARGED=[[3,'3" = 1\'-0"'],[1.5,'1 1/2" = 1\'-0"'],[1,'1" = 1\'-0"'],[3/4,'3/4" = 1\'-0"']];   // Revit's larger scales, for enlarged details only
-const DETAIL_SCALES=()=>imperial()?[...REVIT_ENLARGED,...REVIT_STD].map(([v,t])=>({ratio:12/v,label:t})):[5,10,20,25,50,100].map(r=>({ratio:r,label:`1:${r}`}));
+const DETAIL_SCALES=()=>imperial()?SET_SCALES():[5,10,20,25,50,100].map(r=>({ratio:r,label:`1:${r}`}));
 const PLOT_SCALES=()=>imperial()?REVIT_STD.map(([v,t])=>({ratio:12/v,label:t})):[20,25,50,100,200,250,500,750,1000,1250,1500,2000,2500,5000].map(r=>({ratio:r,label:`1:${r}`}));   /* metric: ISO series plus the common intermediates 1:750, 1:1250, 1:1500, 1:2500 */
+// PDF set scales (decision 110): Joseph's architectural and engineering scales only, largest first (paper inches per model foot)
+const SET_ARCH=[[12,'12" = 1\'-0"'],[6,'6" = 1\'-0"'],[3,'3" = 1\'-0"'],[1.5,'1 1/2" = 1\'-0"'],[1,'1" = 1\'-0"'],[3/4,'3/4" = 1\'-0"'],[1/2,'1/2" = 1\'-0"'],[3/8,'3/8" = 1\'-0"'],[1/4,'1/4" = 1\'-0"'],[3/16,'3/16" = 1\'-0"'],
+  [1/8,'1/8" = 1\'-0"'],[1/10,'1" = 10\'-0"'],[3/32,'3/32" = 1\'-0"'],[1/16,'1/16" = 1\'-0"'],[1/20,'1" = 20\'-0"'],[1/25,'1" = 25\'-0"'],[1/32,'1/32" = 1\'-0"'],[1/50,'1" = 50\'-0"'],[1/64,'1/64" = 1\'-0"'],[1/100,'1" = 100\'-0"'],[1/128,'1/128" = 1\'-0"'],[1/200,'1" = 200\'-0"']];
+const SET_SCALES=()=>imperial()?SET_ARCH.map(([v,t])=>({ratio:12/v,label:t})):[1,2,5,10,20,25,50,100,200,250,500,750,1000,1250,1500,2000,2500,5000].map(r=>({ratio:r,label:`1:${r}`}));
+// one scale for a category: each view's largest permitted scale that fits, then the smallest of those for all (decision 110)
+function catScale(fns){const L=SET_SCALES(),ok=(fn,i)=>{const r=fn(L[i]);return !!(r&&!Array.isArray(r)&&r.fits);};let lo=0;   /* fitting only gets easier down the list: a binary search per view, starting from the worst so far */
+  for(const fn of fns){if(ok(fn,lo))continue;let a=lo,b=L.length-1;if(!ok(fn,b)){lo=b;continue;}while(b-a>1){const m=(a+b)>>1;if(ok(fn,m))b=m;else a=m;}lo=b;}return L[lo];}
 function trueStrokes(svg,unitPerIn){                           // screen-pixel line weights become paper weights (1 px = 1/96 in)
   return svg.replace(/stroke-width="([\d.]+)"( stroke-dasharray="[^"]*")?( opacity="[^"]*")? vector-effect="non-scaling-stroke"/g,(m,w,d,o)=>`stroke-width="${(Math.max(+w,0.5)/96*unitPerIn).toFixed(4)}"${d?d.replace(/"([\d. ]+)"/,(q,v)=>'"'+v.split(' ').map(n=>(+n/96*unitPerIn).toFixed(3)).join(' ')+'"'):''}${o||''}`);}
 // ---------- Swiss sheet frame (decisions 91-92): International Typographic Style on a 1/4 in grid (1/2 in on ARCH E / A0) ----------
@@ -3585,7 +3597,7 @@ function plotOne(sh,what,maxIn,fixed,ori,force){ori=ori||'h';   // force: a set 
   if(plan)Object.assign(d,{ox:-pv[0]*1000*fit.k,oy:-pv[1]*1000*fit.k,sq:swSq(A.u,fit.sc),plan:true});
   const svg=swissSheet(sh,{title:name,big:plan?['Bowl','Plan']:['Tier 1','Detail'],draws:[d],scale:swScale(sh,fit.sc.label,fit.k),
     tile3:plan?[String(vomSolids().length),'VOMITORIES','Middle aisles and corners.']:null});
-  return {svg,scale:fit.sc.label,sheet:sh,what,title:name,draw:d,ori};
+  return {svg,scale:fit.sc.label,sheet:sh,what,title:name,draw:d,ori,fits:!fit.over};
 }
 // Isometric view on one landscape sheet, fitted to the sheet (isometric drawings are not to scale).
 function plotIso(sh,view){const keep=ISOVIEW;ISOVIEW=view;const svg0=drawIso();ISOVIEW=keep;
@@ -3597,12 +3609,12 @@ function plotIso(sh,view){const keep=ISOVIEW;ISOVIEW=view;const svg0=drawIso();I
 function plotTier(sh,ti,fixScale){/* fixScale: use this scale (Tier 2 follows Tier 1); later tiers drop the point of focus */const A=swArea(sh),rows=ZR.T.filter(r=>r.tier===ti);let fit=null;
   for(const sc of (fixScale?[fixScale]:PLOT_SCALES())){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawDetail(ZR.T,{tier:ti,noFocus:ti>0,fs:sh.txt*25.4*sc.ratio,sparse:(rows[1]||rows[0]).T*k<sh.txt*2.2}),o=SWORIG;SWG=0;SWORIG=null;
     const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;
-    if((w<=A.aw&&h<=A.ah)||fixScale){fit={sc,k,w,h,svg,u:25.4*sc.ratio,o};break;}}
+    if((w<=A.aw&&h<=A.ah)||fixScale){fit={sc,k,w,h,svg,u:25.4*sc.ratio,o,fits:w<=A.aw&&h<=A.ah};break;}}
   if(!fit)return null;
   const title=`Bowl section, Tier ${ti+1}, ${zoneName(P,'T')}, ${DETMODE==='stand'?'standing':'sitting'}`,cs=rows.filter(r=>r.C!=null),lo=cs.reduce((a,r)=>!a||r.C<a.C?r:a,null);
   const d={svg:swDraw(trueStrokes(fit.svg,fit.u)).replace('<svg ','<svg data-dims="1" '),w:fit.w,h:fit.h};if(fit.o)Object.assign(d,{ox:fit.o[0]*fit.k,oy:fit.o[1]*fit.k,sq:swSq(A.u,fit.sc)});
   const svg=swissSheet(sh,{title,big:[`Tier ${ti+1}`,'Sightlines'],draws:[d],scale:swScale(sh,fit.sc.label,fit.k),tile3:lo?[CV(lo.C),'LOWEST C-VALUE',`Row ${lo.row}, ${DETMODE==='stand'?'standing':'sitting'}.`]:null});
-  return {svg,scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'tier',title};}
+  return {svg,scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'tier',title,fits:fit.fits};}
 function scaleBar(sh,fit){const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=sh.txt*3.2,per=(imperial()?304.8:1000)*fit.k,divs=[1,2,5,10,20,25,50,100,200,500];let u=divs[0];for(const q of divs)if(q*5*per<=sh.w*.22)u=q;
   const gy=sh.h-B-title-sb+sh.txt*1.6,bh=sh.txt*.7;let g=`<text x="${f(B)}" y="${f(gy)}" font-size="${f(sh.txt*1.1)}" font-weight="700">Scale ${fit.sc.label}</text>`;
   for(let i=0;i<5;i++)g+=`<rect x="${f(B+i*u*per)}" y="${f(gy+sh.txt*.5)}" width="${f(u*per)}" height="${f(bh)}" fill="${i%2?'#fff':'#000'}" stroke="#000" stroke-width="${f(sh.txt*.06)}"/>`;
@@ -3622,15 +3634,15 @@ function plotSpectators(sh){const A=swArea(sh),u=A.u,k2=u/0.25,modes=SPECT_MODES
       tile3:[`${i+1} / ${modes.length}`,'VIEW',names[m].replace(/^\d+\.\s*/,'')]});
     return {svg,scale:fit.sc.label,sheet:sh,what:'spect',title};});}
 // Bowl section (both tiers, the side picked above the section) on one landscape sheet, largest standard scale that fits.
-function plotSection(sh,zone){const Z=ZR[zone||P.sec],A=swArea(sh);let fit=null;
-  for(const sc of PLOT_SCALES()){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawSection(Z,{fs:sh.txt*25.4*sc.ratio}),o=SWORIG;SWG=0;SWORIG=null;
+function plotSection(sh,zone,force){const Z=ZR[zone||P.sec],A=swArea(sh);let fit=null;
+  for(const sc of (force?[force]:PLOT_SCALES())){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawSection(Z,{fs:sh.txt*25.4*sc.ratio}),o=SWORIG;SWG=0;SWORIG=null;
     const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;
-    if(w<=A.aw&&h<=A.ah){fit={sc,k,w,h,svg,u:25.4*sc.ratio,o};break;}}
+    if((w<=A.aw&&h<=A.ah)||force){fit={sc,k,w,h,svg,u:25.4*sc.ratio,o,fits:w<=A.aw&&h<=A.ah};break;}}
   if(!fit)return null;
   const title=`Bowl section, overall, ${zoneName(P,zone||P.sec)}${zoned(P)?' (four sides identical)':''}, ${P.eyeMode==='stand'?'standing':'sitting'}`;
   const d={svg:swDraw(trueStrokes(fit.svg,fit.u)).replace('<svg ','<svg data-dims="1" '),w:fit.w,h:fit.h};if(fit.o)Object.assign(d,{ox:fit.o[0]*fit.k,oy:fit.o[1]*fit.k,sq:swSq(A.u,fit.sc)});
   const svg=swissSheet(sh,{title,big:['Bowl','Section'],draws:[d],scale:swScale(sh,fit.sc.label,fit.k),tile3:M.steep?[`${M.steep.rake.toFixed(1)}°`,'STEEPEST RAKE',`Top row ${L(M.height*1000)} above the field.`]:null});
-  return {svg,scale:fit.sc.label,sheet:sh,what:'section',title};}
+  return {svg,scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'section',title,fits:fit.fits};}
 // Seat count, one 11 x 17 portrait page per tier; the grand totals go on the last tier's page.
 function tablePages(){const {head,out}=seatCount(),Sp=SPORTS[P.sport],pages=[];
   const full=countTableHTML().match(/<tbody>([\s\S]*)<\/tbody>/)[1],trs=full.match(/<tr[\s\S]*?<\/tr>/g),thead=countTableHTML().match(/<thead>[\s\S]*<\/thead>/)[0];
@@ -3747,13 +3759,14 @@ async function exportPdfSet(kind){
     const arc=await Promise.all([loadB64('vendor/fonts/Archivo-400.ttf'),loadB64('vendor/fonts/Archivo-700.ttf')]).catch(()=>null);   // the sheet frame face; DejaVu if missing
     await swLoadFaces();   /* the PDF faces in the page, so text measured here matches the PDF */
     const sheets=PLOT_SHEETS(),small=sheets[0],big=kind==='archE'?sheets[1]:sheets[0];
-    const t1=plotTier(big,0),tiers=[t1,...Array.from({length:P.tierCount-1},(_,i)=>plotTier(big,i+1,t1&&t1.sc))];   // Tier 2 at the Tier 1 scale
-    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T'),...tiers,...(()=>{const ps=kind==='archE'?(imperial()?{ratio:300,label:'1" = 25\'-0"'}:{ratio:250,label:'1:250'}):(imperial()?{ratio:768,label:'1/64" = 1\'-0"'}:{ratio:750,label:'1:750'});   /* bowl plans: 1/64" = 1'-0" on 11 x 17 (decision 104), 1" = 25' on ARCH E (decision 102) */
+    const secSc=catScale([sc=>plotSection(big,'T',sc),...Array.from({length:P.tierCount},(_,i)=>sc=>plotTier(big,i,sc))]);   /* bowl sections: one scale (decision 110) */
+    const tiers=Array.from({length:P.tierCount},(_,i)=>plotTier(big,i,secSc));
+    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[plotSection(big,'T',secSc),...tiers,...(()=>{const ps=catScale([sc=>plotOne(big,'plan',0,false,'h',sc),sc=>plotOne(big,'plan',0,false,'v',sc)]);   /* bowl plans: one scale (decision 110) */   /* bowl plans: 1/64" = 1'-0" on 11 x 17 (decision 104), 1" = 25' on ARCH E (decision 102) */
       return [plotOne(big,'plan',0,false,'h',ps),plotOne(big,'plan',0,false,'v',ps)];})(),   /* largest standard scale inside the Swiss frame (1" = 50' no longer fits 11 x 17 above the 1-1/2 in band) */...(M.AL&&zoned(P)?(()=>{const e=ENL,ce=CENL,set=[()=>{ENL={tier:0,side:westKey()};}];   /* the typical section, then every other unique section on its own, square to the sheet (decision 109) */
       {const shown=new Set(),add=nos=>nos.forEach(n=>shown.add(n));   /* every unique section in the set once (decision 108): the typical and corner sheets count for theirs */
         {const E=enlargedData(0,westKey());if(E){const q=sectionList(0).find(x=>x.key===E.L0.a.id+'_'+E.R0.a.id);if(q)shown.add(q.no);}}
         uniqueSections().forEach(u=>{if(u.nos.some(n=>shown.has(n)))return;set.push(()=>{ENL={tier:u.ti,side:null,one:u};});});}
-      const sc=kind==='archE'?(imperial()?{ratio:60,label:'1" = 5\'-0"'}:{ratio:50,label:'1:50'}):(imperial()?{ratio:192,label:'1" = 16\'-0"'}:{ratio:200,label:'1:200'});   /* 11 x 17 / A3: 1" = 16'-0" (1:200), every plan whole (decision 103) */   /* ARCH E / A0: 1" = 5'-0" (1:50), every plan on one sheet (decision 101) */   /* every enlarged plan at 1" = 10'-0" (1:100); a plan too big for one sheet runs on to the next (decision 98) */
+      const sc=catScale(set.map(f=>s2=>{f();return plotEnlarged(big,s2,true);}));   /* enlarged plans: one scale (decision 110) */   /* 11 x 17 / A3: 1" = 16'-0" (1:200), every plan whole (decision 103) */   /* ARCH E / A0: 1" = 5'-0" (1:50), every plan on one sheet (decision 101) */   /* every enlarged plan at 1" = 10'-0" (1:100); a plan too big for one sheet runs on to the next (decision 98) */
       const out=set.flatMap(f=>{f();const r=plotEnlarged(big,sc);return Array.isArray(r)?r:[r];});ENL=e;CENL=ce;return out.filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
     if(draws.some(p=>!p))throw new Error('A drawing does not fit its sheet at any standard scale.');
     const port={pw:small.h,ph:small.w,m:0.5};                                             // 11 x 17 (A3) portrait pages
