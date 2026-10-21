@@ -1710,7 +1710,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.21.05';
+const VERSION='2026.10.21.06';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -3077,7 +3077,7 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
     det+=K2.out();}
   const lo3=Math.min(...counts),hi3=Math.max(...counts);
   const fC=Math.max(fs,(span+2*side)/62),cap=`<text x="${X(span/2)}" y="${Y(depth)-fC*1.4}" font-size="${f(fC*1.15)}" font-weight="700" text-anchor="middle" fill="#1E5BD8">${lo3===hi3?lo3:lo3+'–'+hi3} seats per row, ${tr.length} rows: ${fmt(counts.reduce((a,b)=>a+b,0))} seats</text>`;
-  return `<svg viewBox="0 0 ${f(W)} ${f(H)}" role="img" aria-label="Enlarged plan of a typical section">`+g+nb+seats+rn+K.out()+(o.own?'':det+cap)+'</svg>';}   /* PDF: the sheet carries the section label */
+  return `<svg viewBox="0 0 ${f(W)} ${f(H)}" data-ox="${X(0)}" data-oy="${Y(0)}" role="img" aria-label="Enlarged plan of a typical section">`+g+nb+seats+rn+K.out()+(o.own?'':det+cap)+'</svg>';}   /* PDF: the sheet carries the section label */
 function enlargedTitle(){if(ENL.one)return oneTitle(ENL.one);if(enlSide()==='corner')return cornerTitle();const ti=Math.min(ENL.tier,P.tierCount-1),E=enlargedData(ti,enlSide()),no=E?(sectionList(ti).find(q=>q.key===E.L0.a.id+'_'+E.R0.a.id)||{}).no:null;return `Enlarged plan: typical section${no?' '+no:''}, Tier ${ti+1} ${zoneName(P,enlSide())} (middle section)`;}
 // corner sheets: one scale for every tier, not necessarily a standard one, the largest that fits the paper (the common frame is the largest tier's corner)
 function cornerScale(sh,aw,ah){let Wc=0,Hc=0;for(let t=0;t<P.tierCount;t++){const b=drawCornerEnlarged({measure:true,tier:t});if(b&&b.w){Wc=Math.max(Wc,b.w);Hc=Math.max(Hc,b.h);}}
@@ -3113,7 +3113,7 @@ function plotEnlarged(sh,force,test){const A=swArea(sh),aw=A.aw-13*A.u,ah=A.ah; 
   const lb=(()=>{let ti,key,no;if(ENL.one){ti=ENL.one.ti;key=ENL.one.key;no=ENL.one.no;}else{ti=Math.min(ENL.tier,P.tierCount-1);const E=enlargedData(ti,enlSide());if(!E)return '';key=E.L0.a.id+'_'+E.R0.a.id;const q=sectionList(ti).find(x=>x.key===key);if(!q)return '';no=q.no;}
     const rs=secRows(ti,key),on=rs.filter(n=>n>0),lo=Math.min(...on),hi=Math.max(...on),tot=rs.reduce((a,b)=>a+b,0),k2=u/0.25;
     return swT(kcx,kbot+2*u,`SECTION ${no}`,{pt:26,b:1,k:k2})+swT(kcx,kbot+3*u,`${lo===hi?lo:lo+'–'+hi} SEATS PER ROW`,{pt:9,b:1,k:k2,fill:SW.red})+swT(kcx,kbot+3.7*u,`${rs.length} ROWS · ${fmt(tot)} SEATS`,{pt:9,b:1,k:k2,fill:SW.red});})();   /* under the key plan, the same place on every enlarged sheet (decision 113) */   /* the drawing centred beside the key plan */
-  if(nx*ny===1)return {svg:swissSheet(sh,{title,big:['Enlarged','Plan'],draws:[{svg:base,w:fit.w,h:fit.h,x:fit.w<=A.aw-kx0?dx:undefined,y:dy}],extra:(kp?kp.svg:'')+lb,scale:sc}),scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'enlarged',title,fits:true};
+  if(nx*ny===1)return {svg:swissSheet(sh,{title,big:['Enlarged','Plan'],draws:[Object.assign({svg:base,w:fit.w,h:fit.h,x:fit.w<=A.aw-kx0?dx:undefined,y:dy},(()=>{const m=base.match(/data-ox="([-\d.]+)" data-oy="([-\d.]+)"/);return m?{ox:+m[1]*fit.k,oy:+m[2]*fit.k,sq:swSq(A.u,fit.sc)}:{};})())],   /* scaled measurements on the border, from the section's front row (decision 119) */extra:(kp?kp.svg:'')+lb,scale:sc}),scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'enlarged',title,fits:true};
   // too big for one sheet at the set scale. A corner splits at its middle aisle (decision 99): left and right of it, each on its own sheet, clipped to its part
   const cx=+((base.match(/data-cx="([-\d.]+)"/)||[])[1]);
   if(corner&&cx>0&&cx<vb[2]&&cx*fit.k<=aw&&(vb[2]-cx)*fit.k<=aw)return [[0,cx,'left of the middle aisle'],[cx,vb[2],'right of the middle aisle']].flatMap(([a,b,nm])=>{const hs=[];   // each side, top and bottom halves too when it is still too tall
@@ -3206,7 +3206,7 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CE
   const key=`<g font-size="${F(fs*.6)}" fill="var(--ink)"><rect x="${F(fs)}" y="${F(H-(o.own?fs*2.55:fs*2.6))}" width="${F(fs*1.2)}" height="${F(fs*.7)}" fill="#FF8A8A" fill-opacity=".45" stroke="var(--ink)" stroke-width="0.4" vector-effect="non-scaling-stroke"/><text x="${F(fs*2.6)}" y="${F(H-(o.own?fs*1.95:fs*2.0))}">Row over the IBC maximum of ${ibc} seats per row</text>`
     +`<path d="M${F(fs*1.1)} ${F(H-fs*1.4)}h${F(fs)}v${F(fs*.6)}h${F(-fs)}Z" fill="none" stroke="#C0392B" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/><text x="${F(fs*2.6)}" y="${F(H-fs*.95)}">Seat left out by the ${cap}-seat section cap, at the far end of the row (red +n beside the row)</text></g>`;
   const tr=s=>s.replace(/(M|L)(-?[\d.]+) (-?[\d.]+)/g,(m0,c,x,y)=>`${c}${X(+x)} ${Y(+y)}`).replace(/x="(-?[\d.]+)" y="(-?[\d.]+)"/g,(m0,x,y)=>`x="${X(+x)}" y="${Y(+y)}"`);
-  return `<svg viewBox="0 0 ${F(W)} ${F(H)}" data-cx="${F(-VX)}" role="img" aria-label="Enlarged plan of ${only?'a section':'a corner'}">`+tr(rowsSvg+aisSvg+seatSvg+omitSvg+txt)+K.out()+key+'</svg>';}
+  return `<svg viewBox="0 0 ${F(W)} ${F(H)}" data-cx="${F(-VX)}" data-ox="${F(-VX)}" data-oy="${F(-VY)}" role="img" aria-label="Enlarged plan of ${only?'a section':'a corner'}">`+tr(rowsSvg+aisSvg+seatSvg+omitSvg+txt)+K.out()+key+'</svg>';}
 // one section on its own (decision 108): its two aisles, the frame on its middle, outward up
 function oneSecData(one){const T=M.AL&&M.AL[one.ti];if(!T)return null;const q=sectionList(one.ti).find(x=>x.key===one.key);if(!q)return null;
   const [l,r]=one.key.split('_').map(v=>v==='null'?null:+v),fa=findAisle(T,l!=null?l:r);if(!fa)return null;const pc=q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a),Z=pc.Lz;
