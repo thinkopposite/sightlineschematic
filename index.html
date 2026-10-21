@@ -295,6 +295,14 @@ td{border-bottom:1px solid var(--line)}
 .count tr.tot td{border-top:2px solid var(--sw-ink)}
 .toast{border-radius:0;background:var(--sw-ink);color:var(--panel);border-left:6px solid var(--sw-red)}
 @media (max-width:760px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.cap .big{font-size:40px}h1{font-size:24px}}
+
+#secEd{position:absolute;z-index:40;width:260px;background:var(--panel);color:var(--ink);border:1px solid var(--sw-ink,#111);border-top:4px solid var(--sw-ink,#111);box-shadow:0 6px 0 rgba(0,0,0,.08);padding:10px 12px 12px;font-size:13px}
+#secEd .se-h{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}#secEd .se-h b{font-size:15px;text-transform:uppercase}#secEd .se-h span{color:var(--sw-grey,#6B6B68);font-size:12px;flex:1}
+#secEd .se-x{min-height:0;padding:0 6px;border:0;font-size:18px;line-height:1;background:transparent;color:var(--ink)}
+#secEd .se-row{display:grid;grid-template-columns:1fr 34px 46px 34px;align-items:center;gap:0}#secEd .se-l{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+#secEd .se-row button{min-height:34px;padding:0;font-size:18px}#secEd .se-v{text-align:center;font-size:22px;color:var(--sw-red,#DA291C);border-top:1px solid var(--sw-ink,#111);border-bottom:1px solid var(--sw-ink,#111);line-height:32px}
+#secEd .se-n{margin:8px 0 0;color:var(--sw-grey,#6B6B68);font-size:12px;line-height:1.4}#secEd .se-w{width:100%;margin-top:8px}
+[data-secno]:hover text{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -1702,7 +1710,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.20.01';
+const VERSION='2026.10.20.02';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2802,7 +2810,7 @@ function sectLabels(rf,t,plain){if(!M.AL||PLAN!=='bowl')return '';let o='';const
   const SS=P.secs||{},WC=(M.ADA&&M.ADA.secs)||{};
   for(let ti=0;ti<M.AL.length;ti++)sectionList(ti).forEach(q=>{SECNO[ti+':'+q.key]=q.no;const e=SS[q.no]||{},w=WC[q.no],[rx,ry]=rotPt(q.pt[0],q.pt[1],t),cnt=e.off?'off':q.lo===q.hi?q.lo:q.lo+'–'+q.hi;
     if(w&&!e.off)o+=`<text x="${f(rx)}" y="${f(ry+fz*1.75)}" font-size="${f(fz*.8)}" font-weight="${plain?400:700}" fill="#C24E00" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.1)}">WC ${w.wc}</text>`;
-    o+=`<g data-secno="${q.no}" style="cursor:pointer"><title>Section ${q.no}: ${e.off?'switched off':(q.lo===q.hi?q.lo:q.lo+' to '+q.hi)+' seats per row'}${w&&!e.off?`; wheelchair platform: ${w.wc} spaces, ${w.comp} companion seats`:''}</title><text x="${f(rx)}" y="${f(ry-fn*.6)}" font-size="${f(fn)}" font-weight="${plain?400:800}" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fn*.12)}">${q.no}</text>`
+    o+=`<g data-secno="${q.no}" style="cursor:pointer"><title>Section ${q.no} (click to edit): ${e.off?'switched off':(q.lo===q.hi?q.lo:q.lo+' to '+q.hi)+' seats per row'}${w&&!e.off?`; wheelchair platform: ${w.wc} spaces, ${w.comp} companion seats`:''}</title><text x="${f(rx)}" y="${f(ry-fn*.6)}" font-size="${f(fn)}" font-weight="${plain?400:800}" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fn*.12)}">${q.no}</text>`
       +`<text x="${f(rx)}" y="${f(ry+fz*.6)}" font-size="${f(fz)}" font-weight="${plain?400:700}" fill="${e.off?'#777777':'#1E5BD8'}" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.12)}">${cnt}</text></g>`;});
   return o;}
 // ---------- section editor and accessible seating (decisions 54-57) ----------
@@ -2920,6 +2928,29 @@ function secPanelHTML(){if(!M.AL||!zoned(P))return '<p class="hint" style="paddi
     <p class="hint">Middle sections of each stand take a seat count; the other middle sections of that stand share the rest so the stand keeps its length (Spread). Corner and end sections follow the geometry. Tap a section number on the bowl plan to find it here. Platforms sit at the back of the tier, over rows ${(()=>{const zs=GEO.map(k=>T[k]).filter(Boolean),nr=Math.max(...zs.map(z=>z.tr.length));return nr>=4?(nr-2)+'–'+(nr-1):'n/a';})()}: companion, two wheelchair spaces at 33", companion, repeated, with one single pair (36") where the length allows. Switched-off sections are taken out of the seat count and egress; their structure is still drawn.</p>${vomPanelHTML()}`;}
 function renderSecPanel(){const el=$('secPanel');if(!el)return;const sc=el.querySelector('.tablewrap'),top=sc?sc.scrollTop:0;el.innerHTML=secPanelHTML();const s2=el.querySelector('.tablewrap');if(s2)s2.scrollTop=top;
   if(SECT_HL){const r=el.querySelector(`[data-secrow="${SECT_HL}"]`);if(r&&s2)s2.scrollTop=r.offsetTop-s2.clientHeight/2;}}
+// ---------- section editor on the plan (decision 106): click a section's number to change its seats per row; the table stays as the full editor ----------
+let SECED=null;   // {no,x,y}: the open plan editor, page position
+function secInfo(no){const ti=Math.max(0,Math.floor(no/100)-1);if(!M.AL||ti>=P.tierCount)return null;const T=M.AL[ti],q=sectionList(ti).find(x=>x.no===no);if(!q)return null;
+  let md=null;(T.__mid||[]).forEach(g=>g.keys.forEach((key,m)=>{if(key===q.key)md={k:g.k,m,n:g.n[m],id:ti+'.'+g.k+'.'+m};}));
+  const pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a),e=(P.secs||{})[no]||{};return {ti,q,md,stand:zoneName(P,pc.Lz.k),off:!!e.off,set:md&&(P.secN||{})[md.id]!=null};}
+function secEdRender(){let el=$('secEd');if(!SECED){if(el)el.remove();return;}const I=secInfo(SECED.no);if(!I){SECED=null;if(el)el.remove();return;}
+  if(!el){el=document.createElement('div');el.id='secEd';el.setAttribute('role','dialog');document.body.appendChild(el);}
+  const {q,md,stand,off,set}=I,cnt=q.lo===q.hi?q.lo:q.lo+'–'+q.hi,A=AIS();
+  el.innerHTML=`<div class="se-h"><b>Section ${q.no}</b><span>Tier ${I.ti+1} · ${stand}</span><button class="se-x" data-se="close" aria-label="Close">×</button></div>`
+    +(off?`<p class="se-n">Switched off.</p>`:md?`<div class="se-row"><span class="se-l">Seats per row</span><button data-se="-1" aria-label="One seat fewer"${md.n<=1?' disabled':''}>−</button><b class="se-v">${md.n}</b><button data-se="1" aria-label="One seat more"${md.n>=A.smax?' disabled':''}>+</button></div>`
+      +`<p class="se-n">${set?'Set by hand. ':''}The other middle sections of ${stand} share the change (Spread).</p>${set?'<button data-se="clear" class="se-w">Back to automatic</button>':''}`
+      :`<p class="se-n">${cnt} seats per row. Corner and end sections follow the geometry.</p>`)
+    +`<button data-se="table" class="se-w">Open in the section table</button>`;
+  const r=el.getBoundingClientRect(),W=r.width||260,x=Math.min(Math.max(8,SECED.x-W/2),document.documentElement.clientWidth-W-8);el.style.left=x+'px';el.style.top=(SECED.y+14)+'px';}
+document.addEventListener('click',e=>{const el=$('secEd');if(!el||!SECED)return;const b=e.target.closest('[data-se]');
+  if(b&&el.contains(b)){const a=b.dataset.se,I=secInfo(SECED.no);
+    if(a==='close'){SECED=null;secEdRender();return;}
+    if(a==='table'){const no=SECED.no;SECED=null;secEdRender();SECT_TI=Math.max(0,Math.floor(no/100)-1);SECT_HL=no;$('secBox').open=true;renderSecPanel();$('secBox').scrollIntoView({behavior:'smooth',block:'start'});return;}
+    if(!I||!I.md)return;
+    if(a==='clear'){delete (P.secN||{})[I.md.id];update();toast(`Section ${I.q.no}: back to automatic.`);return;}
+    const v=Math.max(1,Math.min(AIS().smax,I.md.n+(+a)));(P.secN||(P.secN={}))[I.md.id]=v;update();return;}
+  if(!el.contains(e.target)&&!e.target.closest('[data-secno]')){SECED=null;secEdRender();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&SECED){SECED=null;secEdRender();}});
 function secEntry(no){const S=SECS();return S[no]||(S[no]={});}
 function secTidy(no){const S=SECS();if(S[no]&&!S[no].off&&!S[no].wc)delete S[no];}
 $('secPanel').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
@@ -2942,7 +2973,7 @@ $('secPanel').addEventListener('change',e=>{const t=e.target;
   if(t.id==='adaMargin'){P.adaMargin=Math.max(0,+t.value||0);update();}});
 $('plan').addEventListener('click',e=>{{const o=e.target.closest('[data-offsec],[data-onsec]');if(o){secOnOff(+(o.dataset.offsec||o.dataset.onsec));return;}}   /* the front rows or an open section: switch it off or on */
   const w=e.target.closest('[data-wcsec]');if(w){const no=+w.dataset.wcsec,S=SECS(),x=S[no]||(S[no]={});if(x.off)return;if(x.wc)delete x.wc;else x.wc=true;secTidy(no);update();toast(`Section ${no}: wheelchair platform ${S[no]&&S[no].wc?'added':'removed'}.`);return;}   /* the back rows of a section: its wheelchair platform on or off */
-  const g=e.target.closest('[data-secno]');if(!g)return;const no=+g.dataset.secno;SECT_TI=Math.max(0,Math.floor(no/100)-1);SECT_HL=no;$('secBox').open=true;renderSecPanel();$('secBox').scrollIntoView({behavior:'smooth',block:'start'});});
+  const g=e.target.closest('[data-secno]');if(!g)return;SECED={no:+g.dataset.secno,x:e.clientX,y:e.pageY};secEdRender();});   /* a section's number: the plan editor */
 // ---------- code summary: plumbing fixtures (IPC 2021/2024 Table 403.1 = IBC Table 2902.1, stadiums) and concourse loading (decision 58) ----------
 const PLB=()=>P.plumb||(P.plumb={extra:0,factor:1});
 function plumbing(occ){const m=Math.ceil(occ/2),f=Math.ceil(occ/2),wm=m<=1500?Math.ceil(m/75):20+Math.ceil((m-1500)/120),wf=f<=1520?Math.ceil(f/40):38+Math.ceil((f-1520)/60);
@@ -3258,7 +3289,7 @@ function update(){
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);
   const pct=Math.min(100,M.cap/P.capTarget*100),ok=M.cap>=P.capTarget;
   $('cap').innerHTML=`<div><div class="big">${fmt(M.cap)}</div><div class="lbl">Estimated seats</div></div><div><div class="bar"><i class="${ok?'ok':''}" style="width:${pct}%"></i></div><div class="lbl" style="margin-top:5px">${ok?'Meets':'Short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</div></div><div class="cap-side">${M.tierSeats.map((s,i)=>`Tier ${i+1}: ${fmt(s)}`).join('<br>')}</div>`;
-  $('zones').innerHTML=zoneTable();renderSecPanel();{const cp=$('codePanel');if(cp)cp.innerHTML=codeHTML();}
+  $('zones').innerHTML=zoneTable();renderSecPanel();secEdRender();{const cp=$('codePanel');if(cp)cp.innerHTML=codeHTML();}
   const hmin=M.heads.length?Math.min(...M.heads.map(h=>h.h)):null;
   const st=[[ZR[P.sec].length,zoned(P)?`Rows, ${zoneName(P,P.sec,true)}`:'Rows',0],[M.worst?CV(M.worst.C):'n/a','Lowest C-value',M.below>0],[M.steep?M.steep.rake.toFixed(1)+'°':'n/a','Steepest rake',M.over>0],[L(M.vd*1000,'m',0,true),'Farthest viewing distance',M.vd>P.vd],[L(M.height*1000,'m',1,true),`Top row above ${surfLow()}`,0],[hmin==null?'n/a':L(hmin),'Least headroom under a tier',M.lowHead.length>0]];
   $('stats').innerHTML=st.map(([b,l,bad])=>`<div class="stat ${bad?'bad':''}"><b>${b}</b><span>${l}</span></div>`).join('');
@@ -4026,7 +4057,7 @@ function titleCase(str){
       if(UNITS.has(lo))return p;                                       // keep units lowercase
       if(k===0&&!first&&!last&&SMALL.has(lo))return p;
       return p[0].toUpperCase()+p.slice(1);}).join('-');});}
-const SENTENCE='.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#secPanel table.wrap td+td,#v33dm,#v3Glb,#v3Ifc,#v3Html';
+const SENTENCE='#secEd .se-n,.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#secPanel table.wrap td+td,#v33dm,#v3Glb,#v3Ifc,#v3Html';
 function titleize(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
   while((n=w.nextNode())){const el=n.parentElement;if(!el||el.closest(SENTENCE))continue;const t=titleCase(n.data);if(t!==n.data)n.data=t;}}
 new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData'){const el=m.target.parentElement;if(el&&!el.closest(SENTENCE)){const t=titleCase(m.target.data);if(t!==m.target.data)m.target.data=t;}}
