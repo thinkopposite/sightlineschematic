@@ -1710,7 +1710,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.21.04';
+const VERSION='2026.10.21.05';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -3260,7 +3260,7 @@ function drawPlan(o={}){
       const dS=Math.max(back('T'),back('B')),dE=Math.max(back('L'),back('R'));      // same offset on opposite sides keeps W and E level
       GEO.forEach(k=>{const s=G.side[k];if(!ZR[k].length)return;const lg=o.labGap==null?(imperial()?50*0.3048:15):typeof o.labGap==='object'?o.labGap[isSide(k)?'side':'end']:o.labGap,d=(isSide(k)?dS:dE)+lg+fs*.45;   /* 1 in clear of the bowl at 1" = 50' */
         labels.push([(s.p[0]+s.q[0])/2+s.n[0]*d,(s.p[1]+s.q[1])/2+s.n[1]*d,standName(k),Math.atan2(s.q[1]-s.p[1],s.q[0]-s.p[0])*180/Math.PI,k]);});}
-    {const sc=sectionAt(),sw=(x1-x0)/45;grow(sc[0]+sc[2]*(Rmax+1.5)+sc[2]*sw*.9,sc[1]+sc[3]*(Rmax+1.5)+sc[3]*sw*.9,sw*1.2);}   /* the cut mark's arrows */
+    {const sc=sectionAt(),sw=(x1-x0)/45;if(o.tight)grow(sc[0]+sc[2]*(Rmax+1.5),sc[1]+sc[3]*(Rmax+1.5),sw*.4);else grow(sc[0]+sc[2]*(Rmax+1.5)+sc[2]*sw*.9,sc[1]+sc[3]*(Rmax+1.5)+sc[3]*sw*.9,sw*1.2);}   /* the cut mark's arrows (they point along the stand): on the PDF sheets only their own extent, so the plan can take a larger scale (decision 118) */
     labels.forEach(([x,y])=>{const mx=fs*(o.tight?1.8:2.2),my=fs*(o.tight?.9:1.6);x0=Math.min(x0,x-mx);x1=Math.max(x1,x+mx);y0=Math.min(y0,y-my);y1=Math.max(y1,y+my);});   // NEZ needs width more than height
   }else{dims=focalDims(P);
     for(const d of dims){const D=dimLabel(d,fs);if(d.r)grow(d.c[0],d.c[1]);else{grow(D.a[0],D.a[1],fs);grow(D.b[0],D.b[1],fs);}
