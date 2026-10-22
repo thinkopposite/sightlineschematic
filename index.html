@@ -1711,7 +1711,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.21.09';
+const VERSION='2026.10.21.10';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2273,6 +2273,9 @@ function drawPlatform(o={}){
 // The 3D stands (same geometry as the SketchUp export), seen from one corner in true isometric, painter's-sorted and shaded.
 // Model axes: +X south, +Y east (north end zone at -X). The camera sits on the chosen corner, up at 35.26 degrees.
 let ISOVIEW='SE';
+// a quadrilateral cut into pieces of sz at most each way (for the isometric depth sort: long faces sort against their neighbours piece by piece)
+function isoSub(q,sz){if(q.length!==4)return [q];const l1=Math.hypot(...[0,1,2].map(j=>q[1][j]-q[0][j])),l2=Math.hypot(...[0,1,2].map(j=>q[3][j]-q[0][j])),L3=(a,b,t)=>a.map((v,j)=>v+(b[j]-v)*t);
+  const n1=Math.max(1,Math.ceil(l1/sz)),n2=Math.max(1,Math.ceil(l2/sz)),o=[];if(n1*n2===1)return [q];for(let i=0;i<n1;i++)for(let k=0;k<n2;k++){const at=(u,v)=>L3(L3(q[0],q[1],u),L3(q[3],q[2],u),v);o.push([at(i/n1,k/n2),at((i+1)/n1,k/n2),at((i+1)/n1,(k+1)/n2),at(i/n1,(k+1)/n2)]);}return o;}
 function drawIso(){
   const rot={SE:0,SW:90,NW:180,NE:-90}[ISOVIEW]*Math.PI/180,cr=Math.cos(rot),sr=Math.sin(rot);
   const R=([x,y,z])=>[x*cr-y*sr,x*sr+y*cr,z],c30=Math.cos(Math.PI/6),pj=([x,y,z])=>[(y-x)*c30,(x+y)*.5-z];   // camera on (1,1,1), screen right = (-1,1,0)
@@ -2286,15 +2289,28 @@ function drawIso(){
     const pr=profileOf(rows,ti).map(([x,h])=>[x/1000,h/1000]),n=pr.length,closed=c[z]==='ring';
     const st0=closed?stations(bp):chainStations(c[z]).map(([x,y,nx,ny])=>[x,-y,nx,-ny]).reverse(),st=[];   // short pieces, so the depth sort holds next to the aisle steps
     // split the stand at every aisle edge (so the bowl under each aisle is its own piece and the precast steps sort with it), and into pieces of 3 m at most
-    const d0=rows[0].x/1000,EP=[];{let AL=null;try{AL=M&&M.AL;}catch(e){}const Lz=AL&&AL[ti]&&AL[ti][z];if(Lz&&imperial()){const wA=AIS().w/1000;
-      const gp=(AIS().gap||0)/1000;Lz.ais.forEach(ai=>{const w=cutW(ai,wA),sc=chainS(Lz.ch,ai,d0);for(const sd of [-1,1])for(const o of [w/2,w/2+gp]){const p=chainPtS(Lz.ch,sc+sd*o,d0);EP.push([p[0],-p[1]]);}});}}   // aisle edges, and the cut line of a switched-off section beside them
+    const d0=rows[0].x/1000,EP=[],VZ=[];{let AL=null;try{AL=M&&M.AL;}catch(e){}const Lz=AL&&AL[ti]&&AL[ti][z];if(Lz&&imperial()){const wA=AIS().w/1000;
+      const gp=(AIS().gap||0)/1000;Lz.ais.forEach(ai=>{const w=cutW(ai,wA),sc=chainS(Lz.ch,ai,d0);for(const sd of [-1,1])for(const o of [w/2,w/2+gp]){const p=chainPtS(Lz.ch,sc+sd*o,d0);EP.push([p[0],-p[1]]);}});   // aisle edges, and the cut line of a switched-off section beside them
+      if(Lz.vr)Lz.ais.forEach((ai,i)=>{if(!Lz.vom[i]||!ai.vr)return;const kV=ai.vr.rows.length,sV=ai.vr.s||0;const W2=vomClear(ai)/2000,tw=vomWall()/1000,sc=chainS(Lz.ch,ai,d0),dk=rows[Math.min(sV+kV,rows.length-1)].x/1000,dA=sV?rows[sV].x/1000:d0-0.5;   // a vom opening (decision 123): split as in the 3D model
+        const c0=chainPtS(Lz.ch,sc,d0),c1=chainPtS(Lz.ch,chainS(Lz.ch,ai,d0+1),d0+1),ax=[c1[0]-c0[0],-(c1[1]-c0[1])];
+        for(const o of (isTun(ai)?[W2,W2+tw]:[W2,W2+tw,W2+tw+VSIDE()/1000]))for(const sd of [-1,1]){const p=chainPtS(Lz.ch,sc+sd*o,d0);EP.push([p[0],-p[1],ax[0],ax[1]]);}
+        const at=(o,d)=>chainPtS(Lz.ch,chainS(Lz.ch,ai,d)+o,d),o=W2+tw-1e-3;VZ.push({poly:[at(-o,dA),at(-o,dk),at(o,dk),at(o,dA)],sV,kV,dT:(sV?rows[sV].x/1000:d0)+0.05});});}}
     for(let i=0;i<st0.length;i++){const a=st0[i],b=closed?st0[(i+1)%st0.length]:st0[i+1];st.push(a);if(!b)continue;
       const A=[a[0]+a[2]*d0,a[1]+a[3]*d0],B=[b[0]+b[2]*d0,b[1]+b[3]*d0],ab=[B[0]-A[0],B[1]-A[1]],l2=ab[0]*ab[0]+ab[1]*ab[1],ts=[];
-      if(l2>1e-9)for(const p of EP){const t=((p[0]-A[0])*ab[0]+(p[1]-A[1])*ab[1])/l2;if(t>1e-4&&t<1-1e-4&&Math.hypot(A[0]+ab[0]*t-p[0],A[1]+ab[1]*t-p[1])<0.05)ts.push(t);}
-      const l=Math.hypot(b[0]-a[0],b[1]-a[1]),k=Math.ceil(l/3);for(let q=1;q<k;q++)ts.push(q/k);ts.sort((x,y)=>x-y);
-      ts.filter((t,q)=>!q||t-ts[q-1]>1e-4).forEach(t=>st.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t,a[3]+(b[3]-a[3])*t]));}   // linear in position and offset direction: the same surface, in pieces
+      if(l2>1e-9)for(const p of EP){const t=((p[0]-A[0])*ab[0]+(p[1]-A[1])*ab[1])/l2;if(t>1e-4&&t<1-1e-4&&Math.hypot(A[0]+ab[0]*t-p[0],A[1]+ab[1]*t-p[1])<0.05)ts.push({t,n:p.length>2?[p[2],p[3]]:null});}
+      const l=Math.hypot(b[0]-a[0],b[1]-a[1]),k=Math.ceil(l/3);for(let q=1;q<k;q++)ts.push({t:q/k,n:null});ts.sort((x,y)=>x.t-y.t);
+      ts.filter((q,i)=>!i||q.t-ts[i-1].t>1e-4).forEach(({t,n})=>{const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,nx=a[2]+(b[2]-a[2])*t,ny=a[3]+(b[3]-a[3])*t;
+        st.push(n?[x+(nx-n[0])*d0,y+(ny-n[1])*d0,n[0],n[1],[x,y,nx,ny]]:[x,y,nx,ny]);});}   // linear in position and offset direction; a vom split runs along the vom axis
+    {const dX=(rows[rows.length-1].x+rows[rows.length-1].T)/1000,Pd=(q,d)=>[q[0]+q[2]*d,q[1]+q[3]*d];   // a vom split that would cross its neighbours falls back to the plain station (as in the 3D model)
+      for(let i=1;i<st.length-1;i++){const q=st[i];if(!q[4])continue;const pv=st[i-1],nx=st[i+1],A0=Pd(pv,d0),B0=Pd(nx,d0),t0=[B0[0]-A0[0],B0[1]-A0[1]];
+        const bad=[d0,(d0+dX)/2,dX].some(d=>{const a1=Pd(pv,d),q1=Pd(q,d),b1=Pd(nx,d);return (q1[0]-a1[0])*t0[0]+(q1[1]-a1[1])*t0[1]<-1e-4||(b1[0]-q1[0])*t0[0]+(b1[1]-q1[1])*t0[1]<-1e-4;});
+        if(bad&&curvedBowl())st[i]=q[4];}}
     const m=st.length;
-    const V=(s,i)=>R([st[s][0]+st[s][2]*pr[i][0],st[s][1]+st[s][3]*pr[i][0],pr[i][1]]),base=rgb(tierFill(ti));
+    const V=(s,i,q)=>{q=q||pr;return R([st[s][0]+st[s][2]*q[i][0],st[s][1]+st[s][3]*q[i][0],q[i][1]]);},base=rgb(tierFill(ti));
+    const mm=q=>q.map(([x,h])=>[x/1000,h/1000]),vp=[];   // inside a vom: the rows in front of the opening (if any) and the rows behind it, open below the header
+    VZ.forEach(v=>{v.profs=[v.sV?mm(profileOf(rows.slice(0,v.sV),ti)):null,rows.length>v.sV+v.kV+1?mm(profileOf(rows.slice(v.sV+v.kV),-1)):null].filter(Boolean);});
+    if(VZ.length)for(let s=0;s<(closed?m:m-1);s++){const a=st[s],b=st[(s+1)%m],at=(t,dd)=>{const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,nx=a[2]+(b[2]-a[2])*t,ny=a[3]+(b[3]-a[3])*t;return [x+nx*dd,-(y+ny*dd)];};
+      const v=VZ.find(v=>[.25,.75].every(t=>inPoly(at(t,v.dT),v.poly)));if(v)vp[s]=v.profs;}
     // switched-off sections: a piece goes when points a quarter and three quarters along it, at mid-depth, are both in open space
     // (an aisle piece goes only with open space on both sides); the cut ends are closed with the tier profile
     const offT=OFF.filter(o=>o.ti===ti).map(o=>o.pts),dm=(rows[0].x+rows[rows.length-1].x+rows[rows.length-1].T)/2000,hid=[],np=closed?m:m-1;
@@ -2306,13 +2322,14 @@ function drawIso(){
       const nl=Math.hypot(...N);if(nl<1e-9)continue;N=N.map(v=>v/nl);if(N[0]*dir[0]+N[1]*dir[1]+N[2]*dir[2]<0)N=N.map(v=>-v);   // out of the solid, toward the open piece
       if(N[0]+N[1]+N[2]<=1e-6)continue;const k=0.5+0.5*Math.max(0,N[0]*L[0]+N[1]*L[1]+N[2]*L[2]);
       faces.push({q,d:q.reduce((a,p)=>a+p[0]+p[1]+p[2],0)/q.length,fill:`rgb(${base.map(v=>Math.round(v*k)).join(',')})`});}
-    for(let s=0;s<(closed?m:m-1);s++){if(hid[s])continue;const s2=(s+1)%m;for(let i=0;i<n;i++){const i2=(i+1)%n,q=[V(s,i),V(s,i2),V(s2,i2),V(s2,i)];
+    for(let s=0;s<(closed?m:m-1);s++){if(hid[s])continue;const s2=(s+1)%m;for(const q0 of (vp[s]||[pr])){const n=q0.length;for(let i=0;i<n;i++){const i2=(i+1)%n,q=[V(s,i,q0),V(s,i2,q0),V(s2,i2,q0),V(s2,i,q0)];
       const u=[q[1][0]-q[0][0],q[1][1]-q[0][1],q[1][2]-q[0][2]],w=[q[2][0]-q[0][0],q[2][1]-q[0][1],q[2][2]-q[0][2]];
       let N=[u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]];const nl=Math.hypot(...N);if(nl<1e-9)continue;N=N.map(a=>a/nl);
       if(N[0]+N[1]+N[2]<=1e-6)continue;                                          // faces turned away from the camera
       const k=0.5+0.5*Math.max(0,N[0]*L[0]+N[1]*L[1]+N[2]*L[2]);
-      const tread=Math.abs(pr[i][1]-pr[i2][1])<1e-6&&pr[i2][0]>pr[i][0];                // tread face: its front edge is the nosing
-      faces.push({q,d:q.reduce((a,p)=>a+p[0]+p[1]+p[2],0)/4,fill:`rgb(${base.map(v=>Math.round(v*k)).join(',')})`,edge:tread?[q[0],q[3]]:null});}}}});
+      const tread=Math.abs(q0[i][1]-q0[i2][1])<1e-6&&q0[i2][0]>q0[i][0];                // tread face: its front edge is the nosing
+      const fl=`rgb(${base.map(v=>Math.round(v*k)).join(',')})`;if(tread){faces.push({q,d:q.reduce((a,p)=>a+p[0]+p[1]+p[2],0)/4,fill:fl,edge:[q[0],q[3]]});continue;}
+      for(const qq of isoSub(q,3))faces.push({q:qq,d:qq.reduce((a,p)=>a+p[0]+p[1]+p[2],0)/4,fill:fl});}}}}});   // soffit and back wall in pieces
   // precast aisle steps (see aislePieces): every piece on every stand, faces turned away from the camera hidden, light concrete
   {const ac=[128,128,124],gone=goneAisles(M&&M.AL);for(const pc of aislePieces())if(!gone.has(pc.aisle))for(const fc of pc.faces){const N=R(fc.out);if(N[0]+N[1]+N[2]<=1e-6)continue;
     const q=fc.idx.map(i=>R(pc.V[i])),k=0.55+0.45*Math.max(0,N[0]*L[0]+N[1]*L[1]+N[2]*L[2]),top=fc.out[2]>0.9;
@@ -2325,11 +2342,27 @@ function drawIso(){
   if(P.sport==='nfl'||P.sport==='ncaafb'){const F=0.3048,cb=10*F,hw=18.5*F/2,up=(P.sport==='nfl'?35:30)*F,off=6*F,xe=P.L/2;
     for(const sg of[1,-1]){const x=sg*xe,xb=sg*(xe+off),segs=[[[xb,0,0],[xb,0,cb]],[[xb,0,cb],[x,0,cb]],[[x,-hw,cb],[x,hw,cb]],[[x,-hw,cb],[x,-hw,cb+up]],[[x,hw,cb],[x,hw,cb+up]]];
       for(const [a,b] of segs){const q=[R(a),R(b)];faces.push({q,d:(q[0][0]+q[0][1]+q[0][2]+q[1][0]+q[1][1]+q[1][2])/2,post:true});}}}
-  // wheelchair platforms, bright yellow (decision 122): the 3D model's platform solids, face by face
-  {const G=(model3D().groups||[]).find(g=>g.kind==='platform');if(G)for(const pt of (G.parts||[{a:0,b:G.tri.length}])){let zt=-1e9,cx=0,cy=0,n=0;for(let i=pt.a;i<pt.b;i++){zt=Math.max(zt,G.tri[i][2]);const r=R(G.tri[i]);cx+=r[0];cy+=r[1];n++;}if(n&&(cx+cy)/n>0)continue;   /* stands seen from behind hide their platforms */   /* each platform's top surface only: the rest sits behind the bowl */
-    for(let i=pt.a;i+2<pt.b;i+=3){if([0,1,2].some(j=>Math.abs(G.tri[i+j][2]-zt)>1e-3))continue;const q=[R(G.tri[i]),R(G.tri[i+1]),R(G.tri[i+2])],u=[0,1,2].map(j=>q[1][j]-q[0][j]),w=[0,1,2].map(j=>q[2][j]-q[0][j]);
-    let N=[u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]];const nl=Math.hypot(...N);if(nl<1e-12)continue;N=N.map(v=>v/nl);if(N[0]+N[1]+N[2]<0)N=N.map(v=>-v);
-    const k=0.62+0.38*Math.abs(N[0]*L[0]+N[1]*L[1]+N[2]*L[2]);faces.push({q,d:(q[0][0]+q[0][1]+q[0][2]+q[1][0]+q[1][1]+q[1][2]+q[2][0]+q[2][1]+q[2][2])/3+0.01,fill:`rgb(${[255,212,0].map(v=>Math.round(v*k)).join(',')})`});}}}
+  // vomitory walls, headers and floors, and the wheelchair platforms (bright yellow), as solids (decision 123): every face with its outward
+  // normal, faces turned away from the camera hidden; long faces cut into pieces of 2 m at most so the depth sort holds beside the stand
+  {const sub=isoSub,
+    put=(pts,out,col,bias,kmin,edge)=>{const N0=R(out),nl=Math.hypot(...N0);if(nl<1e-12)return;const N=N0.map(v=>v/nl);if(N[0]+N[1]+N[2]<=1e-6)return;
+      const k=kmin+(1-kmin)*Math.max(0,N[0]*L[0]+N[1]*L[1]+N[2]*L[2]),fill=`rgb(${col.map(v=>Math.round(v*k)).join(',')})`;
+      for(const pc of sub(pts,2)){const q=pc.map(R);faces.push({q,d:q.reduce((t,p)=>t+p[0]+p[1]+p[2],0)/q.length+bias,fill,line:edge});}},
+    cross=(a,b,c)=>{const u=[0,1,2].map(j=>b[j]-a[j]),w=[0,1,2].map(j=>c[j]-a[j]);return [u[1]*w[2]-u[2]*w[1],u[2]*w[0]-u[0]*w[2],u[0]*w[1]-u[1]*w[0]];},
+    nrm=pts=>{let N=[0,0,0];for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];N[0]+=(a[1]-b[1])*(a[2]+b[2]);N[1]+=(a[2]-b[2])*(a[0]+b[0]);N[2]+=(a[0]-b[0])*(a[1]+b[1]);}return N;},
+    dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],sg2=poly=>polyArea(poly)>=0?1:-1;
+  for(const v of vomSolids())for(const pm of (v.prisms||[])){const {A,B,poly,P3,o0,o1}=pm,n=poly.length,cA=[0,1,2].map(j=>A.reduce((t,p)=>t+p[j],0)/n),cB=[0,1,2].map(j=>B.reduce((t,p)=>t+p[j],0)/n),ab=[0,1,2].map(j=>cB[j]-cA[j]);
+    const col=[150,150,146],orient=(N,o)=>dot(N,o)<0?N.map(x=>-x):N;
+    put(A,orient(nrm(A),ab.map(x=>-x)),col,0.02,0.5);put(B,orient(nrm(B),ab),col,0.02,0.5);
+    const sg=sg2(poly),om=(o0+o1)/2;for(let j=0;j<n;j++){const j2=(j+1)%n,q=[A[j],A[j2],B[j2],B[j]],dx=poly[j2][0]-poly[j][0],dz=poly[j2][1]-poly[j][1],ll=Math.hypot(dx,dz);if(ll<1e-9)continue;
+      const n2=sg>0?[dz/ll,-dx/ll]:[-dz/ll,dx/ll],xm=(poly[j][0]+poly[j2][0])/2,zm=(poly[j][1]+poly[j2][1])/2,p0=P3(om,xm,zm),p1=P3(om,xm+n2[0]*0.01,zm+n2[1]*0.01);
+      put(q,orient(nrm(q),[0,1,2].map(i=>p1[i]-p0[i])),col,0.02,0.5);}}
+  for(const v of vomSolids())if(v.portal){const q=v.portal,N=nrm(q),Nr=R(N),fN=Nr[0]+Nr[1]+Nr[2]>0?N:N.map(x=>-x);put(q,fN,[62,62,60],0.01,1);}   // the concourse beyond: a dark portal, not the paper
+  {const G=(model3D().groups||[]).find(g=>g.kind==='platform'),col=[255,212,0];if(G)for(const {pts,z0,z1} of (G.prisms||[])){const n=pts.length,sg=sg2(pts);
+    put(pts.map(([x,y])=>[x,y,z1]),[0,0,1],col,0.05,0.7);
+    for(let i=0;i<n;i++){const a=pts[i],b=pts[(i+1)%n],dx=b[0]-a[0],dy=b[1]-a[1],ll=Math.hypot(dx,dy);if(ll<1e-9)continue;
+      {const o=sg>0?[dy/ll,-dx/ll]:[-dy/ll,dx/ll],mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2,ml=Math.hypot(mx,my)||1;if((o[0]*mx+o[1]*my)/ml>0.6)continue;}   // the back face, against the top row riser
+      put([[a[0],a[1],z0],[b[0],b[1],z0],[b[0],b[1],z1],[a[0],a[1],z1]],sg>0?[dy/ll,-dx/ll,0]:[-dy/ll,dx/ll,0],col,0.05,0.7);}}}}
   // rink boards and goals, tennis net, rugby posts: true sizes
   {const Sx=SPORTS[P.sport]||{},seg=(A,B,col,ww,cap)=>{const q=[R(A),R(B)];faces.push({q,d:(q[0][0]+q[0][1]+q[0][2]+q[1][0]+q[1][1]+q[1][2])/2,post:true,col,w:ww,cap:cap||'butt'});},
     quad=(pts,fill,op)=>{const q=pts.map(R);faces.push({q,d:q.reduce((t,p)=>t+p[0]+p[1]+p[2],0)/q.length,fill,op});},
@@ -2471,15 +2504,15 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
       const mk=`T${pc.ti+1}-${zoneName(P,pc.zone,true)}-A${pc.aisle}-R${pc.row}`;parts.push({a:t0,b:tri.length,name:`Aisle step ${mk}`,meta:{ti:pc.ti,mark:mk,props:{Tier:pc.ti+1,Stand:zoneName(P,pc.zone),Aisle:pc.aisle,Row:pc.row,Type:stepName(pc.n),Steps:pc.n-1,Riser:+(pc.rh/1000).toFixed(4),Tread:+(pc.td/1000).toFixed(4),Width:+pc.w.toFixed(4),'Bend angle (deg)':+pc.bend.toFixed(2)}}});}
     if(tri.length)out.push({name:'Aisle steps (precast)',kind:'step',tri,parts,col:[128,128,124]});}
   // wheelchair platforms (decision 56): the infill over the two rows below the top row, up to the top tread, on the section's outline inset from the aisles
-  {const S=P.secs||{},WC=(M.ADA&&M.ADA.secs)||{},RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),tri=[],parts=[];
+  {const S=P.secs||{},WC=(M.ADA&&M.ADA.secs)||{},RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),tri=[],parts=[],pz=[];
     if(M.AL)M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<4)return;
       sectionList(ti).forEach(q=>{const e=S[q.no],w=WC[q.no];if(!e||!e.wc||e.off||!w)return;const tr=ZR[w.k].filter(r=>r.tier===ti),L=tr.length;if(L<4)return;
         const z0=tr[L-3].z/1000-0.05,z1=tr[L-1].z/1000,t0=tri.length;
-        secGeom(ti,q.key,nr-3,nr-2,RS,true,WC_SETBACK/1000).polys.forEach(pp=>{const pts=pp.map(([x,y])=>[x,-y]);   /* front face 6 in behind the row riser */if(pts.length<3)return;
+        secGeom(ti,q.key,nr-3,nr-2,RS,true,WC_SETBACK/1000).polys.forEach(pp=>{const pts=pp.map(([x,y])=>[x,-y]);   /* front face 6 in behind the row riser */if(pts.length<3)return;pz.push({pts,z0,z1});
           earClip(pts).forEach(([a,b,c2])=>tri.push([...pts[a],z1],[...pts[b],z1],[...pts[c2],z1]));
           for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];tri.push([...a,z0],[...b,z0],[...b,z1],[...a,z0],[...b,z1],[...a,z1]);}});
         if(tri.length>t0)parts.push({a:t0,b:tri.length,name:`Wheelchair platform ${q.no}`,meta:{ti,mark:'WC-'+q.no,props:{Tier:ti+1,Section:q.no,Stand:w.stand,'Wheelchair spaces':w.wc,'Companion seats':w.comp,'Platform level':+z1.toFixed(4),'Rows filled':w.rows.join('–')}}});});});
-    if(tri.length)out.push({name:'Wheelchair platforms',kind:'platform',tri,parts,col:[255,212,0]});}
+    if(tri.length)out.push({name:'Wheelchair platforms',kind:'platform',tri,parts,col:[255,212,0],prisms:pz});}
   {const tri=[],parts=[];vomSolids().forEach(v=>{const t0=tri.length;tri.push(...v.tri);parts.push({a:t0,b:tri.length,name:v.name,meta:v.meta});});   // vomitory walls and headers
     if(tri.length)out.push({name:'Vomitories (walls and headers)',kind:'vom',tri,parts,col:[150,150,146]});}
   return {groups:out,edges};}
@@ -2653,16 +2686,17 @@ function vomAuto(ti=0){const v=vomNeed(ti);if(!v)return;const on=P.vomOn||(P.vom
   const n=Math.min(list.length,v.n),step=list.length/n;for(let i=0;i<n;i++)on[list[Math.floor(i*step+step/2)%list.length].key]=true;update();}
 // 3D: walls (tops 26 in above the nosings), header, front wall (a vom above the bottom tread) and floor of each active vom, as prisms along the chain
 function vomSolids(){const out=[];if(!M||!M.AL)return out;const t=vomWall()/1000,hd=VHEAD()/1000,sl=slabT()/1000;
-  M.AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>Lz.ais.forEach((a,i)=>{if(!Lz.vom[i]||!a.vr)return;const s=a.vr.s||0,k=a.vr.rows.length,tr=Lz.tr;if(tr.length<=s+k)return;const W=vomClear(a)/1000,tri=[];
+  M.AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>Lz.ais.forEach((a,i)=>{if(!Lz.vom[i]||!a.vr)return;const s=a.vr.s||0,k=a.vr.rows.length,tr=Lz.tr;if(tr.length<=s+k)return;const W=vomClear(a)/1000,tri=[],prisms=[];
     const P3=(off,x,z)=>{const d=x,ss=chainS(Lz.ch,a,d)+off,p=chainPtS(Lz.ch,ss,d);return [p[0],-p[1],z];};
-    const prism=(o0,o1,poly)=>{const A=poly.map(([x,z])=>P3(o0,x,z)),B=poly.map(([x,z])=>P3(o1,x,z));earClip(poly).forEach(([p,q,r])=>{tri.push(A[p],A[q],A[r],B[r],B[q],B[p]);});
+    const prism=(o0,o1,poly)=>{const A=poly.map(([x,z])=>P3(o0,x,z)),B=poly.map(([x,z])=>P3(o1,x,z));prisms.push({A,B,poly,P3,o0,o1});earClip(poly).forEach(([p,q,r])=>{tri.push(A[p],A[q],A[r],B[r],B[q],B[p]);});
       for(let j=0;j<poly.length;j++){const j2=(j+1)%poly.length;tri.push(A[j],A[j2],B[j2],A[j],B[j2],B[j]);}};
     const zf=(a.vr.floor||0)/1000,xs=[...Array(k+1).keys()].map(j=>tr[s+j].x/1000),top=k,wall=[[xs[0],zf],...xs.map((x,j)=>[x,tr[s+j].z/1000+hd]),[xs[top],zf]];   // floor: field level (Tier 1) or the leg-wall base (upper tiers)
     for(const sd of [-1,1])prism(sd*W/2,sd*(W/2+t),wall);
     const zk=tr[s+k].z/1000;prism(-W/2-t,W/2+t,[[xs[top],zk-sl],[xs[top]+t,zk-sl],[xs[top]+t,zk+hd],[xs[top],zk+hd]]);   /* header over the top tread, its ends flush with the outer faces of the side walls (decision 80) */
-    prism(-W/2,W/2,[[s?xs[0]:xs[0]-0.3,zf],[xs[top]+t,zf],[xs[top]+t,zf+0.03],[s?xs[0]:xs[0]-0.3,zf+0.03]]);   // floor, level with the cross aisle (field level for the corner tunnels)
+    prism(-W/2,W/2,[[s?xs[0]:xs[0]-0.3,zf],[xs[top]+t,zf],[xs[top]+t,zf+0.03],[s?xs[0]:xs[0]-0.3,zf+0.03]]);
+    const xb=xs[top]+t,wp=W/2+t/2,portal=[P3(-wp,xb,zf+0.03),P3(wp,xb,zf+0.03),P3(wp,xb,zk-sl),P3(-wp,xb,zk-sl)];   /* into the walls: no paper-coloured sliver at the jambs */   // the back of the opening (the isometric view shades it dark)   // floor, level with the cross aisle (field level for the corner tunnels)
     const lab=(ti?'T'+(ti+1)+' ':'')+(a.vomLabel||a.id);
-    out.push({tri,name:`Vomitory ${lab}`,meta:{ti,mark:'V-'+lab,props:{Vomitory:lab,Tier:ti+1,Type:a.vomC>AIS().vomW?'Corner tunnel':'Spectator vom','Clear width':+(vomClear(a)/1000).toFixed(4),'Rows cut':`${s+1}–${s+k}`,'Wall thickness':+t.toFixed(4)}},key:a.vomKey,ch:Lz.ch,a,k,s,tr});})));
+    out.push({tri,prisms,portal,name:`Vomitory ${lab}`,meta:{ti,mark:'V-'+lab,props:{Vomitory:lab,Tier:ti+1,Type:a.vomC>AIS().vomW?'Corner tunnel':'Spectator vom','Clear width':+(vomClear(a)/1000).toFixed(4),'Rows cut':`${s+1}–${s+k}`,'Wall thickness':+t.toFixed(4)}},key:a.vomKey,ch:Lz.ch,a,k,s,tr});})));
   return out;}
 // plan labels: V-<stand><n> (Tier 1), V2-<stand><n> (Tier 2), T-<corner> for corner tunnels, just in front of each opening
 function vomLabels(rf,t,plain){if(!M||!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>v.toFixed(2),fs=rf*.95,done=new Set();   // centred on the opening (its first to last row)
