@@ -1206,7 +1206,7 @@ const INDOOR={nba:1,ncaabb:1,ncaawbb:1,fiba:1,nhl:1};
 const GG_FLOW={step:66,level:82,min:8};                                // Green Guide rates of passage (persons per metre per minute) and egress time (minutes)
 const aisDefaults=r=>r==='world'?{mode:'layout',nmax:28,w:1200,vomW:2400,vomEvery:2,vomH:2000,basis:'gg',vom:[0,0],vomRow:[11,11],prem:21000,gap:100}
   :{mode:'layout',nmax:28,w:48*25.4,vomW:8*304.8,vomEvery:2,vomH:90*25.4,basis:'auto',vom:[0,0],vomRow:[11,11],prem:60*304.8,gap:4*25.4,chairD:14*25.4,chairBack:2*25.4,chairDown:24*25.4,smid:40,styp:40,smin:36,smax:44,nSL:5,nEZ:3,smaxMid:38,ctolp:50};
-const vomWall=()=>imperial()?8*25.4:200;
+const vomWall=()=>imperial()?6*25.4:150;   // vom side walls and header walls 6 in, as the precast units (decision 124)
 function AIS(Q){Q=Q||P;if(!Q.ais)Q.ais=aisDefaults(regionOf(Q.sport));const A=Q.ais;if(A.gap==null)A.gap=regionOf(Q.sport)==='world'?100:4*25.4;if(A.chairD==null)A.chairD=15*25.4;if(A.smid==null)Object.assign(A,{smid:40,styp:40,smin:36,smax:44,chairD:15*25.4});if(A.styp==null)Object.assign(A,{smid:40,styp:40});if(A.ctolp==null)A.ctolp=50;if(A.chairBack==null)Object.assign(A,{chairD:14*25.4,chairBack:2*25.4,chairDown:24*25.4});if(A.nSL==null)Object.assign(A,{nSL:5,nEZ:3,smaxMid:38});if(!VOM_ON)A.vom=[0,0];if(!A.vom)A.vom=[1,1];if(!A.vomRow)A.vomRow=[11,11];return A;}
 function segLen(g,d){return g.t==='LINE'?Math.hypot(g.q[0]-g.p[0],g.q[1]-g.p[1]):g.t==='CHAM'?Math.hypot(g.b[0]+g.nb[0]*d-g.a[0]-g.na[0]*d,g.b[1]+g.nb[1]*d-g.a[1]-g.na[1]*d):Math.max(0,g.r+d)*g.sw*Math.PI/180;}
 function segPt(g,f,d){if(g.t==='LINE')return [g.p[0]+(g.q[0]-g.p[0])*f+g.n[0]*d,g.p[1]+(g.q[1]-g.p[1])*f+g.n[1]*d];
@@ -1225,7 +1225,11 @@ const segStraight=g=>g.t==='LINE'||g.side||(g.t==='CHAM'&&Math.hypot(g.na[0]-g.n
 const segDiag=g=>g.t==='CHAM'&&Math.hypot(g.a[0]-g.b[0],g.a[1]-g.b[1])<1e-9&&Math.abs(Math.hypot(...g.na)-Math.hypot(...g.nb))<1e-9&&Math.hypot(g.na[0]-g.nb[0],g.na[1]-g.nb[1])>1e-9;
 const MITER=1/Math.sin(67.5*Math.PI/180);                            // aisle on a 45 degree bend: along-row cut for the same clear width
 const cutW=(a,w)=>a&&a.cl?0:a&&a.miter?w*MITER:w;
-const gapA=(a,gp)=>a&&a.cl?0:gp;                                        // a corner centreline (section line, no aisle) keeps no end-seat space
+const gapA=(a,gp)=>a&&a.cl?0:gp;
+// seat numbering (decision 124): in the north end zone, seat 1 at the aisle edge where the row starts going clockwise in plan, numbers
+// rising clockwise to the next aisle, back to 1 across the aisle. Elsewhere, seat 1 beside the aisle the seats line up on.
+const isNEZ=k=>zoned(P)&&/^NEZ$/.test(zoneName(P,k,true));
+const cwOf=(p,t)=>p[0]*t[1]-p[1]*t[0]>0;                                  // plan y down: moving along t at p turns clockwise round the field centre                                        // a corner centreline (section line, no aisle) keeps no end-seat space
 // Chamfered corners (decision 79): the corner aisles sit just outside the 45-degree corner wedge, one along each of its outer edges
 // (the bend lines), wholly on the straight rows, so each aisle step is one straight tread (no V across the bend) and the aisle edge is
 // the bend line. Along the corner centreline: a section line only (no aisle) where a row across the whole wedge stays within the
@@ -1477,18 +1481,22 @@ function chainKinks(ch,d,T){const segs=[];let acc=0;ch.forEach(g=>{const l=segLe
 // seats line up 4 in from the aisle square to the rows; the leftover space falls at a mitred (bend) aisle
 function sectionSeats(T,sc,j){const ps=sc.pieces.filter(pc=>pc.Lz.tr[j]);if(!ps.length)return [];const r0=ps[0].Lz.tr[j],sw=r0.seatW/1000;let off=0,Ku=[];
   const seg=ps.map(pc=>{const o=off,l=Math.max(0,pc.b-pc.a);chainKinks(pc.Lz.ch,pc.d,pc.Lz.tr[j].T/1000).forEach(k=>{if(k.s+k.e>pc.a&&k.s-k.e<pc.b)Ku.push({s:o+k.s-pc.a,e:k.e,th:k.th});});off+=l;return {pc,o,l};});
-  const g=id=>id==null?null:findAisle(T,id),m=id=>{const f=g(id);return !!(f&&(f.a.cl||f.a.miter&&!f.a.ray));},mode=sc.l!=null&&sc.r!=null&&!m(sc.l)&&!m(sc.r)?'both':seatsFromEnd(T,sc);
+  const g=id=>id==null?null:findAisle(T,id),m=id=>{const f=g(id);return !!(f&&(f.a.cl||f.a.miter&&!f.a.ray));},o=id=>orthAisle(T,id),
+    mode=o(sc.l)&&o(sc.r)?'both':o(sc.l)!==o(sc.r)?o(sc.r):sc.l!=null&&sc.r!=null&&!m(sc.l)&&!m(sc.r)?'both0':seatsFromEnd(T,sc);   // decision 124: two aisles square to the row, centred; one, lined up on it
   return placeSeats(0,off,sw,Ku,mode).map(u=>{const q=seg.find(x=>u<x.o+x.l-1e-9)||seg[seg.length-1];return {pc:q.pc,s0:q.pc.a+u-q.o,sw};});}
 function seatMode(T,sc,i,n){const g=id=>id==null?null:findAisle(T,id),m=id=>{const f=g(id);return !!(f&&(f.a.cl||f.a.miter&&!f.a.ray));};   // how each piece of a section lines up its seats
   if(sc.l!=null&&sc.r!=null&&!m(sc.l)&&!m(sc.r))return n===1?'both':i===0?false:i===n-1?true:false;return seatsFromEnd(T,sc);}
+function orthAisle(T,id){const f=id==null?null:findAisle(T,id);return !!(f&&!f.a.cl&&!f.a.miter&&!f.a.ray);}   // an aisle square to the rows (not angled, not a corner centreline)
 function seatsFromEnd(T,sc){const g=id=>id==null?null:findAisle(T,id),m=id=>{const f=g(id);return !!(f&&(f.a.cl||f.a.miter&&!f.a.ray));},c=id=>{const f=g(id);return !!(f&&f.a.corner);};
+  if(orthAisle(T,sc.l)!==orthAisle(T,sc.r))return orthAisle(T,sc.r);   // orthogonal to angled: the seats start 4 in from the orthogonal aisle (decision 124)
   if(m(sc.l)!==m(sc.r))return m(sc.l);return c(sc.r)&&!c(sc.l);}   // both square to the rows: line up on the corner aisle
 function placeSeats(a,b,sw,K,fromEnd){const out=[],zones=K.map(k=>[k.s-k.e,k.s+k.e]).filter(z=>z[1]>a&&z[0]<b).sort((p,q)=>p[0]-q[0]);
-  if(fromEnd==='both'&&zones.length){   // both ends on aisles square to the rows: each run to a bend lines up on its own aisle; the leftover falls at the bends
+  if((fromEnd==='both'||fromEnd==='both0')&&zones.length){   // both ends on aisles square to the rows: each run to a bend lines up on its own aisle; the leftover falls at the bends
     const z1=zones[0],zl=zones[zones.length-1];let s=a;while(s+sw<=z1[0]+1e-6){out.push(s);s+=sw;}
     const mid=zones.length>1?placeSeats(z1[1],zl[0],sw,K.filter(k=>k.s-k.e>=z1[1]-1e-9&&k.s+k.e<=zl[0]+1e-9),false):[];out.push(...mid);
     const tail=[];s=b;while(s-sw>=zl[1]-1e-6){tail.push(s-sw);s-=sw;}out.push(...tail.reverse());return out;}
-  if(fromEnd==='both')fromEnd=false;
+  if(fromEnd==='both0')fromEnd=false;
+  if(fromEnd==='both'){const n=Math.floor((b-a)/sw+1e-9),lo=a+Math.max(0,(b-a)-n*sw)/2;for(let q=0;q<n;q++)out.push(lo+q*sw);return out;}   // straight row between two aisles square to it: 4 in at each end at least, the leftover split equally (decision 124)
   if(!fromEnd){let s=a;while(s+sw<=b+1e-6){const z=zones.find(z=>s<z[1]-1e-6&&s+sw>z[0]+1e-6);if(z){s=z[1];continue;}out.push(s);s+=sw;}}
   else{let s=b;while(s-sw>=a-1e-6){const z=zones.find(z=>s-sw<z[1]-1e-6&&s>z[0]+1e-6);if(z){s=z[0];continue;}out.push(s-sw);s-=sw;}out.reverse();}
   return out;}
@@ -1575,10 +1583,10 @@ function metrics(P,ZR,CH){
   return {AL,ADA,omit,cap:Math.round(cap),tierSeats:tierSeats.map(x=>Math.round(x||0)),zoneSeats,worst,steep,rails,heads,lowHead,
     below:cs.filter(r=>status(r)!=='pass').length,over:rk.filter(r=>r.rake>P.maxRake).length,height,depth,vd,rows:rows.length};
 }
-// Closed tier profile: treads and risers of one consistent thickness t (4, 5 or 6 in), like precast seating units.
+// Closed tier profile: treads and risers of one standard thickness t, 6 in (150 mm), like precast seating units (decision 124).
 // Underside, front to back: under each tread at z - t, behind each riser at x + t. Tier 1 stands on a leg wall of the
 // same thickness at its front edge, down to field level. Nothing goes below the pitch.
-const slabT=()=>Math.max(50,+P.slabT||152.4);
+const slabT=()=>imperial()?6*25.4:150;   // standard: every precast bowl unit 6 in (decision 124)
 function underside(tr){const t=slabT(),u=[[tr[0].x,tr[0].z-t]];
   for(let i=1;i<tr.length;i++)u.push([tr[i].x+t,tr[i-1].z-t],[tr[i].x+t,tr[i].z-t]);
   const l=tr[tr.length-1];u.push([l.x+l.T,l.z-t]);return u.map(([x,z])=>[x,Math.max(0,z)]);}
@@ -1711,7 +1719,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.21.10';
+const VERSION='2026.10.22.01';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -1877,7 +1885,7 @@ function renderControls(){
   if(zoned(P))h+=`<div class="sl"><div class="sl-top"><label for="northSel">Field orientation</label></div><select id="northSel" class="sel">${[['v','Vertical football field, north up'],['h','Landscape football field, north left']].map(([k,n])=>`<option value="${k}"${P.planOri===k?' selected':''}>${n}</option>`).join('')}</select></div>`;
   h+='</section>';
   h+=step(2,'Bowl','Tiers, slab and corners for the whole bowl.')+'<div class="lab" style="margin-top:0">Tiers</div><div class="seg">'+[1,2,3].map(n=>`<button data-tc="${n}" class="${P.tierCount===n?'on':''}">${n} tier${n>1?'s':''}</button>`).join('')+'</div>';
-  h+='<div class="lab">Tread and riser thickness</div><div class="seg">'+SLAB[regionOf(P.sport)].map(v=>`<button data-slab="${v}" class="${Math.abs(slabT()-v)<0.1?'on':''}">${L(v)}</button>`).join('')+'</div>';
+  h+=`<div class="lab">Precast thickness: <b style="color:var(--ink)">${L(slabT())}</b></div><p class="hint" style="margin:2px 0 0">Standard for every precast bowl unit (treads and risers), vomitory wall and header wall.</p>`;
   if(zoned(P)){
     h+='<div class="lab">Side profiles: <b style="color:var(--ink)">All four sides match</b></div>';
     h+='<div class="lab">Corners</div><div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>';
@@ -3100,22 +3108,23 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
     +tr.map((r,j)=>{const v=r.x-x0,st=aisleStep(tr,j);let o=st.bad?`<rect x="${X(uc-wA/2)}" y="${Y(v+r.T)}" width="${f(wA)}" height="${f(r.T)}" fill="#FF8A8A" fill-opacity=".6"/>`:'';
       for(let k=0;k<st.n;k++)o+=`<line x1="${X(uc-wA/2)}" y1="${Y(v+k*r.T/st.n)}" x2="${X(uc+wA/2)}" y2="${Y(v+k*r.T/st.n)}" stroke="var(--ink)" stroke-width="${k?0.45:0.7}" vector-effect="non-scaling-stroke"/>`;return o;}).join('');   // aisle steps: the row riser and each step nosing
   // seats: chair at the back of each tread, seat raised (envelope), clear width in front
-  const iL=Lz.ais.indexOf(L0.a)+1,counts=[];
+  const iL=Lz.ais.indexOf(L0.a)+1,counts=[],nzCW=(()=>{if(!isNEZ(k))return false;const a=chainPtS(Lz.ch,sa,d),b=chainPtS(Lz.ch,sb,d);return cwOf([(a[0]+b[0])/2,(a[1]+b[1])/2],[b[0]-a[0],b[1]-a[1]]);})();   // true: clockwise runs left to right, seat 1 on the left
   tr.forEach((r,j)=>{const S=rowSections(Lz,j),n=S.secs[iL]||0,v=r.x-x0;counts.push(n);
-    for(let q=0;q<n;q++){const u=span-wA/2-gp-(q+1)*r.seatW,yb=v+r.T+cb;   // seat 1 at the right-hand aisle; seat down (solid), raised seat tip (dashed), back 2 in behind the riser
+    const lead=gp+Math.max(0,span-wA-2*gp-n*r.seatW)/2;   // 4 in at each aisle at least, the leftover split equally (decision 124)
+    for(let q=0;q<n;q++){const u=wA/2+lead+(n-1-q)*r.seatW,yb=v+r.T+cb,no=nzCW?n-q:q+1;   // seat 1 at the right-hand aisle (in the north end zone, where the row starts clockwise); seat down (solid), raised seat tip (dashed), back 2 in behind the riser
       seats+=`<rect x="${X(u)}" y="${Y(yb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="${tierFill(ti)}" fill-opacity=".55" stroke="var(--ink)" stroke-width="0.45" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(u)}" y1="${Y(v+r.T-cf)}" x2="${X(u+r.seatW)}" y2="${Y(v+r.T-cf)}" stroke="var(--ink)" stroke-width="0.5" stroke-dasharray="2.5 1.5" vector-effect="non-scaling-stroke"/>`
-      +`<text x="${X(u+r.seatW/2)}" y="${Y(yb-cdn*.42)}" font-size="${f(r.seatW*.42)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${q+1}</text>`;}
+      +`<text x="${X(u+r.seatW/2)}" y="${Y(yb-cdn*.42)}" font-size="${f(r.seatW*.42)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${no}</text>`;}
     for(const s of [-1,1])for(let q=0;q<2;q++){const u=s<0?-wA/2-gp-(q+1)*r.seatW:span+wA/2+gp+q*r.seatW;nb+=`<rect x="${X(u)}" y="${Y(v+r.T+cb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="none" stroke="var(--muted)" stroke-width="0.4" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/>`;}});
   // row numbers in the left aisle
   let rn='';tr.forEach(r=>{const v=r.x-x0;rn+=`<text x="${X(0)}" y="${Y(v+r.T/2)}" font-size="${f(Math.max(fs,(span+2*side)/62)*.6)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${r.row}</text>`;});
   // dimensions: along the front, one row below the next
-  const n0=counts[0],r0=tr[0],sec=n0*r0.seatW,lo=-fs*2.2,lo2=lo-fs*2.8;
+  const n0=counts[0],r0=tr[0],sec=n0*r0.seatW,lo=-fs*2.2,lo2=lo-fs*2.8,g0=gp+Math.max(0,span-wA-2*gp-sec)/2;
   K.avoid(-side,0,span+side,0);
   K.dim([-wA/2,lo],[wA/2,lo],{lab:'Aisle',val:L(wA),ea:[-wA/2,0],eb:[wA/2,0],ref:'aisle'})
-   .dim([wA/2,lo],[span-wA/2-gp-sec,lo],{val:L(span-wA-gp-sec),ea:[wA/2,0],eb:[span-wA/2-gp-sec,0]})
-   .dim([span-wA/2-gp-sec,lo],[span-wA/2-gp,lo],{lab:`${n0} seats at ${L(r0.seatW)}`,val:L(sec),ea:[span-wA/2-gp-sec,0],eb:[span-wA/2-gp,0],ref:'rowseats'})
-   .dim([span-wA/2-gp,lo],[span-wA/2,lo],{val:L(gp),ea:[span-wA/2-gp,0],eb:[span-wA/2,0]})
+   .dim([wA/2,lo],[wA/2+g0,lo],{val:L(g0),ea:[wA/2,0],eb:[wA/2+g0,0]})
+   .dim([wA/2+g0,lo],[wA/2+g0+sec,lo],{lab:`${n0} seats at ${L(r0.seatW)}`,val:L(sec),ea:[wA/2+g0,0],eb:[wA/2+g0+sec,0],ref:'rowseats'})
+   .dim([wA/2+g0+sec,lo],[span-wA/2,lo],{val:L(span-wA/2-wA/2-g0-sec),ea:[wA/2+g0+sec,0],eb:[span-wA/2,0]})
    .dim([0,lo2],[span,lo2],{lab:'Aisle centre to aisle centre',val:L(span),ea:[0,lo],eb:[span,lo]});
   // row depth, chair and clear width at a typical row (row 2), on the right
   // row detail at 4x: two typical rows, seat down (solid), seat raised (dashed), back behind the riser, clear width
@@ -3261,7 +3270,11 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CE
         list.push([at(P0,fr),at(P1,fr),at(P1,bk),at(P0,bk),at(P0,rz),at(P1,rz)].map(loc));}});
     // which seats the cap leaves out: those next to the corner aisle
     const idx=list.map((_,i)=>i),cut=new Set(fe?idx.slice(0,omit):idx.slice(list.length-omit));   // the cap leaves out the seats at the far end, away from the aisle the seats line up on
-    const keep=idx.filter(i=>!cut.has(i));if(fe)keep.reverse();const num={};keep.forEach((i,k)=>num[i]=k+1);   // seat 1 beside the aisle the seats line up on
+    const keep=idx.filter(i=>!cut.has(i));if(fe)keep.reverse();
+    {const big=sc.pieces.reduce((m,pc)=>pc.Lz.tr[j]&&(!m||pc.b-pc.a>m.b-m.a)?pc:m,null);if(big&&isNEZ(big.Lz.k)&&all.length>1){   // north end zone: seat 1 where the row starts clockwise (decision 124)
+      const A0=chainPtS(all[0].pc.Lz.ch,all[0].s0,all[0].pc.d),A1=chainPtS(all[all.length-1].pc.Lz.ch,all[all.length-1].s0,all[all.length-1].pc.d),cw=cwOf([(A0[0]+A1[0])/2,(A0[1]+A1[1])/2],[A1[0]-A0[0],A1[1]-A0[1]]);
+      keep.sort((x,y)=>cw?x-y:y-x);}}
+    const num={};keep.forEach((i,k)=>num[i]=k+1);   // seat 1 beside the aisle the seats line up on
     list.forEach((q,i)=>{const d=`M${F(q[0][0])} ${F(q[0][1])}L${F(q[1][0])} ${F(q[1][1])}L${F(q[2][0])} ${F(q[2][1])}L${F(q[3][0])} ${F(q[3][1])}Z`;
       if(cut.has(i))omitSvg+=`<path d="${d}" fill="none" stroke="#C0392B" stroke-width="0.7" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/><path d="M${F(q[0][0])} ${F(q[0][1])}L${F(q[2][0])} ${F(q[2][1])}M${F(q[1][0])} ${F(q[1][1])}L${F(q[3][0])} ${F(q[3][1])}" stroke="#C0392B" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`;
       else seatSvg+=`<path d="${d}" fill="${tierFill(ti)}" fill-opacity=".6" stroke="var(--ink)" stroke-width="0.4" vector-effect="non-scaling-stroke"/><path d="M${F(q[4][0])} ${F(q[4][1])}L${F(q[5][0])} ${F(q[5][1])}" stroke="var(--ink)" stroke-width="0.45" stroke-dasharray="2.5 1.5" vector-effect="non-scaling-stroke"/>`
