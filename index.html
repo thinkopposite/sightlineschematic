@@ -315,6 +315,7 @@ td{border-bottom:1px solid var(--line)}
 <div class="layout">
   <aside><div id="controls"></div>
     <section class="step deliver"><div class="step-h"><span class="bub">7</span><h2>Deliver</h2><p>Drawings, schedules and models for the team.</p></div>
+      <div class="lab" style="margin-top:0">PDF page background</div><div class="seg" id="pdfBg" style="margin-bottom:8px"></div>
       <div class="seg"><button id="dlTab" class="primary">Download project set (Tabloid)</button><button id="dlArch" class="primary">Download project set (ARCH E)</button></div>
       <p class="sub2">Models</p>
       <div class="seg"><button id="exRevit">Export for Revit (.xlsx)</button><button id="exSku">Export for SketchUp</button><a class="btnlink" href="dynamo/Sightline_BowlMass_R2024.dyn" download>Revit graph (.dyn)</a><a class="btnlink" href="dynamo/Sightline_AisleSteps_R2024.dyn" download title="Run in the project: places the precast aisle steps">Aisle steps graph (.dyn)</a><a class="btnlink" href="dynamo/Precast_Aisle_Step_family.txt" download title="How to build the Precast Aisle Step family">Aisle step family spec</a></div>
@@ -1723,7 +1724,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.22.03';
+const VERSION='2026.10.23.04';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2088,7 +2089,7 @@ function secExtras(rows,ti,X,Y,o,xe){const IN=25.4,tr=rows.filter(r=>r.tier===ti
     for(let j=0;j<v.k;j++)skip.add(tr[v.s+j]);
     const wall=[[xs0,zf],...Array.from({length:v.k+1},(_,j)=>[tr[v.s+j].x,tr[v.s+j].z+hd]),[xt,zf]];
     const op=[[xs0,zf]];for(let j=0;j<v.k;j++){const r=tr[v.s+j],n=tr[v.s+j+1];op.push([r.x,r.z],[n.x,r.z]);}op.push([xt,zf]);
-    s+=`<polygon points="${op.map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="#F6F5F2" stroke="none"/>`   /* the opening: the rows cut away down to the vom floor */
+    s+=`<polygon points="${op.map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${SW.paper}" stroke="none"/>`   /* the opening: the rows cut away down to the vom floor */
       +`<polygon points="${wall.map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="#E4E4E4" stroke="var(--ink)" stroke-width="0.6" vector-effect="non-scaling-stroke"><title>Vomitory side wall beyond</title></polygon>`
       +`<polygon points="${[[xs0,zf-sl],[xt+t,zf-sl],[xt+t,zf],[xs0,zf]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"><title>Vomitory floor</title></polygon>`
       +`<polygon points="${[[xt,zk-sl],[xt+t,zk-sl],[xt+t,zk+hd],[xt,zk+hd]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"><title>Vomitory header</title></polygon>`;
@@ -3427,7 +3428,7 @@ function zoneTable(){
       return `<td>${zs[k]?fmt(zs[k])+(r&&r.seat==='bench'?' <span class="muted">bench</span>':''):'<span class="muted">open</span>'}</td>`;}).join('')}<td><b>${fmt(M.tierSeats[ti]||0)}</b></td></tr>`;}
   return h+`<tr><td>Total</td>${keys.map(k=>`<td>${fmt(tot(k))}</td>`).join('')}<td><b>${fmt(M.cap)}</b></td></tr></tbody></table>`;}
 function update(){
-  LEG2=RD().leg;persist();ZR=solveAll(P);if(!zoned(P))P.sec='T';if(!ZR[P.sec].length)P.sec=zoneKeys(P).find(k=>ZR[k].length)||'T';
+  LEG2=RD().leg;persist();if(typeof pdfBgUI==='function')pdfBgUI();ZR=solveAll(P);if(!zoned(P))P.sec='T';if(!ZR[P.sec].length)P.sec=zoneKeys(P).find(k=>ZR[k].length)||'T';
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);
   const pct=Math.min(100,M.cap/P.capTarget*100),ok=M.cap>=P.capTarget;
   $('cap').innerHTML=`<div><div class="big">${fmt(M.cap)}</div><div class="lbl">Estimated seats</div></div><div><div class="bar"><i class="${ok?'ok':''}" style="width:${pct}%"></i></div><div class="lbl" style="margin-top:5px">${ok?'Meets':'Short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</div></div><div class="cap-side">${M.tierSeats.map((s,i)=>`Tier ${i+1}: ${fmt(s)}`).join('<br>')}</div>`;
@@ -3601,9 +3602,12 @@ function trueStrokes(svg,unitPerIn){                           // screen-pixel l
 // (two label rows and a rule), a numbered heading with a red square, the drawing, and a band below the grid: big title with the
 // key word in red, four tiles (scale with a bar, two figures, the sheet number in black) and a running footer.
 // Placeholders %%NO%% and %%N%% take the sheet number and count when the set is assembled.
-const SW={paper:'#F6F5F2',grid:'#E6E5DF',ink:'#111111',red:'#DA291C',grey:'#6B6B68',font:'ARC'};
+// PDF page background (decision 127): the warm paper, white or light grey, each with its own grid tone; applied while a PDF is built
+const PDF_BG={paper:{name:'Warm paper (default)',paper:'#F6F5F2',grid:'#E6E5DF'},white:{name:'White',paper:'#FFFFFF',grid:'#E6E6E6'},grey:{name:'Light grey',paper:'#EDEDED',grid:'#DCDCDC'}};
+let PDF_ON=false;const pdfBg=()=>PDF_BG[PDF_ON&&P.pdfBg&&PDF_BG[P.pdfBg]?P.pdfBg:'paper'];
+const SW={get paper(){return pdfBg().paper;},get grid(){return pdfBg().grid;},ink:'#111111',red:'#DA291C',grey:'#6B6B68',font:'ARC'};
 const swU=sh=>sh.w>30||sh.h>30?0.5:0.25;
-function swArea(sh){const u=swU(sh);return {u,x0:2*u,y0:5*u,aw:sh.w-4*u,ah:sh.h-11*u};}
+function swArea(sh){const u=swU(sh);return {u,x0:2*u,y0:6*u,aw:sh.w-4*u,ah:sh.h-12*u};}   // the header one grid row lower (decision 129): the top row carries the scale marks
 function swT(x,y,s,o={}){const k=o.k||1,sz=(o.pt||7)*k/72,ls='';   /* svg2pdf ignores letter-spacing (and would misplace centred text): none */
   return `<text x="${(+x).toFixed(4)}" y="${(+y).toFixed(4)}" font-family="${SW.font}" font-size="${sz.toFixed(4)}" font-weight="${o.b?'bold':'normal'}" fill="${o.fill||SW.ink}"${o.a?` text-anchor="${o.a}"`:''}${ls}>${String(s).replace(/&(?!amp;|lt;|gt;)/g,'&amp;').replace(/</g,'&lt;')}</text>`;}
 const swBase=(top,h,pt,k)=>top+h/2+0.36*pt*(k||1)/72;                   // baseline that centres capitals in a row
@@ -3616,9 +3620,9 @@ function swBarTxt(per){const divs=[1,2,5,10,20,25,50,100,200,500,1000];return {d
 function swissSheet(sh,o){const u=swU(sh),k=u/0.25,A=swArea(sh),W=sh.w,H=sh.h,f=v=>(+v).toFixed(4),Sp=SPORTS[P.sport],L=2*u,R=o.R||W-2*u,N=Math.round((R-L)/u);
   let s=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}in" height="${f(H)}in" viewBox="0 0 ${f(W)} ${f(H)}">`+swRect(0,0,W,H,SW.paper)+swGrid(sh);
   const lab={pt:7,b:1,ls:.14,k},orient=W>H?'landscape':'portrait';
-  s+=swT(L,swBase(u,u,7,k),'SIGHTLINE SCHEMATIC — DESIGN STUDY',lab)+swT(L,swBase(2*u,u,6.5,k),`REF: ${Sp.org} ${Sp.name} / ${optName()} / ${P.tierCount} TIER${P.tierCount>1?'S':''} / ${fmt(M.cap)} SEATS`.toUpperCase(),{pt:6.5,ls:.06,k,fill:SW.grey})
-    +swT(R,swBase(u,u,7,k),`FORMAT: ${imperial()?`${Math.min(W,H)} × ${Math.max(W,H)} `:''}${sh.name.toUpperCase()} ${orient.toUpperCase()}`,{...lab,a:'end'})+swRect(L,3*u-1.5*k/72,R-L,1.5*k/72,SW.ink);
-  if(!o.noHeading)s+=swRect(L,4*u+u/4,u/2,u/2,SW.red)+swT(3*u,swBase(4*u,u,13,k),`%%NO%%. ${String(o.title).toUpperCase()}`,{pt:13,b:1,k});
+  s+=swT(L,swBase(2*u,u,7,k),'SIGHTLINE SCHEMATIC — DESIGN STUDY',lab)+swT(L,swBase(3*u,u,6.5,k),`REF: ${Sp.org} ${Sp.name} / ${optName()} / ${P.tierCount} TIER${P.tierCount>1?'S':''} / ${fmt(M.cap)} SEATS`.toUpperCase(),{pt:6.5,ls:.06,k,fill:SW.grey})
+    +swT(R,swBase(2*u,u,7,k),`FORMAT: ${imperial()?`${Math.min(W,H)} × ${Math.max(W,H)} `:''}${sh.name.toUpperCase()} ${orient.toUpperCase()}`,{...lab,a:'end'})+swRect(L,4*u-1.5*k/72,R-L,1.5*k/72,SW.ink);
+  if(!o.noHeading)s+=swRect(L,5*u+u/4,u/2,u/2,SW.red)+swT(3*u,swBase(5*u,u,13,k),`%%NO%%. ${String(o.title).toUpperCase()}`,{pt:13,b:1,k});
   // drawing: centred in the area; its 0,0 (point of focus or field centre) on a grid point when known
   let org=null;(o.draws||[]).forEach(d=>{let x=d.x!=null?d.x:A.x0+(A.aw-d.w)/2,y=d.y!=null?d.y:A.y0+(A.ah-d.h)/2;
     if(d.ox!=null){const gx=x+d.ox,gy=y+d.oy;x+=Math.round(gx/u)*u-gx;y+=Math.round(gy/u)*u-gy;org={x:x+d.ox,y:y+d.oy,sq:d.sq,plan:d.plan};}
@@ -3626,9 +3630,11 @@ function swissSheet(sh,o){const u=swU(sh),k=u/0.25,A=swArea(sh),W=sh.w,H=sh.h,f=
   s+=o.extra||'';
   // scaled measurements on the grid border, every 5 squares from the drawing's 0,0
   if(org&&org.sq){const gx0=u,gx1=W-u,gy0=u,gy1=H-6*u,tp={pt:5.5,k,fill:'#55554F',ls:.04},un=imperial()?"'":' m',lb=n=>n===0?'0':`${+(Math.abs(n)*org.sq).toFixed(2)}${un}`,ls=n=>n===0?'0':`${+(n*org.sq).toFixed(2)}${un}`;
-    for(let n=Math.ceil((gx0-org.x)/u);n<=Math.floor((gx1-org.x)/u);n++){if(n%5)continue;const x=org.x+n*u;s+=swT(x,u*0.62,org.plan?lb(n):ls(n),{...tp,a:'middle'})+swRect(x-.004*k,u,.008*k,.3*u,SW.ink);}
-    for(let m=Math.ceil((org.y-gy1)/u);m<=Math.floor((org.y-gy0)/u);m++){if(m%5)continue;const y=org.y-m*u,t=org.plan?lb(m):ls(m);
-      s+=swT(u-.03*k,y+.028*k,t,{...tp,a:'end'})+swRect(u,y-.004*k,.3*u,.008*k,SW.ink)+swT(W-u+.03*k,y+.028*k,t,tp)+swRect(W-u-.3*u,y-.004*k,.3*u,.008*k,SW.ink);}}
+    // on the grid edges (decision 130): thin ticks half a grid square long, from the grid edge inward; the numbers just outside the grid,
+    // above the top ticks, left of the left ticks and right of the right ticks
+    const tw=.5*k/72,h2=u/2;for(let n=Math.ceil((u-org.x)/u);n<=Math.floor((W-u-org.x)/u);n++){if(n%5)continue;const x=org.x+n*u;s+=swT(x,u-.045*k,org.plan?lb(n):ls(n),{...tp,a:'middle'})+swRect(x-tw/2,u,tw,h2,SW.ink);}
+    for(let m=Math.ceil((org.y-gy1)/u);m<=Math.floor((org.y-u)/u);m++){if(m%5)continue;const y=org.y-m*u,t=org.plan?lb(m):ls(m);
+      s+=swT(u-.035*k,y+.028*k,t,{...tp,a:'end'})+swRect(u,y-tw/2,h2,tw,SW.ink)+swT(W-u+.035*k,y+.028*k,t,tp)+swRect(W-u-h2,y-tw/2,h2,tw,SW.ink);}}
   // band below the grid
   const y0=H-6*u,tw=Math.floor((N-4-Math.floor(N/4))/4),tt=N-4-4*tw;
   s+=swRect(L,y0,R-L,.75*k/72,SW.ink);
@@ -3843,11 +3849,11 @@ function swPdfFrame(doc,title,big){const pw=doc.internal.pageSize.getWidth(),ph=
   if(SWLOG)SWLOG.push(title);const raw=doc._raw||doc.text.bind(doc);
   const T=(t,x,y,o={})=>{doc.setFont(SWFONT,o.b?'bold':'normal');doc.setFontSize(o.pt||7);const c=o.fill||[17,17,17];doc.setTextColor(...c);const w=o.a?swW(t,(o.pt||7)/72,o.b,SWFONT):0;raw(String(t),x-(o.a==='right'?w:o.a==='center'?w/2:0),y);};
   const base=(top,h,pt)=>top+h/2+0.36*pt/72;
-  doc.setFillColor(246,245,242);doc.rect(0,0,pw,ph,'F');doc.setDrawColor(230,229,223);doc.setLineWidth(0.011);
+  {const rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));doc.setFillColor(...rgb(SW.paper));doc.rect(0,0,pw,ph,'F');doc.setDrawColor(...rgb(SW.grid));}doc.setLineWidth(0.011);   /* the page background option (decision 127) */
   for(let x=u;x<=pw-u+1e-6;x+=u)doc.line(x,u,x,ph-6*u);for(let y=u;y<=ph-6*u+1e-6;y+=u)doc.line(u,y,pw-u,y);
-  T('SIGHTLINE SCHEMATIC — DESIGN STUDY',L,base(u,u,7),{pt:7,b:1,ls:.14});T(`REF: ${Sp.org} ${Sp.name} / ${optName()} / ${P.tierCount} TIERS / ${fmt(M.cap)} SEATS`.toUpperCase(),L,base(2*u,u,6.5),{pt:6.5,ls:.06,fill:[107,107,104]});
-  T(`FORMAT: ${imperial()?'11 × 17 TABLOID':'A3'} PORTRAIT`,R,base(u,u,7),{pt:7,b:1,ls:.14,a:'right'});doc.setFillColor(17,17,17);doc.rect(L,3*u-1.5/72,R-L,1.5/72,'F');
-  doc.setFillColor(218,41,28);doc.rect(L,4*u+u/4,u/2,u/2,'F');T(`${no}. ${title.toUpperCase()}`,3*u,base(4*u,u,13),{pt:13,b:1});
+  T('SIGHTLINE SCHEMATIC — DESIGN STUDY',L,base(2*u,u,7),{pt:7,b:1,ls:.14});T(`REF: ${Sp.org} ${Sp.name} / ${optName()} / ${P.tierCount} TIERS / ${fmt(M.cap)} SEATS`.toUpperCase(),L,base(3*u,u,6.5),{pt:6.5,ls:.06,fill:[107,107,104]});
+  T(`FORMAT: ${imperial()?'11 × 17 TABLOID':'A3'} PORTRAIT`,R,base(2*u,u,7),{pt:7,b:1,ls:.14,a:'right'});doc.setFillColor(17,17,17);doc.rect(L,4*u-1.5/72,R-L,1.5/72,'F');
+  doc.setFillColor(218,41,28);doc.rect(L,5*u+u/4,u/2,u/2,'F');T(`${no}. ${title.toUpperCase()}`,3*u,base(5*u,u,13),{pt:13,b:1});
   const y0=ph-6*u,tw=Math.floor((N-4-Math.floor(N/4))/4),tt=N-4-4*tw;doc.setFillColor(17,17,17);doc.rect(L,y0,R-L,.75/72,'F');
   const tpt=Math.min(26,tt*u*72/(Math.max(big[0].length,big[1].length+1)*0.68));T(big[0].toUpperCase(),L,y0+2.25*u,{pt:tpt,b:1});T(big[1].toUpperCase()+'.',L,y0+3.75*u,{pt:tpt,b:1,fill:[218,41,28]});
   [[imperial()?'IMPERIAL':'METRIC','UNITS',imperial()?'Feet and inches.':'Millimetres and metres.'],[fmt(M.cap),'SEATS',`${P.tierCount} tiers, all stands.`],[String(P.tierCount),'TIERS',`${Sp.name}.`],[no,'SHEET',`OF ${tot}.`,1]].forEach((t,i)=>{
@@ -3855,10 +3861,10 @@ function swPdfFrame(doc,title,big){const pw=doc.internal.pageSize.getWidth(),ph=
     T(t[0],x+.5*u,y+1.35*u,{pt:Math.min(15,w*72/(String(t[0]).length*0.62)),b:1,fill:[218,41,28]});T(t[1],x+.5*u,y+1.98*u,{pt:5.8,b:1,ls:.12,fill:inv?[255,255,255]:[17,17,17]});T(t[2],x+.5*u,y+2.5*u,{pt:5.8,fill:inv?[201,201,197]:[107,107,104]});});
   doc.setFillColor(17,17,17);doc.rect(L,ph-1.5*u,R-L,.5/72,'F');const fy=base(ph-1.5*u,u,6);
   T(`PLATE ${no} — ${title.toUpperCase()}`,L,fy,{pt:6,ls:.1});T(`SIGHTLINE SCHEMATIC ${VERSION} · ${optName().toUpperCase()} · ${new Date().toLocaleDateString()}`,(L+R)/2,fy,{pt:6,ls:.1,a:'center'});T(`SHEET ${no} OF ${tot}`,R,fy,{pt:6,ls:.1,a:'right'});
-  doc.setTextColor(0);doc.setDrawColor(0);return 6*u;}   // first content row
+  doc.setTextColor(0);doc.setDrawColor(0);return 7*u;}   // first content row (the header one row lower, decision 129)
 const swBig=t=>{const w=t.replace(/^Sightline Schematic:\s*/,'').replace(/\(.*?\)/g,'').split(/[ ,]+/).filter(Boolean);const q=(t.match(/\(([^)]*)\)/)||[])[1];return [w[0],w[1]||(q?q.split(' ').pop():'Sheet')];};   // two words: black, then red
 async function exportPdfSet(kind){
-  const btn=$(kind==='archE'?'dlArch':'dlTab');btn.disabled=true;toast('Building the project set…');
+  const btn=$(kind==='archE'?'dlArch':'dlTab');btn.disabled=true;toast('Building the project set…');PDF_ON=true;
   try{
     await loadJS('vendor/jspdf.umd.min.js');await loadJS('vendor/svg2pdf.umd.min.js');
     const [reg,bold]=await Promise.all([loadB64('vendor/fonts/DejaVuSansCondensed.ttf'),loadB64('vendor/fonts/DejaVuSansCondensed-Bold.ttf')]);
@@ -3896,7 +3902,7 @@ async function exportPdfSet(kind){
     const name=`${SPORTS[P.sport].name}_${slug()}_${kind==='archE'?'ARCH-E':'Tabloid'}.pdf`;offer(name,doc.output('blob'));
     toast(`${name} saved (${doc.getNumberOfPages()} pages).`);
   }catch(e){toast('The project set could not be built: '+e.message);}
-  finally{btn.disabled=false;}
+  finally{btn.disabled=false;PDF_ON=false;}
 }
 // seat count tables drawn straight into the PDF: 11 x 17 portrait (A3 in metric), one page per tier
 function capWords(str){const parts=String(str).split(/(\s+)/);let prev='';   // PDF: the first letter of every word in capitals
@@ -4078,6 +4084,9 @@ function pdfTables(doc,o={}){
       const vals=[titleCase(o.label),o.kind==='row'?cfmt(o.cs):'',o.kind==='row'?cfmt(o.ct):'',...o.v.map(fmt),fmt(o.t)];
       cell(vals,o.kind!=='row',o.kind==='sub',o.kind==='row'?[null,col('cs'),col('ct')]:null);});});
 }
+function pdfBgUI(){const el=$('pdfBg');if(!el)return;const cur=P.pdfBg&&PDF_BG[P.pdfBg]?P.pdfBg:'paper';
+  el.innerHTML=Object.entries(PDF_BG).map(([k,v])=>`<button data-bg="${k}" class="${k===cur?'on':''}"><span style="display:inline-block;width:12px;height:12px;border:1px solid #9A9A96;background:${v.paper};vertical-align:-2px;margin-right:6px"></span>${v.name}</button>`).join('');}
+$('pdfBg').onclick=e=>{const b=e.target.closest('button[data-bg]');if(!b)return;P.pdfBg=b.dataset.bg;persist();pdfBgUI();toast(`PDF page background: ${PDF_BG[P.pdfBg].name.toLowerCase()}.`);};pdfBgUI();
 $('dlTab').onclick=()=>exportPdfSet('tabloid');$('dlArch').onclick=()=>exportPdfSet('archE');
 
 // ---------- seat count by row ----------
@@ -4107,7 +4116,7 @@ $('cntXlsx').onclick=()=>{const {head,out}=seatCount(),Sp=SPORTS[P.sport];
     ['Row','C sitting (in)','C standing (in)',...head,'Row total'],...out.map(o=>[o.label,o.cs==null?'':+(o.cs/25.4).toFixed(4),o.ct==null?'':+(o.ct/25.4).toFixed(4),...o.v,o.t])];
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:44},{wch:14},{wch:15},...head.map(()=>({wch:10})),{wch:12}];
   XLSX.utils.book_append_sheet(wb,ws,'Seat count');offer('C-Value_'+slug()+'.xlsx',new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})]));};
-$('cntPrint').onclick=async()=>{const btn=$('cntPrint');btn.disabled=true;toast('Building the seat count PDF…');
+$('cntPrint').onclick=async()=>{const btn=$('cntPrint');btn.disabled=true;toast('Building the seat count PDF…');PDF_ON=true;
   try{await loadJS('vendor/jspdf.umd.min.js');
     const [reg,bold]=await Promise.all([loadB64('vendor/fonts/DejaVuSansCondensed.ttf'),loadB64('vendor/fonts/DejaVuSansCondensed-Bold.ttf')]);
     const arc=await Promise.all([loadB64('vendor/fonts/Archivo-400.ttf'),loadB64('vendor/fonts/Archivo-700.ttf')]).catch(()=>null);   // the sheet frame face; DejaVu if missing
@@ -4116,7 +4125,7 @@ $('cntPrint').onclick=async()=>{const btn=$('cntPrint');btn.disabled=true;toast(
       if(arc){d.addFileToVFS('ARC.ttf',arc[0]);d.addFont('ARC.ttf','ARC','normal');d.addFileToVFS('ARCB.ttf',arc[1]);d.addFont('ARCB.ttf','ARC','bold');}};fonts(doc);
     await swLoadFaces();SWFONT=arc?'ARC':'DVS';SWN=P.tierCount;SWOFF=1;pdfTitleCase(doc);pdfTables(doc,{m:0.5,fit:true});SWOFF=0;SWN=0;doc.deletePage(1);                       // one page per tier, fitted to the width
     offer('C-Value_'+slug()+'.pdf',doc.output('blob'));toast('Seat count PDF saved.');
-  }catch(e){toast('The seat count PDF could not be built: '+e.message);}finally{btn.disabled=false;}};
+  }catch(e){toast('The seat count PDF could not be built: '+e.message);}finally{btn.disabled=false;PDF_ON=false;}};
 const cntPrintDialog=()=>{const Sp=SPORTS[P.sport],tmp=document.createElement('div');
   tmp.innerHTML=`<h1>Sightline Schematic: seat count by row</h1><p>${Sp.name} (${Sp.org}) | ${optName()} | ${P.tierCount} tier${P.tierCount>1?'s':''} | seats lost to ${lossTxt()} | ${new Date().toLocaleString()}</p><table>${countTableHTML()}</table>`;
   titleize(tmp);
