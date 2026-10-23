@@ -1482,12 +1482,16 @@ function chainKinks(ch,d,T){const segs=[];let acc=0;ch.forEach(g=>{const l=segLe
 function sectionSeats(T,sc,j){const ps=sc.pieces.filter(pc=>pc.Lz.tr[j]);if(!ps.length)return [];const r0=ps[0].Lz.tr[j],sw=r0.seatW/1000;let off=0,Ku=[];
   const seg=ps.map(pc=>{const o=off,l=Math.max(0,pc.b-pc.a);chainKinks(pc.Lz.ch,pc.d,pc.Lz.tr[j].T/1000).forEach(k=>{if(k.s+k.e>pc.a&&k.s-k.e<pc.b)Ku.push({s:o+k.s-pc.a,e:k.e,th:k.th});});off+=l;return {pc,o,l};});
   const g=id=>id==null?null:findAisle(T,id),m=id=>{const f=g(id);return !!(f&&(f.a.cl||f.a.miter&&!f.a.ray));},o=id=>orthAisle(T,id),
-    mode=o(sc.l)&&o(sc.r)?'both':o(sc.l)!==o(sc.r)?o(sc.r):sc.l!=null&&sc.r!=null&&!m(sc.l)&&!m(sc.r)?'both0':seatsFromEnd(T,sc);   // decision 124: two aisles square to the row, centred; one, lined up on it
+    mode=o(sc.l)&&o(sc.r)?'both':wedgeSide(T,sc)?seatsFromEnd(T,sc):o(sc.l)!==o(sc.r)?o(sc.r):sc.l!=null&&sc.r!=null&&!m(sc.l)&&!m(sc.r)?'both0':seatsFromEnd(T,sc);   // decision 124: two aisles square to the row, centred; one, lined up on it
   return placeSeats(0,off,sw,Ku,mode).map(u=>{const q=seg.find(x=>u<x.o+x.l-1e-9)||seg[seg.length-1];return {pc:q.pc,s0:q.pc.a+u-q.o,sw};});}
 function seatMode(T,sc,i,n){const g=id=>id==null?null:findAisle(T,id),m=id=>{const f=g(id);return !!(f&&(f.a.cl||f.a.miter&&!f.a.ray));};   // how each piece of a section lines up its seats
   if(sc.l!=null&&sc.r!=null&&!m(sc.l)&&!m(sc.r))return n===1?'both':i===0?false:i===n-1?true:false;return seatsFromEnd(T,sc);}
 function orthAisle(T,id){const f=id==null?null:findAisle(T,id);return !!(f&&!f.a.cl&&!f.a.miter&&!f.a.ray);}   // an aisle square to the rows (not angled, not a corner centreline)
-function seatsFromEnd(T,sc){const g=id=>id==null?null:findAisle(T,id),m=id=>{const f=g(id);return !!(f&&(f.a.cl||f.a.miter&&!f.a.ray));},c=id=>{const f=g(id);return !!(f&&f.a.corner);};
+// a wedge-shaped section: one side square to the rows (an orthogonal aisle, or a corner centreline square to the corner rows), the other an
+// angled aisle. Its seats line up on the square side and seat 1 is there, whatever the stand (decision 125). Returns 'l', 'r' or null.
+function wedgeSide(T,sc){const f=id=>id==null?null:findAisle(T,id),sq=id=>{const a=f(id);return !!(a&&(a.a.cl||!a.a.miter&&!a.a.ray));},ang=id=>{const a=f(id);return !!(a&&!a.a.cl&&(a.a.ray||a.a.miter));};
+  return sq(sc.l)&&ang(sc.r)?'l':sq(sc.r)&&ang(sc.l)?'r':null;}
+function seatsFromEnd(T,sc){{const w=wedgeSide(T,sc);if(w)return w==='r';}const g=id=>id==null?null:findAisle(T,id),m=id=>{const f=g(id);return !!(f&&(f.a.cl||f.a.miter&&!f.a.ray));},c=id=>{const f=g(id);return !!(f&&f.a.corner);};
   if(orthAisle(T,sc.l)!==orthAisle(T,sc.r))return orthAisle(T,sc.r);   // orthogonal to angled: the seats start 4 in from the orthogonal aisle (decision 124)
   if(m(sc.l)!==m(sc.r))return m(sc.l);return c(sc.r)&&!c(sc.l);}   // both square to the rows: line up on the corner aisle
 function placeSeats(a,b,sw,K,fromEnd){const out=[],zones=K.map(k=>[k.s-k.e,k.s+k.e]).filter(z=>z[1]>a&&z[0]<b).sort((p,q)=>p[0]-q[0]);
@@ -1719,7 +1723,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.22.01';
+const VERSION='2026.10.22.02';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -3271,7 +3275,7 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CE
     // which seats the cap leaves out: those next to the corner aisle
     const idx=list.map((_,i)=>i),cut=new Set(fe?idx.slice(0,omit):idx.slice(list.length-omit));   // the cap leaves out the seats at the far end, away from the aisle the seats line up on
     const keep=idx.filter(i=>!cut.has(i));if(fe)keep.reverse();
-    {const big=sc.pieces.reduce((m,pc)=>pc.Lz.tr[j]&&(!m||pc.b-pc.a>m.b-m.a)?pc:m,null);if(big&&isNEZ(big.Lz.k)&&all.length>1){   // north end zone: seat 1 where the row starts clockwise (decision 124)
+    {const big=sc.pieces.reduce((m,pc)=>pc.Lz.tr[j]&&(!m||pc.b-pc.a>m.b-m.a)?pc:m,null);if(big&&isNEZ(big.Lz.k)&&all.length>1&&!wedgeSide(T,sc)){   // north end zone: seat 1 where the row starts clockwise (decision 124); a wedge keeps seat 1 on its square side (decision 125)
       const A0=chainPtS(all[0].pc.Lz.ch,all[0].s0,all[0].pc.d),A1=chainPtS(all[all.length-1].pc.Lz.ch,all[all.length-1].s0,all[all.length-1].pc.d),cw=cwOf([(A0[0]+A1[0])/2,(A0[1]+A1[1])/2],[A1[0]-A0[0],A1[1]-A0[1]]);
       keep.sort((x,y)=>cw?x-y:y-x);}}
     const num={};keep.forEach((i,k)=>num[i]=k+1);   // seat 1 beside the aisle the seats line up on
