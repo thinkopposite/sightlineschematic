@@ -976,7 +976,7 @@ const SPECT_NAMES={both:'1. Sitting and standing spectators',plat:'2. Wheelchair
 const RAIL_SET=-1*25.4,RAIL_DROP=8*25.4;                               // guard rail centreline 1 in in front of the riser (inside face on the riser line); extends 8 in below the tread
 const TIER_COL=['#CCCCCC','#999999','#707070'];                        // 20%, 40% and 56% grey
 const tierFill=ti=>(P.tierColors&&P.tierColors[ti])||TIER_COL[ti]||TIER_COL[1];
-function zp(o){return Object.assign({on:true,rows:20,seat:'standard',riser:'parabolic',basis:'sit',tread:34*25.4,tread0:36*25.4,treadN:34*25.4,seatW:22*25.4,target:2.25*25.4,D:35*0.3048,Z:8*0.3048,X:null,gap:2.4,rise:10*0.3048,suites:0},o);}
+function zp(o){return Object.assign({on:true,rows:20,seat:'standard',riser:'parabolic',basis:'sit',tread:34*25.4,tread0:36*25.4,treadN:34*25.4,seatW:22*25.4,target:2.25*25.4,D:35*0.3048,Z:8*0.3048,X:null,dx:0,gap:2.4,rise:10*0.3048,suites:0},o);}
 function tierDef(rows,link,o={}){return {link,corners:'auto',z:Object.fromEntries(GEO.map(k=>[k,zp(Object.assign({rows},o))]))};}
 // Eye points from the reference sections (heights above the tread the spectator is on):
 // chairback: sitting 3'-8" directly over the back riser; standing 5'-3 1/2", 1'-6" forward of the sitting eye.
@@ -1016,8 +1016,8 @@ function solveZone(P,k){
     while(j<n){
       if(j===0){
         if(ti===0){prev=mk(0,z.D*1000,z.Z*1000,null,null);prev.railC=prev.ez*(prev.x+RAIL_SET)/prev.ex-(prev.z+P.railH);}   // row 1 looks over the guard rail, 3 in behind the riser
-        else{const lo0=rows.find(r=>r.tier===ti-1),x0=z.X!=null?z.X*1000:prev.x;      // unset: first riser over the last riser below
-          prev=mk(0,Math.max(x0,lo0.x+1000),prev.z+(z.rise+Math.max(0,z.suites)*P.suiteH)*1000,null,null);
+        else{const lo0=rows.find(r=>r.tier===ti-1),x0=z.X!=null?z.X*1000:prev.x+(+z.dx||0)*1000;      // unset: first riser over the last riser below, plus the setback the sizing found (dx, decision 132)
+          prev=mk(0,Math.max(x0,lo0.x+1000),prev.z+(Math.max(z.rise,REGION_DEF[regionOf(P.sport)].rise)+Math.max(0,z.suites)*P.suiteH)*1000,null,null);prev.up1=true;   // at least 10'-0" (3.0 m) above the top tread below
           prev.railC=prev.ez*(prev.x+RAIL_SET)/prev.ex-(prev.z+P.railH);}           // front row looks over the guard, 3 in behind the landing edge
         rows.push(prev);j++;continue;}
       if(z.riser==='constant'){const base=prev,cap=Math.max(step,Math.floor(P.maxRiser/step+1e-9)*step);
@@ -1045,8 +1045,8 @@ function meetNow(){const zs=[];P.zt.slice(0,P.tierCount).forEach(t=>zoneKeys(P).
 function meetAllC(mode,rt){
   P.step=12.7;                                                           // 1/2 in increments
   P.zt.forEach(t=>GEO.forEach(k=>Object.assign(t.z[k],{basis:mode,riser:rt})));
-  P.eyeMode=mode==='stand'?'stand':'sit';CUR=null;renderControls();update();
-  const short=Object.values(ZR).flat().filter(r=>r.Cd!=null&&r.Cd<r.target-0.05),sides=[...new Set(short.map(r=>`Tier ${r.tier+1} ${zoneName(P,r.zone,true)}`))];
+  P.eyeMode=mode==='stand'?'stand':'sit';tierLinks(P);CUR=null;renderControls();update();   // the tier relationships too (decision 132)
+  const short=Object.values(ZR).flat().filter(r=>(r.Cd!=null&&r.Cd<r.target-0.05)||(r.railC!=null&&status(r)!=='pass')),sides=[...new Set(short.map(r=>`Tier ${r.tier+1} ${zoneName(P,r.zone,true)}`))];
   const rs=[];if(rt==='constant')for(let ti=0;ti<P.tierCount;ti++){const r=ZR[P.sec].find(x=>x.tier===ti&&x.riser!=null);if(r)rs.push(`Tier ${ti+1} ${L(r.riser)}`);}
   toast(short.length?`${rt==='constant'?`Constant risers stop at the ${L(P.maxRiser)} maximum: `:''}${sides.join(', ')} still below the ${BASIS[mode]} minimum.`
     :`Every row meets its ${BASIS[mode]} minimum C with ${rt} risers in ${L(P.step)} steps${rs.length?` (${zoneName(P,P.sec)}: ${rs.join(', ')})`:''}.`);
@@ -1056,8 +1056,12 @@ function applyEyes(rows){const mode=P.eyeMode==='stand'?'stand':'sit';
     r.sit={ex:r.x+s0,ez:r.z+h0};r.stand={ex:r.x+s1,ez:r.z+h1};const a=r[mode];r.ex=a.ex;r.ez=a.ez;});
   rows.forEach((r,i)=>{const p=rows[i-1];
     if(r.C!=null&&p)r.C=r.ez*p.ex/r.ex-p.ez;
-    if(r.railC!=null)r.railC=r.ez*(r.x+RAIL_SET)/r.ex-(r.z+P.railH);});
+    if(r.railC!=null)r.railC=r.ez*(r.x+RAIL_SET)/r.ex-(r.z+P.railH);
+    if(r.up1){r.xC=p&&p.tier===r.tier-1&&p.ex<r.ex-1?r.ez*p.ex/r.ex-p.ez:null;}});   // upper tier row 1 over the top row below (decision 132)
   return rows;}
+// row 1 of a tier: its C-value is the clearance over the guard at its front and, on an upper tier set back behind the tier below, over the
+// eye of that tier's top row (decision 132)
+const frontC=r=>r.railC==null?null:Math.min(r.railC,r.xC!=null?r.xC:Infinity);
 const solveAll=P=>Object.fromEntries(zoneKeys(P).map(k=>[k,applyEyes(solveZone(P,k))]));
 // Upper tiers keep an absolute distance from the point of focus (X). Any tier without one takes its current position.
 function pinUpperTiers(P){}                                          // upper tiers follow the tier below until set by hand
@@ -1092,7 +1096,7 @@ function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGAC
   if(P.seatRev3!==1){if(regionOf(P.sport)!=='world')P.zt.forEach(t=>GEO.forEach(k=>{const z=t.z[k];if(z)Object.assign(z,{seat:'standard',seatW:22*25.4});}));P.seatRev3=1;}   // American sports: 22 in chairback on every side, once
   if(P.riseRev2!==1){const old=regionOf(P.sport)==='world'?4.0:13*0.3048,nu=REGION_DEF[regionOf(P.sport)].rise;P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>{const z=t.z[k];if(z&&Math.abs(z.rise-old)<1e-6)z.rise=nu;});});P.riseRev2=1;}   // old 13 ft / 4.0 m default moves to the new 10 ft / 3.0 m default, once
   clampCap(P);pinUpperTiers(P);return P;}
-function status(r){if(r.railC!=null)return r.railC>=0?'pass':'fail';if(r.C==null)return'front';
+function status(r){if(r.railC!=null){const c=frontC(r);return c>=r.target-0.05?'pass':c>=r.target*2/3?'reduced':'fail';}if(r.C==null)return'front';   /* row 1 against the absolute minimum C too (decision 132) */
   if(r.C>=r.target-0.05)return'pass';if(r.C>=r.target*2/3)return'reduced';return'fail';}
 // ---------- plan geometry of each zone (screen coords, metres, Y down) ----------
 function rectGeo(P){const S=SPORTS[P.sport],a=P.L/2,b=P.W/2,R=S.shape==='rrect'?Math.min(S.R,a,b):0;
@@ -1583,7 +1587,7 @@ function metrics(P,ZR,CH){
       const lb=Lo[Lo.length-1];if(xb>lb.x+lb.T)h=Math.min(h,sof(Math.max(u0.x,lb.x+lb.T))-lb.z);
       h=Math.min(h,u0.z-LEG2-lb.z);   /* clear height under the upper-tier leg wall, over the top tread below */
       heads.push({zone:k,tier:ti,h});}}
-  const rails=rows.filter(r=>r.railC!=null&&r.railC<0),lowHead=heads.filter(h=>h.h<P.minHead);
+  const rails=rows.filter(r=>r.railC!=null&&r.railC<0),lowHead=heads.filter(h=>h.h<P.minHead-0.5);
   if(ADA){cap+=ADA.comp;ADA.byTier.forEach((t,ti)=>tierSeats[ti]=(tierSeats[ti]||0)+t.comp);adaFinish(ADA,Math.round(cap));}
   return {AL,ADA,omit,cap:Math.round(cap),tierSeats:tierSeats.map(x=>Math.round(x||0)),zoneSeats,worst,steep,rails,heads,lowHead,
     below:cs.filter(r=>status(r)!=='pass').length,over:rk.filter(r=>r.rake>P.maxRake).length,height,depth,vd,rows:rows.length};
@@ -1663,15 +1667,40 @@ function cornerPlates(P,ZR,CH){const out=[],t=slabT(),k=1000;
       const q=poly.filter((p,i)=>Math.hypot(p[0]-poly[(i+poly.length-1)%poly.length][0],p[1]-poly[(i+poly.length-1)%poly.length][1])>1);
       if(q.length>=3)out.push({tier:ti,zone:z,pts:q,z0:Math.max(0,z0),z1});}}});
   return out;}
+// the relationship between tiers (decision 132): by default each upper tier's first riser sits over the top riser of the tier below and its
+// bottom tread is 10'-0" (3.0 m) above that tier's top tread. Sizing may move an upper tier back and raise it, tier by tier from the bottom,
+// until its row 1 meets the absolute minimum C-value over the guard in front of it and over the top row of the tier below.
+// Back first (in 1" or 10 mm steps): it adds clearance over the guard; then up, when the top row below comes into view. Returns what changed.
+function tierLinks(P){const R=REGION_DEF[regionOf(P.sport)],base=R.rise,stp=imperial()?0.0254:0.01,hiR=imperial()?30*0.3048:9.0,out=[];
+  const up=v=>Math.ceil(v/stp-1e-6)*stp;
+  for(const k of GEO){for(let ti=1;ti<P.tierCount;ti++){const z=P.zt[ti].z[k];if(!z||!z.on)break;Object.assign(z,{X:null,dx:0,rise:base});
+    const row1=()=>applyEyes(solveZone(P,k)).find(r=>r.tier===ti&&r.up1),tg=z.target-0.05;
+    const okRail=()=>{const r=row1();return r&&r.railC>=tg;},okAll=()=>{const r=row1();return r&&frontC(r)>=tg;};
+    if(okAll())continue;
+    const dxMin=()=>{z.dx=0;if(okRail())return 0;let lo=0,hi=null;for(let d=0.5;d<=60;d+=0.5){z.dx=d;if(okRail()){hi=d;break;}lo=d;}if(hi==null)return null;
+      for(let i=0;i<30;i++){const m=(lo+hi)/2;z.dx=m;if(okRail())hi=m;else lo=m;}z.dx=up(hi);return z.dx;};
+    let d=dxMin(),ok=d!=null&&okAll();
+    if(!ok){let lo=base,hi=null;for(let h=base+stp*12;h<=hiR+1e-9;h+=stp*12){z.rise=h;const dd=dxMin();if(dd!=null&&okAll()){hi=h;break;}lo=h;}   // up, a foot at a time, then to the inch
+      if(hi!=null){for(let i=0;i<30;i++){const m=(lo+hi)/2;z.rise=m;const dd=dxMin();if(dd!=null&&okAll())hi=m;else lo=m;}z.rise=up(hi);d=dxMin();ok=d!=null&&okAll();}
+      else{let best={c:-Infinity,dx:0,rise:base};   // out of reach: keep the best compromise, the largest front-row clearance, from the default up
+        const cand=[],tryIt=(dx,rise)=>{z.dx=dx;z.rise=rise;const r=row1();const c=r?frontC(r):-Infinity;cand.push({c,dx,rise});if(c>best.c+1e-6)best={c,dx,rise};};tryIt(0,base);
+        const balance=h=>{z.rise=h;let lo=0,hi=40;for(let i=0;i<40;i++){const m=(lo+hi)/2;z.dx=m;const r=row1();if(!r)break;if(r.railC<(r.xC!=null?r.xC:Infinity))lo=m;else hi=m;}tryIt(up(hi),h);};   // back until the guard and the top row below give the same clearance
+        for(let h=base;h<=hiR+1e-9;h+=stp*12)balance(h);{const h0=best.rise;for(let h=Math.max(base,h0-stp*12);h<=Math.min(hiR,h0+stp*12)+1e-9;h+=stp)balance(up(h));}
+        const near=cand.filter(q=>q.c>=best.c-(imperial()?0.25*25.4:6)).sort((a,b)=>(a.dx+(a.rise-base))-(b.dx+(b.rise-base)))[0]||best;   // the smallest move within 1/4 in of the best
+        z.dx=near.dx;z.rise=near.rise;ok=false;}}
+    out.push({k,ti,dx:z.dx,rise:z.rise,ok});}}
+  return out;}
 function fitCapacity(P){
   const base=[];P.zt.slice(0,P.tierCount).forEach(t=>GEO.forEach(k=>base.push([t.z[k],t.z[k].rows])));let lo=0.1,hi=6;
   let apply=f=>{if(P.tierCount===2)GEO.forEach(k=>{const a=P.zt[0].z[k],b=P.zt[1].z[k],N=Math.max(6,Math.min(160,Math.round((base.find(x=>x[0]===a)[1]+base.find(x=>x[0]===b)[1])*f)));a.rows=Math.ceil(N/2);b.rows=N-a.rows;});   /* two tiers: equal rows, Tier 1 takes the odd one */
     else base.forEach(([z,b])=>z.rows=Math.max(3,Math.min(80,Math.round(b*f))));};
   const a0=apply;apply=f=>{a0(f);alignUpperTiers(P);};                          // upper tier bottom riser over the top riser below
   const cap=()=>{const ZR=solveAll(P);return metrics(P,ZR,chains(P,ZR)).cap;};
-  for(let it=0;it<40;it++){const f=(lo+hi)/2;apply(f);if(cap()>=P.capTarget)hi=f;else lo=f;}
-  apply(hi);return cap()>=P.capTarget;
+  const search=()=>{let lo=0.1,hi=6;for(let it=0;it<40;it++){const f=(lo+hi)/2;apply(f);if(cap()>=P.capTarget)hi=f;else lo=f;}apply(hi);};
+  tierLinks(P);search();FITLINKS=tierLinks(P);search();FITLINKS=tierLinks(P);   // rows, then the tier relationships, twice: moving a tier back only adds seats
+  return cap()>=P.capTarget;
 }
+let FITLINKS=[];
 // ear clipping for the stepped tier profile (a simple polygon) -> triangles as index triples
 function earClip(pts){const n=pts.length,tri=[];let A=0;
   for(let i=0;i<n;i++){const p=pts[i],q=pts[(i+1)%n];A+=p[0]*q[1]-q[0]*p[1];}const sg=A>=0?1:-1;
@@ -1728,7 +1757,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.23.05';
+const VERSION='2026.10.24.01';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -1851,7 +1880,7 @@ function get(path){if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.'),z
     if(p==='X'&&z.X==null){const t=lowerTop(+ti,ks[0]);return t?Math.round(t.x/1000*1e4)/1e4:0;}
     return z[p];}return path.split('.').reduce((o,k)=>o[k],P);}
 function set(path,v){if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.');
-    if(p==='Zabs'){for(const k of ks){const t=lowerTop(+ti,k);P.zt[+ti].z[k].rise=v-(t?t.z:0)/1000;}return;}
+    if(p==='Zabs'){for(const k of ks){const t=lowerTop(+ti,k);P.zt[+ti].z[k].rise=Math.max(RD().rise,v-(t?t.z:0)/1000);}return;}   // never under 10'-0" (3.0 m) above the tier below (decision 132)
     for(const k of ks)P.zt[+ti].z[k][p]=v;if(p==='X')renderControls();return;}
   const ks=path.split('.');const last=ks.pop();ks.reduce((o,k)=>o[k],P)[last]=v;if(ks[0]==='bulge'){const e=document.getElementById('bulgeRad');if(e)e.textContent=bulgeRadTxt();}}
 const CV=v=>v==null?'':imperial()?(v/25.4).toFixed(4)+'"':v.toFixed(4)+' mm';   // every C-value: 4 decimals, e.g. 2.5000" or 60.0000 mm
@@ -1880,11 +1909,11 @@ function zoneEditor(ti,g){
     +slider(pre+'.Z',`Tier-1 bottom tread above the ${surfLow()} (${imp?'4 inch':'100 mm'})`,Sp.Zmin??0,imp?20*0.3048:6,imp?0.1016:0.1,'m')
     +`<p class="hint">${Sp.name} minimum: ${L((Sp.Dmin??0)*1000)} depth, ${L((Sp.Zmin??0)*1000)} bottom tread.</p>`;
   else h+=slider(pre+'.X',`Sideline depth (${imperial()?'1 foot':'100 mm'})`,2*0.3048,400*0.3048,imperial()?0.3048:0.1,'m')
-    +(z.X==null?'<p class="hint">First riser aligned over the Tier-1 last riser; it follows Tier 1 automatically.</p>'
+    +(z.X==null?`<p class="hint">${(+z.dx||0)>0.001?`First riser ${L(z.dx*1000)} behind the Tier-${ti} last riser (set by sizing to meet the minimum C); it follows Tier ${ti} automatically.`:`First riser aligned over the Tier-${ti} last riser; it follows Tier ${ti} automatically.`}</p>`
       :`<p class="hint" id="sbHint">${setbackText(ti,g[0])}</p><button data-realign="${ti}" style="margin:4px 0 6px">Align to Tier-1 last riser</button>`)
-    +slider(pre+'.rise',`Tier-1 top tread to Tier-2 bottom tread (${imperial()?'1 foot; 10\'-0" to 16\'-0"':'250 mm; 3,000 to 5,000 mm'})`,imperial()?10*0.3048:3.0,imperial()?16*0.3048:5.0,imperial()?0.3048:0.25,'m')
-    +`<p class="hint">Clear height below the Tier-2 leg wall: ${L(z.rise*1000-LEG2)} (leg wall ${L(LEG2)} below the bottom tread; minimum ${L(P.minHead)}).</p>`
-    +slider(pre+'.Zabs',`Tier-2 bottom tread above the ${surfLow()} (${imperial()?'4 inch':'100 mm'})`,3*0.3048,150*0.3048,imperial()?0.1016:0.1,'m');
+    +slider(pre+'.rise',`Tier-${ti} top tread to Tier-${ti+1} bottom tread (${imperial()?'1 foot; 10\'-0" to 30\'-0"':'250 mm; 3,000 to 9,000 mm'})`,imperial()?10*0.3048:3.0,imperial()?30*0.3048:9.0,imperial()?0.3048:0.25,'m')
+    +`<p class="hint">Clear height below the Tier-${ti+1} leg wall: ${L(z.rise*1000-LEG2)} (leg wall ${L(LEG2)} below the bottom tread; minimum ${L(P.minHead)}).</p>`
+    +slider(pre+'.Zabs',`Tier-${ti+1} bottom tread above the ${surfLow()} (${imperial()?'4 inch':'100 mm'})`,3*0.3048,150*0.3048,imperial()?0.1016:0.1,'m');
   return h;}
 function renderControls(){
   const grp=(r,lab)=>`<optgroup label="${lab}">`+Object.entries(SPORTS).filter(([k,x])=>x.region===r&&FIELD_SPORTS.includes(k)).map(([k,x])=>`<option value="${k}"${P.sport===k?' selected':''}>${x.name} (${x.org})</option>`).join('')+'</optgroup>';
@@ -1973,7 +2002,7 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.riser){set(b.dataset.g+'.riser',b.dataset.riser);}
   else if(b.dataset.nudge){const p=b.dataset.np,mt=META[p];let v=get(p)+(+b.dataset.nudge)*mt.step;
     v=Math.min(mt.max,Math.max(mt.min,v));commit(p,Math.round(v*1e6)/1e6,null);if(/\.X$/.test(p))renderControls();return;}
-  else if(b.dataset.realign){GEO.forEach(k=>P.zt[+b.dataset.realign].z[k].X=null);}
+  else if(b.dataset.realign){GEO.forEach(k=>{P.zt[+b.dataset.realign].z[k].X=null;P.zt[+b.dataset.realign].z[k].dx=0;});}
   else if(b.dataset.zreset){const [,ti,ks]=b.dataset.zreset.split('.'),d=defaults().zt[+ti];for(const k of ks){const keep={X:P.zt[+ti].z[k].X};Object.assign(P.zt[+ti].z[k],d.z[k],+ti?keep:{});}
     if(+ti)for(const k of ks)P.zt[+ti].z[k].X=null;pinUpperTiers(P);toast('Stand values reset to the defaults.');}
   else if(b.id==='advReset'){const d=defaults();Object.assign(P,{maxRake:d.maxRake,vd:d.vd,loss:d.loss});toast('Advanced values reset to the defaults.');}
@@ -1990,7 +2019,11 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.link){relink(EDIT.tier,b.dataset.link);}
   else if(b.dataset.corner){P.zt.forEach(t=>t.corners=b.dataset.corner);}
   else if(b.dataset.meet){const [rt,m]=b.dataset.meet.split(':');meetAllC(m,rt);return;}
-  else if(b.id==='fit'){const ok=fitCapacity(P);toast(ok?'Rows sized to hit the target':'Target is out of reach within 80 rows per tier. Add a tier.');}
+  else if(b.id==='fit'){const ok=fitCapacity(P),ft=v=>L(v*1000),ch=FITLINKS.filter(x=>x.dx>0.001||x.rise>REGION_DEF[regionOf(P.sport)].rise+0.001),bad=FITLINKS.filter(x=>!x.ok);
+    const what=x=>`${x.dx>0.001?ft(x.dx)+' behind the top riser below':'over the top riser below'}, ${ft(x.rise)} above the top tread below`,byT={};ch.forEach(x=>(byT[x.ti]=byT[x.ti]||[]).push(x));
+    const lines=Object.entries(byT).map(([ti,xs])=>{const same=xs.length===zoneKeys(P).length&&xs.every(x=>what(x)===what(xs[0]));return same?`Tier ${+ti+1}${zoned(P)?' (every side)':''}: ${what(xs[0])}`:xs.map(x=>`Tier ${+ti+1} ${zoneName(P,x.k,true)}: ${what(x)}`).join('; ');});
+    const bt=[...new Set(bad.map(x=>x.ti))].map(ti=>`Tier ${ti+1}`);
+    toast((ok?'Rows sized to hit the target':'Target is out of reach within 80 rows per tier. Add a tier.')+(lines.length?`. Tiers moved so their front rows meet the absolute minimum C: ${lines.join('; ')}`:'. Tier relationships at their defaults')+(bt.length?`. ${bt.join(', ')} front rows can't reach the minimum over the guard and the tier below; set to the closest`:'')+'.');}
   else if(b.id==='reset'){const met=regionOf(P.sport)==='world';
     if(!confirm(met?'Reset every value to the metric defaults (Association Football, FIFA)?':'Reset every value to the imperial defaults (College Football, NCAA)?'))return;
     P=defaultsPinned();EDIT={tier:0,g:0};EYELOCK=true;CUR=null;
@@ -3445,13 +3478,13 @@ function update(){
   const perZone=(pred,what)=>{const c=zoneKeys(P).map(k=>[k,ZR[k].filter(pred).length]).filter(x=>x[1]);if(!c.length)return;
     const same=c.length===zoneKeys(P).length&&c.every(x=>x[1]===c[0][1]),n=c[0][1];
     msg.push(same?`${n} row${n>1?'s':''} ${what}${zoned(P)?' on every side':''}`:c.map(([k,n])=>`${zoneName(P,k,true)} ${n}`).join(', ')+` row${c.length>1||c[0][1]>1?'s':''} ${what}`);};
-  perZone(r=>r.C!=null&&status(r)!=='pass','below their C-value target');perZone(r=>r.rake!=null&&r.rake>P.maxRake,`steeper than ${P.maxRake}°`);perZone(r=>r.riser!=null&&r.riser>P.maxRiser+0.01,`with risers over ${L(P.maxRiser)}`);
+  perZone(r=>r.C!=null&&status(r)!=='pass','below their C-value target');perZone(r=>r.railC!=null&&r.railC>=0&&status(r)!=='pass','front rows below their C-value target over the guard'+(P.tierCount>1?' or the tier below':''));perZone(r=>r.rake!=null&&r.rake>P.maxRake,`steeper than ${P.maxRake}°`);perZone(r=>r.riser!=null&&r.riser>P.maxRiser+0.01,`with risers over ${L(P.maxRiser)}`);
   if(M.vd>P.vd)msg.push(`back row beyond the ${L(P.vd*1000,'m',0,true)} viewing distance limit`);
   M.rails.forEach(r=>msg.push(`${zl(r)} front row can't see the point of focus over the ${L(P.railH)} guard`));
   M.lowHead.forEach(h=>msg.push(`${L(h.h)} headroom under ${zl(h)}`));
   {const er=egressRows();if(er)er.filter(r=>r[2]===false).forEach(r=>msg.push(r[0].replace(/^Tier (\d): /,'Tier $1 ')+' short of the egress requirement'));}
   const v=$('verdict');v.className='verdict '+(msg.length?'bad':'ok');
-  v.textContent=msg.length?msg.join('; ')+'.':`All rows meet their C-value targets, within ${P.maxRake}° and ${L(P.vd*1000,'m',0,true)}; upper-tier front rows clear the guard.`;
+  v.textContent=msg.length?msg.join('; ')+'.':`All rows meet their C-value targets, front rows included, within ${P.maxRake}° and ${L(P.vd*1000,'m',0,true)}.`;
   $('secTabs').innerHTML=zoned(P)?GEO.map(k=>`<button data-sec="${k}" class="${P.sec===k?'on':''}" aria-pressed="${P.sec===k}"${ZR[k].length?'':' disabled'}>${zoneName(P,k,true)}</button>`).join(''):'';
   $('secTitle').textContent='Section: '+zoneName(P,P.sec)+(P.eyeMode==='stand'?', standing':', sitting');
   $('lgEye').innerHTML=P.eyeMode==='stand'?'<i style="background:var(--eye-stand);border-radius:50%;width:9px;height:9px;border:1px solid var(--eye-sit)"></i>Standing eye':'<i style="background:var(--eye-sit);border-radius:50%;width:9px;height:9px"></i>Seated eye';
