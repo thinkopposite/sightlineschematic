@@ -1673,33 +1673,47 @@ function cornerPlates(P,ZR,CH){const out=[],t=slabT(),k=1000;
 // Back first (in 1" or 10 mm steps): it adds clearance over the guard; then up, when the top row below comes into view. Returns what changed.
 function tierLinks(P){const R=REGION_DEF[regionOf(P.sport)],base=R.rise,stp=imperial()?0.0254:0.01,hiR=imperial()?30*0.3048:9.0,out=[];
   const up=v=>Math.ceil(v/stp-1e-6)*stp;
-  for(const k of GEO){for(let ti=1;ti<P.tierCount;ti++){const z=P.zt[ti].z[k];if(!z||!z.on)break;Object.assign(z,{X:null,dx:0,rise:base});
+  const done={},sig=k=>JSON.stringify(P.zt.slice(0,P.tierCount).map(t=>{const z=t.z[k],{dx,rise,X,...o}=z||{};return o;}));   // identical sides solve once
+  for(const k of GEO){const sg=sig(k);if(done[sg]){const src=done[sg];for(let ti=1;ti<P.tierCount;ti++){const z=P.zt[ti].z[k],zs=P.zt[ti].z[src];if(!z||!z.on)break;Object.assign(z,{X:null,dx:zs.dx,rise:zs.rise});const o=out.find(x=>x.k===src&&x.ti===ti);if(o)out.push({...o,k});}continue;}done[sg]=k;
+    for(let ti=1;ti<P.tierCount;ti++){const z=P.zt[ti].z[k];if(!z||!z.on)break;Object.assign(z,{X:null,dx:0,rise:base});
     const row1=()=>applyEyes(solveZone(P,k)).find(r=>r.tier===ti&&r.up1),tg=z.target-0.05;
     const okRail=()=>{const r=row1();return r&&r.railC>=tg;},okAll=()=>{const r=row1();return r&&frontC(r)>=tg;};
     if(okAll())continue;
     const dxMin=()=>{z.dx=0;if(okRail())return 0;let lo=0,hi=null;for(let d=0.5;d<=60;d+=0.5){z.dx=d;if(okRail()){hi=d;break;}lo=d;}if(hi==null)return null;
-      for(let i=0;i<30;i++){const m=(lo+hi)/2;z.dx=m;if(okRail())hi=m;else lo=m;}z.dx=up(hi);return z.dx;};
+      for(let i=0;i<16;i++){const m=(lo+hi)/2;z.dx=m;if(okRail())hi=m;else lo=m;}z.dx=up(hi);return z.dx;};
     let d=dxMin(),ok=d!=null&&okAll();
     if(!ok){let lo=base,hi=null;for(let h=base+stp*12;h<=hiR+1e-9;h+=stp*12){z.rise=h;const dd=dxMin();if(dd!=null&&okAll()){hi=h;break;}lo=h;}   // up, a foot at a time, then to the inch
-      if(hi!=null){for(let i=0;i<30;i++){const m=(lo+hi)/2;z.rise=m;const dd=dxMin();if(dd!=null&&okAll())hi=m;else lo=m;}z.rise=up(hi);d=dxMin();ok=d!=null&&okAll();}
+      if(hi!=null){for(let i=0;i<16;i++){const m=(lo+hi)/2;z.rise=m;const dd=dxMin();if(dd!=null&&okAll())hi=m;else lo=m;}z.rise=up(hi);d=dxMin();ok=d!=null&&okAll();}
       else{let best={c:-Infinity,dx:0,rise:base};   // out of reach: keep the best compromise, the largest front-row clearance, from the default up
         const cand=[],tryIt=(dx,rise)=>{z.dx=dx;z.rise=rise;const r=row1();const c=r?frontC(r):-Infinity;cand.push({c,dx,rise});if(c>best.c+1e-6)best={c,dx,rise};};tryIt(0,base);
-        const balance=h=>{z.rise=h;let lo=0,hi=40;for(let i=0;i<40;i++){const m=(lo+hi)/2;z.dx=m;const r=row1();if(!r)break;if(r.railC<(r.xC!=null?r.xC:Infinity))lo=m;else hi=m;}tryIt(up(hi),h);};   // back until the guard and the top row below give the same clearance
+        const balance=h=>{z.rise=h;let lo=0,hi=40;for(let i=0;i<18;i++){const m=(lo+hi)/2;z.dx=m;const r=row1();if(!r)break;if(r.railC<(r.xC!=null?r.xC:Infinity))lo=m;else hi=m;}tryIt(up(hi),h);};   // back until the guard and the top row below give the same clearance
         for(let h=base;h<=hiR+1e-9;h+=stp*12)balance(h);{const h0=best.rise;for(let h=Math.max(base,h0-stp*12);h<=Math.min(hiR,h0+stp*12)+1e-9;h+=stp)balance(up(h));}
         const near=cand.filter(q=>q.c>=best.c-(imperial()?0.25*25.4:6)).sort((a,b)=>(a.dx+(a.rise-base))-(b.dx+(b.rise-base)))[0]||best;   // the smallest move within 1/4 in of the best
         z.dx=near.dx;z.rise=near.rise;ok=false;}}
     out.push({k,ti,dx:z.dx,rise:z.rise,ok});}}
   return out;}
 function fitCapacity(P){
-  const base=[];P.zt.slice(0,P.tierCount).forEach(t=>GEO.forEach(k=>base.push([t.z[k],t.z[k].rows])));let lo=0.1,hi=6;
-  let apply=f=>{if(P.tierCount===2)GEO.forEach(k=>{const a=P.zt[0].z[k],b=P.zt[1].z[k],N=Math.max(6,Math.min(160,Math.round((base.find(x=>x[0]===a)[1]+base.find(x=>x[0]===b)[1])*f)));a.rows=Math.ceil(N/2);b.rows=N-a.rows;});   /* two tiers: equal rows, Tier 1 takes the odd one */
-    else base.forEach(([z,b])=>z.rows=Math.max(3,Math.min(80,Math.round(b*f))));};
-  const a0=apply;apply=f=>{a0(f);alignUpperTiers(P);};                          // upper tier bottom riser over the top riser below
-  const cap=()=>{const ZR=solveAll(P);return metrics(P,ZR,chains(P,ZR)).cap;};
-  const search=()=>{let lo=0.1,hi=6;for(let it=0;it<40;it++){const f=(lo+hi)/2;apply(f);if(cap()>=P.capTarget)hi=f;else lo=f;}apply(hi);};
-  tierLinks(P);search();FITLINKS=tierLinks(P);search();FITLINKS=tierLinks(P);   // rows, then the tier relationships, twice: moving a tier back only adds seats
+  const nT=P.tierCount,cap=()=>{const ZR=solveAll(P);return metrics(P,ZR,chains(P,ZR)).cap;};FITSPLIT=null;
+  if(nT===1){const base=GEO.map(k=>[P.zt[0].z[k],P.zt[0].z[k].rows]),apply=f=>base.forEach(([z,b])=>z.rows=Math.max(3,Math.min(80,Math.round(b*f))));
+    let lo=0.1,hi=6;for(let it=0;it<40;it++){const f=(lo+hi)/2;apply(f);if(cap()>=P.capTarget)hi=f;else lo=f;}apply(hi);FITLINKS=[];return cap()>=P.capTarget;}
+  // rows per tier (decision 133): the split between tiers is chosen so that the most seats meet the absolute minimum C-value, the capacity
+  // target met each time; ties keep the most even split. Each split: total rows to the target, the tier relationships (132), rows again.
+  const minR=3,maxR=80,setRows=(N,sh)=>{const r=sh.map(x=>Math.max(minR,Math.min(maxR,Math.round(N*x))));r[0]=Math.max(minR,Math.min(maxR,r[0]+N-r.reduce((a,b)=>a+b,0)));
+      P.zt.slice(0,nT).forEach((t,i)=>GEO.forEach(k=>t.z[k].rows=r[i]));alignUpperTiers(P);return r;};
+  let lastN=null;const searchN=sh=>{let lo=nT*minR-1,hi=nT*maxR;if(lastN){const a=Math.max(lo,lastN-24),b=Math.min(hi,lastN+24);setRows(b,sh);if(cap()>=P.capTarget){hi=b;setRows(a,sh);if(cap()<P.capTarget)lo=a;}}
+      setRows(hi,sh);if(cap()<P.capTarget)return hi;while(hi-lo>1){const m=(lo+hi)>>1;setRows(m,sh);if(cap()>=P.capTarget)hi=m;else lo=m;}setRows(hi,sh);lastN=hi;return hi;};
+  const score=()=>{const ZR=solveAll(P),Mx=metrics(P,ZR,chains(P,ZR));let pass=0,all=0;
+    (Mx.AL||[]).forEach((T,ti)=>Object.values(T).forEach(Lz=>{const zr=(ZR[Lz.k]||[]).filter(r=>r.tier===ti);Lz.tr.forEach((r,j)=>{const n=rowSections(Lz,j).seats,q=zr[j];all+=n;if(q&&status(q)==='pass')pass+=n;});}));return {pass,all,cap:Mx.cap};};
+  const run=sh=>{searchN(sh);tierLinks(P);searchN(sh);const L=tierLinks(P),sc=score();return {sh,L,rows:P.zt.slice(0,nT).map(t=>t.z[GEO[0]].rows),...sc};};
+  const even=Array(nT).fill(1/nT),shares=[even];
+  if(nT===2)[0.4,0.6,0.3,0.7,0.2,0.8].forEach(a=>shares.push([a,1-a]));
+  else for(const a of[0.25,0.45])for(const c of[0.5,0.35,0.65])shares.push([a,(1-a)*c,(1-a)*(1-c)]);
+  tierLinks(P);let best=null;
+  for(const sh of shares){const r=run(sh);r.fail=r.all-r.pass;if(!best||r.fail<best.fail-0.01*r.all)best=r;if(best.fail<=0)break;}   // every seat meets the minimum: stop at the first (most even) split; another split only when it saves more than 1% of the seats
+  lastN=best.rows.reduce((a,b)=>a+b,0);setRows(lastN,best.sh);for(let i=0;i<4;i++){searchN(best.sh);FITLINKS=tierLinks(P);if(cap()>=P.capTarget)break;}   /* until the target holds with the final tier positions */const sc=score();FITSPLIT={rows:P.zt.slice(0,nT).map(t=>t.z[GEO[0]].rows),pass:sc.pass,all:sc.all};
   return cap()>=P.capTarget;
 }
+let FITSPLIT=null;
 let FITLINKS=[];
 // ear clipping for the stepped tier profile (a simple polygon) -> triangles as index triples
 function earClip(pts){const n=pts.length,tri=[];let A=0;
@@ -1757,7 +1771,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.24.01';
+const VERSION='2026.10.24.02';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2019,11 +2033,12 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.link){relink(EDIT.tier,b.dataset.link);}
   else if(b.dataset.corner){P.zt.forEach(t=>t.corners=b.dataset.corner);}
   else if(b.dataset.meet){const [rt,m]=b.dataset.meet.split(':');meetAllC(m,rt);return;}
-  else if(b.id==='fit'){const ok=fitCapacity(P),ft=v=>L(v*1000),ch=FITLINKS.filter(x=>x.dx>0.001||x.rise>REGION_DEF[regionOf(P.sport)].rise+0.001),bad=FITLINKS.filter(x=>!x.ok);
+  else if(b.id==='fit'){toast('Sizing rows and tier positions…');b.disabled=true;setTimeout(()=>{const ok=fitCapacity(P),ft=v=>L(v*1000),ch=FITLINKS.filter(x=>x.dx>0.001||x.rise>REGION_DEF[regionOf(P.sport)].rise+0.001),bad=FITLINKS.filter(x=>!x.ok);
     const what=x=>`${x.dx>0.001?ft(x.dx)+' behind the top riser below':'over the top riser below'}, ${ft(x.rise)} above the top tread below`,byT={};ch.forEach(x=>(byT[x.ti]=byT[x.ti]||[]).push(x));
     const lines=Object.entries(byT).map(([ti,xs])=>{const same=xs.length===zoneKeys(P).length&&xs.every(x=>what(x)===what(xs[0]));return same?`Tier ${+ti+1}${zoned(P)?' (every side)':''}: ${what(xs[0])}`:xs.map(x=>`Tier ${+ti+1} ${zoneName(P,x.k,true)}: ${what(x)}`).join('; ');});
     const bt=[...new Set(bad.map(x=>x.ti))].map(ti=>`Tier ${ti+1}`);
-    toast((ok?'Rows sized to hit the target':'Target is out of reach within 80 rows per tier. Add a tier.')+(lines.length?`. Tiers moved so their front rows meet the absolute minimum C: ${lines.join('; ')}`:'. Tier relationships at their defaults')+(bt.length?`. ${bt.join(', ')} front rows can't reach the minimum over the guard and the tier below; set to the closest`:'')+'.');}
+    const sp=FITSPLIT?`: ${FITSPLIT.rows.map((n,i)=>`Tier ${i+1} ${n} rows`).join(', ')}; ${FITSPLIT.pass>=FITSPLIT.all?'every seat meets':`${(100*FITSPLIT.pass/FITSPLIT.all).toFixed(1)}% of seats meet`} the absolute minimum C`:'';
+    toast((ok?'Rows sized to hit the target'+sp:'Target is out of reach within 80 rows per tier. Add a tier.')+(lines.length?`. Tiers moved so their front rows meet the absolute minimum C: ${lines.join('; ')}`:'. Tier relationships at their defaults')+(bt.length?`. ${bt.join(', ')} front rows can't reach the minimum over the guard and the tier below; set to the closest`:'')+'.');b.disabled=false;CUR=null;renderControls();update();},40);return;}   /* a few seconds for three tiers: the message first */
   else if(b.id==='reset'){const met=regionOf(P.sport)==='world';
     if(!confirm(met?'Reset every value to the metric defaults (Association Football, FIFA)?':'Reset every value to the imperial defaults (College Football, NCAA)?'))return;
     P=defaultsPinned();EDIT={tier:0,g:0};EYELOCK=true;CUR=null;
