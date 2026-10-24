@@ -1673,10 +1673,14 @@ function fitCapacity(P){
   apply(hi);return cap()>=P.capTarget;
 }
 // ear clipping for the stepped tier profile (a simple polygon) -> triangles as index triples
-function earClip(pts){const n=pts.length,idx=[...Array(n).keys()],tri=[];let A=0;
+function earClip(pts){const n=pts.length,tri=[];let A=0;
   for(let i=0;i<n;i++){const p=pts[i],q=pts[(i+1)%n];A+=p[0]*q[1]-q[0]*p[1];}const sg=A>=0?1:-1;
-  const cr=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
-  const inT=(p,a,b,c)=>sg*cr(a,b,p)>=0&&sg*cr(b,c,p)>=0&&sg*cr(c,a,p)>=0;
+  const cr=(a,b,c)=>(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]),same=(a,b)=>Math.abs(a[0]-b[0])<1e-9&&Math.abs(a[1]-b[1])<1e-9;
+  // repeated points and points on a straight run are left out first (decision 131): they block every ear and the fallback then drops area
+  let idx=[...Array(n).keys()];idx=idx.filter((i,k)=>!same(pts[i],pts[idx[(k+1)%idx.length]]));
+  for(let ch=true,g=0;ch&&idx.length>3&&g<n;g++){ch=false;for(let k=0;k<idx.length&&idx.length>3;k++){const a=pts[idx[(k-1+idx.length)%idx.length]],b=pts[idx[k]],c=pts[idx[(k+1)%idx.length]];
+    if(Math.abs(cr(a,b,c))<1e-12*Math.max(1,Math.hypot(c[0]-a[0],c[1]-a[1]))){idx.splice(k,1);ch=true;k--;}}}
+  const inT=(p,a,b,c)=>!same(p,a)&&!same(p,b)&&!same(p,c)&&sg*cr(a,b,p)>=0&&sg*cr(b,c,p)>=0&&sg*cr(c,a,p)>=0;
   let guard=0;
   while(idx.length>3&&guard++<5000){let cut=false;
     for(let i=0;i<idx.length;i++){const i0=idx[(i-1+idx.length)%idx.length],i1=idx[i],i2=idx[(i+1)%idx.length],a=pts[i0],b=pts[i1],c=pts[i2];
@@ -1724,7 +1728,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.23.04';
+const VERSION='2026.10.23.05';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2092,7 +2096,7 @@ function secExtras(rows,ti,X,Y,o,xe){const IN=25.4,tr=rows.filter(r=>r.tier===ti
     s+=`<polygon points="${op.map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${SW.paper}" stroke="none"/>`   /* the opening: the rows cut away down to the vom floor */
       +`<polygon points="${wall.map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="#E4E4E4" stroke="var(--ink)" stroke-width="0.6" vector-effect="non-scaling-stroke"><title>Vomitory side wall beyond</title></polygon>`
       +`<polygon points="${[[xs0,zf-sl],[xt+t,zf-sl],[xt+t,zf],[xs0,zf]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"><title>Vomitory floor</title></polygon>`
-      +`<polygon points="${[[xt,zk-sl],[xt+t,zk-sl],[xt+t,zk+hd],[xt,zk+hd]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"><title>Vomitory header</title></polygon>`;
+      +`<polygon points="${[[xt,zk],[xt+t,zk],[xt+t,zk+hd],[xt,zk+hd]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"><title>Vomitory header</title></polygon>`;
     top+=`<text x="${X((xs0+xt)/2)}" y="${Y(zf+(zk-zf)*0.35)}" font-size="${Math.max(120,(xt-xs0)/9).toFixed(0)}" fill="#DA291C" text-anchor="middle" font-weight="700">${v.label}</text>`;}}
   if(pg){pg.rows.forEach(r=>skip.add(r));const {p1,p2,top:tp,edge,zP,railC,eye}=pg,hr=4.5*IN,cy=eye.z+4.45*IN-hr,col=eye.z*0>0?'':'--sl-ok';
     s+=`<polygon points="${[[edge,p1.z],[edge,zP],[tp.x,zP],[tp.x,p2.z],[p2.x,p2.z],[p2.x,p1.z]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`
@@ -2705,7 +2709,7 @@ function vomSolids(){const out=[];if(!M||!M.AL)return out;const t=vomWall()/1000
       for(let j=0;j<poly.length;j++){const j2=(j+1)%poly.length;tri.push(A[j],A[j2],B[j2],A[j],B[j2],B[j]);}};
     const zf=(a.vr.floor||0)/1000,xs=[...Array(k+1).keys()].map(j=>tr[s+j].x/1000),top=k,wall=[[xs[0],zf],...xs.map((x,j)=>[x,tr[s+j].z/1000+hd]),[xs[top],zf]];   // floor: field level (Tier 1) or the leg-wall base (upper tiers)
     for(const sd of [-1,1])prism(sd*W/2,sd*(W/2+t),wall);
-    const zk=tr[s+k].z/1000;prism(-W/2-t,W/2+t,[[xs[top],zk-sl],[xs[top]+t,zk-sl],[xs[top]+t,zk+hd],[xs[top],zk+hd]]);   /* header over the top tread, its ends flush with the outer faces of the side walls (decision 80) */
+    const zk=tr[s+k].z/1000;prism(-W/2-t,W/2+t,[[xs[top],zk],[xs[top]+t,zk],[xs[top]+t,zk+hd],[xs[top],zk+hd]]);   /* header wall sitting on the tread over the opening (decision 131), its ends flush with the outer faces of the side walls (decision 80) */
     prism(-W/2,W/2,[[s?xs[0]:xs[0]-0.3,zf],[xs[top]+t,zf],[xs[top]+t,zf+0.03],[s?xs[0]:xs[0]-0.3,zf+0.03]]);
     const xb=xs[top]+t,wp=W/2+t/2,portal=[P3(-wp,xb,zf+0.03),P3(wp,xb,zf+0.03),P3(wp,xb,zk-sl),P3(-wp,xb,zk-sl)];   /* into the walls: no paper-coloured sliver at the jambs */   // the back of the opening (the isometric view shades it dark)   // floor, level with the cross aisle (field level for the corner tunnels)
     const lab=(ti?'T'+(ti+1)+' ':'')+(a.vomLabel||a.id);
@@ -3603,8 +3607,9 @@ function trueStrokes(svg,unitPerIn){                           // screen-pixel l
 // key word in red, four tiles (scale with a bar, two figures, the sheet number in black) and a running footer.
 // Placeholders %%NO%% and %%N%% take the sheet number and count when the set is assembled.
 // PDF page background (decision 127): the warm paper, white or light grey, each with its own grid tone; applied while a PDF is built
-const PDF_BG={paper:{name:'Warm paper (default)',paper:'#F6F5F2',grid:'#E6E5DF'},white:{name:'White',paper:'#FFFFFF',grid:'#E6E6E6'},grey:{name:'Light grey',paper:'#EDEDED',grid:'#DCDCDC'}};
-let PDF_ON=false;const pdfBg=()=>PDF_BG[PDF_ON&&P.pdfBg&&PDF_BG[P.pdfBg]?P.pdfBg:'paper'];
+const PDF_BG={white:{name:'White (default)',paper:'#FFFFFF',grid:'#E6E6E6'},grey:{name:'Light grey',paper:'#EDEDED',grid:'#DCDCDC'}};   // warm paper retired (decision 131)
+const PDF_WEB={paper:'#F6F5F2',grid:'#E6E5DF'};   // the web app's own sheets keep the warm paper
+let PDF_ON=false;const pdfBg=()=>PDF_ON?PDF_BG[P.pdfBg==='grey'?'grey':'white']:PDF_WEB;
 const SW={get paper(){return pdfBg().paper;},get grid(){return pdfBg().grid;},ink:'#111111',red:'#DA291C',grey:'#6B6B68',font:'ARC'};
 const swU=sh=>sh.w>30||sh.h>30?0.5:0.25;
 function swArea(sh){const u=swU(sh);return {u,x0:2*u,y0:6*u,aw:sh.w-4*u,ah:sh.h-12*u};}   // the header one grid row lower (decision 129): the top row carries the scale marks
@@ -4084,7 +4089,7 @@ function pdfTables(doc,o={}){
       const vals=[titleCase(o.label),o.kind==='row'?cfmt(o.cs):'',o.kind==='row'?cfmt(o.ct):'',...o.v.map(fmt),fmt(o.t)];
       cell(vals,o.kind!=='row',o.kind==='sub',o.kind==='row'?[null,col('cs'),col('ct')]:null);});});
 }
-function pdfBgUI(){const el=$('pdfBg');if(!el)return;const cur=P.pdfBg&&PDF_BG[P.pdfBg]?P.pdfBg:'paper';
+function pdfBgUI(){const el=$('pdfBg');if(!el)return;const cur=P.pdfBg==='grey'?'grey':'white';
   el.innerHTML=Object.entries(PDF_BG).map(([k,v])=>`<button data-bg="${k}" class="${k===cur?'on':''}"><span style="display:inline-block;width:12px;height:12px;border:1px solid #9A9A96;background:${v.paper};vertical-align:-2px;margin-right:6px"></span>${v.name}</button>`).join('');}
 $('pdfBg').onclick=e=>{const b=e.target.closest('button[data-bg]');if(!b)return;P.pdfBg=b.dataset.bg;persist();pdfBgUI();toast(`PDF page background: ${PDF_BG[P.pdfBg].name.toLowerCase()}.`);};pdfBgUI();
 $('dlTab').onclick=()=>exportPdfSet('tabloid');$('dlArch').onclick=()=>exportPdfSet('archE');
