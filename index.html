@@ -355,6 +355,9 @@ td{border-bottom:1px solid var(--line)}
     <div id="det3Wrap" hidden><div class="planhead"><span class="bub" id="bubD3">D</span><h3 id="det3Title">Sightline detail: Tier 3</h3>
       <p class="capt">Tier 3, every row, at the same scale as Tier 1. The point of focus is off to the left.</p></div>
     <div class="panel" id="detail3"></div></div>
+    <div id="junWrap" hidden><div class="planhead"><span class="bub" id="bubJ">E</span><h3 id="junTitle">Tier junction</h3>
+      <p class="capt">The top of each tier and the bottom of the tier above, cut through the wheelchair platform: heights and distances between the tiers.</p></div>
+    <div class="panel" id="junction"></div></div>
     <div class="planhead"><span class="bub" id="bubSp">D</span><h3 id="spTitle">Enlarged spectators: eye sight values</h3>
       <p class="capt">The three rows ending at the governing row, dimensioned to the locked eye sight values.</p></div>
     <div class="panel" id="spect" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px"></div>
@@ -1016,7 +1019,7 @@ function solveZone(P,k){
     while(j<n){
       if(j===0){
         if(ti===0){prev=mk(0,z.D*1000,z.Z*1000,null,null);prev.railC=prev.ez*(prev.x+RAIL_SET)/prev.ex-(prev.z+P.railH);}   // row 1 looks over the guard rail, 3 in behind the riser
-        else{const lo0=rows.find(r=>r.tier===ti-1),x0=z.X!=null?z.X*1000:prev.x+(+z.dx||0)*1000;      // unset: first riser over the last riser below, plus the setback the sizing found (dx, decision 132)
+        else{const lo0=rows.find(r=>r.tier===ti-1),x0=z.X!=null?z.X*1000:prev.x-Tn(0)+(+z.dx||0)*1000;      // unset: the second riser over the top riser below (decision 137), plus the setback the sizing found (dx, decision 132)
           prev=mk(0,Math.max(x0,lo0.x+1000),prev.z+(Math.max(z.rise,REGION_DEF[regionOf(P.sport)].rise)+Math.max(0,z.suites)*P.suiteH)*1000,null,null);prev.up1=true;   // at least 10'-0" (3.0 m) above the top tread below
           prev.railC=prev.ez*(prev.x+RAIL_SET)/prev.ex-(prev.z+P.railH);}           // front row looks over the guard, 3 in behind the landing edge
         rows.push(prev);j++;continue;}
@@ -1782,7 +1785,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.25.03';
+const VERSION='2026.10.25.05';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -1930,12 +1933,13 @@ function zoneEditor(ti,g){
     +slider(pre+'.tread0',`Bottom row depth (${u})`,R.treadMin,R.tread0Max,R.tStep,'mm')
     +cvEditor(pre,z,ti);}
   const Sp=SPORTS[P.sport],imp=imperial();
-  if(ti===0)h+=slider(pre+'.D',`Sideline depth (${imp?'1 foot':'100 mm'})`,Sp.Dmin??0,imp?60*0.3048:18,imp?0.3048:0.1,'m')
+  const tStp=z.tread/1000,tLab=`${L(z.tread)}, one row`;   // one row depth per step (decision 137)
+  if(ti===0)h+=slider(pre+'.D',`Sideline depth (${tLab})`,Sp.Dmin??0,imp?60*0.3048:18,tStp,'m')
     +slider(pre+'.Z',`Tier-1 bottom tread above the ${surfLow()} (${imp?'4 inch':'100 mm'})`,Sp.Zmin??0,imp?20*0.3048:6,imp?0.1016:0.1,'m')
     +`<p class="hint">${Sp.name} minimum: ${L((Sp.Dmin??0)*1000)} depth, ${L((Sp.Zmin??0)*1000)} bottom tread.</p>`;
-  else h+=slider(pre+'.X',`Sideline depth (${imperial()?'1 foot':'100 mm'})`,2*0.3048,400*0.3048,imperial()?0.3048:0.1,'m')
-    +(z.X==null?`<p class="hint">${(+z.dx||0)>0.001?`First riser ${L(z.dx*1000)} behind the Tier-${ti} last riser (set by sizing to meet the minimum C); it follows Tier ${ti} automatically.`:`First riser aligned over the Tier-${ti} last riser; it follows Tier ${ti} automatically.`}</p>`
-      :`<p class="hint" id="sbHint">${setbackText(ti,g[0])}</p><button data-realign="${ti}" style="margin:4px 0 6px">Align to Tier-1 last riser</button>`)
+  else h+=slider(pre+'.X',`Sideline depth (${tLab})`,2*0.3048,400*0.3048,tStp,'m')
+    +(z.X==null?`<p class="hint">${(+z.dx||0)>0.001?`Moved ${L(z.dx*1000)} back from the default (set by sizing to meet the minimum C); it follows Tier ${ti} automatically.`:`Second riser aligned over the Tier-${ti} top riser (the default); it follows Tier ${ti} automatically.`}</p>`
+      :`<p class="hint" id="sbHint">${setbackText(ti,g[0])}</p><button data-realign="${ti}" style="margin:4px 0 6px">Back to default: second riser over the Tier-${ti} top riser</button>`)
     +slider(pre+'.rise',`Tier-${ti} top tread to Tier-${ti+1} bottom tread (${imperial()?'1 foot; 10\'-0" to 30\'-0"':'250 mm; 3,000 to 9,000 mm'})`,imperial()?10*0.3048:3.0,imperial()?30*0.3048:9.0,imperial()?0.3048:0.25,'m')
     +`<p class="hint">Clear height below the Tier-${ti+1} leg wall: ${L(z.rise*1000-LEG2)} (leg wall ${L(LEG2)} below the bottom tread; minimum ${L(P.minHead)}).</p>`
     +slider(pre+'.Zabs',`Tier-${ti+1} bottom tread above the ${surfLow()} (${imperial()?'4 inch':'100 mm'})`,3*0.3048,150*0.3048,imperial()?0.1016:0.1,'m');
@@ -2046,7 +2050,7 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.corner){P.zt.forEach(t=>t.corners=b.dataset.corner);}
   else if(b.dataset.meet){const [rt,m]=b.dataset.meet.split(':');meetAllC(m,rt);return;}
   else if(b.id==='fit'){toast('Sizing rows and tier positions…');b.disabled=true;setTimeout(()=>{const ok=fitCapacity(P),ft=v=>L(v*1000),ch=FITLINKS.filter(x=>x.dx>0.001||x.rise>REGION_DEF[regionOf(P.sport)].rise+0.001),bad=FITLINKS.filter(x=>!x.ok);
-    const what=x=>`${x.dx>0.001?ft(x.dx)+' behind the top riser below':'over the top riser below'}, ${ft(x.rise)} above the top tread below`,byT={};ch.forEach(x=>(byT[x.ti]=byT[x.ti]||[]).push(x));
+    const what=x=>{const z=P.zt[x.ti].z[x.k],off=x.dx-(z.tread0??z.tread)/1000;return `${x.dx<0.001?'second riser over the top riser below':Math.abs(off)<0.001?'first riser over the top riser below':`first riser ${ft(Math.abs(off))} ${off>0?'behind':'in front of'} the top riser below`}, ${ft(x.rise)} above the top tread below`;},byT={};ch.forEach(x=>(byT[x.ti]=byT[x.ti]||[]).push(x));
     const lines=Object.entries(byT).map(([ti,xs])=>{const same=xs.length===zoneKeys(P).length&&xs.every(x=>what(x)===what(xs[0]));return same?`Tier ${+ti+1}${zoned(P)?' (every side)':''}: ${what(xs[0])}`:xs.map(x=>`Tier ${+ti+1} ${zoneName(P,x.k,true)}: ${what(x)}`).join('; ');});
     const bt=[...new Set(bad.map(x=>x.ti))].map(ti=>`Tier ${ti+1}`);
     const sp=FITSPLIT?`: ${FITSPLIT.rows.map((n,i)=>`Tier ${i+1} ${n} rows`).join(', ')}; ${FITSPLIT.pass>=FITSPLIT.all?'every seat meets':`${(100*FITSPLIT.pass/FITSPLIT.all).toFixed(1)}% of seats meet`} the absolute minimum C, seated, wheelchair positions included`:'';
@@ -3518,7 +3522,10 @@ function update(){
   document.querySelectorAll('#modeTabs [data-mode]').forEach(b=>{const on=b.dataset.mode===P.eyeMode;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
   $('section').innerHTML=drawSection(ZR[P.sec]);
   {const t1=ZR[P.sec].filter(r=>r.tier===0),d1=drawDetail(ZR[P.sec]);$('detail').innerHTML=d1;const two=P.tierCount>1&&ZR[P.sec].some(r=>r.tier===1);
-   const three=P.tierCount>2&&ZR[P.sec].some(r=>r.tier===2);$('det2Wrap').hidden=!two;$('det3Wrap').hidden=!three;['bubSp','bubPlan','bub3d','bubEnl','bubEnlC'].forEach((id,i)=>$(id).textContent='CDEFGHI'[i+(two?1:0)+(three?1:0)]);
+   const three=P.tierCount>2&&ZR[P.sec].some(r=>r.tier===2);$('det2Wrap').hidden=!two;$('det3Wrap').hidden=!three;$('junWrap').hidden=!two;['bubJ','bubSp','bubPlan','bub3d','bubEnl','bubEnlC'].forEach((id,i)=>$(id).textContent='CDEFGHIJ'[i+(two?1:0)+(three?1:0)-(two?0:1)]);   /* the tier junction after the tier details (decision 138) */
+   if(two){const jn=ti=>{const a=drawJunction(ZR[P.sec],{tier:ti,zone:P.sec,fs:150}),w=+(a.match(/viewBox="0 0 ([\d.]+)/)||[0,7000])[1];return drawJunction(ZR[P.sec],{tier:ti,zone:P.sec,fs:w/62});};   // text sized to the frame
+     const n=ZR[P.sec].some(r=>r.tier===2)&&P.tierCount>2?2:1;$('junction').innerHTML=Array.from({length:n},(_,i)=>(n>1?`<p class="capt" style="margin:8px 12px 0"><b>Tier ${i+1}–${i+2}</b></p>`:'')+jn(i+1).replace('<svg ','<svg style="display:block;width:min(100%,780px);margin:0 auto" ')).join('');
+     $('junTitle').textContent=`Tier junction${n>1?'s':''}: ${n>1?'Tiers 1–2 and 2–3':'Tier 1–2'}, ${zoneName(P,P.sec)}, through the wheelchair platform`;}
    if(two){const v1=d1.match(/viewBox="0 0 ([\d.]+)/),d2=drawDetail(ZR[P.sec],{tier:1,noFocus:true,fs:v1?(+v1[1])/110:undefined});   // same text size, so the same drawing scale
      $('detail2').innerHTML=d2;const w1=+v1[1],w2=+d2.match(/viewBox="0 0 ([\d.]+)/)[1];$('detail2').firstElementChild.style.width=Math.min(100,w2/w1*100).toFixed(1)+'%';
      $('det2Title').textContent=`Sightline detail: Tier 2, ${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'}`;
@@ -3850,7 +3857,8 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
     K.note(pg.edge+fs*.3,pg.zP-fs*.9,`Platform face ${inchText(pg.edge-pg.p1.x)} behind the row riser`,{size:fs*.42,anchor:'start',fill:'var(--muted)',wt:400});}
   K.dim([lb.x,yb],[lb.x+lb.T,yb],{lab:'Top tread',val:L(lb.T),ea:[lb.x,lb.z],eb:[lb.x+lb.T,lb.z],side:-1});
   const dx=f.x-lb.x;if(Math.abs(dx)>1)K.dim([lb.x,f.z-LEG2-fs*1.4],[f.x,f.z-LEG2-fs*1.4],{lab:dx>0?`Tier ${tu+1} first riser behind the top riser below`:`Tier ${tu+1} overhang`,val:L(Math.abs(dx)),ea:[lb.x,lb.z],eb:[f.x,f.z-LEG2],ctl:'X:'+tu});
-  else K.note(f.x+fs*.4,f.z-LEG2-fs*1.2,`First riser over the top riser below`,{size:fs*.5,anchor:'start',fill:'var(--dim)',wt:450});
+  if(Math.abs(dx)<=1)K.note(f.x+fs*.4,f.z-LEG2-fs*1.2,`First riser over the top riser below`,{size:fs*.5,anchor:'start',fill:'var(--dim)',wt:450});
+  else if(Math.abs(f.x+f.T-lb.x)<=1)K.note(f.x+f.T+fs*.3,f.z-fs*.9,`Second riser over the top riser below`,{size:fs*.5,anchor:'start',fill:'var(--dim)',wt:450});
   if(f.x>cx0+1)K.dim([cx0,lb.z+fs*1.2],[f.x,lb.z+fs*1.2],{lab:'Concourse',val:L(f.x-cx0),ea:[cx0,lb.z],eb:[f.x,lb.z]});
   K.dim([f.x,f.z+P.railH+fs*1.6],[f.x+f.T,f.z+P.railH+fs*1.6],{lab:'First tread',val:L(f.T),ea:[f.x,f.z],eb:[f.x+f.T,f.z]});
   // labels
