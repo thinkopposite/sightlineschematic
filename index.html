@@ -1782,7 +1782,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.25.02';
+const VERSION='2026.10.25.03';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -3738,7 +3738,9 @@ function swBaselines(root){root.querySelectorAll('text[dominant-baseline]').forE
 function swFinish(root,sh){swBaselines(root);const u=swU(sh),R=root.getBoundingClientRect(),px=R.width/sh.w,grid=root.querySelector('.swgrid');if(!grid)return;
   const cell=v=>(Math.round((v/px-1.5*u)/u)*u+1.5*u)*px,line=v=>(Math.round((v/px-u)/u)*u+u)*px,NS='http://www.w3.org/2000/svg',placed=[],hit=q=>placed.some(o=>q.l<o.r&&q.r>o.l&&q.t<o.b&&q.b>o.t);
   const knock=q=>{const r=document.createElementNS(NS,'rect');r.setAttribute('x',((q.l-R.left)/px).toFixed(4));r.setAttribute('y',((q.t-R.top)/px).toFixed(4));r.setAttribute('width',((q.r-q.l)/px).toFixed(4));r.setAttribute('height',((q.b-q.t)/px).toFixed(4));r.setAttribute('fill',SW.paper);grid.appendChild(r);};
-  root.querySelectorAll('.swdraw > svg').forEach(svg=>{const vb=svg.viewBox.baseVal,S=svg.getBoundingClientRect();if(!vb||!vb.width)return;const uu=vb.width/S.width;
+  root.querySelectorAll('.swdraw > svg').forEach(svg=>{const vb=svg.viewBox.baseVal;if(!vb||!vb.width)return;   /* the viewport from its own x, y, width, height (decision 136): content beyond it (a clipped profile) must not stretch it */
+    const ax=k=>+svg.getAttribute(k),S=svg.hasAttribute('width')?{left:R.left+ax('x')*px,top:R.top+ax('y')*px,width:ax('width')*px,height:ax('height')*px}:svg.getBoundingClientRect();
+    {const sc0=Math.min(S.width/vb.width,S.height/vb.height);S.left+=(S.width-vb.width*sc0)/2;S.top+=(S.height-vb.height*sc0)/2;S.width=vb.width*sc0;S.height=vb.height*sc0;}const uu=vb.width/S.width;
     if(svg.dataset.dims){[...new Set([...svg.querySelectorAll('g[transform^="rotate"] > text')].map(t=>t.parentNode))].forEach(g=>{const t=g.querySelector('text'),vert=/rotate\(-90/.test(g.getAttribute('transform')||''),b=g.getBoundingClientRect(),tb=t.getBoundingClientRect();
       if(!b.width||!b.height)return;const th=(vert?tb.width:tb.height)/px,sc=Math.max(1,Math.min(2.6,0.12*u/0.25/th)),cx=b.left+b.width/2,cy=b.top+b.height/2,W2=b.width*sc/2,H2=b.height*sc/2;
       let nx=cell(cx),ny=cell(cy);const box=()=>({l:nx-W2-2,r:nx+W2+2,t:ny-H2-2,b:ny+H2+2});
@@ -3811,6 +3813,60 @@ function plotSpectators(sh){const A=swArea(sh),u=A.u,k2=u/0.25,modes=SPECT_MODES
       tile3:[`${i+1} / ${modes.length}`,'VIEW',names[m].replace(/^\d+\.\s*/,'')]});
     return {svg,scale:fit.sc.label,sheet:sh,what:'spect',title};});}
 // Bowl section (both tiers, the side picked above the section) on one landscape sheet, largest standard scale that fits.
+// Tier junction (decision 136): the top of a tier and the bottom of the tier above, cut through the wheelchair platform at the top of the
+// lower tier. Both profiles, the platform with its guard and wheelchair spectator, seated spectators and their sightlines, the upper tier's
+// leg wall and front guard, the concourse between; heights and horizontal distances dimensioned, on the sheet grid like the other sections.
+function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-1),up=all.filter(r=>r.tier===tu);if(!lo.length||!up.length)return `<p class="empty" style="padding:16px">No Tier ${tu+1} rows.</p>`;
+  const IN=25.4,E=P.eye,hr=4.5*IN,headTop=4.45*IN,n=lo.length,lb=lo[n-1],f=up[0],u2=up[Math.min(1,up.length-1)],a0=lo[Math.max(0,n-5)],t=slabT(),fs=o.fs||300,pg=secPlat(lo);
+  const xR=Math.max(u2.x+u2.T,lb.x+lb.T,f.x+f.T),X0=a0.x-fs*3,X1=xR+fs*9,eyeTop=Math.max(...up.slice(0,2).map(r=>r.sit.ez),f.z+P.railH),Z0=a0.z-t-fs*13,Z1=eyeTop+hr*2+fs*5,W=X1-X0,H=Z1-Z0;
+  const X=x=>(x-X0).toFixed(1),Y=z=>(Z1-z).toFixed(1),K=SecDim(X,Y,fs,[W,H]);
+  let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Tier ${tu} to Tier ${tu+1} junction section">`+gridBg(X0,X1,Z0,Z1,X,Y);
+  s+=`<polygon points="${profileOf(lo,tu-1).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(tu-1)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`
+    +`<polygon points="${profileOf(up,tu).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(tu)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;
+  const cx0=lb.x+lb.T,cx1=Math.max(cx0+fs*4,f.x);   // the concourse floor behind the lower tier
+  s+=`<line x1="${X(cx0)}" y1="${Y(lb.z)}" x2="${X(cx1)}" y2="${Y(lb.z)}" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+  const EXd=secExtras(all,tu-1,X,Y,{cut:'seat',zone:o.zone},X0),SK=EXd.skip;s+=EXd.s+EXd.top;   // the wheelchair platform, its guard and wheelchair spectator
+  s+=`<rect x="${X(f.x+RAIL_SET-25.4)}" y="${Y(f.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"><title>Guard ${L(P.railH)}</title></rect>`;
+  const sp=[...lo.slice(Math.max(0,n-5)),...up.slice(0,2)].filter(r=>!SK.has(r));
+  sp.forEach(r=>{const e=r.sit,cy=e.ez+headTop-hr,ok=status(r)==='pass'||status(r)==='front';
+    s+=`<line x1="${X(e.ex)}" y1="${Y(e.ez)}" x2="${X(X0)}" y2="${Y(e.ez*X0/e.ex)}" stroke="var(${ok?'--sl-ok':'--sl-low'})" stroke-width="0.6" opacity=".8" vector-effect="non-scaling-stroke"/>`
+      +`<line x1="${X(e.ex)}" y1="${Y(cy-hr)}" x2="${X(e.ex)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`
+      +`<circle cx="${X(e.ex)}" cy="${Y(cy)}" r="${hr}" fill="var(--panel)" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`
+      +`<circle cx="${X(e.ex)}" cy="${Y(e.ez)}" r="${(fs*.1).toFixed(1)}" fill="var(--eye-sit)"/>`;
+    K.note(r.x+r.T*.17,r.z+fs*.18,`${r.tier+1}-${r.row}`,{size:fs*.42});K.reserve(e.ex-hr,cy-hr,e.ex+hr,cy+hr);});
+  // vertical, right: the rise between the tiers, the leg wall and the clear height under it, the guard on the upper front row
+  const xv=xR+fs*1.5,cl=f.z-LEG2-lb.z;
+  K.dim([xv,lb.z],[xv,f.z],{lab:`Tier ${tu} top tread to Tier ${tu+1} bottom tread`,val:L(f.z-lb.z),ea:[lb.x+lb.T,lb.z],eb:[f.x+f.T,f.z],ctl:'RISE:'+tu,side:-1});
+  K.dim([f.x-fs*1.2,f.z-LEG2],[f.x-fs*1.2,f.z],{lab:'Leg wall',val:L(LEG2),ref:'leg',ea:[f.x,f.z-LEG2],eb:[f.x,f.z]});
+  K.dim([f.x-fs*1.2,lb.z],[f.x-fs*1.2,f.z-LEG2],{lab:'Clear height',val:L(cl),ref:'headroom',ea:[Math.min(f.x,cx0),lb.z],eb:[f.x,f.z-LEG2],fill:cl<P.minHead-0.5?'var(--fail)':null});
+  K.dim([f.x+RAIL_SET+fs*1.1,f.z],[f.x+RAIL_SET+fs*1.1,f.z+P.railH],{lab:'Guard',val:L(P.railH),ea:[f.x+RAIL_SET,f.z],eb:[f.x+RAIL_SET,f.z+P.railH],side:-1});
+  // the wheelchair platform: its height over the row in front, the wheelchair eye, the setback and the eye distance behind the platform face
+  if(pg){const sd=lo[n-4];if(sd){K.dim([sd.x-fs*1.2,sd.z],[sd.x-fs*1.2,pg.zP],{lab:`Platform over row ${sd.row}`,val:L(pg.zP-sd.z),ref:'wcplat',ea:[sd.x+sd.T,sd.z],eb:[pg.edge,pg.zP]});}
+    K.dim([pg.eye.x+fs*1.4,pg.zP],[pg.eye.x+fs*1.4,pg.eye.z],{lab:'Wheelchair eye',val:L(E.wcH),ea:[pg.eye.x,pg.zP],eb:[pg.eye.x,pg.eye.z],side:-1});}
+  // horizontal, below: the top tread below, the riser offset between the tiers, the concourse, the platform setback and depth, the first tread above
+  const yb=a0.z-t-fs*1.6,zb=x=>a0.z-t;
+  if(pg){K.dim([pg.edge,yb],[pg.top.x,yb],{lab:'Platform',val:L(pg.top.x-pg.edge),ea:[pg.edge,pg.zP],eb:[pg.top.x,pg.zP],side:-1});
+    K.dim([pg.p1.x,yb-fs*2.4],[pg.eye.x,yb-fs*2.4],{lab:'Row riser to wheelchair eye',val:L(pg.eye.x-pg.p1.x),ea:[pg.p1.x,pg.p1.z],eb:[pg.eye.x,pg.eye.z],side:-1});
+    K.note(pg.edge+fs*.3,pg.zP-fs*.9,`Platform face ${inchText(pg.edge-pg.p1.x)} behind the row riser`,{size:fs*.42,anchor:'start',fill:'var(--muted)',wt:400});}
+  K.dim([lb.x,yb],[lb.x+lb.T,yb],{lab:'Top tread',val:L(lb.T),ea:[lb.x,lb.z],eb:[lb.x+lb.T,lb.z],side:-1});
+  const dx=f.x-lb.x;if(Math.abs(dx)>1)K.dim([lb.x,f.z-LEG2-fs*1.4],[f.x,f.z-LEG2-fs*1.4],{lab:dx>0?`Tier ${tu+1} first riser behind the top riser below`:`Tier ${tu+1} overhang`,val:L(Math.abs(dx)),ea:[lb.x,lb.z],eb:[f.x,f.z-LEG2],ctl:'X:'+tu});
+  else K.note(f.x+fs*.4,f.z-LEG2-fs*1.2,`First riser over the top riser below`,{size:fs*.5,anchor:'start',fill:'var(--dim)',wt:450});
+  if(f.x>cx0+1)K.dim([cx0,lb.z+fs*1.2],[f.x,lb.z+fs*1.2],{lab:'Concourse',val:L(f.x-cx0),ea:[cx0,lb.z],eb:[f.x,lb.z]});
+  K.dim([f.x,f.z+P.railH+fs*1.6],[f.x+f.T,f.z+P.railH+fs*1.6],{lab:'First tread',val:L(f.T),ea:[f.x,f.z],eb:[f.x+f.T,f.z]});
+  // labels
+  K.note(cx0+fs*.3,lb.z+fs*.3,tu===1?'Main concourse':'Upper concourse',{size:fs*.55,anchor:'start',fill:'var(--muted)',wt:400});
+  K.note(f.x+f.T*.5,f.z-LEG2*.55,`Tier ${tu+1}`,{size:fs*.8,anchor:'start',fill:'var(--ink)',wt:700});K.note(a0.x+fs*.3,a0.z-t-fs*.9,`Tier ${tu}`,{size:fs*.8,anchor:'start',fill:'var(--ink)',wt:700});
+  s+=K.out();return s+'</svg>';}
+function plotJunction(sh,zone,tu,force){const A=swArea(sh),Z=ZR[zone];if(!Z||!Z.some(r=>r.tier===tu))return null;let fit=null;
+  for(const sc of (force?[force]:PLOT_SCALES())){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawJunction(Z,{tier:tu,zone,fs:sh.txt*25.4*sc.ratio}),o=SWORIG;SWG=0;SWORIG=null;
+    const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);if(!v)return null;const w=+v[1]*k,h=+v[2]*k;
+    if((w<=A.aw&&h<=A.ah)||force){fit={sc,k,w,h,svg,u:25.4*sc.ratio,o,fits:w<=A.aw&&h<=A.ah};break;}}
+  if(!fit)return null;
+  const lo=Z.filter(r=>r.tier===tu-1),f=Z.find(r=>r.tier===tu),lb=lo[lo.length-1],cl=f.z-LEG2-lb.z;
+  const title=`Tier ${tu}–${tu+1} junction section, ${zoneName(P,zone)}, through the wheelchair platform`;
+  const d={svg:swDraw(trueStrokes(fit.svg,fit.u)).replace('<svg ','<svg data-dims="1" '),w:fit.w,h:fit.h,clip:1};if(fit.o)Object.assign(d,{ox:fit.o[0]*fit.k,oy:fit.o[1]*fit.k,sq:swSq(A.u,fit.sc)});
+  const svg=swissSheet(sh,{title,big:[`Tier ${tu}–${tu+1}`,'Junction'],draws:[d],scale:swScale(sh,fit.sc.label,fit.k),tile3:[L(cl),'CLEAR HEIGHT',`Under the Tier ${tu+1} leg wall; minimum ${L(P.minHead)}.`]});
+  return {svg,scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'junction',title,fits:fit.fits};}
 function plotSection(sh,zone,force,cut){const Z=ZR[zone||P.sec],A=swArea(sh);let fit=null;
   for(const sc of (force?[force]:PLOT_SCALES())){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawSection(Z,{fs:sh.txt*25.4*sc.ratio,zone:zone||P.sec,cut}),o=SWORIG;SWG=0;SWORIG=null;
     const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;
@@ -3939,7 +3995,9 @@ async function exportPdfSet(kind){
     const SZ=zoned(P)?[GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='N')||'L',eastKey()]:['T'],CUTS0=['seat','vom'],cutsOf=z=>CUTS0.filter(c=>c==='seat'||Array.from({length:P.tierCount},(_,i)=>secVom(z,i)).some(Boolean));   /* section 2 only where the side has a spectator vom */   /* North and East; through the seating and through a vomitory's centre (decision 121) */
     const secSc=catScale(SZ.flatMap(z=>cutsOf(z).map(c=>sc=>plotSection(big,z,sc,c)))),tierSc=catScale(SZ.flatMap(z=>cutsOf(z).flatMap(c=>Array.from({length:P.tierCount},(_,i)=>sc=>plotTier(big,i,sc,z,c)))));   /* overall sections and tier sections: two categories, one scale each (decision 112) */
     const overall=SZ.flatMap(z=>cutsOf(z).map(c=>plotSection(big,z,secSc,c))),tiers=SZ.flatMap(z=>cutsOf(z).flatMap(c=>Array.from({length:P.tierCount},(_,i)=>plotTier(big,i,tierSc,z,c))));
-    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[...overall,...tiers,...(()=>{const ps=catScale([sc=>plotOne(big,'plan',0,false,'h',sc),sc=>plotOne(big,'plan',0,false,'v',sc)]);   /* the largest permitted scale that fits (decision 117) */   /* bowl plans: one scale (decision 110) */   /* bowl plans: 1/64" = 1'-0" on 11 x 17 (decision 104), 1" = 25' on ARCH E (decision 102) */
+    const jn=P.tierCount>1?(()=>{const fns=SZ.flatMap(z=>Array.from({length:P.tierCount-1},(_,i)=>sc=>plotJunction(big,z,i+1,sc))),js=catScale(fns);   /* tier junctions: their own scale (decision 136) */
+      return SZ.flatMap(z=>Array.from({length:P.tierCount-1},(_,i)=>plotJunction(big,z,i+1,js))).filter(Boolean);})():[];
+    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[...overall,...tiers,...jn,...(()=>{const ps=catScale([sc=>plotOne(big,'plan',0,false,'h',sc),sc=>plotOne(big,'plan',0,false,'v',sc)]);   /* the largest permitted scale that fits (decision 117) */   /* bowl plans: one scale (decision 110) */   /* bowl plans: 1/64" = 1'-0" on 11 x 17 (decision 104), 1" = 25' on ARCH E (decision 102) */
       return [plotOne(big,'plan',0,false,'h',ps),plotOne(big,'plan',0,false,'v',ps)];})(),   /* largest standard scale inside the Swiss frame (1" = 50' no longer fits 11 x 17 above the 1-1/2 in band) */...(M.AL&&zoned(P)?(()=>{const e=ENL,ce=CENL,set=[()=>{ENL={tier:0,side:westKey()};}];   /* the typical section, then every other unique section on its own, square to the sheet (decision 109) */
       {const shown=new Set(),add=nos=>nos.forEach(n=>shown.add(n));   /* every unique section in the set once (decision 108): the typical and corner sheets count for theirs */
         {const E=enlargedData(0,westKey());if(E){const q=sectionList(0).find(x=>x.key===E.L0.a.id+'_'+E.R0.a.id);if(q)shown.add(q.no);}}
