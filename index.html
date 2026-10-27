@@ -1253,11 +1253,11 @@ const cwOf=(p,t)=>p[0]*t[1]-p[1]*t[0]>0;                                  // pla
 function cornerSet(R,zi,i,dBk,gp){const ch=R[zi].ch,g=ch[i],pw=ch[i-1],nw=ch[i+1];if(!g||!segDiag(g)||!pw||!nw||!segWedge(pw)||!segWedge(nw))return null;
   const e=AIS().w/1000*MITER/2,sw=R[zi].z.seatW/1000,fits=Math.floor((segLen(g,dBk)-2*gp)/sw+1e-9)<=nmaxZone(R[zi].z);
   return {L:{i:i-1,from:1,e,miter:true,corner:true,ray:true},R:{i:i+1,from:0,e,miter:true,corner:true,ray:true},C:Object.assign({i,f:0.5,corner:true},fits?{cl:true}:{})};}
-// interior corner aisles (decision 146): Tier 1 one aisle on the corner's middle (two equal sections), Tiers 2 and 3 two aisles (three
+// interior corner aisles (decisions 146, 148): Tier 1, and Tier 2 on a chamfered corner, one aisle on the corner's middle (two equal sections); Tier 2 on a round corner and Tier 3 two aisles (three
 // equal sections), equal along the corner between its outer aisles (or its ends, a round corner) at the reference depth
 function cornerMids(posOf,zi,i,ti,cs){const pA=posOf(zi,{i,f:0}),pB=posOf(zi,{i,f:1}),pC=(pA+pB)/2,span=pB-pA;if(Math.abs(span)<1e-9)return [{i,f:0.5,corner:true}];
-  const lo=cs?posOf(zi,cs.L)-pC:-span/2,hi=cs?posOf(zi,cs.R)-pC:span/2,n=ti===0?2:3,out=[];
-  for(let k=1;k<n;k++){const t=lo+(hi-lo)*k/n,f=Math.max(0.02,Math.min(0.98,0.5+t/span));out.push({i,f:Math.round(f*1e6)/1e6,corner:true,mid:k});}return out;}
+  const lo=cs?posOf(zi,cs.L)-pC:-span/2,hi=cs?posOf(zi,cs.R)-pC:span/2,n=ti===0||(ti===1&&cs)?2:3,out=[];   /* Tier 2 chamfered corners: one aisle (decision 148) */
+  for(let k=1;k<n;k++){const t=lo+(hi-lo)*k/n,f=Math.max(0.02,Math.min(0.98,0.5+t/span));out.push(Object.assign({i,f:Math.round(f*1e6)/1e6,corner:true},n>2?{mid:k}:{}));}return out;}
 // fill between fixed aisles and stand ends at offset d so no section exceeds cap (a stand end takes a half section)
 function fillAisles(ch,fixed,d,cap,dF,cw){const L=chainLen(ch,d),bd=[{s:0,end:true},...fixed.map(a=>({s:chainS(ch,a,d),a})).sort((x,y)=>x.s-y.s),{s:L,end:true}],out=fixed.map(a=>({s:chainS(ch,a,d),a}));
   for(let b=1;b<bd.length;b++){const A0=bd[b-1],B0=bd[b],S=B0.s-A0.s;if(S<=1e-9)continue;let ps=[];
@@ -1793,7 +1793,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.26.07';
+const VERSION='2026.10.26.08';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2761,9 +2761,10 @@ function vomCands(AL,ti=0){const T=AL&&AL[ti],out=[],pre=ti?ti+':':'';if(!T)retu
 function vomRowsOf(ti,nr){const t=VT(ti),mid=Math.floor((nr-1)/2);let c=t.c!=null?Math.round(t.c):mid;c=Math.max(1,Math.min(nr-4,c));return {c,mid,cmin:1,cmax:nr-4};}
 // rows cut by a spectator vom: from the row behind the cross aisle up to the first row whose underside clears the vom headroom over the cross aisle
 function vomCutRows(tr,c){const sl=slabT(),H=AIS().vomH||90*25.4,z0=tr[c].z;let j=c+1;while(j<tr.length-1&&tr[j].z-sl-z0<H-0.5)j++;return {s:c+1,k:Math.max(1,j-(c+1)),head:tr[j].z-sl-z0};}
-function applyVoms(P,AL){if(!AL)return;if(!P.vomRev2){P.vomOn=null;P.vomRev2=1;}if(!P.vomRev3){P.vomOn=null;P.vomRev3=1;}   /* new corner aisles: every vom on again once (decision 146) */
+function applyVoms(P,AL){if(!AL)return;if(!P.vomRev2){P.vomOn=null;P.vomRev2=1;}if(!P.vomRev3){P.vomOn=null;P.vomSeen=null;P.vomRev3=1;}   /* new corner aisles: every vom on again once (decision 146) */
   if(!P.vomOn){P.vomOn={};P.vomTi={};}else if(!P.vomTi)P.vomTi={0:1,1:1};   // every vomitory on by default (decision 85: also each tier added later, the first time it appears)
   AL.forEach((T,ti)=>{if(P.vomTi[ti])return;const cs=vomCands(AL,ti);if(!cs.length)return;cs.forEach(c=>P.vomOn[c.key]=true);P.vomTi[ti]=1;});
+  {const seen=P.vomSeen||(P.vomSeen={});AL.forEach((T,ti)=>vomCands(AL,ti).forEach(c=>{if(!seen[c.key]){seen[c.key]=1;P.vomOn[c.key]=true;}}));}   // a vomitory that appears later (a corner type or tier change) starts on (decision 148)
   const on=P.vomOn;AL.forEach((T,ti)=>{const zs=Object.values(T);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<5)return;
     const gone=goneAisles(AL),cs=vomCands(AL,ti).filter(c=>on[c.key]&&!gone.has(c.id));if(!cs.length)return;   /* no vom where its aisle has open space on both sides */const {c:cr}=vomRowsOf(ti,nr),tk=Math.max(1,Math.min(nr-2,Math.round(P.vomK||6)));let cross=false;
     cs.forEach(c=>zs.forEach(Lz=>Lz.ais.forEach((a,i)=>{if(a.id!==c.id)return;Lz.vom[i]=true;a.vomC=c.kind==='corner'?VTUN():AIS().vomW;a.vomKey=c.key;a.vomLabel=c.label;a.vomTi=ti;Lz.vr=Lz.vr||{};
