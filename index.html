@@ -1253,6 +1253,11 @@ const cwOf=(p,t)=>p[0]*t[1]-p[1]*t[0]>0;                                  // pla
 function cornerSet(R,zi,i,dBk,gp){const ch=R[zi].ch,g=ch[i],pw=ch[i-1],nw=ch[i+1];if(!g||!segDiag(g)||!pw||!nw||!segWedge(pw)||!segWedge(nw))return null;
   const e=AIS().w/1000*MITER/2,sw=R[zi].z.seatW/1000,fits=Math.floor((segLen(g,dBk)-2*gp)/sw+1e-9)<=nmaxZone(R[zi].z);
   return {L:{i:i-1,from:1,e,miter:true,corner:true,ray:true},R:{i:i+1,from:0,e,miter:true,corner:true,ray:true},C:Object.assign({i,f:0.5,corner:true},fits?{cl:true}:{})};}
+// interior corner aisles (decision 146): Tier 1 one aisle on the corner's middle (two equal sections), Tiers 2 and 3 two aisles (three
+// equal sections), equal along the corner between its outer aisles (or its ends, a round corner) at the reference depth
+function cornerMids(posOf,zi,i,ti,cs){const pA=posOf(zi,{i,f:0}),pB=posOf(zi,{i,f:1}),pC=(pA+pB)/2,span=pB-pA;if(Math.abs(span)<1e-9)return [{i,f:0.5,corner:true}];
+  const lo=cs?posOf(zi,cs.L)-pC:-span/2,hi=cs?posOf(zi,cs.R)-pC:span/2,n=ti===0?2:3,out=[];
+  for(let k=1;k<n;k++){const t=lo+(hi-lo)*k/n,f=Math.max(0.02,Math.min(0.98,0.5+t/span));out.push({i,f:Math.round(f*1e6)/1e6,corner:true,mid:k});}return out;}
 // fill between fixed aisles and stand ends at offset d so no section exceeds cap (a stand end takes a half section)
 function fillAisles(ch,fixed,d,cap,dF,cw){const L=chainLen(ch,d),bd=[{s:0,end:true},...fixed.map(a=>({s:chainS(ch,a,d),a})).sort((x,y)=>x.s-y.s),{s:L,end:true}],out=fixed.map(a=>({s:chainS(ch,a,d),a}));
   for(let b=1;b<bd.length;b++){const A0=bd[b-1],B0=bd[b],S=B0.s-A0.s;if(S<=1e-9)continue;let ps=[];
@@ -1316,13 +1321,13 @@ function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti,Q){const OV=(Q&&Q.secN)
   sides.forEach((S,k)=>{const N=sides[(k+1)%sides.length],wrap=k===sides.length-1?L:0,sw=Math.min(S.sw,N.sw),soft=Math.floor(A.smaxMid/2);
     const Ea=S.run.b,Eb=N.run.a+wrap;let a=S.rt[S.rt.length-1],b=N.lt[N.lt.length-1]+wrap;
     const atBack=v=>{const t=toA(v),RB=RGB||(RGB=ringAt(R,dBk));return RB.cs[t.zi]+chainS(R[t.zi].ch,t.a,dBk);},nB=(()=>{let x=atBack(b)-atBack(a);if(x<0)x+=RGB.L;return seats(x,sw);})(),ibcN=Math.min(ibcRow(R[S.zi].z).n,ibcRow(R[N.zi].z).n);
-    if(seats(b-a,sw)<=A.smax&&nB<=ibcN)return;                        // the section round the corner is within the limit and its back row within the IBC row maximum (decision 82): no corner aisle
+    // every corner takes its aisles (decision 146), whatever its length
     const c=corners.find(c=>{const cs=c.s<S.sc?c.s+L:c.s;return cs>Ea-1e-6&&cs<Eb+1e-6;})||corners.find(c=>c.s+L>Ea-1e-6&&c.s+L<Eb+1e-6);if(!c)return;
     const C0=c.s<Ea-1e-6?c.s+L:c.s,sg=RG.seg.find(q=>q.zi===c.zi&&q.i===c.a.i),cs=sg&&segDiag(sg.g)?cornerSet(R,c.zi,c.a.i,dBk,gp):null,bends=!cs&&ti>0&&sg&&segDiag(sg.g);let hl=bends?sg.l/2:0;
     // the corner: a chamfer takes an aisle along each outer edge of its wedge and a section line (or, on long rows, an aisle) on its centreline;
     // a round corner one aisle on its centreline
-    if(cs){const dl=posOf(c.zi,cs.L)-posOf(c.zi,c.a),dr=posOf(c.zi,cs.R)-posOf(c.zi,c.a);extra.push({s:C0+dl,zi:c.zi,a:cs.L},{s:C0,zi:c.zi,a:cs.C},{s:C0+dr,zi:c.zi,a:cs.R});hl=Math.max(-dl,dr);}
-    else{extra.push({s:C0,zi:c.zi,a:c.a});if(bends)extra.push({s:C0-hl,zi:c.zi,a:{i:c.a.i,f:0,miter:true,corner:true}},{s:C0+hl,zi:c.zi,a:{i:c.a.i,f:1,miter:true,corner:true}});}
+    if(cs){const pc=posOf(c.zi,c.a),dl=posOf(c.zi,cs.L)-pc,dr=posOf(c.zi,cs.R)-pc;extra.push({s:C0+dl,zi:c.zi,a:cs.L},...cornerMids(posOf,c.zi,c.a.i,ti,cs).map(m=>({s:C0+posOf(c.zi,m)-pc,zi:c.zi,a:m})),{s:C0+dr,zi:c.zi,a:cs.R});hl=Math.max(-dl,dr);}
+    else{const pc=posOf(c.zi,c.a);cornerMids(posOf,c.zi,c.a.i,ti,null).forEach(m=>extra.push({s:C0+posOf(c.zi,m)-pc,zi:c.zi,a:m}));if(bends)extra.push({s:C0-hl,zi:c.zi,a:{i:c.a.i,f:0,miter:true,corner:true}},{s:C0+hl,zi:c.zi,a:{i:c.a.i,f:1,miter:true,corner:true}});}
     // each side of the corner aisle(s): an aisle at the end of the straight run if the corner section is still too long
     [[S.rt,Ea,1,0,C0-hl],[N.lt,Eb,-1,wrap,C0+hl]].forEach(([list,E,dir,off,C])=>{const last=list[list.length-1]+off;if(seats(Math.abs(C-last),sw)<=A.smax)return;
       if(Math.abs(E-last)<1e-3){if(seats(Math.abs(C-E),sw)>A.smax)flags.push(1);return;}
@@ -1359,10 +1364,10 @@ function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;co
     // fixed: Tier 1 the corner centrelines; upper tiers carry every Tier 1 aisle up (same lines in plan)
     let fixed=[];const below=ti>0&&out[0].__ring;
     const dBk=Math.max(...R.map(z=>{const l=z.tr[z.tr.length-1];return (l.x+l.T/2)/1000;})),gp0=(A.gap||0)/1000;
-    if(!imperial()&&below&&R.every((z,zi)=>sameChain(below[zi].ch,z.ch))){fixed=below.list.map(x=>({s:posOf(x.zi,x.a),zi:x.zi,a:Object.assign({},x.a)}));
+    if(false&&!imperial()&&below&&R.every((z,zi)=>sameChain(below[zi].ch,z.ch))){   /* metric upper tiers now build their own corners (decision 146) */fixed=below.list.map(x=>({s:posOf(x.zi,x.a),zi:x.zi,a:Object.assign({},x.a)}));
       fixed.forEach(x=>{if(x.a.cl){const cs=cornerSet(R,x.zi,x.a.i,dBk,gp0);if(!cs||!cs.C.cl)delete x.a.cl;}});}   // a section line carried up stays one only where this tier's rows fit
     else RG.seg.forEach(q=>{if(segDiag(q.g)||q.g.t==='ARC'&&!q.g.side){const a={i:q.i,f:0.5,corner:true},cs=segDiag(q.g)?cornerSet(R,q.zi,q.i,dBk,gp0):null;
-      if(cs)[cs.L,cs.C,cs.R].forEach(b=>fixed.push({s:posOf(q.zi,b),zi:q.zi,a:b}));else fixed.push({s:posOf(q.zi,a),zi:q.zi,a});}});
+      [...(cs?[cs.L]:[]),...cornerMids(posOf,q.zi,q.i,ti,cs),...(cs?[cs.R]:[])].forEach(b=>fixed.push({s:posOf(q.zi,b),zi:q.zi,a:b}));}});   // corner aisles by tier (decision 146)
     let sect=null;if(imperial()){const b0=ti>0&&out[0].__ring,al=b0&&R.every((z,zi)=>sameChain(b0[zi].ch,z.ch))?b0.list.map(x=>posOf(x.zi,x.a)):[];sect=sectAisles(R,RG,runs,posOf,toA,A,al,ti>0&&out[0].__secN||{},ti,Q);if(sect){fixed=sect;Object.defineProperty(T,'__secN',{enumerable:false,value:sect.secN,configurable:true});}}
     fixed.sort((x,y)=>x.s-y.s);
     const added=[],place=(A0,B0)=>{const S=B0-A0;if(S<=Math.min(capAt(A0+1e-6),capAt(B0-1e-6))+1e-9)return;
@@ -1788,7 +1793,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.26.05';
+const VERSION='2026.10.26.06';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2750,13 +2755,13 @@ function vomCands(AL,ti=0){const T=AL&&AL[ti],out=[],pre=ti?ti+':':'';if(!T)retu
     for(let m=0;m<g.keys.length-1;m++)ids.push(+g.keys[m].split('_')[1]);if(all)ids.push(+g.keys[g.keys.length-1].split('_')[1]);
     ids.forEach((id,n)=>{if(id)out.push({key:pre+g.k+'.'+(n+1),id,label:`${sn} ${n+1}`,kind:'aisle',k:g.k,ti});});});
   // the corner centrelines: Tier 1 player tunnels; upper tiers 8 ft spectator voms
-  {const seen=new Set();Object.values(T).forEach(Lz=>Lz.ais.forEach(a=>{if(a.corner&&a.f===0.5&&!a.miter&&!seen.has(a.id)){seen.add(a.id);const r=Lz.tr[0],d=r.x/1000,p=chainPtS(Lz.ch,chainS(Lz.ch,a,d),d),cn=cornerName(p);
-    out.push(ti===0?{key:'C.'+cn,id:a.id,label:'Corner '+cn,kind:'corner',ti}:{key:pre+'C.'+cn,id:a.id,label:cn,kind:'corner2',ti});}}));}
+  {const seen=new Set();Object.values(T).forEach(Lz=>Lz.ais.forEach(a=>{if(a.corner&&!a.miter&&!a.ray&&!a.cl&&a.f>0&&a.f<1&&!seen.has(a.id)){seen.add(a.id);const r=Lz.tr[0],d=r.x/1000,p=chainPtS(Lz.ch,chainS(Lz.ch,a,d),d),cn=cornerName(p);
+    const m=a.mid&&ti>0?String(a.mid):'';out.push(ti===0?{key:'C.'+cn,id:a.id,label:'Corner '+cn,kind:'corner',ti}:{key:pre+'C.'+cn+m,id:a.id,label:cn+m,kind:'corner2',ti});}}));}   /* Tier 1: the corner tunnel; upper tiers: a spectator vom in each of the two corner aisles (decision 146) */
   return out;}
 function vomRowsOf(ti,nr){const t=VT(ti),mid=Math.floor((nr-1)/2);let c=t.c!=null?Math.round(t.c):mid;c=Math.max(1,Math.min(nr-4,c));return {c,mid,cmin:1,cmax:nr-4};}
 // rows cut by a spectator vom: from the row behind the cross aisle up to the first row whose underside clears the vom headroom over the cross aisle
 function vomCutRows(tr,c){const sl=slabT(),H=AIS().vomH||90*25.4,z0=tr[c].z;let j=c+1;while(j<tr.length-1&&tr[j].z-sl-z0<H-0.5)j++;return {s:c+1,k:Math.max(1,j-(c+1)),head:tr[j].z-sl-z0};}
-function applyVoms(P,AL){if(!AL)return;if(!P.vomRev2){P.vomOn=null;P.vomRev2=1;}
+function applyVoms(P,AL){if(!AL)return;if(!P.vomRev2){P.vomOn=null;P.vomRev2=1;}if(!P.vomRev3){P.vomOn=null;P.vomRev3=1;}   /* new corner aisles: every vom on again once (decision 146) */
   if(!P.vomOn){P.vomOn={};P.vomTi={};}else if(!P.vomTi)P.vomTi={0:1,1:1};   // every vomitory on by default (decision 85: also each tier added later, the first time it appears)
   AL.forEach((T,ti)=>{if(P.vomTi[ti])return;const cs=vomCands(AL,ti);if(!cs.length)return;cs.forEach(c=>P.vomOn[c.key]=true);P.vomTi[ti]=1;});
   const on=P.vomOn;AL.forEach((T,ti)=>{const zs=Object.values(T);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<5)return;
