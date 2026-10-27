@@ -1074,7 +1074,7 @@ function gapsOf(P){const Q=Object.assign({},P,{tierCount:3}),g={};
     g[k][ti]=lo.length&&up?(up.x-(lo[lo.length-1].x+lo[lo.length-1].T))/1000:P.zt[ti].z[k].gap;}}return g;}
 function alignUpperTiers(P){P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>t.z[k].X=null);});}
 function keepGaps(P,g){for(let ti=1;ti<3;ti++)for(const k of GEO)Object.assign(P.zt[ti].z[k],{X:null,gap:g[k][ti]});pinUpperTiers(P);}
-function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';if(!FIELD_SPORTS.includes(P.sport))P.sport='ncaafb';if(!P.bulge||typeof P.bulge!=='object')P.bulge={S:0,E:0};['S','E'].forEach(k=>{P.bulge[k]=Math.max(0,Math.min(15,+P.bulge[k]||0));});   /* court and rink sports are out of scope (decision 81) */const d=defaults();
+function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';if(!FIELD_SPORTS.includes(P.sport))P.sport='ncaafb';if(!P.bulge||typeof P.bulge!=='object')P.bulge={S:0,E:0};['S','E'].forEach(k=>{P.bulge[k]=Math.max(0,Math.min(k==='S'?7.62:6.096,+P.bulge[k]||0));});   /* sidelines up to 25 ft (7.6 m), end stands 20 ft (6.1 m) (decision 145) */   /* court and rink sports are out of scope (decision 81) */const d=defaults();
   if(P.eyeRev===3&&P.eye){const w=P.eye.wcOff;if(Math.abs(w-36*25.4)<1||Math.abs(w-915)<1)P.eye.wcOff=w>914.5&&w<915.5?760:30*25.4;P.eyeRev=EYE_REV;}   /* rev 4: only the old 36 in default moves to 30 in; other eye values kept */
   if(P.eyeRev!==EYE_REV){P.eye=eyeDefaults();P.eyeRev=EYE_REV;}P.eye=Object.assign(eyeDefaults(),P.eye||{});delete P.eye.bnFront;if(P.eyeMode!=='stand')P.eyeMode='sit';
   if(!P.eyeWc3){if([47.5,48].some(v=>Math.abs(P.eye.wcH-v*25.4)<0.01))P.eye.wcH=47.45*25.4;P.eyeWc3=1;}if(!(P.eye.wcH>0))P.eye.wcH=(P.eye.platH>0?P.eye.platH:47.45*25.4);delete P.eye.platH;   /* one wheelchair eye: 47.45 in, A117.1 table basis */
@@ -1788,7 +1788,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.26.02';
+const VERSION='2026.10.26.05';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -1906,11 +1906,14 @@ function applySport(k){const x=SPORTS[k],g=gapsOf(P);sportUnits(k);renderUnits()
   if(x.shape==='fan')Object.assign(P,{fl:x.fl,cf:x.cf,bs:x.bs});else if(x.shape==='track')Object.assign(P,{lanes:x.lanes,L:x.L,W:x.W});else Object.assign(P,{L:x.L,W:x.W});keepGaps(P,g);CUR=null;renderControls();update();}
 // zt.<tier>.<keys>.<param> edits a group of zones together, so linked sides can never drift apart
 function lowerTop(ti,k){const lo=solveZone(Object.assign({},P,{tierCount:Math.max(P.tierCount,ti+1)}),k).filter(r=>r.tier===ti-1);return lo[lo.length-1];}
-function get(path){if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.'),z=P.zt[+ti].z[ks[0]];
+const BULGE_MAX={S:25,E:20};   // set-back limits in feet: sidelines 25', end stands 20' (decision 145)
+function get(path){if(path.startsWith('bulgeFt.'))return Math.round((P.bulge[path.slice(8)]||0)/0.3048);   // set-backs in whole feet (decisions 143, 144)
+  if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.'),z=P.zt[+ti].z[ks[0]];
     if(p==='Zabs'){const t=lowerTop(+ti,ks[0]);return Math.round(((t?t.z:0)/1000+z.rise)*1e4)/1e4;}
     if(p==='X'&&z.X==null){const t=lowerTop(+ti,ks[0]);return t?Math.round(t.x/1000*1e4)/1e4:0;}
     return z[p];}return path.split('.').reduce((o,k)=>o[k],P);}
-function set(path,v){if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.');
+function set(path,v){if(path.startsWith('bulgeFt.')){const k=path.slice(8);P.bulge[k]=Math.max(0,Math.min(BULGE_MAX[k],Math.round(+v||0)))*0.3048;const e=document.getElementById('bulgeRad');if(e)e.textContent=bulgeRadTxt();return;}
+  if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.');
     if(p==='Zabs'){for(const k of ks){const t=lowerTop(+ti,k);P.zt[+ti].z[k].rise=Math.max(RD().rise,v-(t?t.z:0)/1000);}return;}   // never under 10'-0" (3.0 m) above the tier below (decision 132)
     for(const k of ks)P.zt[+ti].z[k][p]=v;if(p==='X')renderControls();return;}
   const ks=path.split('.');const last=ks.pop();ks.reduce((o,k)=>o[k],P)[last]=v;if(ks[0]==='bulge'){const e=document.getElementById('bulgeRad');if(e)e.textContent=bulgeRadTxt();}}
@@ -1960,7 +1963,8 @@ function renderControls(){
     h+='<div class="lab">Side profiles: <b style="color:var(--ink)">All four sides match</b></div>';
     h+='<div class="lab">Corners</div><div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>';
     {const im=imperial(),st=im?0.3048:0.25,mx=im?30*0.3048:9;   /* curved stands (decision 82) */
-      h+='<div class="lab">Curved stands</div>'+slider('bulge.S','Sidelines: set back at the 50-yard line'.replace('the 50-yard line',P.sport==='nfl'||P.sport==='ncaafb'?'the 50-yard line':'halfway'),0,mx,st,'m')+slider('bulge.E','End stands: set back at the centre line',0,mx,st,'m')
+      h+='<div class="lab">Curved stands</div>'+(im?slider('bulgeFt.S',`Sidelines: set back at ${P.sport==='nfl'||P.sport==='ncaafb'?'the 50-yard line':'halfway'} (1 foot; 0' to 25')`,0,25,1,"'")+slider('bulgeFt.E',`End stands: set back at the centre line (1 foot; 0' to 20')`,0,20,1,"'")
+        :slider('bulge.S','Sidelines: set back at halfway',0,7.5,st,'m')+slider('bulge.E','End stands: set back at the centre line',0,6,st,'m'))
         +`<p class="hint">0 keeps a stand straight. Otherwise its rows are arcs through both ends of the field side: the stand ends stay at the front-row distance and the middle sits further back by this much (every tier follows). <span id="bulgeRad">${bulgeRadTxt()}</span> Aisles run radially.</p>`;}}
   h+='<div class="lab">Bowl colours (HEX)</div>'+[0,1,2].map(i=>`<div class="colrow"><label for="tcol${i}">Tier ${i+1}</label>`
     +`<input type="color" class="swatch" data-tcolpick="${i}" value="${tierFill(i)}" aria-label="Pick the Tier ${i+1} colour">`
