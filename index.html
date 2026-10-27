@@ -1095,7 +1095,7 @@ function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGAC
   P.zt.forEach((t,i)=>{if(i&&P.zt[0].corners)t.corners=P.zt[0].corners;
     GEO.forEach(k=>{if(t.z[k]&&t.z.T){t.z[k].on=true;t.z[k].D=t.z.T.D;}});
     if(t.link!=='all'){t.link='all';GEO.forEach(k=>{if(k==='T'||!t.z.T||!t.z[k])return;const keep={};PER_SIDE.forEach(p=>keep[p]=t.z[k][p]);t.z[k]=Object.assign(JSON.parse(JSON.stringify(t.z.T)),keep);});}if(t.corners==='auto')t.corners='round';if(!['chamfer','round'].includes(t.corners))t.corners='chamfer';GEO.forEach(k=>{const o=t.z[k]||{};if(o.tread0==null)o.tread0=o.tread;if(o.treadN==null)o.treadN=o.tread;if(!SEATS[o.seat])o.seat='standard';o.suites=0;t.z[k]=zp(o);});});
-  {const im=regionOf(P.sport)!=='world',lo=im?10*0.3048:3.0,hi=im?16*0.3048:5.0,st=im?0.3048:0.25;P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>{const z=t.z[k];if(z)z.rise=Math.min(hi,Math.max(lo,lo+Math.round((z.rise-lo)/st)*st));});});}   // tier gap in whole steps
+  {const im=regionOf(P.sport)!=='world',lo=im?10*0.3048:3.0,hi=im?30*0.3048:9.0;P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>{const z=t.z[k];if(z)z.rise=Math.min(hi,Math.max(lo,z.rise));});});}   // tier gap 10'-0" to 30'-0" (3.0 to 9.0 m); the sizing's inch steps are kept (decision 139)
   if(P.seatRev!==1){P.zt.forEach(t=>GEO.forEach(k=>{const z=t.z[k];if(z&&regionOf(P.sport)==='world')z.seatW=seatSpec(z.seat,P.sport).def;}));P.seatRev=1;}
   if(P.seatRev3!==1){if(regionOf(P.sport)!=='world')P.zt.forEach(t=>GEO.forEach(k=>{const z=t.z[k];if(z)Object.assign(z,{seat:'standard',seatW:22*25.4});}));P.seatRev3=1;}   // American sports: 22 in chairback on every side, once
   if(P.riseRev2!==1){const old=regionOf(P.sport)==='world'?4.0:13*0.3048,nu=REGION_DEF[regionOf(P.sport)].rise;P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>{const z=t.z[k];if(z&&Math.abs(z.rise-old)<1e-6)z.rise=nu;});});P.riseRev2=1;}   // old 13 ft / 4.0 m default moves to the new 10 ft / 3.0 m default, once
@@ -1428,7 +1428,7 @@ function egressRows(){const e=egress();if(!e)return null;const imp=imperial(),ro
   e.tiers.forEach(t=>{const n=`Tier ${t.ti+1}`;
     rows.push([`${n}: aisles`,`${t.aisles} aisles; ${fmt(t.lostA-(t.omit||0))} seats lost to aisles and end-seat space${t.omit?`, ${fmt(t.omit)} left out at the top of corner sections`:''}`,null]);
     rows.push([`${n}: largest section`,`${t.secMax} seats between two aisles; ${imp?`limit ${t.limMin} (IBC ${egBasis()==='open'||egBasis()==='smoke'?'Table 1030.13.2.1':'1030.13.2.1'} at ${L(ibcRow(P.zt[0].z.T).C)} clear, middle sections up to ${AIS().smaxMid}, most ${AIS().smax})`:'Green Guide allows '+t.limMin}${t.over?` (${t.over} section-rows over)`:''}`,t.over===0&&t.secMax<=t.limMin]);
-    {const st=imp?aisleStepSummary(t.ti):null;if(st)rows.push([`${n}: aisle steps`,`${st.ns.map(k=>`${stepName(k)}${k>1?` (${k-1} step${k>2?'s':''} per row)`:''}`).join(' and ')}; aisle risers ${L(st.rhMin)}${st.rhMax-st.rhMin>1?'–'+L(st.rhMax):''}, aisle treads ${L(st.tdMin)}${st.tdMax-st.tdMin>1?'–'+L(st.tdMax):''} (IBC: risers 4"–8", treads 11" min)${st.bad.length?`; ${st.bad.length} rows fail: ${[...new Set(st.bad.map(b=>b.bad))].join(', ')}`:''}${st.strip?`; ${st.strip} riser changes over 3/16" need a marking stripe`:''}`,!st.bad.length]);}
+    {const st=aisleStepSummary(t.ti);if(st)rows.push([`${n}: aisle steps`,`${st.ns.map(k=>`${stepName(k)}${k>1?` (${k-1} step${k>2?'s':''} per row)`:''}`).join(' and ')}; aisle risers ${L(st.rhMin)}${st.rhMax-st.rhMin>1?'–'+L(st.rhMax):''}, aisle treads ${L(st.tdMin)}${st.tdMax-st.tdMin>1?'–'+L(st.tdMax):''} (${STEPRULE().src})${st.bad.length?`; ${st.bad.length} rows fail: ${[...new Set(st.bad.map(b=>b.bad))].join(', ')}`:''}${st.strip?`; ${st.strip} riser changes over ${L(STEPRULE().tol)} need a marking stripe`:''}`,!st.bad.length]);}
     if(t.aMax)rows.push([`${n}: busiest aisle`,`${fmt(t.aMax.q)} seats need ${L(t.aMax.req)}; ${L(t.aMax.w)} provided`,t.aMax.w>=t.aMax.req-0.5]);});
   if(imp)rows.push(['Clear width between rows',`${L(Math.min(...P.zt.slice(0,P.tierCount).flatMap(t=>GEO.map(k=>ibcRow(t.z[k]).C))))} least (row depth less the seat); 12" minimum, + 0.3" per seat over 14 with backrests, 22" covers 100 seats`,null]);
   else rows.push(['Clear width between rows','400 mm minimum seatway clearway (FIFA, Green Guide)',null]);
@@ -1438,20 +1438,23 @@ function egressRows(){const e=egress();if(!e)return null;const imp=imperial(),ro
 // The rise to the next row R: up to 8 in, no aisle step (one riser, the full row tread); over 8 to 16 in, a one-step
 // (2 equal risers, 2 equal treads); over 16 to 24 in, a two-step (3 equal risers, 3 equal treads). Steps sit on the row's tread.
 const AIN_=25.4;
-function aisleStep(tr,j){const r=tr[j],nx=tr[j+1],R=nx&&nx.riser!=null?nx.riser:null,T=r.T;
+// stepped-aisle rule (decision 141). Imperial: IBC 1029.13.2, risers 4-8 in, treads 11 in min. Metric (international sports): provisional
+// 100-200 mm risers and 250 mm goings until the Green Guide / national figures are confirmed. Each row's rise splits into 1, 2 or 3 equal steps.
+const STEPRULE=()=>imperial()?{min:4*AIN_,max:8*AIN_,go:11*AIN_,tol:3/16*AIN_,src:'IBC: risers 4"–8", treads 11" min'}:{min:100,max:200,go:250,tol:5,src:'provisional: risers 100–200 mm, goings 250 mm min; confirm with the Green Guide or national standard'};
+function aisleStep(tr,j){const r=tr[j],nx=tr[j+1],R=nx&&nx.riser!=null?nx.riser:null,T=r.T,S=STEPRULE();
   if(R==null)return {n:1,R:0,T,rh:0,td:T,top:true,bad:null};
-  const e=0.01,n=R<=8*AIN_+e?1:R<=16*AIN_+e?2:3,rh=R/n,td=T/n;   // exact limits (0.01 mm for rounding only)
-  const bad=R<4*AIN_-e?'riser under 4"':R>24*AIN_+e?'riser over 8" (row rise over 24")':td<11*AIN_-e?'tread under 11"':null;
+  const e=0.01,n=R<=S.max+e?1:R<=2*S.max+e?2:3,rh=R/n,td=T/n;   // exact limits (0.01 mm for rounding only)
+  const bad=R<S.min-e?`riser under ${L(S.min)}`:R>3*S.max+e?`riser over ${L(S.max)} (row rise over ${L(3*S.max)})`:td<S.go-e?`tread under ${L(S.go)}`:null;
   return {n,R,T,rh,td,bad};}
 function aisleStepSummary(ti){const zs=GEO.map(k=>ZR[k].filter(r=>r.tier===ti)).filter(t=>t.length>1);if(!zs.length)return null;
   const all=zs.flatMap(t=>t.slice(0,-1).map((_,j)=>aisleStep(t,j)));const ns=[...new Set(all.map(a=>a.n))].sort(),rh=all.map(a=>a.rh),td=all.map(a=>a.td),bad=all.filter(a=>a.bad);
-  let strip=0;zs.forEach(t=>{for(let j=1;j<t.length-1;j++){const a=aisleStep(t,j-1),b=aisleStep(t,j);if(Math.abs(a.rh-b.rh)>3/16*AIN_)strip++;}});
+  let strip=0;zs.forEach(t=>{for(let j=1;j<t.length-1;j++){const a=aisleStep(t,j-1),b=aisleStep(t,j);if(Math.abs(a.rh-b.rh)>STEPRULE().tol)strip++;}});
   return {ns,rhMin:Math.min(...rh),rhMax:Math.max(...rh),tdMin:Math.min(...td),tdMax:Math.max(...td),bad,strip};}
 // Precast aisle steps as closed solids (model metres, plan Y flipped to Y up, origin at the field centre, Z up): one piece per aisle per row,
 // a rectangular block (one-step) or an L-shaped block (two-step) sitting on the row's tread against the riser of the row above, as wide as the
 // aisle. The plan outline follows the rows: across a bend (mitred bend aisles) it takes a vertex at the bend. One source for the isometric
 // views, the SketchUp export and the Revit export.
-function aislePieces(){let AL=null;try{AL=M&&M.AL;}catch(e){}if(!AL||!imperial())return [];const wA=AIS().w/1000,out=[];
+function aislePieces(){let AL=null;try{AL=M&&M.AL;}catch(e){}if(!AL)return [];   /* metric too (decision 141) */const wA=AIS().w/1000,out=[];
   AL.forEach((T,ti)=>Object.entries(T).forEach(([zk,Lz])=>Lz.ais.forEach(ai=>{const w0=cutW(ai,wA);
     const cross=(u,o,w)=>{const sc=chainS(Lz.ch,ai,u)+o,sL=sc-w/2,sR=sc+w/2,ks=chainKinks(Lz.ch,u,0).map(k=>k.s).filter(x=>x>sL+1e-4&&x<sR-1e-4);   // left edge, any bend, right edge
       return [sL,...ks,sR].map(x=>{const p=chainPtS(Lz.ch,x,u);return [p[0],-p[1]];});};
@@ -1555,7 +1558,7 @@ function aisleSvg(){const AL=M.AL;if(!AL||PLAN!=='bowl')return '';const A=AIS(),
   for(const T of AL)for(const Lz of Object.values(T)){const last=Lz.tr.length-1;
     Lz.ais.forEach((ai,i)=>{if(gone.has(ai.id))return;if(ai.cl)cl+=band(Lz,i,0,last,0,0);else a+=strip(Lz,i,0,last,cutW(ai,wA));
       const W2=vomClear(ai)/2000,tw=vomWall()/1000,sa=vSide(ai)/1000;
-      if(imperial())Lz.tr.forEach((r,j)=>{const st=aisleStep(Lz.tr,j),w=cutW(ai,wA),inv=vomAt(Lz,i,j)||!!(Lz.vom[i]&&ai.vr&&ai.vr.cross===j),spans=inv?(sa>0?[[-W2-tw-sa,-W2-tw],[W2+tw,W2+tw+sa]]:[]):ai.cl?[]:[[-w/2,w/2]];   // in a vom: the nosings of the two 36 in side aisles
+      Lz.tr.forEach((r,j)=>{const st=aisleStep(Lz.tr,j),w=cutW(ai,wA),inv=vomAt(Lz,i,j)||!!(Lz.vom[i]&&ai.vr&&ai.vr.cross===j),spans=inv?(sa>0?[[-W2-tw-sa,-W2-tw],[W2+tw,W2+tw+sa]]:[]):ai.cl?[]:[[-w/2,w/2]];   // in a vom: the nosings of the two 36 in side aisles
         for(let k=0;k<st.n;k++){const d=(r.x+k*r.T/st.n)/1000,s=chainS(Lz.ch,ai,d);for(const [o0,o1] of spans){const p=chainPtS(Lz.ch,s+o0,d),q=chainPtS(Lz.ch,s+o1,d);stp+=`M${f(p[0])} ${f(p[1])}L${f(q[0])} ${f(q[1])}`;}}
         if(st.bad&&!inv&&!ai.cl)red+=strip(Lz,i,j,j,w);});
       if(Lz.vom[i]&&ai.vr&&ai.vr.rows.length){const j0=ai.vr.rows[0],j1=ai.vr.rows[ai.vr.rows.length-1];a+=strip(Lz,i,j0,j1,vomCut(ai));
@@ -1715,7 +1718,7 @@ function fitCapacity0(P){
   let lastN=null;const searchN=sh=>{let lo=nT*minR-1,hi=nT*maxR;if(lastN){const a=Math.max(lo,lastN-24),b=Math.min(hi,lastN+24);setRows(b,sh);if(cap()>=P.capTarget){hi=b;setRows(a,sh);if(cap()<P.capTarget)lo=a;}}
       setRows(hi,sh);if(cap()<P.capTarget)return hi;while(hi-lo>1){const m=(lo+hi)>>1;setRows(m,sh);if(cap()>=P.capTarget)hi=m;else lo=m;}setRows(hi,sh);lastN=hi;return hi;};
   const score=()=>{const ZR=solveAll(P),Mx=metrics(P,ZR,chains(P,ZR));let pass=0,all=0;
-    (Mx.AL||[]).forEach((T,ti)=>Object.values(T).forEach(Lz=>{const zr=(ZR[Lz.k]||[]).filter(r=>r.tier===ti);Lz.tr.forEach((r,j)=>{const n=rowSections(Lz,j).seats,q=zr[j];all+=n;if(q&&status(q)==='pass')pass+=n;});}));
+    (Mx.AL||[]).forEach((T,ti)=>Object.values(T).forEach(Lz=>{const zr=(ZR[Lz.k]||[]).filter(r=>r.tier===ti);Lz.tr.forEach((r,j)=>{const n=rowSections(Lz,j).seats,q=zr[j];all+=n;if(q&&status(q)==='pass'&&!overRake(q))pass+=n;   /* a row steeper than the rake limit fails too (decision 142) */});}));
     if(Mx.ADA&&Mx.ADA.secs)Object.values(Mx.ADA.secs).forEach(w=>{const n=+w.wc||0;all+=n;if(w.sight)pass+=n;});   // wheelchair spaces: their line of sight (A117.1 802.9) counts too
     return {pass,all,cap:Mx.cap};};
   const run=sh=>{searchN(sh);tierLinks(P);searchN(sh);const L=tierLinks(P),sc=score();return {sh,L,rows:P.zt.slice(0,nT).map(t=>t.z[GEO[0]].rows),...sc};};
@@ -1785,7 +1788,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.25.05';
+const VERSION='2026.10.26.02';
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2053,7 +2056,7 @@ $('controls').addEventListener('click',e=>{
     const what=x=>{const z=P.zt[x.ti].z[x.k],off=x.dx-(z.tread0??z.tread)/1000;return `${x.dx<0.001?'second riser over the top riser below':Math.abs(off)<0.001?'first riser over the top riser below':`first riser ${ft(Math.abs(off))} ${off>0?'behind':'in front of'} the top riser below`}, ${ft(x.rise)} above the top tread below`;},byT={};ch.forEach(x=>(byT[x.ti]=byT[x.ti]||[]).push(x));
     const lines=Object.entries(byT).map(([ti,xs])=>{const same=xs.length===zoneKeys(P).length&&xs.every(x=>what(x)===what(xs[0]));return same?`Tier ${+ti+1}${zoned(P)?' (every side)':''}: ${what(xs[0])}`:xs.map(x=>`Tier ${+ti+1} ${zoneName(P,x.k,true)}: ${what(x)}`).join('; ');});
     const bt=[...new Set(bad.map(x=>x.ti))].map(ti=>`Tier ${ti+1}`);
-    const sp=FITSPLIT?`: ${FITSPLIT.rows.map((n,i)=>`Tier ${i+1} ${n} rows`).join(', ')}; ${FITSPLIT.pass>=FITSPLIT.all?'every seat meets':`${(100*FITSPLIT.pass/FITSPLIT.all).toFixed(1)}% of seats meet`} the absolute minimum C, seated, wheelchair positions included`:'';
+    const sp=FITSPLIT?`: ${FITSPLIT.rows.map((n,i)=>`Tier ${i+1} ${n} rows`).join(', ')}; ${FITSPLIT.pass>=FITSPLIT.all?'every seat meets':`${(100*FITSPLIT.pass/FITSPLIT.all).toFixed(1)}% of seats meet`} the absolute minimum C (seated, wheelchair positions included) within ${rakeRule()}`:'';
     toast((ok?'Rows sized to hit the target'+sp:'Target is out of reach within 80 rows per tier. Add a tier.')+(lines.length?`. Tiers moved so their front rows meet the absolute minimum C: ${lines.join('; ')}`:'. Tier relationships at their defaults')+(bt.length?`. ${bt.join(', ')} front rows can't reach the minimum over the guard and the tier below; set to the closest`:'')+'.');b.disabled=false;CUR=null;renderControls();update();},40);return;}   /* a few seconds for three tiers: the message first */
   else if(b.id==='reset'){const met=regionOf(P.sport)==='world';
     if(!confirm(met?'Reset every value to the metric defaults (Association Football, FIFA)?':'Reset every value to the imperial defaults (College Football, NCAA)?'))return;
@@ -2152,7 +2155,7 @@ function secVom(zone,ti){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][zone];if(!Lz)return n
 function secPlat(tr){const n=tr.length;if(n<4)return null;const E=P.eye,IN=25.4,p1=tr[n-3],p2=tr[n-2],top=tr[n-1],edge=p1.x+WC_SETBACK,zP=top.z;
   return {p1,p2,top,edge,zP,railC:edge+RAIL_SET,eye:{x:edge+E.wcOff,z:zP+E.wcH},rows:[p1,p2,top]};}
 function secExtras(rows,ti,X,Y,o,xe){const IN=25.4,tr=rows.filter(r=>r.tier===ti),skip=new Set();let s='',top='';if(!o.cut)return {s,top,skip};
-  const pg=secPlat(tr);
+  const pg=wcTier(ti)?secPlat(tr):null;   // platforms at the concourses only (decision 140)
   if(o.cut==='vom'){const v=secVom(o.zone,ti);if(v&&tr.length>v.s+v.k){const sl=slabT(),hd=VHEAD(),t=vomWall(),xs0=tr[v.s].x,xt=tr[v.s+v.k].x,zk=tr[v.s+v.k].z,zf=v.floor;
     for(let j=0;j<v.k;j++)skip.add(tr[v.s+j]);
     const wall=[[xs0,zf],...Array.from({length:v.k+1},(_,j)=>[tr[v.s+j].x,tr[v.s+j].z+hd]),[xt,zf]];
@@ -2632,7 +2635,7 @@ function v3SecAt(e){if(!V3.grp||!M||!M.AL)return null;const el=V3.r.domElement,r
 function v3Pick(el){let d=null,t=0;
   el.addEventListener('pointerdown',e=>{d=[e.clientX,e.clientY,Date.now()];});
   el.addEventListener('pointerup',e=>{if(!d)return;const moved=Math.hypot(e.clientX-d[0],e.clientY-d[1]),dt=Date.now()-d[2];d=null;if(moved>5||dt>600||e.button>0)return;
-    const r=v3SecAt(e);if(!r)return;const no=r.no;if(r.act!=='wc'){secOnOff(no);return;}const S=SECS(),x=S[no]||(S[no]={});if(x.wc)delete x.wc;else x.wc=true;secTidy(no);update();toast(`Section ${no}: wheelchair platform ${S[no]&&S[no].wc?'added':'removed'}.`);});
+    const r=v3SecAt(e);if(!r)return;const no=r.no;if(r.act!=='wc'){secOnOff(no);return;}if(!wcTier(secTier(no))){toast('Wheelchair platforms go at the main and upper concourses only, not at the top of the bowl.');return;}const S=SECS(),x=S[no]||(S[no]={});if(x.wc)delete x.wc;else x.wc=true;secTidy(no);update();toast(`Section ${no}: wheelchair platform ${S[no]&&S[no].wc?'added':'removed'}.`);});
   el.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType==='touch')return;const now=Date.now();if(now-t<120)return;t=now;const r=v3SecAt(e);el.style.cursor=r?'pointer':'';el.title=!r?'':r.act==='wc'?`Section ${r.no}: click to add or remove its wheelchair platform`:r.act==='off'?`Section ${r.no}: click to switch it off`:`Section ${r.no} (off): click to switch it back on`;});}
 function v3Frustum(){const el=$('v3d'),a=(el.clientWidth||1)/(el.clientHeight||1),o=V3.ortho,h=V3.oh/2;o.left=-h*a;o.right=h*a;o.top=h;o.bottom=-h;o.updateProjectionMatrix();}
 function v3Size(){if(!V3.r)return;const el=$('v3d'),w=el.clientWidth,h=el.clientHeight;if(!w||!h)return;V3.r.setSize(w,h,false);V3.persp.aspect=w/h;V3.persp.updateProjectionMatrix();v3Frustum();v3Render();}
@@ -3006,15 +3009,19 @@ function secAdjust(P,AL){const S=P.secs||{},IN=25.4,out={secs:{},wc:0,comp:0,los
 function adaFinish(D,cap){D.seats=cap;D.total=cap+D.wc;D.req=wcReq(D.total);D.reqComp=D.req;D.reqAisle=Math.ceil(D.aisleSeats*0.05);D.over=D.req?(D.wc/D.req-1):0;
   D.ok=D.wc>=D.req&&D.comp>=D.reqComp;D.disp=Object.keys(D.byStand).length;return D;}
 // Auto: platforms spread evenly round each tier, in proportion to the tier's seats, until the requirement plus the margin is met
+// wheelchair platforms only at the main and upper concourses (decision 140): the top of Tier 1, and the top of every tier below the top
+// tier; never at the top of the bowl (the top of the highest tier), except a one-tier bowl, whose main concourse is at its top
+const wcTier=ti=>ti===0||ti<P.tierCount-1,secTier=no=>Math.floor(+no/100)-1;
+function wcClean(){const S=P.secs||{};let n=0;Object.keys(S).forEach(k=>{if(S[k].wc&&!wcTier(secTier(k))){delete S[k].wc;n++;if(!Object.keys(S[k]).length)delete S[k];}});return n;}
 function adaAuto(){const S=SECS(),mg=(P.adaMargin??25)/100;Object.keys(S).forEach(k=>{if(S[k].wc){delete S[k].wc;if(!Object.keys(S[k]).length)delete S[k];}});
-  update();const D=M.ADA;if(!D)return;const target=Math.ceil(wcReq(M.cap)*(1+mg)),tot=M.tierSeats.reduce((a,b)=>a+b,0)||1;
-  for(let ti=0;ti<P.tierCount;ti++){const list=sectionList(ti).filter(q=>!(S[q.no]&&S[q.no].off));if(!list.length)continue;
+  update();const D=M.ADA;if(!D)return;const target=Math.ceil(wcReq(M.cap)*(1+mg)),tot=M.tierSeats.reduce((a,b,i)=>a+(wcTier(i)?b:0),0)||1;   // shared over the concourse tiers only
+  for(let ti=0;ti<P.tierCount;ti++){if(!wcTier(ti))continue;const list=sectionList(ti).filter(q=>!(S[q.no]&&S[q.no].off));if(!list.length)continue;
     const need=Math.ceil(target*M.tierSeats[ti]/tot),per=Math.max(1,(()=>{const q=list.reduce((a,b)=>b.lo>a.lo?b:a);const pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a);return wcModules(pc.raw,q.mid.sw).wc;})());
     const cnt=Math.min(list.length,Math.ceil(need/per)),wt=list.map(q=>q.mid.raw||q.hi||1),tw=wt.reduce((a,b)=>a+b,0),cum=[];wt.reduce((a,w,i)=>(cum[i]=a+w/2,a+w),0);   // evenly by length round the tier
     const used=new Set();for(let i=0;i<cnt;i++){const at=(i+0.5)*tw/cnt;let bi=0;cum.forEach((c,j)=>{if(Math.abs(c-at)<Math.abs(cum[bi]-at))bi=j;});while(used.has(bi))bi=(bi+1)%list.length;used.add(bi);(S[list[bi].no]=S[list[bi].no]||{}).wc=true;}}
   update();
   for(let guard=0;guard<40&&M.ADA&&M.ADA.wc<Math.ceil(M.ADA.req*(1+mg));guard++){let added=false;   // top up where the estimate fell short
-    for(let ti=0;ti<P.tierCount&&!added;ti++){const q=sectionList(ti).find(q=>!(S[q.no]&&(S[q.no].wc||S[q.no].off)));if(q){(S[q.no]=S[q.no]||{}).wc=true;added=true;}}if(!added)break;update();}}
+    for(let ti=0;ti<P.tierCount&&!added;ti++){if(!wcTier(ti))continue;const q=sectionList(ti).find(q=>!(S[q.no]&&(S[q.no].wc||S[q.no].off)));if(q){(S[q.no]=S[q.no]||{}).wc=true;added=true;}}if(!added)break;update();}}
 // plan overlay: switched-off sections become open space (the stand is blanked and the background grid shows through, with a line on
 // each cut along the aisle); wheelchair platforms are a green band over the two infill rows. Outlines are built row by row on the
 // aisle stations of each row, so the cut edges follow the aisles exactly (chamfered corners stretch with depth).
@@ -3046,7 +3053,7 @@ function wcHitSvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},R
     sectionList(ti).forEach(q=>{const e=S[q.no]||{};
       if(e.off){const g=secGeom(ti,q.key,0,nr-1,RS,keep);if(g.poly)o+=`<path class="sechit off" data-onsec="${q.no}" d="${g.poly}"><title>Section ${q.no} (off): click to switch it back on</title></path>`;return;}   /* an open section: click to switch it back on */
       if(nr>=5){const g=secGeom(ti,q.key,0,nr-4,RS,true);if(g.poly)o+=`<path class="sechit" data-offsec="${q.no}" d="${g.poly}"><title>Section ${q.no}: click to switch it off (open space)</title></path>`;}   /* the front rows: switch the section off (decision 86) */
-      if(nr<4)return;const g=secGeom(ti,q.key,nr-3,nr-1,RS,true);if(!g.poly)return;
+      if(nr<4||!wcTier(ti))return;const g=secGeom(ti,q.key,nr-3,nr-1,RS,true);if(!g.poly)return;
       o+=`<path class="wchit" data-wcsec="${q.no}" d="${g.poly}"><title>Section ${q.no}: click to ${e.wc?'remove the':'add a'} wheelchair platform</title></path>`;});});
   return o?`<g>${o}</g>`:'';}
 // switch a section off (open space) or back on, from the bowl plan or the 3D view (decision 86); the Sections panel buttons do the same
@@ -3067,7 +3074,7 @@ function secPanelHTML(){if(!M.AL||!zoned(P))return '<p class="hint" style="paddi
   let chk='';if(D){const pct=D.req?Math.round(D.over*100):0,ok=v=>v?'<span style="color:#0B6E4F">meets</span>':'<span style="color:#C0262D">short</span>';
     const tiers=D.byTier.slice(0,P.tierCount).map((t,i)=>`Tier ${i+1}: ${t.wc} in ${t.secs} section${t.secs===1?'':'s'}`).join('; ');
     const stands=Object.entries(D.byStand).map(([k,v])=>`${k} ${v.wc}`).join(', ')||'none';
-    const lowT=D.byTier.slice(0,P.tierCount).some(t=>!t.wc),sightBad=Object.values(D.secs).filter(x=>!x.sight).map(x=>x.no),shallow=Object.values(D.secs).filter(x=>!x.deep).map(x=>x.no);
+    const lowT=D.byTier.slice(0,P.tierCount).some((t,i)=>wcTier(i)&&!t.wc),sightBad=Object.values(D.secs).filter(x=>!x.sight).map(x=>x.no),shallow=Object.values(D.secs).filter(x=>!x.deep).map(x=>x.no);
     chk=`<table class="fixed wrap" style="margin:6px 0 10px"><thead><tr><th>Accessible seating</th><th>Required</th><th>Provided</th><th></th></tr></thead><tbody>
       <tr><td>Wheelchair spaces (IBC Table 1108.2.2.1; 2010 ADA 221.2.1.1), for ${fmtN(D.total)} spectators</td><td>${fmtN(D.req)}</td><td>${fmtN(D.wc)}${D.req&&D.wc?` (${pct>=0?'+':''}${pct}%)`:''}</td><td>${ok(D.wc>=D.req)}</td></tr>
       <tr><td>Companion seats (1 per wheelchair space; ADA 221.3)</td><td>${fmtN(D.reqComp)}</td><td>${fmtN(D.comp)}</td><td>${ok(D.comp>=D.reqComp)}</td></tr>
@@ -3082,7 +3089,7 @@ function secPanelHTML(){if(!M.AL||!zoned(P))return '<p class="hint" style="paddi
     const set=md&&N[md.id]!=null,cnt=md?`<input type="number" data-secn="${md.id}" min="1" max="${A.smax}" step="1" value="${set?md.n:(q.lo===q.hi?q.lo:md.n)}" style="width:58px${set?';border-color:#E8590C':''}"${e.off?' disabled':''}>${set?` <button data-secnclr="${md.id}" title="Back to the computed size">↺</button>`:''}`:(q.lo===q.hi?q.lo:q.lo+'–'+q.hi);
     const over=md&&md.n>A.smax;
     return `<tr data-secrow="${q.no}" class="${SECT_HL===q.no?'hl':''}"><td><b>${q.no}</b></td><td>${st}</td><td class="${over?'steep':''}">${cnt}</td><td><input type="checkbox" data-secon="${q.no}"${e.off?'':' checked'} aria-label="Section ${q.no} on"></td>`
-      +`<td><input type="checkbox" data-secwc="${q.no}"${e.wc?' checked':''}${e.off?' disabled':''} aria-label="Section ${q.no} wheelchair platform"></td><td>${w&&!e.off?`${w.wc} / ${w.comp}${w.single?' <span class="hint" style="margin:0">(+1 single)</span>':''}`:''}</td>`
+      +`<td><input type="checkbox" data-secwc="${q.no}"${e.wc?' checked':''}${e.off||!wcTier(secTier(q.no))?' disabled title="Platforms only at the main and upper concourses"':''} aria-label="Section ${q.no} wheelchair platform"></td><td>${w&&!e.off?`${w.wc} / ${w.comp}${w.single?' <span class="hint" style="margin:0">(+1 single)</span>':''}`:''}</td>`
       +`<td>${w&&!e.off?(w.sight&&w.deep?'✓':'<span style="color:#C0262D">'+(!w.sight?'sightline':'depth')+'</span>'):''}</td></tr>`;}).join('');
   return `<div class="seg" role="group" aria-label="Tier" style="margin:6px 0">${tabs}</div>${chk}${ctl}
     <div class="tablewrap" style="max-height:420px"><table class="fixed" id="secTable"><thead><tr><th>Section</th><th>Stand</th><th>Seats per row</th><th>On</th><th>Platform</th><th>Wheelchair / companion</th><th>Check</th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -3275,7 +3282,7 @@ function plotEnlarged(sh,force,test){const A=swArea(sh),aw=A.aw-13*A.u,ah=A.ah; 
   const kx0=13*u,dx=A.x0+(A.aw-kx0-fit.w)/2,dy=A.y0+(ah-fit.h)/2,kbot=kp?kp.bot:A.y0,kcx=A.x0+A.aw-12*u;
   const legend=(ti,k2)=>{const zs=GEO.map(q=>M.AL[ti]&&M.AL[ti][q]).filter(Boolean);if(!zs.length)return '';const cap=Math.min(...zs.map(z=>nmaxZone(P.zt[ti].z[z.k]))),ibc=imperial()?Math.min(...zs.map(z=>ibcRow(P.zt[ti].z[z.k]).n)):cap;
     const tx=kcx+1.5*u,line=(row,t)=>swT(tx,swBase(kbot+row*u,u,9,k2),t,{pt:9,k:k2}),sw=.75*u/0.25/72;   /* the legend (decision 126): 9 pt, as the seat lines above; the same place on every enlarged sheet */
-    return swRect(kcx,kbot+6.25*u,u,u/2,'#FF8A8A','#111111',sw).replace('<rect ','<rect fill-opacity=".45" ')+line(6,'Row over the IBC maximum')+line(7,`of ${ibc} seats per row`)
+    return swRect(kcx,kbot+6.25*u,u,u/2,'#FF8A8A','#111111',sw).replace('<rect ','<rect fill-opacity=".45" ')+line(6,imperial()?'Row over the IBC maximum':'Row over the maximum')+line(7,`of ${ibc} seats per row`)
       +swRect(kcx,kbot+9.25*u,u,u/2,'none','#C0392B',sw).replace('<rect ','<rect stroke-dasharray="0.04 0.03" ')+line(9,`Seat left out by the ${cap}-seat`)+line(10,'section cap (red +n by the row)');};
   const lb=(()=>{let ti,key,no;if(ENL.one){ti=ENL.one.ti;key=ENL.one.key;no=ENL.one.no;}else{ti=Math.min(ENL.tier,P.tierCount-1);const E=enlargedData(ti,enlSide());if(!E)return '';key=E.L0.a.id+'_'+E.R0.a.id;const q=sectionList(ti).find(x=>x.key===key);if(!q)return '';no=q.no;}
     const rs=secRows(ti,key),on=rs.filter(n=>n>0),lo=Math.min(...on),hi=Math.max(...on),tot=rs.reduce((a,b)=>a+b,0),k2=u/0.25;
@@ -3496,7 +3503,7 @@ function zoneTable(){
       return `<td>${zs[k]?fmt(zs[k])+(r&&r.seat==='bench'?' <span class="muted">bench</span>':''):'<span class="muted">open</span>'}</td>`;}).join('')}<td><b>${fmt(M.tierSeats[ti]||0)}</b></td></tr>`;}
   return h+`<tr><td>Total</td>${keys.map(k=>`<td>${fmt(tot(k))}</td>`).join('')}<td><b>${fmt(M.cap)}</b></td></tr></tbody></table>`;}
 function update(){
-  LEG2=RD().leg;persist();if(typeof pdfBgUI==='function')pdfBgUI();ZR=solveAll(P);if(!zoned(P))P.sec='T';if(!ZR[P.sec].length)P.sec=zoneKeys(P).find(k=>ZR[k].length)||'T';
+  LEG2=RD().leg;wcClean();persist();if(typeof pdfBgUI==='function')pdfBgUI();ZR=solveAll(P);if(!zoned(P))P.sec='T';if(!ZR[P.sec].length)P.sec=zoneKeys(P).find(k=>ZR[k].length)||'T';
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);
   const pct=Math.min(100,M.cap/P.capTarget*100),ok=M.cap>=P.capTarget;
   $('cap').innerHTML=`<div><div class="big">${fmt(M.cap)}</div><div class="lbl">Estimated seats</div></div><div><div class="bar"><i class="${ok?'ok':''}" style="width:${pct}%"></i></div><div class="lbl" style="margin-top:5px">${ok?'Meets':'Short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</div></div><div class="cap-side">${M.tierSeats.map((s,i)=>`Tier ${i+1}: ${fmt(s)}`).join('<br>')}</div>`;
@@ -3845,11 +3852,11 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   const xv=xR+fs*1.5,cl=f.z-LEG2-lb.z;
   K.dim([xv,lb.z],[xv,f.z],{lab:`Tier ${tu} top tread to Tier ${tu+1} bottom tread`,val:L(f.z-lb.z),ea:[lb.x+lb.T,lb.z],eb:[f.x+f.T,f.z],ctl:'RISE:'+tu,side:-1});
   K.dim([f.x-fs*1.2,f.z-LEG2],[f.x-fs*1.2,f.z],{lab:'Leg wall',val:L(LEG2),ref:'leg',ea:[f.x,f.z-LEG2],eb:[f.x,f.z]});
-  K.dim([f.x-fs*1.2,lb.z],[f.x-fs*1.2,f.z-LEG2],{lab:'Clear height',val:L(cl),ref:'headroom',ea:[Math.min(f.x,cx0),lb.z],eb:[f.x,f.z-LEG2],fill:cl<P.minHead-0.5?'var(--fail)':null});
+  const xc=Math.max(f.x,pg?pg.eye.x+28*IN:-Infinity)+fs*1.4;K.dim([xc,lb.z],[xc,f.z-LEG2],{lab:'Clear height',val:L(cl),ref:'headroom',ea:[f.x,lb.z],eb:[f.x+slabT(),f.z-LEG2],fill:cl<P.minHead-0.5?'var(--fail)':null,side:-1});   // right of the leg wall, clear of the platform's wheelchair spectator
   K.dim([f.x+RAIL_SET+fs*1.1,f.z],[f.x+RAIL_SET+fs*1.1,f.z+P.railH],{lab:'Guard',val:L(P.railH),ea:[f.x+RAIL_SET,f.z],eb:[f.x+RAIL_SET,f.z+P.railH],side:-1});
   // the wheelchair platform: its height over the row in front, the wheelchair eye, the setback and the eye distance behind the platform face
   if(pg){const sd=lo[n-4];if(sd){K.dim([sd.x-fs*1.2,sd.z],[sd.x-fs*1.2,pg.zP],{lab:`Platform over row ${sd.row}`,val:L(pg.zP-sd.z),ref:'wcplat',ea:[sd.x+sd.T,sd.z],eb:[pg.edge,pg.zP]});}
-    K.dim([pg.eye.x+fs*1.4,pg.zP],[pg.eye.x+fs*1.4,pg.eye.z],{lab:'Wheelchair eye',val:L(E.wcH),ea:[pg.eye.x,pg.zP],eb:[pg.eye.x,pg.eye.z],side:-1});}
+    K.dim([pg.edge-fs*1.4,pg.zP],[pg.edge-fs*1.4,pg.eye.z],{lab:'Wheelchair eye',val:L(E.wcH),ea:[pg.edge,pg.zP],eb:[pg.eye.x-hr*1.2,pg.eye.z]});}   // left of the platform guard, clear of the wheelchair figure
   // horizontal, below: the top tread below, the riser offset between the tiers, the concourse, the platform setback and depth, the first tread above
   const yb=a0.z-t-fs*1.6,zb=x=>a0.z-t;
   if(pg){K.dim([pg.edge,yb],[pg.top.x,yb],{lab:'Platform',val:L(pg.top.x-pg.edge),ea:[pg.edge,pg.zP],eb:[pg.top.x,pg.zP],side:-1});
