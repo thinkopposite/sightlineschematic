@@ -81,7 +81,7 @@ summary{cursor:pointer;font-weight:650;font-size:15px;font-stretch:85%}
 .planhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 14px;margin:20px 0 8px}
 .planhead h3,.opthead{font-size:15px;font-weight:650;font-stretch:85%;margin:0}
 .opthead{margin:20px 0 8px}
-#plan svg{max-height:82vh}
+#plan svg{max-height:82vh;touch-action:none}#plan.pz-on svg{cursor:grab}#plan.pz-drag svg{cursor:grabbing}
 #plan svg.portrait{max-height:150vh}
 #plan text{font-family:inherit}
 .vgrid{display:grid;grid-template-columns:minmax(120px,170px) 1fr;column-gap:8px;row-gap:4px;align-items:center;margin:2px 0 6px}
@@ -365,8 +365,8 @@ td{border-bottom:1px solid var(--line)}
     <p class="group">Bowl</p>
     <div class="planhead"><span class="bub" id="bubPlan">E</span><h3 id="planTitle">Plan</h3>
       <p class="capt">Stands coloured by seat type, with buffer depths and row numbers.</p>
-      <div><div class="seg" id="planTabs" role="group" aria-label="Plan view"><button data-plan="field" aria-pressed="false">Field layout</button><button data-plan="bowl" aria-pressed="true" class="on">Bowl plan</button></div><div class="seg"><button id="seatTog" aria-pressed="false" title="Draw every seat at its true width (screen only)">Show seats</button></div></div></div>
-    <div class="panel" id="plan"></div>
+      <div><div class="seg" id="planTabs" role="group" aria-label="Plan view"><button data-plan="field" aria-pressed="false">Field layout</button><button data-plan="bowl" aria-pressed="true" class="on">Bowl plan</button></div><div class="seg"><button id="seatTog" aria-pressed="false" title="Draw every seat at its true width (screen only)">Show seats</button></div><div class="seg" id="pzCtl" role="group" aria-label="Zoom"><button data-pz="out" aria-label="Zoom out" title="Zoom out">−</button><button data-pz="fit" title="Fit the whole plan" id="pzVal">100%</button><button data-pz="in" aria-label="Zoom in" title="Zoom in">+</button></div></div></div>
+    <div class="panel" id="plan" title="Ctrl / ⌘ + wheel or pinch to zoom; drag to pan when zoomed in"></div>
     <div class="planhead"><span class="bub" id="bub3d">G</span><h3>3D view</h3>
       <p class="capt" id="v3Note">Live model of the bowl. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom. Click (tap) a section's back rows to add or remove its wheelchair platform, its front rows to switch it off, and an open section to switch it back on.</p>
       <div><div id="v3Tabs"><div class="seg" role="group" aria-label="Camera"><button data-v3p="persp" class="on" title="Perspective">Perspective</button><button data-v3p="ortho" title="Parallel projection: no vanishing points, true for measuring (SketchUp: Camera, Parallel Projection)">Parallel</button></div>
@@ -1816,7 +1816,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.27.03';
+const VERSION='2026.10.27.05';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 function spectScale(){const J=JUNSC,sv=document.querySelector('#junction svg');if(!J||!sv)return;const k=sv.getBoundingClientRect().width/J.W;if(!(k>0))return;
   document.querySelectorAll('#spect svg[data-w]').forEach(e=>{const px=+e.dataset.w*k;e.style.width=px+'px';e.style.maxWidth='none';e.parentNode.style.width=Math.max(px,240)+'px';});}
@@ -2939,6 +2939,19 @@ function drawSpectator(mode,o={}){
   return s+K.out()+'</svg>';
 }
 let PLAN='bowl',PLANROT=0;
+// plan zoom and pan (decision 152): screen only; the drawing's own viewBox is kept as data-vb0 and the view is a window into it (zoom k, centre u,v as fractions)
+let PZ={k:1,u:.5,v:.5};const PZMAX=40;
+function pzVB0(svg){if(!svg.dataset.vb0)svg.dataset.vb0=svg.getAttribute('viewBox');return svg.dataset.vb0.split(/[\s,]+/).map(Number);}
+function pzApply(){const svg=document.querySelector('#plan > svg');if(!svg)return;const [x0,y0,w0,h0]=pzVB0(svg);PZ.k=Math.max(1,Math.min(PZMAX,PZ.k));
+  const w=w0/PZ.k,h=h0/PZ.k;PZ.u=Math.max(w/w0/2,Math.min(1-w/w0/2,PZ.u));PZ.v=Math.max(h/h0/2,Math.min(1-h/h0/2,PZ.v));
+  svg.setAttribute('viewBox',`${(x0+PZ.u*w0-w/2).toFixed(3)} ${(y0+PZ.v*h0-h/2).toFixed(3)} ${w.toFixed(3)} ${h.toFixed(3)}`);
+  const pl=$('plan');pl.classList.toggle('pz-on',PZ.k>1.001);const v=$('pzVal');if(v)v.textContent=Math.round(PZ.k*100)+'%';}
+// zoom by f about a screen point (clientX, clientY), or the centre
+function pzZoom(f,cx,cy){const svg=document.querySelector('#plan > svg');if(!svg)return;const [x0,y0,w0,h0]=pzVB0(svg),r=svg.getBoundingClientRect();
+  let p=null;if(cx!=null){const m=svg.getScreenCTM();if(m){const q=svg.createSVGPoint();q.x=cx;q.y=cy;p=q.matrixTransform(m.inverse());}}
+  const k1=Math.max(1,Math.min(PZMAX,PZ.k*f)),w=w0/PZ.k,h=h0/PZ.k,vx=x0+PZ.u*w0-w/2,vy=y0+PZ.v*h0-h/2;if(!p)p={x:vx+w/2,y:vy+h/2};
+  const w1=w0/k1,h1=h0/k1,nx=p.x-(p.x-vx)*w1/w,ny=p.y-(p.y-vy)*h1/h;PZ={k:k1,u:(nx+w1/2-x0)/w0,v:(ny+h1/2-y0)/h0};pzApply();}
+new MutationObserver(()=>pzApply()).observe(document.getElementById('plan')||document.body,{childList:true});
 // The plan is always drawn north up: rotate the drawing so the side facing north sits at the top.
 const planRot=()=>zoned(P)&&P.planOri!=='h'?90:0;               // vertical: north up; landscape: north left
 const rotPt=(x,y,t)=>{const r=t*Math.PI/180,c=Math.round(Math.cos(r)),s=Math.round(Math.sin(r));return [x*c-y*s,x*s+y*c];};
@@ -3304,7 +3317,7 @@ function cornerScale(sh,aw,ah){let Wc=0,Hc=0;for(let t=0;t<P.tierCount;t++){cons
 function seatsSvg(){if(!SHOWSEATS||!M.AL||PLAN!=='bowl')return '';const A=AIS(),gp=(A.gap||0)/1000,cb=(A.chairBack??2*25.4)/1000,cd=(A.chairDown||24*25.4)/1000,f=v=>v.toFixed(3);let p='';
   M.AL.forEach((T,ti)=>{const nr=Math.max(0,...Object.values(T).map(z=>z.tr.length)),smap=secNoMap(ti),SS=P.secs||{};for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{const e=SS[smap[sc.l+'_'+sc.r]];if(e&&e.off)return;
     for(const {pc,s0,sw} of sectionSeats(T,sc,j)){if(e&&e.wc){const L=pc.Lz.tr.length;if(j===L-3||j===L-2)continue;}const r=pc.Lz.tr[j],Lz=pc.Lz,d1=(r.x+r.T)/1000+cb-cd,d2=(r.x+r.T)/1000+cb;
-      const P1=chainPtS(Lz.ch,s0,d1),Q=chainPtS(Lz.ch,s0+0.01,d1),P4=chainPtS(Lz.ch,s0,d2),tl=Math.hypot(Q[0]-P1[0],Q[1]-P1[1])||1,tx=(Q[0]-P1[0])/tl*sw,ty=(Q[1]-P1[1])/tl*sw,P2=[P1[0]+tx,P1[1]+ty],P3=[P4[0]+tx,P4[1]+ty];   // straight from the seat's start, so a seat at a stand joint keeps its width
+      const P1=chainPtS(Lz.ch,s0,d1),Q=chainPtS(Lz.ch,s0+0.01,d1),P4r=chainPtS(Lz.ch,s0,d2),tl=Math.hypot(Q[0]-P1[0],Q[1]-P1[1])||1,ux=(Q[0]-P1[0])/tl,uy=(Q[1]-P1[1])/tl,tx=ux*sw,ty=uy*sw,sg=((P4r[0]-P1[0])*-uy+(P4r[1]-P1[1])*ux)>=0?1:-1,P4=[P1[0]-uy*sg*(d2-d1),P1[1]+ux*sg*(d2-d1)],P2=[P1[0]+tx,P1[1]+ty],P3=[P4[0]+tx,P4[1]+ty];   // straight from the seat's start, square to the row (decision 153), so a seat at a stand joint keeps its width
       p+=`M${f(P1[0])} ${f(P1[1])}L${f(P2[0])} ${f(P2[1])}L${f(P3[0])} ${f(P3[1])}L${f(P4[0])} ${f(P4[1])}Z`;}});});
   return `<path d="${p}" fill="none" stroke="var(--ink)" stroke-width="0.25" opacity=".7" vector-effect="non-scaling-stroke"/>`;}
 // PDF sheet: the enlarged section plan at the largest standard scale that fits
@@ -3523,7 +3536,7 @@ function drawPlan(o={}){
   }
   return s+(t?`<g transform="rotate(${t})">${body}</g>`:body)+over+'</svg>';
 }
-$('planTabs').addEventListener('click',e=>{const b=e.target.closest('[data-plan]');if(!b)return;PLAN=b.dataset.plan;
+$('planTabs').addEventListener('click',e=>{const b=e.target.closest('[data-plan]');if(!b)return;PLAN=b.dataset.plan;PZ={k:1,u:.5,v:.5};
   document.querySelectorAll('#planTabs [data-plan]').forEach(x=>{const on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on);});
   $('plan').innerHTML=drawPlan();});
 function setTierColor(i,v){v=String(v).trim();if(!v.startsWith('#'))v='#'+v;
@@ -3531,8 +3544,22 @@ function setTierColor(i,v){v=String(v).trim();if(!v.startsWith('#'))v='#'+v;
   if(!Array.isArray(P.tierColors))P.tierColors=TIER_COL.slice();P.tierColors[i]=v.toUpperCase();renderControls();update();}
 $('controls').addEventListener('change',e=>{const t=e.target;if(t.dataset.tcol!=null)setTierColor(+t.dataset.tcol,t.value);else if(t.dataset.tcolpick!=null)setTierColor(+t.dataset.tcolpick,t.value);});
 $('controls').addEventListener('click',e=>{if(e.target.id==='tcolReset'){P.tierColors=TIER_COL.slice();renderControls();update();}});
-$('enlTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.enlt!=null)ENL.tier=+b.dataset.enlt;if(b.dataset.enls)ENL.side=b.dataset.enls;update();});
+$('enlTabs').addEventListener('change',e=>{if(e.target.id!=='enlPick')return;ENL.pick=+e.target.value||null;update();});
+$('enlTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ENL.pick=null;if(b.dataset.enlt!=null)ENL.tier=+b.dataset.enlt;if(b.dataset.enls)ENL.side=b.dataset.enls;update();});
 $('enlcTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.enlct!=null)CENL.tier=+b.dataset.enlct;if(b.dataset.enlc)CENL.corner=b.dataset.enlc;update();});
+$('pzCtl').addEventListener('click',e=>{const b=e.target.closest('[data-pz]');if(!b)return;const a=b.dataset.pz;if(a==='fit'){PZ={k:1,u:.5,v:.5};pzApply();}else pzZoom(a==='in'?1.6:1/1.6);});
+{const pl=$('plan');let drag=null,moved=false;const pts=new Map();
+  pl.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey)||!e.target.closest('svg'))return;e.preventDefault();pzZoom(Math.exp(-e.deltaY*(e.deltaMode?0.05:0.002)),e.clientX,e.clientY);},{passive:false});
+  pl.addEventListener('pointerdown',e=>{const svg=e.target.closest('#plan > svg');if(!svg)return;pts.set(e.pointerId,[e.clientX,e.clientY]);
+    if(pts.size===2){const [a,b]=[...pts.values()];drag={pinch:Math.hypot(a[0]-b[0],a[1]-b[1])};return;}
+    if(PZ.k<=1.001||e.button!==0)return;drag={x:e.clientX,y:e.clientY,u:PZ.u,v:PZ.v};moved=false;});
+  pl.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId)||!drag)return;pts.set(e.pointerId,[e.clientX,e.clientY]);const svg=pl.querySelector(':scope > svg');if(!svg)return;
+    if(drag.pinch!=null&&pts.size===2){const [a,b]=[...pts.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(d>0){pzZoom(d/drag.pinch,(a[0]+b[0])/2,(a[1]+b[1])/2);drag.pinch=d;}moved=true;return;}
+    const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(!moved&&Math.hypot(dx,dy)<4)return;if(!moved){moved=true;pl.classList.add('pz-drag');try{pl.setPointerCapture(e.pointerId);}catch(_){}}
+    const r=svg.getBoundingClientRect(),[,,w0,h0]=pzVB0(svg),s=Math.min(r.width/(w0/PZ.k),r.height/(h0/PZ.k));PZ.u=drag.u-dx/s/w0;PZ.v=drag.v-dy/s/h0;pzApply();});
+  const end=e=>{pts.delete(e.pointerId);if(pts.size<2&&drag&&drag.pinch!=null)drag=null;if(!pts.size){drag=null;pl.classList.remove('pz-drag');}};
+  pl.addEventListener('pointerup',end);pl.addEventListener('pointercancel',end);
+  pl.addEventListener('click',e=>{if(moved){e.stopPropagation();e.preventDefault();moved=false;}},true);}   // a drag is not a click on a section
 $('seatTog').addEventListener('click',e=>{SHOWSEATS=!SHOWSEATS;e.target.classList.toggle('on',SHOWSEATS);e.target.setAttribute('aria-pressed',SHOWSEATS);$('plan').innerHTML=drawPlan();});
 
 $('detTabs').addEventListener('click',e=>{const b=e.target.closest('[data-dm]');if(!b)return;DETMODE=b.dataset.dm;update();});
@@ -3608,9 +3635,12 @@ function update(){
    sp.innerHTML=SPECT_MODES.map(m=>{let d=drawSpectator(m,J?{fs:J.fs}:{});const w=J?+(d.match(/viewBox="0 0 ([\d.]+)/)||[0,0])[1]:0;if(J&&w)d=d.replace('<svg ',`<svg data-w="${w}" style="display:block;width:100%" `);
      return `<div${J&&w?` data-w="${w}"`:''}><div class="lab"><b>${SPECT_NAMES[m]}</b>, ${enlargedWhere(m)}</div>${d}${tab(m)}</div>`;}).join('');
    spectScale();}
-  {const ok=!!M.AL&&zoned(P);$('enl').innerHTML=drawEnlarged();$('enlTitle').textContent=ok?enlargedTitle():'Enlarged plan: typical section';
-   $('enlTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlt="${i}" class="${Math.min(ENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
-     +[westKey(),eastKey(),GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='S')||'R'].map(k=>`<button data-enls="${k}" class="${enlSide()===k?'on':''}">${zoneName(P,k)}</button>`).join(''):'';
+  {const ok=!!M.AL&&zoned(P);ENL.one=null;if(ok&&ENL.pick){const ti=Math.floor(ENL.pick/100)-1,q=ti<P.tierCount?sectionList(ti).find(x=>x.no===ENL.pick):null;   // a section picked from the list (decision 153)
+     if(q&&!((P.secs||{})[q.no]||{}).off){const g=uniqueSections().find(u=>u.nos.includes(q.no));ENL.one={ti,key:q.key,no:q.no,same:g?g.nos.filter(n=>n!==q.no):[],nos:g?g.nos:[q.no]};}else ENL.pick=null;}
+   $('enl').innerHTML=drawEnlarged();$('enlTitle').textContent=ok?enlargedTitle():'Enlarged plan: typical section';
+   $('enlTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlt="${i}" class="${!ENL.pick&&Math.min(ENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
+     +[westKey(),eastKey(),GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='S')||'R'].map(k=>`<button data-enls="${k}" class="${!ENL.pick&&enlSide()===k?'on':''}">${zoneName(P,k)}</button>`).join('')
+     +`<select id="enlPick" aria-label="Any section" title="Show any section" style="margin-left:8px"><option value="">Any section…</option>${Array.from({length:P.tierCount},(_,ti)=>`<optgroup label="Tier ${ti+1}">${sectionList(ti).filter(q=>!((P.secs||{})[q.no]||{}).off).sort((a,b)=>a.no-b.no).map(q=>`<option value="${q.no}"${ENL.pick===q.no?' selected':''}>${q.no}, ${zoneName(P,q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a).Lz.k)}</option>`).join('')}</optgroup>`).join('')}</select>`:'';
    $('enlc').innerHTML=ok?drawCornerEnlarged():'<p class="empty" style="padding:16px">Choose the computed aisle layout to see a typical corner.</p>';$('enlcTitle').textContent=ok?cornerTitle():'Enlarged plan: typical corner';
    $('enlcTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlct="${i}" class="${Math.min(CENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
      +Object.keys(CORNERS).map(c=>`<button data-enlc="${c}" class="${enlCorner()===c?'on':''}" title="${CORNERS[c]} corner">${c}</button>`).join(''):'';}
