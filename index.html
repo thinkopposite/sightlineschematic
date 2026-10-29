@@ -1850,7 +1850,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.12';
+const VERSION='2026.10.29.13';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -4066,9 +4066,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   // seated dimensions in the F style, with reference circles: sitting eye height, C sitting between rows, Tier N+1 row 1 over the rail
   {const sr=lo.slice(Math.max(0,n-NL)).filter(r=>!SK.has(r));
    if(sr.length){const r=sr[0],xv=r.sit.ex-hr-4*IN;K.dim([xv,r.z],[xv,r.sit.ez],{lab:'Sitting eye',val:L(E.sitH),ref:'sit',ctl:'SIT',eb:[r.sit.ex,r.sit.ez]});}   /* 4 in left of the first row's head, as in F */
-   if(sr.length>1){const a=sr[sr.length-2],b=sr[sr.length-1],zl=b.sit.ez*a.sit.ex/b.sit.ex;K.dim([a.sit.ex-2*IN,a.sit.ez],[a.sit.ex-2*IN,zl],{lab:'C sitting',val:CV(zl-a.sit.ez),ref:'cval',ctl:'CV:'+(tu-1),fill:zl-a.sit.ez<a.target-0.05?'var(--fail)':null});}
-   if(up.length>1){const a=up[0],b=up[1],zl=b.sit.ez*a.sit.ex/b.sit.ex;K.dim([a.sit.ex-2*IN,a.sit.ez],[a.sit.ex-2*IN,zl],{lab:'C sitting',val:CV(zl-a.sit.ez),ref:'cval',ctl:'CV:'+tu,fill:zl-a.sit.ez<a.target-0.05?'var(--fail)':null});}
-   {const xo=f.x+RAIL_SET-25.4,rt=f.z+P.railH,c=railClear(f,{x:f.sit.ex,z:f.sit.ez});K.dim([xo-fs*.9,rt],[xo-fs*.9,rt+c],{lab:'Over rail, sitting',val:CV(c),ref:'guard',fill:c<0?'var(--sl-low)':null,side:-1});}}
+   /* C-values and the over-rail clearance are read in the sightline details and spectator views, not here (decision 173) */}
   // vertical, right: the rise between the tiers, the leg wall and the clear height under it, the guard on the upper front row
   const cl=f.z-LEG2-lb.z,cxEnd=Math.max(lb.x+lb.T+fs*4,f.x),xc=cxEnd+25,xv=xc+3*304.8;   // clear height just past the concourse end, the rise between the tiers 3 ft beyond (decision 172)
   K.dim([xv,lb.z],[xv,f.z],{lab:`Tier ${tu} top tread to Tier ${tu+1} bottom tread`,val:L(f.z-lb.z),ea:[lb.x+lb.T,lb.z],eb:[f.x+f.T,f.z],ctl:'RISE:'+tu,side:-1,fix:1});
@@ -4077,13 +4075,16 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   K.dim([xc,lb.z],[xc,f.z-LEG2],{lab:'Clear height',val:L(cl),ref:'headroom',ea:[cxEnd,lb.z],eb:[f.x+slabT(),f.z-LEG2],fill:cl<P.minHead-0.5?'var(--fail)':null,side:-1});   // a column at the concourse end, the leg wall's underside carried across (decision 169)
   // the wheelchair platform: its height over the row in front, the wheelchair eye, the setback and the eye distance behind the platform face
   if(pg){const sd=lo[n-4];   /* platform over the row in front: shown in the spectator view (decision 172) */
-    if(sd){const si={x:sd.sit.ex,z:sd.sit.ez},zs=pg.eye.z*si.x/pg.eye.x;K.dim([si.x-hr-fs*.6,si.z],[si.x-hr-fs*.6,zs],{lab:'C sitting',val:CV(zs-si.z),ref:'wcplat',fill:zs-si.z<0?'var(--fail)':null});}
+
     K.dim([pg.top.x,pg.zP],[pg.top.x,pg.eye.z],{lab:'Wheelchair eye',val:L(E.wcH),eb:[pg.eye.x+hr*1.2,pg.eye.z],side:-1});}   // at the platform's back edge (decision 169)
   // horizontal, below: the top tread below, the riser offset between the tiers, the concourse, the platform setback and depth, the first tread above
   const yb=a0.z-t-fs*1.6,zb=x=>a0.z-t;
-  if(pg){K.dim([pg.edge,yb],[pg.top.x,yb],{lab:'Platform',val:L(pg.top.x-pg.edge),ea:[pg.edge,pg.zP],eb:[pg.top.x,pg.zP],side:-1});
+  {const shown=lo.slice(Math.max(0,n-NL)),pts=[];   // one chain under the lower tier: each tread, the platform setback, the platform, the top tread (decision 173)
+   shown.forEach(r=>{if(pg&&(r===pg.p1||r===pg.p2||r===lb))return;pts.push([r.x,r.z]);});
+   if(pg){pts.push([pg.p1.x,pg.p1.z],[pg.edge,pg.zP],[pg.top.x,pg.zP]);}else pts.push([lb.x,lb.z]);pts.push([lb.x+lb.T,lb.z]);
+   for(let i=1;i<pts.length;i++)if(pts[i][0]-pts[i-1][0]>1)K.dim([pts[i-1][0],yb],[pts[i][0],yb],{val:L(pts[i][0]-pts[i-1][0]),ea:pts[i-1],eb:pts[i],fix:1});}
+  if(pg){
     K.note(pg.edge+fs*.3,pg.zP-fs*.9,`Platform face ${inchText(pg.edge-pg.p1.x)} behind the row riser`,{size:TP(o,6,fs*.42),anchor:'start',fill:'var(--muted)',wt:400});}
-  K.dim([lb.x,yb],[lb.x+lb.T,yb],{lab:'Top tread',val:L(lb.T),ea:[lb.x,lb.z],eb:[lb.x+lb.T,lb.z],side:-1});
   const dx=f.x-lb.x;   /* the riser offset between the tiers is no longer dimensioned here (decision 169) */
   if(Math.abs(dx)<=1)K.note(f.x+fs*.4,f.z-LEG2-fs*1.2,`First riser over the top riser below`,{size:TP(o,6,fs*.5),anchor:'start',fill:'var(--dim)',wt:450});
   else if(Math.abs(f.x+f.T-lb.x)<=1)K.note(f.x+f.T+fs*.3,f.z-fs*.9,`Second riser over the top riser below`,{size:TP(o,6,fs*.5),anchor:'start',fill:'var(--dim)',wt:450});
@@ -4091,6 +4092,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   {const ups=up.slice(0,NU),zc=onMaj(Math.max(...ups.map(r=>r.sit.ez))+hr*2+fs*.6),pts=[f.x,...ups.map(r=>r.x+r.T)];   // the Tier N+1 treads, one chain along the top of the drawing (decision 169)
    for(let i=1;i<pts.length;i++){const r=ups[i-1];K.dim([pts[i-1],zc],[pts[i],zc],{val:L(pts[i]-pts[i-1]),ea:[pts[i-1],i===1?f.z:ups[i-2].z],eb:[pts[i],r.z],fix:1,ctl:i===1?'T0:'+tu:null});}}
   // labels
+  [...lo.slice(Math.max(0,n-NL)),...up.slice(0,NU)].forEach(r=>{if(r.riser==null||SK.has(r))return;K.note(r.x-fs*.2,r.z-r.riser/2-fs*.1,inchText(r.riser),{size:TP(o,6,fs*.46),anchor:'end',fill:'var(--muted)',wt:400});});   // riser heights left of each riser, as in the sightline details (decision 173)
   K.note(cx0+fs*.3,lb.z+fs*.3,tu===1?'Main concourse':'Upper concourse',{size:TP(o,6,fs*.55),anchor:'start',fill:'var(--muted)',wt:400});
   K.note(u2.x+u2.T-fs*.2,u2.z-t-fs*.95,`Tier ${tu+1}`,{size:TP(o,10,fs*.8),anchor:'end',fill:'var(--ink)',wt:700});K.note(lb.x+lb.T-fs*.2,lb.z-t-fs*.95,`Tier ${tu}`,{size:TP(o,10,fs*.8),anchor:'end',fill:'var(--ink)',wt:700});   // under the top tread of each tier drawn (decision 169)
   s+=K.out();return s+'</svg>';}
