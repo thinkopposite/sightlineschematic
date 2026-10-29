@@ -17,7 +17,7 @@
 :root[data-theme="dark"]{--sl-ok:#0000FF;--sl-stand:#4FB3F0;--sl-low:#FF0000;--sl-block:#FD3DB5;--dim:#F2F2F2;--ref:#E8A58C;--seat-chair:#A0526B;--seat-bench:#4A8B9C;--eye-sit:#000080;--eye-stand:#00FFFF;--bench:#566A80;--oval:#8E4130;--pitch-dk:#3B7430;--grass2:#8EB03E;--turf:#27698B;--court:#A8844F;--court2:#7A6140;--paint:#7E3A28;--tennis:#305A85;--tennis2:#3D6E4A;--vb:#B8642E;--vb2:#285B8C;--ice:#DDE6EA;--dirt:#94694A;--strip:#B8A775;--bg:#141413;--panel:#1F1E1C;--ink:#FAF9F5;--muted:#B0AEA5;--line:#3D3D3A;--accent:#D97757;--accent-soft:#2E2D2A;--accent-deep:#E8A58C;--accent-2:#8FB5DB;--edge:#5E5D59;--pass:#9DB07E;--warn:#E2AD3B;--fail:#F07A4C;--pitch:#488B39;--concrete:#47504F;--grid:#2A2927;--track:#3D3D3A}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.45;font-variant-numeric:tabular-nums}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:16px;line-height:1.45;font-variant-numeric:tabular-nums}
 header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 18px;padding:14px 22px;border-bottom:2px solid var(--ink)}
 .brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 h1{margin:0;font-size:30px;font-weight:700;font-stretch:78%;letter-spacing:-.01em}
@@ -26,10 +26,10 @@ h1{margin:0;font-size:30px;font-weight:700;font-stretch:78%;letter-spacing:-.01e
 .layout{display:grid;grid-template-columns:340px minmax(0,1fr)}
 aside{background:var(--panel);border-right:1px solid var(--line);padding:14px 18px 30px}
 main{padding:16px 22px 34px;min-width:0}
-h2{font-size:15px;font-weight:650;font-stretch:85%;margin:22px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+h2{font-size:16px;font-weight:650;font-stretch:85%;margin:22px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--line)}
 aside h2:first-child{margin-top:2px}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
-button{font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:4px;padding:6px 11px}
+button{font:inherit;font-size:14px;cursor:pointer;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:4px;padding:6px 11px}
 button:hover{border-color:var(--ink)}
 button.on{background:var(--ink);color:var(--panel);border-color:var(--ink)}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
@@ -38,8 +38,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sl{margin:10px 0 4px}
 .sl-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.sl-top label{font-size:13.5px}
-.sl-val{display:flex;align-items:center;gap:4px;font-size:12.5px;color:var(--muted)}
+.sl-top label{font-size:14px}
+.sl-val{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
 .sl-val input{width:74px;padding:3px 6px;font:inherit;font-size:14px;text-align:right;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:3px}
 .sl-val input.len{width:118px}
 .sl-top label{min-width:0}
@@ -47,21 +47,21 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .switch{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--panel)}
 .switch button{border:0;border-radius:999px;padding:5px 13px;font-weight:600}
 .switch button.on{background:var(--accent);color:#fff}
-.units select{flex:1;min-width:0;font:inherit;font-size:13.5px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 8px;cursor:pointer}
+.units select{flex:1;min-width:0;font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 8px;cursor:pointer}
 input[type=range]{width:100%;accent-color:var(--accent);margin:4px 0 0}
 .tier{border-left:3px solid var(--accent);padding:2px 0 2px 10px;margin:12px 0}
-.tier b{font-size:13.5px}
+.tier b{font-size:14px}
 .tier:nth-of-type(2){border-color:color-mix(in srgb,var(--accent) 65%,var(--pass))}
 details{margin-top:18px}
-summary{cursor:pointer;font-weight:650;font-size:15px;font-stretch:85%}
-.hint{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+summary{cursor:pointer;font-weight:650;font-size:16px;font-stretch:85%}
+.hint{font-size:12px;color:var(--muted);margin:6px 0 0}
 .cap{background:var(--panel);border:1px solid var(--line);padding:14px 16px;margin-bottom:12px;display:grid;grid-template-columns:auto 1fr auto;gap:6px 18px;align-items:center}
 .cap .big{font-size:40px;font-weight:700;font-stretch:78%;line-height:1}
-.cap .lbl{font-size:12.5px;color:var(--muted)}
+.cap .lbl{font-size:12px;color:var(--muted)}
 .bar{height:10px;background:var(--track);border-radius:5px;position:relative;overflow:hidden}
 .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:5px;transition:width .2s}
 .bar i.ok{background:var(--pass)}
-.cap-side{text-align:right;font-size:13px}
+.cap-side{text-align:right;font-size:12px}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));border:1px solid var(--line);background:var(--panel);margin-bottom:10px}
 .stat{padding:9px 14px;border-right:1px solid var(--line)}
 .stat:last-child{border-right:0}
@@ -74,12 +74,12 @@ summary{cursor:pointer;font-weight:650;font-size:15px;font-stretch:85%}
 .panel svg{display:block;width:100%;height:auto}
 #section svg{min-width:560px}
 .cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:16px;margin-top:16px}
-.cols h3{font-size:15px;font-weight:650;font-stretch:85%;margin:0 0 8px}
-.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted);margin:8px 0 0}
+.cols h3{font-size:16px;font-weight:650;font-stretch:85%;margin:0 0 8px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin:8px 0 0}
 .legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px}
 .opts{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
 .planhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 14px;margin:20px 0 8px}
-.planhead h3,.opthead{font-size:15px;font-weight:650;font-stretch:85%;margin:0}
+.planhead h3,.opthead{font-size:16px;font-weight:650;font-stretch:85%;margin:0}
 .opthead{margin:20px 0 8px}
 #plan svg{max-height:82vh;touch-action:none}#plan.pz-on svg{cursor:grab}#plan.pz-drag svg{cursor:grabbing}#plan.add-ais svg{cursor:crosshair}
 #plan svg.portrait{max-height:150vh}
@@ -93,35 +93,35 @@ select.sel{width:100%;font:inherit;font-size:14px;color:var(--ink);background:va
 .opt:hover{border-color:var(--ink)}
 .opt.cur{box-shadow:inset 3px 0 0 var(--accent)}
 .opt strong{font-size:14.5px}
-.opt small{grid-column:1/3;color:var(--muted);font-size:12.5px}
+.opt small{grid-column:1/3;color:var(--muted);font-size:12px}
 .opt .x{border:0;padding:0 4px;color:var(--muted);font-size:16px;line-height:1}
-.empty{color:var(--muted);font-size:13.5px;padding:10px 0}
+.empty{color:var(--muted);font-size:14px;padding:10px 0}
 .tablewrap{max-height:360px;overflow:auto;border:1px solid var(--line);background:var(--panel);margin-top:10px}
-table{border-collapse:collapse;width:100%;font-size:13px}
+table{border-collapse:collapse;width:100%;font-size:12px}
 th,td{padding:4px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--grid)}
 th{position:sticky;top:0;background:var(--panel);font-weight:600;color:var(--muted);font-size:12px}
 th:first-child,td:first-child{text-align:left}
 .pass{color:var(--pass)}.reduced{color:var(--warn)}.fail{color:var(--fail)}.front{color:var(--muted)}
 .steep{color:var(--fail);font-weight:600}
 .tabs{display:flex;gap:6px;margin:14px 0 0;border-bottom:3px solid var(--accent)}
-.tabs button{flex:1;border:2px solid var(--accent);border-bottom:0;border-radius:8px 8px 0 0;padding:9px 12px;font-size:15px;font-weight:800;letter-spacing:.02em;color:var(--accent);background:var(--panel)}
+.tabs button{flex:1;border:2px solid var(--accent);border-bottom:0;border-radius:8px 8px 0 0;padding:9px 12px;font-size:16px;font-weight:800;letter-spacing:.02em;color:var(--accent);background:var(--panel)}
 .tabs button:hover{background:color-mix(in srgb,var(--accent) 12%,var(--panel))}
 .tabs button.on{background:var(--accent);color:#fff}
 .tier{border:2px solid var(--accent);border-top:0;border-radius:0 0 8px 8px;padding:4px 12px 12px;margin:0 0 12px}
-.tabs.sub{margin-top:14px}.tabs.sub button{font-size:12.5px;padding:5px 9px}
-.lab{font-size:12.5px;color:var(--muted);margin:10px 0 4px}
+.tabs.sub{margin-top:14px}.tabs.sub button{font-size:12px;padding:5px 9px}
+.lab{font-size:12px;color:var(--muted);margin:10px 0 4px}
 .zhead{font-weight:650;margin:12px 0 0;font-size:14px}
-.muted{color:var(--muted);font-size:11.5px;font-weight:400}
+.muted{color:var(--muted);font-size:12px;font-weight:400}
 #zones{max-height:none;margin:0 0 10px}
 #zones td,#zones th{padding:5px 12px}
-a.btnlink{font-size:13.5px;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 11px;text-decoration:none;display:inline-flex;align-items:center}
+a.btnlink{font-size:14px;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 11px;text-decoration:none;display:inline-flex;align-items:center}
 a.btnlink:hover{border-color:var(--ink)}
 .eyes{margin-top:4px}
 .eyes h2,.eyes label,.eyes .sl-val,.eyes input.len,.eyes .sl-val input{color:var(--accent-deep)}
 .eyes input[type=range]{accent-color:var(--accent-deep)}
 .eyes input:disabled{opacity:.75;cursor:not-allowed}
 .eyes #eyeLock.on{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
-.fixed{width:100%;border-collapse:collapse;font-size:12.5px}.fixed td{padding:3px 0;border-bottom:1px solid var(--line)}.fixed td+td{text-align:right;font-weight:600}
+.fixed{width:100%;border-collapse:collapse;font-size:12px}.fixed td{padding:3px 0;border-bottom:1px solid var(--line)}.fixed td+td{text-align:right;font-weight:600}
 .rng{display:flex;align-items:center;gap:4px}.rng input[type=range]{flex:1;min-width:0}
 .nudge{padding:0 6px;min-width:22px;height:22px;font-size:10px;line-height:1;border-radius:4px}
 .count td,.count th{text-align:right;padding:4px 10px}.count td:first-child,.count th:first-child{text-align:left}
@@ -135,7 +135,7 @@ a.btnlink:hover{border-color:var(--ink)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:9px 16px;border-radius:4px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.show{opacity:1}
 /* ===== Design layer: a drawing-set workflow. Steps on the left, titled drawings on the right. ===== */
-body{font-size:15px;line-height:1.5;background:var(--bg)}
+body{font-size:16px;line-height:1.5;background:var(--bg)}
 header{background:var(--panel);border-bottom:1px solid var(--line);padding:12px 24px;gap:10px 24px}
 h1{font-size:26px;font-stretch:78%;font-weight:700;letter-spacing:0}
 .brand p{font-size:14px}
@@ -163,38 +163,38 @@ button.primary:hover{color:#fff;filter:brightness(1.07)}
 .step-h{display:grid;grid-template-columns:30px 1fr;column-gap:10px;align-items:start;margin-bottom:10px}
 .bub{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;border:2px solid var(--accent);color:var(--accent);font-weight:700;font-size:14px;font-stretch:85%;line-height:1}
 .step-h h2{margin:2px 0 0;padding:0;border:0;font-size:18px;font-weight:700;font-stretch:82%}
-.step-h p{grid-column:2;margin:1px 0 0;font-size:13px;color:var(--muted)}
-.lab{font-size:13.5px;color:var(--muted);margin:12px 0 6px}
+.step-h p{grid-column:2;margin:1px 0 0;font-size:12px;color:var(--muted)}
+.lab{font-size:14px;color:var(--muted);margin:12px 0 6px}
 .sl{margin:12px 0 4px}
 .sl-top label{font-size:14px}
 .sl-val input,.sl-val input.len{font-size:14px;padding:4px 8px;border-radius:5px;border-color:var(--line);background:var(--panel)}
-.hint{font-size:13px;line-height:1.45}
+.hint{font-size:12px;line-height:1.45}
 select.sel{font-size:14.5px;padding:8px 10px;border-radius:6px;background:var(--panel)}
 .tabs{border-bottom:2px solid var(--accent);gap:4px;margin:6px 0 0}
-.tabs button{border:1px solid var(--line);border-bottom:0;border-radius:6px 6px 0 0;font-size:15px;font-weight:700;color:var(--muted);background:var(--accent-soft);padding:8px 12px}
+.tabs button{border:1px solid var(--line);border-bottom:0;border-radius:6px 6px 0 0;font-size:16px;font-weight:700;color:var(--muted);background:var(--accent-soft);padding:8px 12px}
 .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .tier{border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px;padding:6px 14px 14px;margin:0}
 .eyes h2{display:none}
 details{margin-top:14px}
-summary{font-size:15px;font-weight:650;font-stretch:90%;padding:6px 0}
+summary{font-size:16px;font-weight:650;font-stretch:90%;padding:6px 0}
 .deliver .seg{display:grid;gap:8px}
 .deliver button,.deliver a.btnlink{width:100%;justify-content:center;border-radius:6px!important;margin:0!important}
-.deliver .sub2{font-size:13px;color:var(--muted);margin:12px 0 6px}
+.deliver .sub2{font-size:12px;color:var(--muted);margin:12px 0 6px}
 /* results first: seats and the C-value check */
 .cap{border-radius:8px;border:1px solid var(--line);padding:16px 20px}
 .cap .big{font-size:44px}
 .stats{border-radius:8px;overflow:hidden}
 .stat b{font-size:22px}
-.stat span{font-size:12.5px}
+.stat span{font-size:12px}
 .verdict{padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);font-size:14.5px}
 .verdict.ok{border-color:color-mix(in srgb,var(--pass) 45%,var(--line));background:color-mix(in srgb,var(--pass) 6%,var(--panel))}
 .verdict.bad{border-color:color-mix(in srgb,var(--fail) 45%,var(--line));background:color-mix(in srgb,var(--fail) 5%,var(--panel))}
 /* drawing titles, as on a sheet: lettered bubble, title on a rule, caption below */
-.group{margin:34px 0 4px;font-size:13px;font-weight:650;color:var(--muted);letter-spacing:.02em}
+.group{margin:34px 0 4px;font-size:12px;font-weight:650;color:var(--muted);letter-spacing:.02em}
 .planhead{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:6px 12px;margin:22px 0 10px}
-.planhead .bub{width:32px;height:32px;font-size:15px;grid-row:1/3;align-self:start}
+.planhead .bub{width:32px;height:32px;font-size:16px;grid-row:1/3;align-self:start}
 .planhead h3{margin:0;font-size:18px;font-weight:700;font-stretch:82%;padding-bottom:3px;border-bottom:2px solid var(--ink);justify-self:start}
-.planhead .capt{grid-column:2;font-size:13.5px;color:var(--muted);margin:0;max-width:72ch}
+.planhead .capt{grid-column:2;font-size:14px;color:var(--muted);margin:0;max-width:72ch}
 main>.group:first-child{margin-top:0}
 .seg.stack{display:grid;gap:6px}
 .seg.stack>button{border-radius:6px;margin:0;text-align:left;justify-content:flex-start}
@@ -203,12 +203,12 @@ main>.group:first-child{margin-top:0}
 #spect>div{display:flex;flex-direction:column;min-width:0}#spect svg{width:100%;height:auto;display:block}#spect table{table-layout:fixed;width:100%}#spect td{white-space:normal;overflow-wrap:anywhere;vertical-align:top}#spect td:first-child{width:42%}#spect>div>table{margin-top:auto}   /* the two eye-sight tables line up */
 .planhead>div:last-child{grid-row:1/3;grid-column:3;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .panel{border-radius:8px;border:1px solid var(--line)}
-.legend{margin:10px 0 0;font-size:13px;gap:8px 16px}
+.legend{margin:10px 0 0;font-size:12px;gap:8px 16px}
 /* tables: one geometry */
 .tablewrap{border-radius:8px;border:1px solid var(--line)}
-table{font-size:13.5px}
+table{font-size:14px}
 th,td{padding:7px 12px}
-th{background:var(--accent-soft);color:var(--ink);font-size:12.5px;font-weight:650;border-bottom:1px solid var(--line)}
+th{background:var(--accent-soft);color:var(--ink);font-size:12px;font-weight:650;border-bottom:1px solid var(--line)}
 tbody tr:nth-child(even) td{background:var(--bg)}
 .count tr.sub td{background:var(--accent-soft)!important}
 .fixed td{padding:5px 0}
@@ -236,11 +236,11 @@ body{background-color:var(--sw-paper);background-image:linear-gradient(var(--sw-
 header{background:var(--sw-paper);border-bottom:3px solid var(--sw-ink);padding:14px 24px 12px}
 h1{font-size:30px;font-weight:700;font-stretch:100%;text-transform:uppercase;letter-spacing:-.01em;line-height:1}
 h1::first-line{color:var(--sw-ink)}
-.brand p{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--sw-grey)}
+.brand p{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--sw-grey)}
 aside{background:var(--panel);border-right:3px solid var(--sw-ink)}
 main{background:transparent}
 /* square, ruled controls */
-button,a.btnlink{border-radius:0!important;border:1px solid var(--sw-ink);background:var(--panel);color:var(--sw-ink);font-weight:600;font-size:13px}
+button,a.btnlink{border-radius:0!important;border:1px solid var(--sw-ink);background:var(--panel);color:var(--sw-ink);font-weight:600;font-size:12px}
 button:hover,a.btnlink:hover{background:var(--sw-ink);color:var(--panel);border-color:var(--sw-ink)}
 button.on,button.on:hover{background:var(--sw-ink);border-color:var(--sw-ink);color:var(--panel)}
 button.primary,button.primary:hover{background:var(--sw-red);border-color:var(--sw-red);color:#FFFFFF;filter:none;text-transform:uppercase;letter-spacing:.06em;font-size:12px}
@@ -261,10 +261,10 @@ input[type=range]{accent-color:var(--sw-ink)}
 .planhead{grid-template-columns:auto 1fr auto}
 .planhead .bub{grid-row:auto;align-self:center;font-size:17px}
 .planhead h3{font-size:17px;font-stretch:100%;text-transform:uppercase;letter-spacing:.01em;border-bottom:0;padding-bottom:0}
-.planhead .capt{grid-column:1/3;font-size:12.5px;color:var(--sw-grey)}
-.group{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--sw-ink);border-bottom:1.5px solid var(--sw-ink);padding-bottom:6px;margin-top:40px}
-summary{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-stretch:100%}
-.lab,.deliver .sub2,.zhead{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sw-ink)}
+.planhead .capt{grid-column:1/3;font-size:12px;color:var(--sw-grey)}
+.group{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--sw-ink);border-bottom:1.5px solid var(--sw-ink);padding-bottom:6px;margin-top:40px}
+summary{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;font-stretch:100%}
+.lab,.deliver .sub2,.zhead{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sw-ink)}
 .hint{color:var(--sw-grey)}
 /* tabs: black bars */
 .tabs{border-bottom:2px solid var(--sw-ink);gap:0}
@@ -274,13 +274,13 @@ summary{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.
 /* results: big red figures in ruled tiles, warnings inverted */
 .cap{border-radius:0;border:1px solid var(--sw-ink);background:var(--panel)}
 .cap .big{font-size:52px;font-weight:700;font-stretch:100%;color:var(--sw-red);letter-spacing:-.02em}
-.cap .lbl{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sw-ink)}
+.cap .lbl{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sw-ink)}
 .bar{border-radius:0;height:8px}.bar i{border-radius:0;background:var(--sw-ink)}.bar i.ok{background:var(--sw-red)}
 .stats{border-radius:0;border:0;background:transparent;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 .stat{border:1px solid var(--sw-ink);background:var(--panel);padding:12px 14px}
 .stat:last-child{border-right:1px solid var(--sw-ink)}
 .stat b{font-size:28px;font-weight:700;font-stretch:100%;color:var(--sw-red);letter-spacing:-.01em}
-.stat span{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--sw-ink)}
+.stat span{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--sw-ink)}
 .stat.bad{background:var(--sw-ink)}.stat.bad b{color:var(--sw-red)}.stat.bad span{color:var(--panel)}
 .verdict{border-radius:0;border:1px solid var(--sw-ink)!important;border-left:6px solid var(--sw-ink)!important;background:var(--panel)!important;font-size:14px}
 .verdict.ok{color:var(--sw-ink)}
@@ -289,26 +289,28 @@ summary{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.
 .panel,.tablewrap,.opt{border-radius:0!important;border:1px solid var(--sw-ink)}
 .opt.cur{box-shadow:inset 6px 0 0 var(--sw-red)}
 /* tables: black header bars, thin rules */
-th{background:var(--sw-ink)!important;color:var(--panel)!important;font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+th{background:var(--sw-ink)!important;color:var(--panel)!important;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
 td{border-bottom:1px solid var(--line)}
 .count tr.sub td{background:var(--accent-soft)}
 .count tr.tot td{border-top:2px solid var(--sw-ink)}
 .toast{border-radius:0;background:var(--sw-ink);color:var(--panel);border-left:6px solid var(--sw-red)}
 @media (max-width:760px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.cap .big{font-size:40px}h1{font-size:24px}}
 
-#secEd,#aisEd{position:absolute;z-index:40;width:260px;background:var(--panel);color:var(--ink);border:1px solid var(--sw-ink,#111);border-top:4px solid var(--sw-ink,#111);box-shadow:0 6px 0 rgba(0,0,0,.08);padding:10px 12px 12px;font-size:13px}
-#secEd .se-h,#aisEd .se-h{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}#secEd .se-h b,#aisEd .se-h b{font-size:15px;text-transform:uppercase}#secEd .se-h span,#aisEd .se-h span{color:var(--sw-grey,#6B6B68);font-size:12px;flex:1}
+#secEd,#aisEd{position:absolute;z-index:40;width:260px;background:var(--panel);color:var(--ink);border:1px solid var(--sw-ink,#111);border-top:4px solid var(--sw-ink,#111);box-shadow:0 6px 0 rgba(0,0,0,.08);padding:10px 12px 12px;font-size:12px}
+#secEd .se-h,#aisEd .se-h{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}#secEd .se-h b,#aisEd .se-h b{font-size:16px;text-transform:uppercase}#secEd .se-h span,#aisEd .se-h span{color:var(--sw-grey,#6B6B68);font-size:12px;flex:1}
 #secEd .se-x,#aisEd .se-x{min-height:0;padding:0 6px;border:0;font-size:18px;line-height:1;background:transparent;color:var(--ink)}
-#secEd .se-row,#aisEd .se-row{display:grid;grid-template-columns:1fr 34px 46px 34px;align-items:center;gap:0}#secEd .se-l,#aisEd .se-l{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+#secEd .se-row,#aisEd .se-row{display:grid;grid-template-columns:1fr 34px 46px 34px;align-items:center;gap:0}#secEd .se-l,#aisEd .se-l{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
 #secEd .se-row button,#aisEd .se-row button{min-height:34px;padding:0;font-size:18px}#secEd .se-v,#aisEd .se-v{text-align:center;font-size:22px;color:var(--sw-red,#DA291C);border-top:1px solid var(--sw-ink,#111);border-bottom:1px solid var(--sw-ink,#111);line-height:32px}
 #secEd .se-n,#aisEd .se-n{margin:8px 0 0;color:var(--sw-grey,#6B6B68);font-size:12px;line-height:1.4}#secEd .se-w,#aisEd .se-w{width:100%;margin-top:8px}
 [data-secno]:hover text{text-decoration:underline}
 /* text sizes standardised (decision 167): styles unchanged */
-h1{font-size:32px}.brand p{font-size:11px}
-.step-h h2,.step-h .bub{font-size:16px}.step-h p{font-size:11px}
-.planhead h3,.planhead .bub{font-size:16px}.planhead .capt{font-size:11px}
-.group{font-size:11px}#spect .lab{font-size:11px}#junction .capt{font-size:11px}
+h1{font-size:32px}.brand p{font-size:10px}
+.step-h h2,.step-h .bub{font-size:16px}.step-h p{font-size:10px}
+.planhead h3,.planhead .bub{font-size:16px}.planhead .capt{font-size:10px}
+.group{font-size:10px}#spect .lab{font-size:10px}#junction .capt{font-size:10px}
 .planhead .capt{line-height:24px}   /* each description line fills one 24 px grid cell, text centred in it (decision 168) */
+/* text sizes from the Sightline Text Sizes sheet (decision 170) */
+.reft{font-size:10px}.ctlmark,.ctlmark *{font-size:10px}
 </style>
 </head>
 <body>
@@ -519,14 +521,14 @@ function gridiron(o){
           +g.l(-x25,yc,x25,yc,{c:COL_LIMIT,m:L8})                                               // coaches' line, 6 ft behind the border
           +g.l(-xE,yw,-x25,yw,{m:L4,d:[4*FT,2*FT]})+g.l(x25,yw,xE,yw,{m:L4,d:[4*FT,2*FT]})        // broken white line, 3 ft inside the yellow
           +g.l(-x30,sg*(b+30*FT+4*IN),x30,sg*(b+30*FT+4*IN),{c:'var(--muted)',m:L4,d:[1*FT,1*FT]})    // bench line
-          +g.t(0,sg*(b+21*FT),'TEAM AREA',1.3,{c:COL_LIMIT,base:'middle',wt:650});});
+          +g.t(0,sg*(b+21*FT),'TEAM AREA',PX(8,1.3),{c:COL_LIMIT,base:'middle',wt:650});});
       s+=mirror(sg=>g.l(sg*xE,-b-yL,sg*xE,b+yL,{c:COL_LIMIT,m:L8,d:[2*FT,1*FT]}));
     }else{ // NCAA Rule 1-2: limit line 12 ft (12 in dashes at 24 in intervals), coaching line 6 ft, team area
       s+=mirror(sg=>{const y6=sg*(b+6*FT),y12=sg*(b+12*FT),y36=sg*(b+36*FT),y42=sg*(b+42*FT),x=30*YD;
         let h=g.poly([[-a-12*FT,y12],[-x-6*FT,y12],[-x-6*FT,y42],[x+6*FT,y42],[x+6*FT,y12],[a+12*FT,y12]],{c:COL_LIMIT,m:L4,d:[1*FT,2*FT]},false)
           +g.r(-x,y12,x,y36,{c:COL_LIMIT,m:L4})+g.l(-x,y6,x,y6,{m:L4});
         for(let xx=-x;xx<x-1e-6;xx+=5*YD)h+=g.l(xx,y12,xx+6*FT,y6,{m:L4});
-        return h+g.t(0,sg*(b+24*FT),'TEAM AREA',1.3,{c:COL_LIMIT,base:'middle',wt:650});});
+        return h+g.t(0,sg*(b+24*FT),'TEAM AREA',PX(8,1.3),{c:COL_LIMIT,base:'middle',wt:650});});
       s+=mirror(sg=>g.l(sg*(a+12*FT),-b-12*FT,sg*(a+12*FT),b+12*FT,{c:COL_LIMIT,m:L4,d:[1*FT,2*FT]}));
     }
     if(!o.nfl)s+=g.r(-a-L4/2,-b-L4/2,a+L4/2,b+L4/2,{m:L4});
@@ -546,7 +548,7 @@ function gridiron(o){
       const dir=n<50?-1:1,xb=x+dir*(nGap+nW+6*IN),xa=xb+dir*ah;
       for(const sg of[1,-1]){const y0=sg*(yTop+15*IN),y1=sg*(yTop+33*IN),ym=(y0+y1)/2;
         s+=`<path d="M${g.f(xb)} ${g.f(y0)}L${g.f(xa)} ${g.f(ym)}L${g.f(xb)} ${g.f(y1)}Z" fill="var(--mark)" opacity=".92"/>`;}}
-    {const ez=12*FT/0.72*.75*.75;s+=mirror(sg=>{const cx=sg*(gl+a)/2;return `<text x="${g.f(cx)}" y="${g.f(ez*.36)}" font-size="${g.f(ez)}" fill="var(--mark)" font-weight="400" text-anchor="middle" letter-spacing="${g.f(ez*.06)}" opacity=".95" transform="rotate(${sg*90} ${g.f(cx)} 0)">END ZONE</text>`;});}   // white, reading along the end zone
+    {const ez=PX(14,12*FT/0.72*.75*.75);s+=mirror(sg=>{const cx=sg*(gl+a)/2;return `<text x="${g.f(cx)}" y="${g.f(ez*.36)}" font-size="${g.f(ez)}" fill="var(--mark)" font-weight="400" text-anchor="middle" letter-spacing="${g.f(ez*.06)}" opacity=".95" transform="rotate(${sg*90} ${g.f(cx)} 0)">END ZONE</text>`;});}   // white, reading along the end zone
     // pylons, true size: 4 in x 4 in, 18 in high, orange (NCAA Rule 1-2-4: red or orange; NFHS: orange, red or yellow), at the inside
     // corners of the intersections of the sidelines with the goal lines and end lines, on the inside edge of the white lines (NFL Rule 1)
     if(!g.iso)s+=pylons(P).map(([cx,cy,h])=>`<rect x="${g.f(cx-h)}" y="${g.f(cy-h)}" width="${g.f(2*h)}" height="${g.f(2*h)}" fill="${COL_PYLON}"/>`).join('');
@@ -900,7 +902,7 @@ function dimLabel(d,fs){
   return {a,b,ux,uy,nx,ny,o,sg,len,mx,my,rot,lab,note:d.note,below,tw};
 }
 let DIMREG=null;                                                     // plan text boxes already placed (reset per plan)
-function drawDims(list,g,fs){
+function drawDims(list,g,fs){fs=PX(10,fs);
   const f=g.f;let s='';const reg=DIMREG||[];
   const txt=(D)=>{const hs=`text-anchor="middle" fill="#4D4D4D" paint-order="stroke" stroke="var(--panel)" stroke-width="${f(fs*.09)}" stroke-linejoin="round"${D.rot?` transform="rotate(${f(D.rot)} ${f(D.mx)} ${f(D.my)})"`:''}`;
     if(!D.note)return `<text class="dv" x="${f(D.mx)}" y="${f(D.my)}" font-size="${f(fs)}" dominant-baseline="middle" font-weight="400" ${hs}>${D.lab}</text>`;
@@ -1848,7 +1850,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.09';
+const VERSION='2026.10.29.10';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2159,7 +2161,7 @@ var SWG=0,SWORIG=null;   // during a PDF plot: model units per grid square for d
 // PDF sheets on the Swiss grid: while SWG is set (model units per 1/4 in or 1/2 in grid square at the plot scale), every straight
 // dimension line moves outward onto the next grid line, never sharing a line with an overlapping dimension; 0,0 is recorded for placement.
 // opt.noLab: values only, no descriptive text (decision 163); opt.grid [model x, z of the grid's 0,0]: dimension lines on the background grid (1 ft / 1 m) on screen too
-const T9=(o,d)=>o&&o.k?6/o.k:d;   // screen text set in px (decisions 167-168): 6 px for dimension values, grid scale marks and tread numbers when the view's px per unit (o.k) is known
+const T9=(o,d)=>o&&o.k?8/o.k:d;const TP=(o,px,d)=>o&&o.k?px/o.k:d;let PXK=0;const PX=(px,d)=>PXK?px/PXK:d;   // TP: a set screen size in a section view; PX: in the plans while PXK (plan px per unit) is set (decision 170)   // screen text set in px (decisions 167-168): 6 px for dimension values, grid scale marks and tread numbers when the view's px per unit (o.k) is known
 function SecDim(X,Y,fs,frame,opt={}){const K=SecDim0(X,Y,fs,frame,opt.vs);if(opt.center)K.center=true;if(opt.noLab){const d=K.dim0;K.dim0=(a,b,o={})=>d(a,b,Object.assign({},o,{lab:null}));}
   if(!SWG&&!opt.grid)return K;let G,OX=0,OY=0;if(SWG){if(!SWORIG)SWORIG=[+X(0),+Y(0)];G=SWG;}else{G=imperial()?304.8:1000;OX=+X(opt.grid[0]);OY=+Y(opt.grid[1]);}const used=[],d0=K.dim0;
   const pick=(c,lo,hi,dir,kind,o)=>{const off=kind==='h'?OY:OX;let v=off+(dir>0?Math.ceil((c-off)/G-1e-6)*G:Math.floor((c-off)/G+1e-6)*G);
@@ -2218,13 +2220,13 @@ function SecDim0(X,Y,fs,frame,vs){   /* frame [W,H]: text never leaves the drawi
           if(ch.sg){const E0=[mx+rx*ch.sg*len/2,my+ry*ch.sg*len/2],E1=[mx+rx*ch.sg*(sh+tot/2),my+ry*ch.sg*(sh+tot/2)];g+=L_(E0[0],E0[1],E1[0],E1[1],.6);own.push([E0[0],E0[1],E1[0],E1[1]]);mx=ch.x;my=ch.y;}else lvl=ch.l;}
         const x0=mx-tot/2,yb=my-gp0-VSC*.18-lvl*hB,vb=shiftB(K.valBox(o,mx,my,vert),lvl);boxes.push(vb);segs.push(...own);
         t+=`<g data-c="1" transform="rotate(${f1(ang)} ${f1(mx)} ${f1(my)})"><text x="${f1(x0)}" y="${f1(yb)}" text-anchor="start" font-size="${f1(VSC)}" font-weight="400" fill="${o.fill||c}" paint-order="stroke" stroke="var(--panel)" stroke-width="${f1(fs*.08)}" stroke-linejoin="round">${o.val}</text>`
-          +(rn0?`<circle cx="${f1(x0+wv+fs*.16+rr0)}" cy="${f1(yb-VSC*.34)}" r="${f1(rr0)}" fill="var(--panel)" stroke="var(--ref)" stroke-width="0.7" vector-effect="non-scaling-stroke"/><text x="${f1(x0+wv+fs*.16+rr0)}" y="${f1(yb-VSC*.34+rr0*.4)}" text-anchor="middle" font-size="${f1(rr0*1.2)}" font-weight="400" fill="var(--ref)">${rn0}</text>`:'')+'</g>';
+          +(rn0?`<circle cx="${f1(x0+wv+fs*.16+rr0)}" cy="${f1(yb-VSC*.34)}" r="${f1(rr0)}" fill="var(--panel)" stroke="var(--ref)" stroke-width="0.7" vector-effect="non-scaling-stroke"/><text x="${f1(x0+wv+fs*.16+rr0)}" y="${f1(yb-VSC*.34+rr0*.4)}" text-anchor="middle" font-size="${f1(rr0)}" font-weight="400" fill="var(--ref)">${rn0}</text>`:'')+'</g>';
         return K;}
       const rn=o.ref?refNo(o.ref):0,rr=rn?VS*.56:0,tg=rn?rr*2+fs*.22:0,gap=fs*.16,mx=(A[0]+B[0])/2,my=(A[1]+B[1])/2,s0=o.side||1;
       /* one row (label, value, bubble) when it fits between the ticks without a clash; otherwise label above value */
       const place=(Wt,Ht,ks)=>{let best=null;for(const sd of[s0,-s0]){for(const k of ks){const sl=k*(Wt*.55+fs*.25),cx=mx+rx*sl+nx*sd*(gap+Ht/2),cy=my+ry*sl+ny*sd*(gap+Ht/2);
           const bw=vert?Ht:Wt,bh=vert?Wt:Ht,box=[cx-bw/2,cy-bh/2,cx+bw/2,cy+bh/2],cand={cx,cy,box,sl};if(!best)best=cand;if(!hit(box))return cand;}}return best;};
-      const bubble=(bx,by)=>`<circle cx="${f1(bx)}" cy="${f1(by)}" r="${f1(rr)}" fill="var(--panel)" stroke="var(--ref)" stroke-width="0.8" vector-effect="non-scaling-stroke"/><text x="${f1(bx)}" y="${f1(by+rr*.4)}" text-anchor="middle" font-size="${f1(rr*1.2)}" font-weight="400" fill="var(--ref)">${rn}</text>`;
+      const bubble=(bx,by)=>`<circle cx="${f1(bx)}" cy="${f1(by)}" r="${f1(rr)}" fill="var(--panel)" stroke="var(--ref)" stroke-width="0.8" vector-effect="non-scaling-stroke"/><text x="${f1(bx)}" y="${f1(by+rr*.4)}" text-anchor="middle" font-size="${f1(PX(4,rr*1.2))}" font-weight="400" fill="var(--ref)">${rn}</text>`;
       const halo=`fill="${o.fill||c}" paint-order="stroke" stroke="var(--panel)" stroke-width="${f1(fs*.1)}" stroke-linejoin="round"`;
       let best=null,Wt,body='';
       const one=cand=>{const wl=tw2(lines[0],LS)*1.12,sp=fs*.42,wv=tw2(lines[1],VS)*1.06,W1=wl+sp+wv+tg,x0=cand.cx-W1/2,yb=cand.cy+VS*.36;
@@ -2300,7 +2302,7 @@ function drawSection(rows,o={}){
   s+=gridBg(X0,X1,Z0,Z1,X,Y);
   for(let g=Math.ceil(X0/GS)*GS;g<=X1;g+=GS)s+=`<line class="appgrid" x1="${X(g)}" y1="0" x2="${X(g)}" y2="${H}" stroke="var(--edge)" stroke-width="0.8" opacity=".7" vector-effect="non-scaling-stroke"/><text class="appgrid" x="${X(g)}" y="${H-T9(o,fs*.8)*.45}" font-size="${T9(o,fs*.8)}" fill="var(--muted)" text-anchor="middle">${gl(g)}</text>`;
   for(let g=0;g<=Z1;g+=GS)s+=`<line class="appgrid" x1="0" y1="${Y(g)}" x2="${W}" y2="${Y(g)}" stroke="var(--edge)" stroke-width="0.8" opacity=".7" vector-effect="non-scaling-stroke"/>${g?`<text class="appgrid" x="${T9(o,fs*.8)*.5}" y="${+Y(g)-T9(o,fs*.8)*.35}" font-size="${T9(o,fs*.8)}" fill="var(--muted)">${gl(g)}</text>`:''}`;
-  const fx=rows[0].x,bf=Math.min(fs*.6,band*.62);
+  const fx=rows[0].x,bf=TP(o,10,Math.min(fs*.6,band*.62));
   s+=`<rect x="0" y="${Y(0)}" width="${X(0)}" height="${band}" fill="var(--pitch)"/><rect x="${X(0)}" y="${Y(0)}" width="${(fx).toFixed(0)}" height="${band}" fill="var(--grass2)"/>`;
   s+=`<text x="${+X(0)/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(0)}" fill="#fff" text-anchor="middle" font-weight="600">${surf()}</text>`;
   if(fx>fs*3.2)s+=`<text x="${+X(0)+fx/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(0)}" fill="#fff" text-anchor="middle" font-weight="600">Buffer zone ${L(fx)}</text>`;
@@ -2309,11 +2311,11 @@ function drawSection(rows,o={}){
   const EX={},SK=new Set();let EXtop='';tiers.forEach(ti=>{const e=secExtras(rows,ti,X,Y,o,0);EX[ti]=e;s+=e.s;EXtop+=e.top;e.skip.forEach(r=>SK.add(r));});if(o.cut)s+=secGoal(o.zone,X,Y,fs);
   tiers.forEach(ti=>{if(!ti)return;const tr=rows.filter(r=>r.tier===ti),f=tr[0],lo=rows.filter(r=>r.tier===ti-1),lb=lo[lo.length-1],cz=lb.z;
     const cx0=lb.x+lb.T,cx1=Math.max(cx0+4000,f.x);                                   // concourse floor behind the tier below
-    s+=`<line x1="${X(cx0)}" y1="${Y(cz)}" x2="${X(cx1)}" y2="${Y(cz)}" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${X(cx0+fs*.3)}" y="${+Y(cz)-fs*.35}" font-size="${fs*.62}" fill="var(--muted)">${ti===1?'Main':'Upper'} concourse</text>`;
+    s+=`<line x1="${X(cx0)}" y1="${Y(cz)}" x2="${X(cx1)}" y2="${Y(cz)}" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${X(cx0+fs*.3)}" y="${+Y(cz)-fs*.35}" font-size="${TP(o,10,fs*.62)}" fill="var(--muted)">${ti===1?'Main':'Upper'} concourse</text>`;
 });
   tiers.forEach(ti=>{const f=rows.find(r=>r.tier===ti);                              // 26 in sightline guard rail at row 1 of every tier
     s+=`<rect x="${X(f.x+RAIL_SET-25.4)}" y="${Y(f.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"><title>Guard rail ${L(P.railH)}, 2 in</title></rect>`
-      ;K.note(f.x-fs*.25,f.z+P.railH+fs*.2,`${inchText(P.railH)} guard rail`,{size:fs*.45,anchor:'end',fill:'var(--muted)',wt:400});});
+      ;K.note(f.x-fs*.25,f.z+P.railH+fs*.2,`${inchText(P.railH)} guard rail`,{size:TP(o,6,fs*.45),anchor:'end',fill:'var(--muted)',wt:400});});
   rows.forEach(r=>{const tf=T9(o,Math.min(fs*.28,r.T*.3));                               // row numbers: above their tread, clear of the riser behind
     s+=`<text x="${X(r.x+r.T*.35)}" y="${(+Y(r.z)-tf*.3).toFixed(0)}" font-size="${tf.toFixed(0)}" fill="var(--ink)" opacity=".8" text-anchor="middle" font-weight="600">${r.row}</text>`;});
   s+=EXtop;rows.forEach(r=>{if(SK.has(r))return;K.avoid(r.ex,r.ez,0,0);s+=`<line x1="${X(r.ex)}" y1="${Y(r.ez)}" x2="${X(0)}" y2="${Y(0)}" stroke="${status(r)==='pass'||status(r)==='front'?'var(--sl-ok)':'var(--sl-low)'}" stroke-width="0.7" vector-effect="non-scaling-stroke"/>`;});   // sightlines by C-value only: blue meets the minimum, red is below it
@@ -2328,7 +2330,7 @@ function drawSection(rows,o={}){
     K.dim([x,lb.z],[x,zb],{lab:'Clearance',val:L(c),ref:'headroom',ctl:'RISE:'+ti,ea:[lb.x+lb.T,lb.z],eb:[f.x+slabT(),zb],fill:c<P.minHead?'var(--fail)':null,side:-1});});
   chainDims(rows,tiers,fs*.9,K);s+=K.out();
   s+=`<line x1="${X(0)}" y1="${+Y(0)+band}" x2="${X(0)}" y2="${+Y(0)-fs*1.6}" stroke="${FOCAL}" stroke-width="1.3" vector-effect="non-scaling-stroke"/>`;
-  s+=`<circle cx="${X(0)}" cy="${Y(0)}" r="${dot*1.8}" fill="var(--ink)"/><text x="${X(0)}" y="${(+Y(0)+band+fs*1.05).toFixed(0)}" font-size="${fs*.85}" fill="var(--ink)" text-anchor="middle">Point of focus</text></svg>`;
+  s+=`<circle cx="${X(0)}" cy="${Y(0)}" r="${dot*1.8}" fill="var(--ink)"/><text x="${X(0)}" y="${(+Y(0)+band+fs*1.05).toFixed(0)}" font-size="${TP(o,10,fs*.85)}" fill="var(--ink)" text-anchor="middle">Point of focus</text></svg>`;
   return s;
 }
 // Chain dimensions from the point of focus: horizontally to the front riser of each tier's first tread,
@@ -2378,8 +2380,8 @@ function drawDetail(all,o={}){
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" data-fs="${fs.toFixed(2)}" role="img" aria-label="Tier ${ti+1} sightline detail">`+(NF?gridBg(X0,X1,Z0,Z1,X,Y,r0.x,r0.z,T9(o,fs*.8/.9)):gridBg(X0,X1,Z0,Z1,X,Y,0,0,T9(o,fs*.8/.9)));   // Tier 2: 0,0 at the top of its bottom tread
   // pitch, buffer and the point-of-focus line
   if(!NF){s+=`<rect x="0" y="${Y(0)}" width="${X(0)}" height="${band}" fill="var(--pitch)"/><rect x="${X(0)}" y="${Y(0)}" width="${f1(bufX)}" height="${band}" fill="var(--grass2)"/>`
-    +`<text x="${f1(+X(0)/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(fs*.65)}" fill="#fff" font-weight="600" text-anchor="middle">${surf()}</text>`
-    +`<text x="${f1(+X(0)+bufX/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(fs*.65)}" fill="#fff" font-weight="600" text-anchor="middle">Buffer zone</text>`
+    +`<text x="${f1(+X(0)/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(TP(o,8,fs*.65))}" fill="#fff" font-weight="600" text-anchor="middle">${surf()}</text>`
+    +`<text x="${f1(+X(0)+bufX/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(TP(o,8,fs*.65))}" fill="#fff" font-weight="600" text-anchor="middle">Buffer zone</text>`
     +`<line x1="${X(0)}" y1="${f1(+Y(0)+band)}" x2="${X(0)}" y2="${f1(+Y(0)-fs*1.6)}" stroke="${FOCAL}" stroke-width="1.2" vector-effect="non-scaling-stroke"/><circle cx="${X(0)}" cy="${Y(0)}" r="${f1(fs*.22)}" fill="var(--ink)"/>`;}
   K.avoidPoly(profileOf(rs,ti));s+=`<polygon points="${profileOf(rs,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`+benchSvg(rs,X,Y);
   s+=`<rect x="${X(r0.x+RAIL_SET-25.4)}" y="${Y(r0.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"/>`;   // 26 in guard rail, 2 in thick, centreline 3 in behind the riser
@@ -2390,20 +2392,20 @@ function drawDetail(all,o={}){
   rs.forEach((r,i)=>{if(SKd.has(r))return;const e=ey[i],cy=e.z+headTop-hr,C=Cs[i],low=C!=null&&C<r.target-0.05,isMin=C!=null&&Math.abs(C-cMin)<1e-6;
     // row number on the tread, riser height left of its riser
     if(labels)K.note(r.x+(m==='stand'?4*IN:r.T*.17),r.z+fs*.18,r.row,{size:T9(o,fs*.5)});
-    if(labels&&r.riser!=null)K.note(r.x-fs*.2,r.z-r.riser/2-fs*.18,inchText(r.riser),{size:fs*.46,anchor:'end',fill:'var(--muted)',wt:400});
+    if(labels&&r.riser!=null)K.note(r.x-fs*.2,r.z-r.riser/2-fs*.18,inchText(r.riser),{size:TP(o,6,fs*.46),anchor:'end',fill:'var(--muted)',wt:400});
     s+=`<line x1="${X(e.x)}" y1="${Y(cy-hr)}" x2="${X(e.x)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.x)}" cy="${Y(cy)}" r="${hr}" fill="var(--panel)" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(e.x-3*IN)}" y1="${Y(e.z+2.25*IN)}" x2="${X(e.x+3*IN)}" y2="${Y(e.z+2.25*IN)}" stroke="#FF0000" stroke-width="0.8" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(fs*.1)}" fill="var(${m==='stand'?'--eye-stand':'--eye-sit'})" stroke="var(--eye-sit)" stroke-width=".5" vector-effect="non-scaling-stroke"/>`;
     // C-value to the right of the head, 4 decimals; the lowest in blue
-    if(labels&&C!=null)K.note(e.x+hr+1.5*IN,cy-fs*.2,CV(C),{size:fs*.52,anchor:'start',fill:low?'var(--sl-low)':isMin?'#0000FF':'var(--ink)',wt:isMin?800:600,ref:isMin?'cval':null});
+    if(labels&&C!=null)K.note(e.x+hr+1.5*IN,cy-fs*.2,CV(C),{size:TP(o,6,fs*.52),anchor:'start',fill:low?'var(--sl-low)':isMin?'#0000FF':'var(--ink)',wt:isMin?800:600,ref:isMin?'cval':null});
     K.reserve(e.x-hr,cy-hr,e.x+hr,cy+hr);});
   // top spectator: eye (sitting) or head (standing) height, right of the bowl
   const eT=ey[ey.length-1],xd=last.x+last.T+fs*3.6,zTop=m==='stand'?last.z+E.stH+HEAD:eT.z;
   K.dim([xd,last.z],[xd,zTop],{lab:m==='stand'?'Standing head':'Sitting eye',val:L(m==='stand'?E.stH+HEAD:E.sitH),ref:m==='stand'?'head':'sit',ctl:m==='stand'?'STAND':'SIT',ea:[last.x+last.T,last.z],eb:[eT.x,zTop],side:-1});
   // vertical: bottom tread above the field, one tread in front of the leg wall; overall to the top tread, right of the bowl
   if(!NF)K.dim([r0.x-r0.T,0],[r0.x-r0.T,r0.z],{lab:'Bottom tread',val:L(r0.z),eb:[r0.x,r0.z],ctl:'Z:0'});
-  else K.note(r0.x-fs*.4,r0.z-fs*1.1,`Bottom tread ${L(r0.z)} above the ${surfLow()}`,{size:fs*.5,anchor:'end',fill:c,wt:450});
+  else K.note(r0.x-fs*.4,r0.z-fs*1.1,`Bottom tread ${L(r0.z)} above the ${surfLow()}`,{size:TP(o,6,fs*.5),anchor:'end',fill:c,wt:450});
   {const z0=NF?r0.z:0,xo=xd+fs*2.4;K.dim([xo,z0],[xo,last.z],{lab:NF?`Tier ${ti+1} rise`:'Overall',val:L(last.z-z0),ea:[r0.x,z0],eb:[xd,last.z],side:-1});}
   // horizontal chain below the bowl: point of focus to the first riser, the first tread, then the typical tread
   const yc=NF?r0.z-(ti>=1?LEG2:slabT())-fs*1.4:-(band+fs*1.3),pts=(NF?[r0.x,r0.x+r0.T,r0.x+r0.T+(rs[1]?rs[1].T:0)]:[0,r0.x,r0.x+r0.T,r0.x+r0.T+(rs[1]?rs[1].T:0)]).filter((v,i,a)=>i===0||v>a[i-1]+1);
@@ -2449,7 +2451,7 @@ function drawPlatform(o={}){
       +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(IN*.9)}" fill="var(${p.k==='stand'?'--eye-stand':'--eye-sit'})" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`
       ;K.reserve(e.x-hr-IN,cy-hr-IN,e.x+hr+IN,cy+hr+IN);if(p.k!=='wc')K.avoid(e.x,cy-hr,e.x,floor);});
   rs.forEach(r=>K.note(r.x+r.T/2,r.z-t-fs*.8,`Row ${r.row}`,{size:T9(o,fs*.52)}));
-  K.note((edge+top.x)/2,(zP+p2.z)/2-fs*.2,'Platform',{size:fs*.52});
+  K.note((edge+top.x)/2,(zP+p2.z)/2-fs*.2,'Platform',{size:TP(o,6,fs*.52)});
   K.reserve(eye.x-31.5*IN,zP,eye.x+15*IN,zP+41*IN);                                     // the wheelchair figure
   K.dim([edge,eye.z+HEAD+fs*1.4],[eye.x,eye.z+HEAD+fs*1.4],{lab:'Platform riser to eye',val:D4(eye.x-edge),ref:'wcoff',ctl:'WCOFF',ea:[edge,zP+P.railH],eb:[eye.x,eye.z]});
   {const xe=top.x+top.T+9*IN;K.dim([xe,zP],[xe,eye.z],{lab:'Wheelchair eye',val:D4(E.wcH),ref:'wceye',ctl:'WCH',ea:[top.x+top.T,zP],eb:[eye.x,eye.z],side:-1});}
@@ -2896,7 +2898,7 @@ function vomSolids(){const out=[];if(!M||!M.AL)return out;const t=vomWall()/1000
 function vomLabels(rf,t,plain){if(!M||!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>v.toFixed(2),fs=rf*.95,done=new Set();   // centred on the opening (its first to last row)
   M.AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>Lz.ais.forEach((a,i)=>{if(!Lz.vom[i]||done.has(a.id)||!a.vr)return;done.add(a.id);const s=(a.vr&&a.vr.s)||0,e=Math.min(Lz.tr.length-1,s+Math.max(1,a.vr.k||1)-1),d=(Lz.tr[s].x+Lz.tr[e].x+Lz.tr[e].T)/2000,p=chainPtS(Lz.ch,chainS(Lz.ch,a,d),d),[x,y]=rotPt(p[0],p[1],t);
     const lab=a.vomC>AIS().vomW?'T-'+(a.vomKey||'').replace('C.',''):'V'+(ti?ti+1:'')+'-'+(a.vomLabel||'').replace(' ','');
-    o+=`<text x="${f(x)}" y="${f(y)}" font-size="${f(fs*.72)}" font-weight="${plain?400:700}" fill="#DA291C" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fs*.14)}">${lab}</text>`;})));return o;}
+    o+=`<text x="${f(x)}" y="${f(y)}" font-size="${f(PX(10,fs*.72))}" font-weight="${plain?400:700}" fill="#DA291C" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fs*.14)}">${lab}</text>`;})));return o;}
 // a corner tunnel (with its walls and side aisles) wider than the corner's diagonal rows at its first row: on curved stands the
 // corner narrows (decision 82), so the tunnel runs into the corner aisles
 function tunnelFit(){const out=[];if(!M||!M.AL)return out;M.AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>Lz.ais.forEach((a,i)=>{if(!Lz.vom[i]||!a.vr||!a.vr.field)return;const g=Lz.ch[a.i];if(!g||!segDiag(g))return;
@@ -3012,6 +3014,10 @@ function drawSpectator(mode,o={}){
   return s+K.out()+'</svg>';
 }
 let PLAN='bowl',PLANROT=0;
+// screen plans with set text sizes (decision 170): draw, measure the drawing's px per unit at full view, draw again with PXK set
+function pxkOf(el){const v=el&&el.querySelector(':scope > svg');if(!v||!v.viewBox||!v.viewBox.baseVal.width)return 0;const vb0=v.dataset.vb0?+v.dataset.vb0.split(/[\s,]+/)[2]:v.viewBox.baseVal.width;return v.getBoundingClientRect().width/vb0;}
+function renderPlan(){const el=$('plan');el.innerHTML=drawPlan();const k=pxkOf(el);if(k>0){PXK=k;try{el.innerHTML=drawPlan();}finally{PXK=0;}}}
+function renderEnl(){const el=$('enl');el.innerHTML=drawEnlarged();const k=pxkOf(el);if(k>0){PXK=k;try{el.innerHTML=drawEnlarged();}finally{PXK=0;}}}
 // plan zoom and pan (decision 152): screen only; the drawing's own viewBox is kept as data-vb0 and the view is a window into it (zoom k, centre u,v as fractions)
 let PZ={k:1,u:.5,v:.5};const PZMAX=40;
 function pzVB0(svg){if(!svg.dataset.vb0)svg.dataset.vb0=svg.getAttribute('viewBox');return svg.dataset.vb0.split(/[\s,]+/).map(Number);}
@@ -3093,7 +3099,7 @@ function sectionList(ti,AL){AL=AL||(M&&M.AL);const T=AL&&AL[ti];if(!T)return [];
   out.sort((a,b)=>rel2(a)-rel2(b)).forEach((q,i)=>q.no=(ti+1)*100+i+1);
   return out;}
 const SECNO={};
-function sectLabels(rf,t,plain){if(!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>v.toFixed(2),fz=rf*1.05,fn=rf*.95;
+function sectLabels(rf,t,plain){if(!M.AL||PLAN!=='bowl')return '';let o='';const f=v=>v.toFixed(2),fz=PX(14,rf*1.05),fn=PX(12,rf*.95);
   const SS=P.secs||{},WC=(M.ADA&&M.ADA.secs)||{};
   for(let ti=0;ti<M.AL.length;ti++)sectionList(ti).forEach(q=>{SECNO[ti+':'+q.key]=q.no;const e=SS[q.no]||{},w=WC[q.no],[rx,ry]=rotPt(q.pt[0],q.pt[1],t),cnt=e.off?'off':q.lo===q.hi?q.lo:q.lo+'–'+q.hi;
     if(w&&!e.off)o+=`<text x="${f(rx)}" y="${f(ry+fz*1.75)}" font-size="${f(fz*.8)}" font-weight="${plain?400:700}" fill="#C24E00" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(fz*.1)}">WC ${w.wc}</text>`;
@@ -3359,10 +3365,10 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
     for(let q=0;q<n;q++){const u=wA/2+lead+(n-1-q)*r.seatW,yb=v+r.T+cb,no=nzCW?n-q:q+1;   // seat 1 at the right-hand aisle (in the north end zone, where the row starts clockwise); seat down (solid), raised seat tip (dashed), back 2 in behind the riser
       seats+=`<rect x="${X(u)}" y="${Y(yb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="${tierFill(ti)}" fill-opacity=".55" stroke="var(--ink)" stroke-width="0.45" vector-effect="non-scaling-stroke"/>`
       +(G0.bench?'':`<line x1="${X(u)}" y1="${Y(v+r.T-cf)}" x2="${X(u+r.seatW)}" y2="${Y(v+r.T-cf)}" stroke="var(--ink)" stroke-width="0.5" stroke-dasharray="2.5 1.5" vector-effect="non-scaling-stroke"/>`)
-      +`<text x="${X(u+r.seatW/2)}" y="${Y(yb-cdn*.42)}" font-size="${f(r.seatW*.42)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${no}</text>`;}
+      +`<text x="${X(u+r.seatW/2)}" y="${Y(yb-cdn*.42)}" font-size="${f(PX(6,r.seatW*.42))}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${no}</text>`;}
     for(const s of [-1,1])for(let q=0;q<2;q++){const u=s<0?-wA/2-gp-(q+1)*r.seatW:span+wA/2+gp+q*r.seatW;nb+=`<rect x="${X(u)}" y="${Y(v+r.T+cb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="none" stroke="var(--muted)" stroke-width="0.4" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/>`;}});
   // row numbers in the left aisle
-  let rn='';tr.forEach(r=>{const v=r.x-x0;rn+=`<text x="${X(0)}" y="${Y(v+r.T/2)}" font-size="${f(Math.max(fs,(span+2*side)/62)*.6)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${r.row}</text>`;});
+  let rn='';tr.forEach(r=>{const v=r.x-x0;rn+=`<text x="${X(0)}" y="${Y(v+r.T/2)}" font-size="${f(PX(4,Math.max(fs,(span+2*side)/62)*.6))}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${r.row}</text>`;});
   // dimensions: along the front, one row below the next
   const n0=counts[0],r0=tr[0],sec=n0*r0.seatW,lo=-fs*2.2,lo2=lo-fs*2.8,g0=gp+Math.max(0,span-wA-2*gp-sec)/2;
   K.avoid(-side,0,span+side,0);
@@ -3386,14 +3392,14 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
         +(y1===base+cb?ln(0,y1,sw2,y1,'stroke="var(--ink)" stroke-width="0.6"'):ln(-sw2*.06,y1,sw2*1.06,y1,'stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="1.5 2"'))   // seat back, or a cut line
         +(y0===base+cb-cdn?ln(0,y0,sw2,y0,'stroke="var(--ink)" stroke-width="0.6"'):ln(-sw2*.06,y0,sw2*1.06,y0,'stroke="var(--muted)" stroke-width="0.6" stroke-dasharray="1.5 2"'))
         +(tip>y0&&tip<y1?ln(0,tip,sw2,tip,'stroke="var(--ink)" stroke-width="0.8" stroke-dasharray="4 2.5"'):'');}
-    det+=`<text x="${Xd(sw2/2)}" y="${f(+Yd(2*T+cb-cdn*.42))}" font-size="${f(sw2*MI*.16)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">1</text>`
-      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(3*T+cb-cdn*.42))}" font-size="${f(sw2*MI*.16)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">1</text>`
-      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(T+cb-cdn*.42))}" font-size="${f(sw2*MI*.16)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">1</text>`
-      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(3*T+cb-cdn*.82))}" font-size="${f(fs*.5)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row behind</text>`
-      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(T+cb-cdn*.82))}" font-size="${f(fs*.5)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row ahead</text>`
-      +`<text x="${f((+Xd(xa)+ +Xd(xe))/2)}" y="${f(+Yd(3*T-T*.3))}" font-size="${f(fs*.5)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Aisle ${stepNote(ast.n,ast.rh)}</text>`
-      +`<text x="${f((+Xd(xa)+ +Xd(xe))/2)}" y="${f(+Yd(3*T-T*.3)+fs*.7)}" font-size="${f(fs*.45)}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Rise ${L(ast.R)}, treads ${L(ast.td)}</text>`
-      +`<text x="${Xd(0)}" y="${f(+Yd(vt)-fs*1.2)}" font-size="${f(fs*.95)}" font-weight="700" fill="var(--ink)">Seat 1 beside the aisle, enlarged ×${MI}</text>`;
+    det+=`<text x="${Xd(sw2/2)}" y="${f(+Yd(2*T+cb-cdn*.42))}" font-size="${f(PX(16,sw2*MI*.16))}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">1</text>`
+      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(3*T+cb-cdn*.42))}" font-size="${f(PX(16,sw2*MI*.16))}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">1</text>`
+      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(T+cb-cdn*.42))}" font-size="${f(PX(16,sw2*MI*.16))}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">1</text>`
+      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(3*T+cb-cdn*.82))}" font-size="${f(PX(6,fs*.5))}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row behind</text>`
+      +`<text x="${Xd(sw2/2)}" y="${f(+Yd(T+cb-cdn*.82))}" font-size="${f(PX(6,fs*.5))}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row ahead</text>`
+      +`<text x="${f((+Xd(xa)+ +Xd(xe))/2)}" y="${f(+Yd(3*T-T*.3))}" font-size="${f(PX(6,fs*.5))}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Aisle ${stepNote(ast.n,ast.rh)}</text>`
+      +`<text x="${f((+Xd(xa)+ +Xd(xe))/2)}" y="${f(+Yd(3*T-T*.3)+fs*.7)}" font-size="${f(PX(6,fs*.45))}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Rise ${L(ast.R)}, treads ${L(ast.td)}</text>`
+      +`<text x="${Xd(0)}" y="${f(+Yd(vt)-fs*1.2)}" font-size="${f(PX(10,fs*.95))}" font-weight="700" fill="var(--ink)">Seat 1 beside the aisle, enlarged ×${MI}</text>`;
     const ux=xe+fs*0.9/MI*1.6;
     K2.avoid(0,T,xe,T).avoid(0,2*T,xe,2*T).avoid(0,3*T,xe,3*T)
       ;if(G0.bench){K2.dim([ux,T],[ux,2*T-BENCH.d],{lab:'Clear width',val:L(T-BENCH.d),ref:'tread',ea:[xe,T]})
@@ -3412,7 +3418,7 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
       .dim([sw2,vb-fs*1.8/MI],[xa,vb-fs*1.8/MI],{lab:'End space',val:L(gp),eb:[xa,vb]});
     det+=K2.out();}
   const lo3=Math.min(...counts),hi3=Math.max(...counts);
-  const fC=Math.max(fs,(span+2*side)/62),cap=`<text x="${X(span/2)}" y="${Y(depth)-fC*1.4}" font-size="${f(fC*1.15)}" font-weight="700" text-anchor="middle" fill="#1E5BD8">${lo3===hi3?lo3:lo3+'–'+hi3} seats per row, ${tr.length} rows: ${fmt(counts.reduce((a,b)=>a+b,0))} seats</text>`;
+  const fC=Math.max(fs,(span+2*side)/62),cap=`<text x="${X(span/2)}" y="${Y(depth)-fC*1.4}" font-size="${f(PX(10,fC*1.15))}" font-weight="700" text-anchor="middle" fill="#1E5BD8">${lo3===hi3?lo3:lo3+'–'+hi3} seats per row, ${tr.length} rows: ${fmt(counts.reduce((a,b)=>a+b,0))} seats</text>`;
   return `<svg viewBox="0 0 ${f(W)} ${f(H)}" data-ox="${X(wA/2)}" data-oy="${Y(depth)}" role="img" aria-label="Enlarged plan of a typical section">`+g+nb+seats+rn+K.out()+(o.own?'':det+cap)+'</svg>';}   /* PDF: the sheet carries the section label */
 function enlargedTitle(){if(ENL.one)return oneTitle(ENL.one);if(enlSide()==='corner')return cornerTitle();const ti=Math.min(ENL.tier,P.tierCount-1),E=enlargedData(ti,enlSide()),no=E?(sectionList(ti).find(q=>q.key===E.L0.a.id+'_'+E.R0.a.id)||{}).no:null;return `Enlarged plan: typical section${no?' '+no:''}, Tier ${ti+1} ${zoneName(P,enlSide())} (middle section)`;}
 // corner sheets: one scale for every tier, not necessarily a standard one, the largest that fits the paper (the common frame is the largest tier's corner)
@@ -3630,10 +3636,10 @@ function drawPlan(o={}){
       const T=tr[1]?tr[1].T/1000:tr[0].T/1000,every=[1,2,5,10].find(e=>e*T>=rf*1.35)||10;
       tr.forEach((r,i)=>{if(!(i===0||i===tr.length-1||(r.row%every===0&&tr.length-1-i>=every&&i>=every*.6)))return;
         const d=(r.x+r.T/2)/1000,[rx,ry]=rotPt(px+nx*d,py+ny*d,t);
-        over+=`<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${rf.toFixed(2)}" font-weight="600" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${(rf*.12).toFixed(2)}">${r.row}</text>`;});}
+        over+=`<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${PX(14,rf).toFixed(2)}" font-weight="600" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="${(PX(14,rf)*.12).toFixed(2)}">${r.row}</text>`;});}
     over+=sectLabels(o.tight?rf*1.2:rf,t,!!o.tight);over+=vomLabels(o.tight?rf*1.2:rf,t,!!o.tight);   // the PDF sheets read at paper size: a little larger than on screen, in plain (regular) text
     over+=labels.map(([x,y,tx,ang])=>{const [rx,ry]=rotPt(x,y,t);let a=(ang||0)+t;while(a>90)a-=180;while(a<=-90)a+=180;   // parallel to the stand, reading upright
-      return `<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${(lf*.7).toFixed(2)}" font-weight="400" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle"${a?` transform="rotate(${a.toFixed(1)} ${rx.toFixed(2)} ${ry.toFixed(2)})"`:''}>${tx}</text>`;}).join('');
+      return `<text x="${rx.toFixed(2)}" y="${ry.toFixed(2)}" font-size="${PX(16,lf*.7).toFixed(2)}" font-weight="400" fill="var(--ink)" text-anchor="middle" dominant-baseline="middle"${a?` transform="rotate(${a.toFixed(1)} ${rx.toFixed(2)} ${ry.toFixed(2)})"`:''}>${tx}</text>`;}).join('');
 
   }
   else{if(P.sport!=='nfl'&&P.sport!=='ncaafb'&&S.shape!=='fan'&&S.shape!=='track'&&dims.length>1){dims[0].ctl='L';dims[1].ctl='W';}body+=drawDims(dims,g,fs);}
@@ -3647,7 +3653,7 @@ function drawPlan(o={}){
 }
 $('planTabs').addEventListener('click',e=>{const b=e.target.closest('[data-plan]');if(!b)return;PLAN=b.dataset.plan;PZ={k:1,u:.5,v:.5};
   document.querySelectorAll('#planTabs [data-plan]').forEach(x=>{const on=x===b;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on);});
-  $('plan').innerHTML=drawPlan();});
+  renderPlan();});
 function setTierColor(i,v){v=String(v).trim();if(!v.startsWith('#'))v='#'+v;
   if(!/^#[0-9a-f]{6}$/i.test(v)){const el=$('tcol'+i);if(el)el.classList.add('bad');toast('Enter a 6-digit HEX colour, e.g. #CCCCCC.');return;}
   if(!Array.isArray(P.tierColors))P.tierColors=TIER_COL.slice();P.tierColors[i]=v.toUpperCase();renderControls();update();}
@@ -3669,7 +3675,7 @@ $('pzCtl').addEventListener('click',e=>{const b=e.target.closest('[data-pz]');if
   const end=e=>{pts.delete(e.pointerId);if(pts.size<2&&drag&&drag.pinch!=null)drag=null;if(!pts.size){drag=null;pl.classList.remove('pz-drag');}};
   pl.addEventListener('pointerup',end);pl.addEventListener('pointercancel',end);
   pl.addEventListener('click',e=>{if(moved){e.stopPropagation();e.preventDefault();moved=false;}},true);}   // a drag is not a click on a section
-$('seatTog').addEventListener('click',e=>{SHOWSEATS=!SHOWSEATS;e.target.classList.toggle('on',SHOWSEATS);e.target.setAttribute('aria-pressed',SHOWSEATS);$('plan').innerHTML=drawPlan();});
+$('seatTog').addEventListener('click',e=>{SHOWSEATS=!SHOWSEATS;e.target.classList.toggle('on',SHOWSEATS);e.target.setAttribute('aria-pressed',SHOWSEATS);renderPlan();});
 
 $('detTabs').addEventListener('click',e=>{const b=e.target.closest('[data-dm]');if(!b)return;DETMODE=b.dataset.dm;update();});
 $('modeTabs').addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(!b)return;P.eyeMode=b.dataset.mode;CUR=null;update();});
@@ -3727,7 +3733,7 @@ function update(){
      const n=ZR[P.sec].some(r=>r.tier===2)&&P.tierCount>2?2:1;$('junction').innerHTML=Array.from({length:n},(_,i)=>(n>1?`<p class="capt" style="margin:8px 12px 0"><b>Tier ${i+1}–${i+2}</b></p>`:'')+jn(i+1).replace('<svg ','<svg style="display:block;width:min(100%,780px);margin:0 auto" ')).join('');
      $('junTitle').textContent=`Tier junction${n>1?'s':''}: ${n>1?'Tiers 1–2 and 2–3':'Tier 1–2'}, ${zoneName(P,P.sec)}, through the wheelchair platform`;}}
   $('detTitle').textContent=`Sightline detail: Tier 1, ${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'}`;
-  document.querySelectorAll('#detTabs [data-dm]').forEach(b=>{const on=b.dataset.dm===DETMODE;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});$('plan').innerHTML=drawPlan();
+  document.querySelectorAll('#detTabs [data-dm]').forEach(b=>{const on=b.dataset.dm===DETMODE;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});renderPlan();
   const Sp=SPORTS[P.sport];$('planTitle').textContent=`${Sp.org}: ${Sp.name}`;
   $('planNote').innerHTML=`<span style="display:inline-block;width:18px;height:3px;background:${FOCAL};vertical-align:middle;margin-right:6px"></span>Point-of-focus boundary, dimensioned. Drawn from ${Sp.rule}. Field ${fieldDesc(P)}. Check against the current edition before issuing drawings.`+(M.AL?` <br><span style="display:inline-block;width:14px;height:9px;background:#FFFFFF;border:1px solid var(--ink);vertical-align:middle;margin-right:5px"></span>Aisles`+(imperial()?` <span style="display:inline-block;width:14px;height:9px;background:#FF8A8A;vertical-align:middle;margin:0 5px 0 10px"></span>Row over the IBC maximum of ${ibcRow(P.zt[0].z.T).n} seats per row (${L(ibcRow(P.zt[0].z.T).C)} clear, ${L(AIS().chairD||14*25.4)} seat)`:''):'');
   const tc=mm=>plain(mm),tu=imperial()||!unitSuffix().trim()?'':` (${unitSuffix().trim()})`;
@@ -3751,7 +3757,7 @@ function update(){
    spectScale();}
   {const ok=!!M.AL&&zoned(P);ENL.one=null;if(ok&&ENL.pick){const ti=Math.floor(ENL.pick/100)-1,q=ti<P.tierCount?sectionList(ti).find(x=>x.no===ENL.pick):null;   // a section picked from the list (decision 153)
      if(q&&!((P.secs||{})[q.no]||{}).off){const g=uniqueSections().find(u=>u.nos.includes(q.no));ENL.one={ti,key:q.key,no:q.no,same:g?g.nos.filter(n=>n!==q.no):[],nos:g?g.nos:[q.no]};}else ENL.pick=null;}
-   $('enl').innerHTML=drawEnlarged();$('enlTitle').textContent=ok?enlargedTitle():'Enlarged plan: typical section';
+   renderEnl();$('enlTitle').textContent=ok?enlargedTitle():'Enlarged plan: typical section';
    $('enlTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlt="${i}" class="${!ENL.pick&&Math.min(ENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
      +[westKey(),eastKey(),GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='S')||'R'].map(k=>`<button data-enls="${k}" class="${!ENL.pick&&enlSide()===k?'on':''}">${zoneName(P,k)}</button>`).join('')
      +`<select id="enlPick" aria-label="Any section" title="Show any section" style="margin-left:8px"><option value="">Any section…</option>${Array.from({length:P.tierCount},(_,ti)=>`<optgroup label="Tier ${ti+1}">${sectionList(ti).filter(q=>!((P.secs||{})[q.no]||{}).off).sort((a,b)=>a.no-b.no).map(q=>`<option value="${q.no}"${ENL.pick===q.no?' selected':''}>${q.no}, ${zoneName(P,q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a).Lz.k)}</option>`).join('')}</optgroup>`).join('')}</select>`:'';
@@ -4076,17 +4082,17 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   // horizontal, below: the top tread below, the riser offset between the tiers, the concourse, the platform setback and depth, the first tread above
   const yb=a0.z-t-fs*1.6,zb=x=>a0.z-t;
   if(pg){K.dim([pg.edge,yb],[pg.top.x,yb],{lab:'Platform',val:L(pg.top.x-pg.edge),ea:[pg.edge,pg.zP],eb:[pg.top.x,pg.zP],side:-1});
-    K.note(pg.edge+fs*.3,pg.zP-fs*.9,`Platform face ${inchText(pg.edge-pg.p1.x)} behind the row riser`,{size:fs*.42,anchor:'start',fill:'var(--muted)',wt:400});}
+    K.note(pg.edge+fs*.3,pg.zP-fs*.9,`Platform face ${inchText(pg.edge-pg.p1.x)} behind the row riser`,{size:TP(o,6,fs*.42),anchor:'start',fill:'var(--muted)',wt:400});}
   K.dim([lb.x,yb],[lb.x+lb.T,yb],{lab:'Top tread',val:L(lb.T),ea:[lb.x,lb.z],eb:[lb.x+lb.T,lb.z],side:-1});
   const dx=f.x-lb.x;   /* the riser offset between the tiers is no longer dimensioned here (decision 169) */
-  if(Math.abs(dx)<=1)K.note(f.x+fs*.4,f.z-LEG2-fs*1.2,`First riser over the top riser below`,{size:fs*.5,anchor:'start',fill:'var(--dim)',wt:450});
-  else if(Math.abs(f.x+f.T-lb.x)<=1)K.note(f.x+f.T+fs*.3,f.z-fs*.9,`Second riser over the top riser below`,{size:fs*.5,anchor:'start',fill:'var(--dim)',wt:450});
+  if(Math.abs(dx)<=1)K.note(f.x+fs*.4,f.z-LEG2-fs*1.2,`First riser over the top riser below`,{size:TP(o,6,fs*.5),anchor:'start',fill:'var(--dim)',wt:450});
+  else if(Math.abs(f.x+f.T-lb.x)<=1)K.note(f.x+f.T+fs*.3,f.z-fs*.9,`Second riser over the top riser below`,{size:TP(o,6,fs*.5),anchor:'start',fill:'var(--dim)',wt:450});
   if(f.x>cx0+1)K.dim([cx0,lb.z+fs*1.2],[f.x,lb.z+fs*1.2],{lab:'Concourse',val:L(f.x-cx0),ea:[cx0,lb.z],eb:[f.x,lb.z]});
   {const ups=up.slice(0,NU),zc=Math.max(...ups.map(r=>r.sit.ez))+hr*2+fs*1.2,pts=[f.x,...ups.map(r=>r.x+r.T)];   // the Tier N+1 treads, one chain along the top of the drawing (decision 169)
    for(let i=1;i<pts.length;i++){const r=ups[i-1];K.dim([pts[i-1],zc],[pts[i],zc],{val:L(pts[i]-pts[i-1]),ea:[pts[i-1],i===1?f.z:ups[i-2].z],eb:[pts[i],r.z],fix:1,ctl:i===1?'T0:'+tu:null});}}
   // labels
-  K.note(cx0+fs*.3,lb.z+fs*.3,tu===1?'Main concourse':'Upper concourse',{size:fs*.55,anchor:'start',fill:'var(--muted)',wt:400});
-  K.note(u2.x+u2.T-fs*.2,u2.z-t-fs*.95,`Tier ${tu+1}`,{size:fs*.8,anchor:'end',fill:'var(--ink)',wt:700});K.note(lb.x+lb.T-fs*.2,lb.z-t-fs*.95,`Tier ${tu}`,{size:fs*.8,anchor:'end',fill:'var(--ink)',wt:700});   // under the top tread of each tier drawn (decision 169)
+  K.note(cx0+fs*.3,lb.z+fs*.3,tu===1?'Main concourse':'Upper concourse',{size:TP(o,6,fs*.55),anchor:'start',fill:'var(--muted)',wt:400});
+  K.note(u2.x+u2.T-fs*.2,u2.z-t-fs*.95,`Tier ${tu+1}`,{size:TP(o,10,fs*.8),anchor:'end',fill:'var(--ink)',wt:700});K.note(lb.x+lb.T-fs*.2,lb.z-t-fs*.95,`Tier ${tu}`,{size:TP(o,10,fs*.8),anchor:'end',fill:'var(--ink)',wt:700});   // under the top tread of each tier drawn (decision 169)
   s+=K.out();return s+'</svg>';}
 function plotJunction(sh,zone,tu,force){const A=swArea(sh),Z=ZR[zone];if(!Z||!Z.some(r=>r.tier===tu))return null;let fit=null;
   for(const sc of (force?[force]:PLOT_SCALES())){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawJunction(Z,{tier:tu,zone,fs:sh.txt*25.4*sc.ratio}),o=SWORIG;SWG=0;SWORIG=null;
