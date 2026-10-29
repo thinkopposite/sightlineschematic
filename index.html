@@ -1850,7 +1850,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.14';
+const VERSION='2026.10.29.15';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2170,7 +2170,7 @@ function SecDim(X,Y,fs,frame,opt={}){const K=SecDim0(X,Y,fs,frame,opt.vs);if(opt
     const bad=v=>{if(!opt.avoid||(o&&o.fix))return false;const q=kind==='h'?[+X(lo),+Y(v),+X(hi),+Y(v)]:[+X(v),+Y(lo),+X(v),+Y(hi)],m=(lo+hi)/2,b=K.center?(kind==='h'?K.valBox(o||{},+X(m),+Y(v),false):K.valBox(o||{},+X(v),+Y(m),true)):null;return K.blocked([Math.min(q[0],q[2]),Math.min(q[1],q[3]),Math.max(q[0],q[2]),Math.max(q[1],q[3])],b);};
     let v1=v;while(taken(v1))v1+=dir*G;let k=0,v2=v1;while(k<14&&(taken(v2)||bad(v2))){v2+=dir*G;k++;}if(k<14)v1=v2;   /* step out a grid line at a time until clear of the bowl, spectators and sightlines */
     used.push({kind,c:v1,lo,hi});return v1;};
-  K.dim0=(a,b,o={})=>{const ref=o.eb||o.ea;
+  K.dim0=(a,b,o={})=>{if(o.nosnap)return d0(a,b,o);const ref=o.eb||o.ea;   /* nosnap: a dimension set just over a tread by hand (decision 175) */
     if(Math.abs(a[1]-b[1])<1){const dir=ref?(a[1]>=ref[1]?1:-1):1,z=pick(a[1],Math.min(a[0],b[0]),Math.max(a[0],b[0]),dir,'h',o);a=[a[0],z];b=[b[0],z];}
     else if(Math.abs(a[0]-b[0])<1){const dir=ref?(a[0]>=ref[0]?1:-1):-1,x=pick(a[0],Math.min(a[1],b[1]),Math.max(a[1],b[1]),dir,'v',o);a=[x,a[1]];b=[x,b[1]];}
     return d0(a,b,o);};
@@ -2997,8 +2997,9 @@ function drawSpectator(mode,o={}){
       +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(IN*.9)}" fill="var(${col})" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`;
     K.reserve(e.x-hr-IN,cy-hr-IN,e.x+hr+IN,cy+hr+IN).avoid(e.x,cy-hr,e.x,r.z);}));   /* head with 1 in clearance; the dashed body line */
   rs.forEach(r=>K.note(r.x+r.T/2,r.z-t-fs*.8,`Row ${r.row}`,{size:T9(o,fs*.52)}));
+  if(T2)rs.forEach(r=>{if(r.riser!=null)K.note(r.x-fs*.2,r.z-r.riser/2-fs*.1,D4(r.riser),{size:TP(o,6,fs*.46),anchor:'end',fill:'var(--muted)',wt:400});});   // riser heights left of each riser (decision 175)
   // every row: front riser to the standing eye, then to the sitting eye over the back riser; standing eye height
-  rs.forEach((r,i)=>{const z=r.z+10*IN;if(!T2)K.dim([r.x,z],[st[i].x,z],{val:D4(E.stOff),ref:i===0?'stand':null,ea:[r.x,r.z],ctl:'STOFF'});K.dim([st[i].x,z],[r.x+r.T,z],{val:D4(r.T-E.stOff),eb:[r.x+r.T,r.z]});   /* view 3: the 8 in offsets and per-row standing eyes left out (decision 174) */
+  rs.forEach((r,i)=>{const z=r.z+(T2?3:10)*IN;if(!T2)K.dim([r.x,z],[st[i].x,z],{val:D4(E.stOff),ref:i===0?'stand':null,ea:[r.x,r.z],ctl:'STOFF'});K.dim([st[i].x,z],[r.x+r.T,z],{val:D4(r.T-E.stOff),ea:[st[i].x,r.z],eb:[r.x+r.T,r.z],fix:T2?1:0,nosnap:T2?1:0});   /* view 3: the 8 in offsets and per-row standing eyes left out (decision 174) */
     if(r!==last&&!T2){const xv=si[i].x-hr-4*IN;K.dim([xv,r.z],[xv,st[i].z],{lab:i===0?'Standing eye':'',val:D4(E.stH),ref:i===0?'stand':null,ctl:'STAND',eb:[st[i].x,st[i].z]});}});   /* 4 in left of the sitting head */
   // top row: sitting and standing eye and head heights, stacked to the right
   {const xb=last.x+last.T,sp=fs*2.4;[['Sitting eye',E.sitH,si[n-1].x],['Sitting head',E.sitH+HEAD,si[n-1].x],['Standing eye',E.stH,st[n-1].x],['Standing head',E.stH+HEAD,st[n-1].x]]
@@ -3009,9 +3010,9 @@ function drawSpectator(mode,o={}){
   // C-values: the top row's sightline over the eye in front, sitting and standing
   if(!T2)[[si,'C sitting'],[st,'C standing']].forEach(([e,lab])=>{const zl=e[n-1].z*e[n-2].x/e[n-1].x;K.dim([e[n-2].x-2*IN,e[n-2].z],[e[n-2].x-2*IN,zl],{lab,val:CV(zl-e[n-2].z),ref:'cval',ctl:'CV:'+r0.tier});});
   if(T2){const xo=r0.x+RAIL_SET-25.4,rt=r0.z+P.railH;   // guard rail height and the row 1 sightlines over it
-    K.dim([r0.x-18*IN,r0.z-LEG2],[r0.x-18*IN,r0.z],{lab:'Leg wall',val:D4(LEG2),ref:'leg',ea:[r0.x,r0.z-LEG2],eb:[r0.x,r0.z]});   // left of the leg wall (decision 174)
-    K.dim([r0.x-18*IN,r0.z],[r0.x-18*IN,rt],{lab:'Guard rail',val:D4(P.railH),ref:'guard',ea:[r0.x,r0.z],eb:[xo,rt]});   // on the leg wall's column, above it (decision 174)
-    [[st[0],'Over rail, standing']].forEach(([e,lab],k)=>{const c=railClear(r0,e);K.dim([xo,rt],[xo,rt+c],{lab,val:CV(c),ref:'guard',fill:c<0?'var(--sl-low)':null,side:1});});}
+    K.dim([r0.x-18*IN,r0.z-LEG2],[r0.x-18*IN,r0.z],{lab:'Leg wall',val:D4(LEG2),ref:'leg',ea:[r0.x,r0.z-LEG2],eb:[r0.x,r0.z],fix:1});   // left of the leg wall (decision 174)
+    K.dim([r0.x-18*IN,r0.z],[r0.x-18*IN,rt],{lab:'Guard rail',val:D4(P.railH),ref:'guard',ea:[r0.x,r0.z],eb:[xo,rt],fix:1});   // on the leg wall's column, above it (decision 174)
+    [].forEach(([e,lab],k)=>{   /* over-the-rail clearances: in the table (decision 175) */const c=railClear(r0,e);K.dim([xo,rt],[xo,rt+c],{lab,val:CV(c),ref:'guard',fill:c<0?'var(--sl-low)':null,side:1});});}
   return s+K.out()+'</svg>';
 }
 let PLAN='bowl',PLANROT=0;
