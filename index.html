@@ -1277,6 +1277,14 @@ const VOM_ON=false;                                                     // vomit
 // (21 without), + 0.3 in per seat beyond, 22 in needs no more. The clear width is the row depth less the seat's depth with the seat
 // raised (self-rising chairback) or the bench depth. So the clear width sets the most seats a section between two aisles can hold.
 const BENCH_D=12*25.4;
+// bench (bleacher) seat (decision 154): 18" wide, 12" deep, 2" thick, top 18" above the tread, its back 4" in front of the riser face (room for the feet of the row behind)
+const BENCH={w:18*25.4,d:BENCH_D,t:2*25.4,h:18*25.4,off:4*25.4};
+// seat geometry in plan, mm: cb back behind the riser face (negative: in front), cdn depth as used (seat down), cd depth tip to back (seat raised), cf front edge in front of the riser
+function seatGeo(seat){if(seat==='bench')return {bench:true,cb:-BENCH.off,cdn:BENCH.d,cd:BENCH.d,cf:BENCH.d+BENCH.off};const A=AIS(),cb=A.chairBack??2*25.4,cd=A.chairD||14*25.4;return {bench:false,cb,cdn:A.chairDown||24*25.4,cd,cf:cd-cb};}
+// benches in a section: the 2" seat board 16-18" above each tread, 4" off the riser behind, on a support at its middle
+function benchSvg(rows,X,Y,skip){let o='';(rows||[]).forEach(r=>{if(r.seat!=='bench'||(skip&&skip.has(r)))return;const xb=r.x+r.T-BENCH.off,xf=xb-BENCH.d,zt=r.z+BENCH.h,zb=zt-BENCH.t,xm=(xf+xb)/2;
+  o+=`<line x1="${X(xm)}" y1="${Y(zb)}" x2="${X(xm)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`
+   +`<rect x="${X(xf)}" y="${Y(zt)}" width="${(BENCH.d).toFixed(1)}" height="${(BENCH.t).toFixed(1)}" fill="var(--seat-bench)" stroke="var(--ink)" stroke-width="0.8" vector-effect="non-scaling-stroke"><title>Bench ${L(BENCH.w)} wide, ${L(BENCH.d)} deep, ${L(BENCH.t)} thick, top ${L(BENCH.h)} above the tread, ${L(BENCH.off)} off the riser</title></rect>`;});return o;}
 // Table 1030.13.2.1 (smoke-protected or open-air): seats per row allowed at 12 in clear, by seats in the venue [with backrests, without]
 const IBC_ROW_T=[[4000,14,21],[7000,15,22],[10000,16,23],[13000,17,24],[16000,18,25],[19000,19,26],[22000,20,27],[Infinity,21,28]];
 const rowBase=back=>{const b=egBasis();if(b!=='open'&&b!=='smoke')return back?14:21;const n=P.capTarget||0,r=IBC_ROW_T.find(t=>n<t[0]);return back?r[1]:r[2];};
@@ -1816,7 +1824,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.27.05';
+const VERSION='2026.10.28.01';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 function spectScale(){const J=JUNSC,sv=document.querySelector('#junction svg');if(!J||!sv)return;const k=sv.getBoundingClientRect().width/J.W;if(!(k>0))return;
   document.querySelectorAll('#spect svg[data-w]').forEach(e=>{const px=+e.dataset.w*k;e.style.width=px+'px';e.style.maxWidth='none';e.parentNode.style.width=Math.max(px,240)+'px';});}
@@ -2235,7 +2243,7 @@ function drawSection(rows,o={}){
   s+=`<text x="${+X(0)/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(0)}" fill="#fff" text-anchor="middle" font-weight="600">${surf()}</text>`;
   if(fx>fs*3.2)s+=`<text x="${+X(0)+fx/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(0)}" fill="#fff" text-anchor="middle" font-weight="600">Buffer zone ${L(fx)}</text>`;
   const tiers=[...new Set(rows.map(r=>r.tier))];
-  tiers.forEach(ti=>{const tr=rows.filter(r=>r.tier===ti);s+=`<polygon points="${profileOf(tr,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;});
+  tiers.forEach(ti=>{const tr=rows.filter(r=>r.tier===ti);s+=benchSvg(tr,X,Y)+`<polygon points="${profileOf(tr,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;});
   const EX={},SK=new Set();let EXtop='';tiers.forEach(ti=>{const e=secExtras(rows,ti,X,Y,o,0);EX[ti]=e;s+=e.s;EXtop+=e.top;e.skip.forEach(r=>SK.add(r));});if(o.cut)s+=secGoal(o.zone,X,Y,fs);
   tiers.forEach(ti=>{if(!ti)return;const tr=rows.filter(r=>r.tier===ti),f=tr[0],lo=rows.filter(r=>r.tier===ti-1),lb=lo[lo.length-1],cz=lb.z;
     const cx0=lb.x+lb.T,cx1=Math.max(cx0+4000,f.x);                                   // concourse floor behind the tier below
@@ -2308,7 +2316,7 @@ function drawDetail(all,o={}){
     +`<text x="${f1(+X(0)/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(fs*.65)}" fill="#fff" font-weight="600" text-anchor="middle">${surf()}</text>`
     +`<text x="${f1(+X(0)+bufX/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(fs*.65)}" fill="#fff" font-weight="600" text-anchor="middle">Buffer zone</text>`
     +`<line x1="${X(0)}" y1="${f1(+Y(0)+band)}" x2="${X(0)}" y2="${f1(+Y(0)-fs*1.6)}" stroke="${FOCAL}" stroke-width="1.2" vector-effect="non-scaling-stroke"/><circle cx="${X(0)}" cy="${Y(0)}" r="${f1(fs*.22)}" fill="var(--ink)"/>`;}
-  s+=`<polygon points="${profileOf(rs,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  s+=`<polygon points="${profileOf(rs,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`+benchSvg(rs,X,Y);
   s+=`<rect x="${X(r0.x+RAIL_SET-25.4)}" y="${Y(r0.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"/>`;   // 26 in guard rail, 2 in thick, centreline 3 in behind the riser
   const EXd=secExtras(all,ti,X,Y,o,NF?X0:0),SKd=EXd.skip;s+=EXd.s+EXd.top;if(o.cut&&!NF)s+=secGoal(o.zone,X,Y,fs);
   // sightlines to the point of focus
@@ -2361,7 +2369,7 @@ function drawPlatform(o={}){
   const hdim=(x0,x1,z,lab)=>ln(x0,z,x1,z)+[x0,x1].map(x=>`<line x1="${f1(+X(x)-tk)}" y1="${f1(+Y(z)+tk)}" x2="${f1(+X(x)+tk)}" y2="${f1(+Y(z)-tk)}" stroke="${c}" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`).join('')
     +`<text x="${f1((+X(x0)+ +X(x1))/2)}" y="${f1(+Y(z)-fs*.3)}" font-size="${f1(fs*.62)}" fill="${c}" text-anchor="middle">${lab}</text>`;
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Wheelchair on an accessible platform">`+gridBg(X0,X1,Z0,Z1,X,Y,r0.x,r0.z);
-  s+=`<polygon points="${profileOf(rs,-1).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(0)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;   /* bowl section unchanged */
+  s+=`<polygon points="${profileOf(rs,-1).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(0)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`+benchSvg(rs.slice(0,-3),X,Y);   /* bowl section unchanged; no bench under the platform */
   s+=`<polygon points="${[[edge,p1.z],[edge,zP],[top.x,zP],[top.x,p2.z],[p2.x,p2.z],[p2.x,p1.z]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="#FF4500" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;   /* infill over the 2nd and 3rd rows, up to the top tread */
   s+=`<rect x="${X(railC-25.4)}" y="${Y(zP+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"/>`;   /* 26 in guard rail on the riser face, inside face on the platform riser */
   const people=[...standers.map(p=>({e:p.e,r:p.r,k:'stand'})),{e:eye,k:'wc'}];
@@ -2905,7 +2913,7 @@ function drawSpectator(mode,o={}){
   const X0=r0.x-fs*(T2?13:7)-300,X1=last.x+last.T+9*IN+fs*10.5,Z0=r0.z-(T2?LEG2:t)-fs*5,Z1=Math.max(...st.map(e=>e.z))+HEAD+fs*2,W=X1-X0,H=Z1-Z0;
   const X=x=>(x-X0).toFixed(1),Y=z=>(Z1-z).toFixed(1),f1=v=>(+v).toFixed(1),K=SecDim(X,Y,fs,[W,H]);
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="${SPECT_NAMES[mode]}">`+gridBg(X0,X1,Z0,Z1,X,Y,r0.x,r0.z);   // 0,0 at the top of the bottom tread
-  s+=`<polygon points="${profileOf(rs,T2?1:-1).map(q=>X(q[0])+','+Y(q[1])).join(' ')}" fill="${tierFill(T2?1:0)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  s+=`<polygon points="${profileOf(rs,T2?1:-1).map(q=>X(q[0])+','+Y(q[1])).join(' ')}" fill="${tierFill(T2?1:0)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`+benchSvg(rs,X,Y);
   if(T2)s+=`<rect x="${X(r0.x+RAIL_SET-25.4)}" y="${Y(r0.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"/>`;   // guard rail on the row 1 riser face
   if(T2){const x0=r0.x+RAIL_SET-25.4,x1=x0+50.8,z1=r0.z+P.railH,z0=z1-P.railH-RAIL_DROP;K.reserve(x0,z0,x1,z1);}   /* text keeps off the rail */
   // sightlines toward the point of focus: sitting solid, standing dashed; red where row 1 does not clear the rail
@@ -3235,7 +3243,7 @@ function enlargedData(ti,k){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz)return n
   if(!L0)return null;return {Lz,gi,L0,R0};}
 function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.one});if(enlSide()==='corner')return drawCornerEnlarged(o);const ti=Math.min(ENL.tier,P.tierCount-1),k=enlSide(),E=enlargedData(ti,k);
   if(!E)return '<p class="empty" style="padding:16px">Choose the computed aisle layout to see a typical section.</p>';
-  const {Lz,L0,R0}=E,A=AIS(),tr=Lz.tr,x0=tr[0].x,d=1,sa=chainS(Lz.ch,L0.a,d),sb=chainS(Lz.ch,R0.a,d),span=(sb-sa)*1000,wA=A.w,gp=A.gap||0,cd=A.chairD||14*25.4,cb=A.chairBack??2*25.4,cdn=A.chairDown||24*25.4,cf=cd-cb;   /* cf: raised seat tip in front of the riser; cb: back behind it */
+  const {Lz,L0,R0}=E,A=AIS(),tr=Lz.tr,x0=tr[0].x,d=1,sa=chainS(Lz.ch,L0.a,d),sb=chainS(Lz.ch,R0.a,d),span=(sb-sa)*1000,wA=A.w,gp=A.gap||0,G0=seatGeo(tr[0].seat),cd=G0.cd,cb=G0.cb,cdn=G0.cdn,cf=G0.cf;   /* cf: raised seat tip (bench: front edge) in front of the riser; cb: back behind it (bench: negative, 4" in front) */
   const sw=tr[0].seatW,lastR=tr[tr.length-1],depth=lastR.x+lastR.T-x0,side=wA/2+2*sw;      // two neighbouring seats each side, light
   const fs0=o.fs||(span+2*side)/62,MI=8,cd0=AIS().chairD||14*25.4,U0=-side-1200,U1=o.own?span+side+fs0*4:span+side+fs0*8+2*tr[0].seatW*MI+fs0*14,   /* PDF: the x8 seat detail goes on its own sheet (decision 113) */V0=-fs0*7.5,fs=fs0,V1=depth+(o.own?fs*2:Math.max(fs*6,(span+2*side)/62*3)),W=U1-U0,H=V1-V0+(o.own?fs*3:fs*9);   /* PDF: no caption above, tight below */
   const X=u=>(u-U0).toFixed(1),Y=v=>(V1-v).toFixed(1),K=SecDim(X,Y,fs*.9,[W,H]),f=v=>(+v).toFixed(1);
@@ -3252,7 +3260,7 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
     const lead=gp+Math.max(0,span-wA-2*gp-n*r.seatW)/2;   // 4 in at each aisle at least, the leftover split equally (decision 124)
     for(let q=0;q<n;q++){const u=wA/2+lead+(n-1-q)*r.seatW,yb=v+r.T+cb,no=nzCW?n-q:q+1;   // seat 1 at the right-hand aisle (in the north end zone, where the row starts clockwise); seat down (solid), raised seat tip (dashed), back 2 in behind the riser
       seats+=`<rect x="${X(u)}" y="${Y(yb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="${tierFill(ti)}" fill-opacity=".55" stroke="var(--ink)" stroke-width="0.45" vector-effect="non-scaling-stroke"/>`
-      +`<line x1="${X(u)}" y1="${Y(v+r.T-cf)}" x2="${X(u+r.seatW)}" y2="${Y(v+r.T-cf)}" stroke="var(--ink)" stroke-width="0.5" stroke-dasharray="2.5 1.5" vector-effect="non-scaling-stroke"/>`
+      +(G0.bench?'':`<line x1="${X(u)}" y1="${Y(v+r.T-cf)}" x2="${X(u+r.seatW)}" y2="${Y(v+r.T-cf)}" stroke="var(--ink)" stroke-width="0.5" stroke-dasharray="2.5 1.5" vector-effect="non-scaling-stroke"/>`)
       +`<text x="${X(u+r.seatW/2)}" y="${Y(yb-cdn*.42)}" font-size="${f(r.seatW*.42)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${no}</text>`;}
     for(const s of [-1,1])for(let q=0;q<2;q++){const u=s<0?-wA/2-gp-(q+1)*r.seatW:span+wA/2+gp+q*r.seatW;nb+=`<rect x="${X(u)}" y="${Y(v+r.T+cb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="none" stroke="var(--muted)" stroke-width="0.4" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/>`;}});
   // row numbers in the left aisle
@@ -3290,14 +3298,14 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
       +`<text x="${Xd(0)}" y="${f(+Yd(vt)-fs*1.2)}" font-size="${f(fs*.95)}" font-weight="700" fill="var(--ink)">Seat 1 beside the aisle, enlarged ×${MI}</text>`;
     const ux=xe+fs*0.9/MI*1.6;
     K2.avoid(0,T,xe,T).avoid(0,2*T,xe,2*T).avoid(0,3*T,xe,3*T)
-      .dim([ux,T],[ux,T+cb],{lab:'Back of row ahead',val:L(cb),ea:[xe,T]})
+      .dim([ux,Math.min(T,T+cb)],[ux,Math.max(T,T+cb)],{lab:G0.bench?'Bench off the riser':'Back of row ahead',val:L(Math.abs(cb)),ea:[xe,T]})
       .dim([ux,T+cb],[ux,2*T-cf],{lab:'Clear width',val:L(T-cd),ref:'tread'})
-      .dim([ux,2*T-cf],[ux,2*T],{lab:'Seat raised',val:L(cf),eb:[xe,2*T]})
+      .dim([ux,2*T-cf],[ux,2*T],{lab:G0.bench?'Bench front to riser':'Seat raised',val:L(cf),eb:[xe,2*T]})
       .dim([ux+fs*3/MI,T],[ux+fs*3/MI,2*T],{lab:'Row depth',val:L(T)})
       ;for(let k=0;k<ast.n;k++)K2.dim([xa+AWp*.62,T+k*T/ast.n],[xa+AWp*.62,T+(k+1)*T/ast.n],{lab:k?'':'Aisle tread',val:L(T/ast.n)});   // the aisle treads of the middle row
     K2
       ;{const xc=-fs*1.6/MI,xo=-fs*4.2/MI,y=[T+cb-cdn,T+cb,2*T+cb-cdn,2*T+cb,3*T+cb-cdn,3*T+cb];   // chain on the left: seat, space, seat, space, seat; and overall
-      for(let i=0;i<5;i++)K2.dim([xc,y[i]],[xc,y[i+1]],{lab:i%2?'':'Seat down',val:L(y[i+1]-y[i]),ea:[0,y[i]],eb:[0,y[i+1]]});
+      for(let i=0;i<5;i++)K2.dim([xc,y[i]],[xc,y[i+1]],{lab:i%2?'':(G0.bench?'Bench':'Seat down'),val:L(y[i+1]-y[i]),ea:[0,y[i]],eb:[0,y[i+1]]});
       K2.dim([xo,y[0]],[xo,y[5]],{lab:'Three rows of seats',val:L(y[5]-y[0])});}
     K2
       .dim([0,vb-fs*1.8/MI],[sw2,vb-fs*1.8/MI],{lab:'Seat width',val:L(sw2),ea:[0,vb],eb:[sw2,vb]})   // the selected seat width
@@ -3316,7 +3324,7 @@ function cornerScale(sh,aw,ah){let Wc=0,Hc=0;for(let t=0;t<P.tierCount;t++){cons
 // plan overlay: every seat at its true width (on screen, on request)
 function seatsSvg(){if(!SHOWSEATS||!M.AL||PLAN!=='bowl')return '';const A=AIS(),gp=(A.gap||0)/1000,cb=(A.chairBack??2*25.4)/1000,cd=(A.chairDown||24*25.4)/1000,f=v=>v.toFixed(3);let p='';
   M.AL.forEach((T,ti)=>{const nr=Math.max(0,...Object.values(T).map(z=>z.tr.length)),smap=secNoMap(ti),SS=P.secs||{};for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{const e=SS[smap[sc.l+'_'+sc.r]];if(e&&e.off)return;
-    for(const {pc,s0,sw} of sectionSeats(T,sc,j)){if(e&&e.wc){const L=pc.Lz.tr.length;if(j===L-3||j===L-2)continue;}const r=pc.Lz.tr[j],Lz=pc.Lz,d1=(r.x+r.T)/1000+cb-cd,d2=(r.x+r.T)/1000+cb;
+    for(const {pc,s0,sw} of sectionSeats(T,sc,j)){if(e&&e.wc){const L=pc.Lz.tr.length;if(j===L-3||j===L-2)continue;}const r=pc.Lz.tr[j],Lz=pc.Lz,G=seatGeo(r.seat),cb=G.cb/1000,cd=G.cdn/1000,d1=(r.x+r.T)/1000+cb-cd,d2=(r.x+r.T)/1000+cb;
       const P1=chainPtS(Lz.ch,s0,d1),Q=chainPtS(Lz.ch,s0+0.01,d1),P4r=chainPtS(Lz.ch,s0,d2),tl=Math.hypot(Q[0]-P1[0],Q[1]-P1[1])||1,ux=(Q[0]-P1[0])/tl,uy=(Q[1]-P1[1])/tl,tx=ux*sw,ty=uy*sw,sg=((P4r[0]-P1[0])*-uy+(P4r[1]-P1[1])*ux)>=0?1:-1,P4=[P1[0]-uy*sg*(d2-d1),P1[1]+ux*sg*(d2-d1)],P2=[P1[0]+tx,P1[1]+ty],P3=[P4[0]+tx,P4[1]+ty];   // straight from the seat's start, square to the row (decision 153), so a seat at a stand joint keeps its width
       p+=`M${f(P1[0])} ${f(P1[1])}L${f(P2[0])} ${f(P2[1])}L${f(P3[0])} ${f(P3[1])}L${f(P4[0])} ${f(P4[1])}Z`;}});});
   return `<path d="${p}" fill="none" stroke="var(--ink)" stroke-width="0.25" opacity=".7" vector-effect="non-scaling-stroke"/>`;}
@@ -3405,6 +3413,7 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CE
       // tread band across the piece (and its end spaces)
       const N=14,Fr=[],Bk=[];for(let q=0;q<=N;q++){const s=pc.a-gp+(pc.b-pc.a+2*gp)*q/N,a=chainAt(pc.Lz.ch,s,pc.d),gg=pc.Lz.ch[a.i];Fr.push(loc(segPt(gg,a.f,r.x/1000)));Bk.push(loc(segPt(gg,a.f,(r.x+r.T)/1000)));}
       pts.push(...Fr,...Bk);rowsSvg+=`<path d="${poly(Fr,Bk)}" fill="${over?'#FF8A8A':tierFill(ti)}" fill-opacity="${over?.45:.28}" stroke="var(--ink)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`;
+      const G=seatGeo(r.seat),cb=G.cb/1000,cdn=G.cdn/1000,cf=G.cf/1000;
       for(const s0 of pos){const s1=s0+sw,dm=pc.d,bk=(r.x+r.T)/1000+cb-dm,fr=bk-cdn,rz=(r.x+r.T)/1000-cf-dm;
         // a true rectangle: placed along the row at its centre line, offset square to the row
         const P0=chainPtS(pc.Lz.ch,s0,dm),Q=chainPtS(pc.Lz.ch,s0+0.01,dm),tl=Math.hypot(Q[0]-P0[0],Q[1]-P0[1])||1,t=[(Q[0]-P0[0])/tl,(Q[1]-P0[1])/tl],P1=[P0[0]+t[0]*sw,P0[1]+t[1]*sw];
@@ -3910,13 +3919,14 @@ function plotSpectators(sh){const A=swArea(sh),u=A.u,k2=u/0.25,modes=SPECT_MODES
 // Tier junction (decision 136): the top of a tier and the bottom of the tier above, cut through the wheelchair platform at the top of the
 // lower tier. Both profiles, the platform with its guard and wheelchair spectator, seated spectators and their sightlines, the upper tier's
 // leg wall and front guard, the concourse between; heights and horizontal distances dimensioned, on the sheet grid like the other sections.
+const pg0=lo=>lo.length>=4?lo.length-3:lo.length;   // rows in front of the wheelchair platform
 function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-1),up=all.filter(r=>r.tier===tu);if(!lo.length||!up.length)return `<p class="empty" style="padding:16px">No Tier ${tu+1} rows.</p>`;
   const IN=25.4,E=P.eye,hr=4.5*IN,headTop=4.45*IN,n=lo.length,lb=lo[n-1],f=up[0],u2=up[Math.min(1,up.length-1)],a0=lo[Math.max(0,n-5)],t=slabT(),fs=o.fs||300,pg=secPlat(lo);
   const xR=Math.max(u2.x+u2.T,lb.x+lb.T,f.x+f.T),X0=a0.x-fs*3,X1=xR+fs*9,eyeTop=Math.max(...up.slice(0,2).map(r=>r.sit.ez),f.z+P.railH),Z0=a0.z-t-fs*13,Z1=eyeTop+hr*2+fs*5,W=X1-X0,H=Z1-Z0;
   const X=x=>(x-X0).toFixed(1),Y=z=>(Z1-z).toFixed(1),K=SecDim(X,Y,fs,[W,H]);
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Tier ${tu} to Tier ${tu+1} junction section">`+gridBg(X0,X1,Z0,Z1,X,Y);
   s+=`<polygon points="${profileOf(lo,tu-1).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(tu-1)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`
-    +`<polygon points="${profileOf(up,tu).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(tu)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;
+    +`<polygon points="${profileOf(up,tu).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(tu)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`+benchSvg(lo.slice(0,pg0(lo)),X,Y)+benchSvg(up,X,Y);
   const cx0=lb.x+lb.T,cx1=Math.max(cx0+fs*4,f.x);   // the concourse floor behind the lower tier
   s+=`<line x1="${X(cx0)}" y1="${Y(lb.z)}" x2="${X(cx1)}" y2="${Y(lb.z)}" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
   const EXd=secExtras(all,tu-1,X,Y,{cut:'seat',zone:o.zone},X0),SK=EXd.skip;s+=EXd.s+EXd.top;   // the wheelchair platform, its guard and wheelchair spectator
