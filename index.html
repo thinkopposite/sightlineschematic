@@ -1277,14 +1277,15 @@ const VOM_ON=false;                                                     // vomit
 // (21 without), + 0.3 in per seat beyond, 22 in needs no more. The clear width is the row depth less the seat's depth with the seat
 // raised (self-rising chairback) or the bench depth. So the clear width sets the most seats a section between two aisles can hold.
 const BENCH_D=12*25.4;
-// bench (bleacher) seat (decision 154): 18" wide, 12" deep, 2" thick, top 18" above the tread, its back 4" in front of the riser face (room for the feet of the row behind)
-const BENCH={w:18*25.4,d:BENCH_D,t:2*25.4,h:18*25.4,off:4*25.4};
-// seat geometry in plan, mm: cb back behind the riser face (negative: in front), cdn depth as used (seat down), cd depth tip to back (seat raised), cf front edge in front of the riser
-function seatGeo(seat){if(seat==='bench')return {bench:true,cb:-BENCH.off,cdn:BENCH.d,cd:BENCH.d,cf:BENCH.d+BENCH.off};const A=AIS(),cb=A.chairBack??2*25.4,cd=A.chairD||14*25.4;return {bench:false,cb,cdn:A.chairDown||24*25.4,cd,cf:cd-cb};}
-// benches in a section: the 2" seat board 16-18" above each tread, 4" off the riser behind, on a support at its middle
-function benchSvg(rows,X,Y,skip){let o='';(rows||[]).forEach(r=>{if(r.seat!=='bench'||(skip&&skip.has(r)))return;const xb=r.x+r.T-BENCH.off,xf=xb-BENCH.d,zt=r.z+BENCH.h,zb=zt-BENCH.t,xm=(xf+xb)/2;
+// bench (bleacher) seat (decisions 154-155): 18" wide, 12" deep, 2" thick, on its own tread with the top 18" above it; the front overhangs the tread's front riser by 4"
+// (feet on the tread below), so 8" of it sits over the tread
+const BENCH={w:18*25.4,d:BENCH_D,t:2*25.4,h:18*25.4,over:4*25.4};
+// seat geometry in plan, mm, from the tread's back riser: cb back behind that riser face (negative: in front), cdn depth as used (seat down), cd depth tip to back (seat raised), cf front edge in front of the riser
+function seatGeo(seat,T){if(seat==='bench'){const cb=-((T||34*25.4)-(BENCH.d-BENCH.over));return {bench:true,cb,cdn:BENCH.d,cd:BENCH.d,cf:BENCH.d-cb};}const A=AIS(),cb=A.chairBack??2*25.4,cd=A.chairD||14*25.4;return {bench:false,cb,cdn:A.chairDown||24*25.4,cd,cf:cd-cb};}
+// benches in a section: the 2" seat board 16-18" above each tread, its front 4" out over the riser, on a support over the tread
+function benchSvg(rows,X,Y,skip){let o='';(rows||[]).forEach(r=>{if(r.seat!=='bench'||(skip&&skip.has(r)))return;const xf=r.x-BENCH.over,xb=xf+BENCH.d,zt=r.z+BENCH.h,zb=zt-BENCH.t,xm=(r.x+xb)/2;
   o+=`<line x1="${X(xm)}" y1="${Y(zb)}" x2="${X(xm)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`
-   +`<rect x="${X(xf)}" y="${Y(zt)}" width="${(BENCH.d).toFixed(1)}" height="${(BENCH.t).toFixed(1)}" fill="var(--seat-bench)" stroke="var(--ink)" stroke-width="0.8" vector-effect="non-scaling-stroke"><title>Bench ${L(BENCH.w)} wide, ${L(BENCH.d)} deep, ${L(BENCH.t)} thick, top ${L(BENCH.h)} above the tread, ${L(BENCH.off)} off the riser</title></rect>`;});return o;}
+   +`<rect x="${X(xf)}" y="${Y(zt)}" width="${(BENCH.d).toFixed(1)}" height="${(BENCH.t).toFixed(1)}" fill="var(--seat-bench)" stroke="var(--ink)" stroke-width="0.8" vector-effect="non-scaling-stroke"><title>Bench ${L(BENCH.w)} wide, ${L(BENCH.d)} deep, ${L(BENCH.t)} thick, top ${L(BENCH.h)} above the tread, front ${L(BENCH.over)} over the riser</title></rect>`;});return o;}
 // Table 1030.13.2.1 (smoke-protected or open-air): seats per row allowed at 12 in clear, by seats in the venue [with backrests, without]
 const IBC_ROW_T=[[4000,14,21],[7000,15,22],[10000,16,23],[13000,17,24],[16000,18,25],[19000,19,26],[22000,20,27],[Infinity,21,28]];
 const rowBase=back=>{const b=egBasis();if(b!=='open'&&b!=='smoke')return back?14:21;const n=P.capTarget||0,r=IBC_ROW_T.find(t=>n<t[0]);return back?r[1]:r[2];};
@@ -1824,7 +1825,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.28.01';
+const VERSION='2026.10.28.02';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 function spectScale(){const J=JUNSC,sv=document.querySelector('#junction svg');if(!J||!sv)return;const k=sv.getBoundingClientRect().width/J.W;if(!(k>0))return;
   document.querySelectorAll('#spect svg[data-w]').forEach(e=>{const px=+e.dataset.w*k;e.style.width=px+'px';e.style.maxWidth='none';e.parentNode.style.width=Math.max(px,240)+'px';});}
@@ -3243,7 +3244,7 @@ function enlargedData(ti,k){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz)return n
   if(!L0)return null;return {Lz,gi,L0,R0};}
 function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.one});if(enlSide()==='corner')return drawCornerEnlarged(o);const ti=Math.min(ENL.tier,P.tierCount-1),k=enlSide(),E=enlargedData(ti,k);
   if(!E)return '<p class="empty" style="padding:16px">Choose the computed aisle layout to see a typical section.</p>';
-  const {Lz,L0,R0}=E,A=AIS(),tr=Lz.tr,x0=tr[0].x,d=1,sa=chainS(Lz.ch,L0.a,d),sb=chainS(Lz.ch,R0.a,d),span=(sb-sa)*1000,wA=A.w,gp=A.gap||0,G0=seatGeo(tr[0].seat),cd=G0.cd,cb=G0.cb,cdn=G0.cdn,cf=G0.cf;   /* cf: raised seat tip (bench: front edge) in front of the riser; cb: back behind it (bench: negative, 4" in front) */
+  const {Lz,L0,R0}=E,A=AIS(),tr=Lz.tr,x0=tr[0].x,d=1,sa=chainS(Lz.ch,L0.a,d),sb=chainS(Lz.ch,R0.a,d),span=(sb-sa)*1000,wA=A.w,gp=A.gap||0,G0=seatGeo(tr[0].seat,tr[0].T),cd=G0.cd,cb=G0.cb,cdn=G0.cdn,cf=G0.cf;   /* cf: raised seat tip (bench: front edge) in front of the riser; cb: back behind it (bench: negative, 4" in front) */
   const sw=tr[0].seatW,lastR=tr[tr.length-1],depth=lastR.x+lastR.T-x0,side=wA/2+2*sw;      // two neighbouring seats each side, light
   const fs0=o.fs||(span+2*side)/62,MI=8,cd0=AIS().chairD||14*25.4,U0=-side-1200,U1=o.own?span+side+fs0*4:span+side+fs0*8+2*tr[0].seatW*MI+fs0*14,   /* PDF: the x8 seat detail goes on its own sheet (decision 113) */V0=-fs0*7.5,fs=fs0,V1=depth+(o.own?fs*2:Math.max(fs*6,(span+2*side)/62*3)),W=U1-U0,H=V1-V0+(o.own?fs*3:fs*9);   /* PDF: no caption above, tight below */
   const X=u=>(u-U0).toFixed(1),Y=v=>(V1-v).toFixed(1),K=SecDim(X,Y,fs*.9,[W,H]),f=v=>(+v).toFixed(1);
@@ -3256,7 +3257,7 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
       for(let k=0;k<st.n;k++)o+=`<line x1="${X(uc-wA/2)}" y1="${Y(v+k*r.T/st.n)}" x2="${X(uc+wA/2)}" y2="${Y(v+k*r.T/st.n)}" stroke="var(--ink)" stroke-width="${k?0.45:0.7}" vector-effect="non-scaling-stroke"/>`;return o;}).join('');   // aisle steps: the row riser and each step nosing
   // seats: chair at the back of each tread, seat raised (envelope), clear width in front
   const iL=Lz.ais.indexOf(L0.a)+1,counts=[],nzCW=(()=>{if(!isNEZ(k))return false;const a=chainPtS(Lz.ch,sa,d),b=chainPtS(Lz.ch,sb,d);return cwOf([(a[0]+b[0])/2,(a[1]+b[1])/2],[b[0]-a[0],b[1]-a[1]]);})();   // true: clockwise runs left to right, seat 1 on the left
-  tr.forEach((r,j)=>{const S=rowSections(Lz,j),n=S.secs[iL]||0,v=r.x-x0;counts.push(n);
+  tr.forEach((r,j)=>{const S=rowSections(Lz,j),n=S.secs[iL]||0,v=r.x-x0,{cb,cdn,cf}=seatGeo(r.seat,r.T);counts.push(n);
     const lead=gp+Math.max(0,span-wA-2*gp-n*r.seatW)/2;   // 4 in at each aisle at least, the leftover split equally (decision 124)
     for(let q=0;q<n;q++){const u=wA/2+lead+(n-1-q)*r.seatW,yb=v+r.T+cb,no=nzCW?n-q:q+1;   // seat 1 at the right-hand aisle (in the north end zone, where the row starts clockwise); seat down (solid), raised seat tip (dashed), back 2 in behind the riser
       seats+=`<rect x="${X(u)}" y="${Y(yb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="${tierFill(ti)}" fill-opacity=".55" stroke="var(--ink)" stroke-width="0.45" vector-effect="non-scaling-stroke"/>`
@@ -3275,7 +3276,7 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
    .dim([0,lo2],[span,lo2],{lab:'Aisle centre to aisle centre',val:L(span),ea:[0,lo],eb:[span,lo]});
   // row depth, chair and clear width at a typical row (row 2), on the right
   // row detail at 4x: two typical rows, seat down (solid), seat raised (dashed), back behind the riser, clear width
-  let det='';{const r2=tr[Math.min(1,tr.length-1)],T=r2.T,sw2=r2.seatW,ox=span+side+fs*8,oy=V1-fs*3.4-(3*T+cb+3*25.4)*MI,Xd=u=>(ox-U0+u*MI).toFixed(1),Yd=v=>(V1-oy-v*MI).toFixed(1),K2=SecDim(Xd,Yd,fs*.9,[W,H]);
+  let det='';{const r2=tr[Math.min(1,tr.length-1)],T=r2.T,{cb,cdn,cf,cd}=seatGeo(r2.seat,r2.T),sw2=r2.seatW,ox=span+side+fs*8,oy=V1-fs*3.4-(3*T+cb+3*25.4)*MI,Xd=u=>(ox-U0+u*MI).toFixed(1),Yd=v=>(V1-oy-v*MI).toFixed(1),K2=SecDim(Xd,Yd,fs*.9,[W,H]);
     // seat 1 in three rows, complete: the middle row, the row behind (above) and the row ahead (below), beside the aisle
     const xa=sw2+gp,AWp=Math.min(wA,18*25.4),xe=xa+AWp,vb=T+cb-cdn-3*25.4,vt=3*T+cb+3*25.4,ln=(x1,y1,x2,y2,st)=>`<line x1="${Xd(x1)}" y1="${Yd(y1)}" x2="${Xd(x2)}" y2="${Yd(y2)}" ${st} vector-effect="non-scaling-stroke"/>`;
     det+=`<rect x="${Xd(xa)}" y="${Yd(vt)}" width="${f(AWp*MI)}" height="${f((vt-vb)*MI)}" fill="#FFFFFF" stroke="none"/>`
@@ -3298,9 +3299,12 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
       +`<text x="${Xd(0)}" y="${f(+Yd(vt)-fs*1.2)}" font-size="${f(fs*.95)}" font-weight="700" fill="var(--ink)">Seat 1 beside the aisle, enlarged ×${MI}</text>`;
     const ux=xe+fs*0.9/MI*1.6;
     K2.avoid(0,T,xe,T).avoid(0,2*T,xe,2*T).avoid(0,3*T,xe,3*T)
-      .dim([ux,Math.min(T,T+cb)],[ux,Math.max(T,T+cb)],{lab:G0.bench?'Bench off the riser':'Back of row ahead',val:L(Math.abs(cb)),ea:[xe,T]})
+      ;if(G0.bench)K2.dim([ux,T-BENCH.over],[ux,T],{lab:'Bench over the riser',val:L(BENCH.over),eb:[xe,T]})
+      .dim([ux,T],[ux,T-BENCH.over+BENCH.d],{lab:'On the tread',val:L(BENCH.d-BENCH.over)})
+      .dim([ux,T-BENCH.over+BENCH.d],[ux,2*T-BENCH.over],{lab:'Clear width',val:L(T-BENCH.d),ref:'tread'});
+      else K2.dim([ux,T],[ux,T+cb],{lab:'Back of row ahead',val:L(cb),ea:[xe,T]})
       .dim([ux,T+cb],[ux,2*T-cf],{lab:'Clear width',val:L(T-cd),ref:'tread'})
-      .dim([ux,2*T-cf],[ux,2*T],{lab:G0.bench?'Bench front to riser':'Seat raised',val:L(cf),eb:[xe,2*T]})
+      .dim([ux,2*T-cf],[ux,2*T],{lab:'Seat raised',val:L(cf),eb:[xe,2*T]});K2
       .dim([ux+fs*3/MI,T],[ux+fs*3/MI,2*T],{lab:'Row depth',val:L(T)})
       ;for(let k=0;k<ast.n;k++)K2.dim([xa+AWp*.62,T+k*T/ast.n],[xa+AWp*.62,T+(k+1)*T/ast.n],{lab:k?'':'Aisle tread',val:L(T/ast.n)});   // the aisle treads of the middle row
     K2
@@ -3324,7 +3328,7 @@ function cornerScale(sh,aw,ah){let Wc=0,Hc=0;for(let t=0;t<P.tierCount;t++){cons
 // plan overlay: every seat at its true width (on screen, on request)
 function seatsSvg(){if(!SHOWSEATS||!M.AL||PLAN!=='bowl')return '';const A=AIS(),gp=(A.gap||0)/1000,cb=(A.chairBack??2*25.4)/1000,cd=(A.chairDown||24*25.4)/1000,f=v=>v.toFixed(3);let p='';
   M.AL.forEach((T,ti)=>{const nr=Math.max(0,...Object.values(T).map(z=>z.tr.length)),smap=secNoMap(ti),SS=P.secs||{};for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{const e=SS[smap[sc.l+'_'+sc.r]];if(e&&e.off)return;
-    for(const {pc,s0,sw} of sectionSeats(T,sc,j)){if(e&&e.wc){const L=pc.Lz.tr.length;if(j===L-3||j===L-2)continue;}const r=pc.Lz.tr[j],Lz=pc.Lz,G=seatGeo(r.seat),cb=G.cb/1000,cd=G.cdn/1000,d1=(r.x+r.T)/1000+cb-cd,d2=(r.x+r.T)/1000+cb;
+    for(const {pc,s0,sw} of sectionSeats(T,sc,j)){if(e&&e.wc){const L=pc.Lz.tr.length;if(j===L-3||j===L-2)continue;}const r=pc.Lz.tr[j],Lz=pc.Lz,G=seatGeo(r.seat,r.T),cb=G.cb/1000,cd=G.cdn/1000,d1=(r.x+r.T)/1000+cb-cd,d2=(r.x+r.T)/1000+cb;
       const P1=chainPtS(Lz.ch,s0,d1),Q=chainPtS(Lz.ch,s0+0.01,d1),P4r=chainPtS(Lz.ch,s0,d2),tl=Math.hypot(Q[0]-P1[0],Q[1]-P1[1])||1,ux=(Q[0]-P1[0])/tl,uy=(Q[1]-P1[1])/tl,tx=ux*sw,ty=uy*sw,sg=((P4r[0]-P1[0])*-uy+(P4r[1]-P1[1])*ux)>=0?1:-1,P4=[P1[0]-uy*sg*(d2-d1),P1[1]+ux*sg*(d2-d1)],P2=[P1[0]+tx,P1[1]+ty],P3=[P4[0]+tx,P4[1]+ty];   // straight from the seat's start, square to the row (decision 153), so a seat at a stand joint keeps its width
       p+=`M${f(P1[0])} ${f(P1[1])}L${f(P2[0])} ${f(P2[1])}L${f(P3[0])} ${f(P3[1])}L${f(P4[0])} ${f(P4[1])}Z`;}});});
   return `<path d="${p}" fill="none" stroke="var(--ink)" stroke-width="0.25" opacity=".7" vector-effect="non-scaling-stroke"/>`;}
@@ -3413,7 +3417,7 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CE
       // tread band across the piece (and its end spaces)
       const N=14,Fr=[],Bk=[];for(let q=0;q<=N;q++){const s=pc.a-gp+(pc.b-pc.a+2*gp)*q/N,a=chainAt(pc.Lz.ch,s,pc.d),gg=pc.Lz.ch[a.i];Fr.push(loc(segPt(gg,a.f,r.x/1000)));Bk.push(loc(segPt(gg,a.f,(r.x+r.T)/1000)));}
       pts.push(...Fr,...Bk);rowsSvg+=`<path d="${poly(Fr,Bk)}" fill="${over?'#FF8A8A':tierFill(ti)}" fill-opacity="${over?.45:.28}" stroke="var(--ink)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`;
-      const G=seatGeo(r.seat),cb=G.cb/1000,cdn=G.cdn/1000,cf=G.cf/1000;
+      const G=seatGeo(r.seat,r.T),cb=G.cb/1000,cdn=G.cdn/1000,cf=G.cf/1000;
       for(const s0 of pos){const s1=s0+sw,dm=pc.d,bk=(r.x+r.T)/1000+cb-dm,fr=bk-cdn,rz=(r.x+r.T)/1000-cf-dm;
         // a true rectangle: placed along the row at its centre line, offset square to the row
         const P0=chainPtS(pc.Lz.ch,s0,dm),Q=chainPtS(pc.Lz.ch,s0+0.01,dm),tl=Math.hypot(Q[0]-P0[0],Q[1]-P0[1])||1,t=[(Q[0]-P0[0])/tl,(Q[1]-P0[1])/tl],P1=[P0[0]+t[0]*sw,P0[1]+t[1]*sw];
