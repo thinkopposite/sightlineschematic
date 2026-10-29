@@ -81,7 +81,7 @@ summary{cursor:pointer;font-weight:650;font-size:15px;font-stretch:85%}
 .planhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 14px;margin:20px 0 8px}
 .planhead h3,.opthead{font-size:15px;font-weight:650;font-stretch:85%;margin:0}
 .opthead{margin:20px 0 8px}
-#plan svg{max-height:82vh;touch-action:none}#plan.pz-on svg{cursor:grab}#plan.pz-drag svg{cursor:grabbing}
+#plan svg{max-height:82vh;touch-action:none}#plan.pz-on svg{cursor:grab}#plan.pz-drag svg{cursor:grabbing}#plan.add-ais svg{cursor:crosshair}
 #plan svg.portrait{max-height:150vh}
 #plan text{font-family:inherit}
 .vgrid{display:grid;grid-template-columns:minmax(120px,170px) 1fr;column-gap:8px;row-gap:4px;align-items:center;margin:2px 0 6px}
@@ -296,12 +296,12 @@ td{border-bottom:1px solid var(--line)}
 .toast{border-radius:0;background:var(--sw-ink);color:var(--panel);border-left:6px solid var(--sw-red)}
 @media (max-width:760px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.cap .big{font-size:40px}h1{font-size:24px}}
 
-#secEd{position:absolute;z-index:40;width:260px;background:var(--panel);color:var(--ink);border:1px solid var(--sw-ink,#111);border-top:4px solid var(--sw-ink,#111);box-shadow:0 6px 0 rgba(0,0,0,.08);padding:10px 12px 12px;font-size:13px}
-#secEd .se-h{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}#secEd .se-h b{font-size:15px;text-transform:uppercase}#secEd .se-h span{color:var(--sw-grey,#6B6B68);font-size:12px;flex:1}
-#secEd .se-x{min-height:0;padding:0 6px;border:0;font-size:18px;line-height:1;background:transparent;color:var(--ink)}
-#secEd .se-row{display:grid;grid-template-columns:1fr 34px 46px 34px;align-items:center;gap:0}#secEd .se-l{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
-#secEd .se-row button{min-height:34px;padding:0;font-size:18px}#secEd .se-v{text-align:center;font-size:22px;color:var(--sw-red,#DA291C);border-top:1px solid var(--sw-ink,#111);border-bottom:1px solid var(--sw-ink,#111);line-height:32px}
-#secEd .se-n{margin:8px 0 0;color:var(--sw-grey,#6B6B68);font-size:12px;line-height:1.4}#secEd .se-w{width:100%;margin-top:8px}
+#secEd,#aisEd{position:absolute;z-index:40;width:260px;background:var(--panel);color:var(--ink);border:1px solid var(--sw-ink,#111);border-top:4px solid var(--sw-ink,#111);box-shadow:0 6px 0 rgba(0,0,0,.08);padding:10px 12px 12px;font-size:13px}
+#secEd .se-h,#aisEd .se-h{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}#secEd .se-h b,#aisEd .se-h b{font-size:15px;text-transform:uppercase}#secEd .se-h span,#aisEd .se-h span{color:var(--sw-grey,#6B6B68);font-size:12px;flex:1}
+#secEd .se-x,#aisEd .se-x{min-height:0;padding:0 6px;border:0;font-size:18px;line-height:1;background:transparent;color:var(--ink)}
+#secEd .se-row,#aisEd .se-row{display:grid;grid-template-columns:1fr 34px 46px 34px;align-items:center;gap:0}#secEd .se-l,#aisEd .se-l{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+#secEd .se-row button,#aisEd .se-row button{min-height:34px;padding:0;font-size:18px}#secEd .se-v,#aisEd .se-v{text-align:center;font-size:22px;color:var(--sw-red,#DA291C);border-top:1px solid var(--sw-ink,#111);border-bottom:1px solid var(--sw-ink,#111);line-height:32px}
+#secEd .se-n,#aisEd .se-n{margin:8px 0 0;color:var(--sw-grey,#6B6B68);font-size:12px;line-height:1.4}#secEd .se-w,#aisEd .se-w{width:100%;margin-top:8px}
 [data-secno]:hover text{text-decoration:underline}
 </style>
 </head>
@@ -365,7 +365,7 @@ td{border-bottom:1px solid var(--line)}
     <p class="group">Bowl</p>
     <div class="planhead"><span class="bub" id="bubPlan">E</span><h3 id="planTitle">Plan</h3>
       <p class="capt">Stands coloured by seat type, with buffer depths and row numbers.</p>
-      <div><div class="seg" id="planTabs" role="group" aria-label="Plan view"><button data-plan="field" aria-pressed="false">Field layout</button><button data-plan="bowl" aria-pressed="true" class="on">Bowl plan</button></div><div class="seg"><button id="seatTog" aria-pressed="false" title="Draw every seat at its true width (screen only)">Show seats</button></div><div class="seg" id="pzCtl" role="group" aria-label="Zoom"><button data-pz="out" aria-label="Zoom out" title="Zoom out">−</button><button data-pz="fit" title="Fit the whole plan" id="pzVal">100%</button><button data-pz="in" aria-label="Zoom in" title="Zoom in">+</button></div></div></div>
+      <div><div class="seg" id="planTabs" role="group" aria-label="Plan view"><button data-plan="field" aria-pressed="false">Field layout</button><button data-plan="bowl" aria-pressed="true" class="on">Bowl plan</button></div><div class="seg"><button id="seatTog" aria-pressed="false" title="Draw every seat at its true width (screen only)">Show seats</button></div><div class="seg"><button id="aisAddTog" aria-pressed="false" title="Then click on the bowl plan where the new aisle should go">Add aisle</button></div><div class="seg" id="pzCtl" role="group" aria-label="Zoom"><button data-pz="out" aria-label="Zoom out" title="Zoom out">−</button><button data-pz="fit" title="Fit the whole plan" id="pzVal">100%</button><button data-pz="in" aria-label="Zoom in" title="Zoom in">+</button></div></div></div>
     <div class="panel" id="plan" title="Ctrl / ⌘ + wheel or pinch to zoom; drag to pan when zoomed in"></div>
     <div class="planhead"><span class="bub" id="bub3d">G</span><h3>3D view</h3>
       <p class="capt" id="v3Note">Live model of the bowl. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom. Click (tap) a section's back rows to add or remove its wheelchair platform, its front rows to switch it off, and an open section to switch it back on.</p>
@@ -1376,6 +1376,20 @@ function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti,Q){const OV=(Q&&Q.secN)
   return out;}
 // Aisles round a tier: one on the centreline of each corner; the rest only on the straight runs, spaced evenly so no section holds
 // more than the code allows, and never on the middle of a sideline (the 50-yard line sits in the middle of a section).
+// aisles removed or added by hand (decision 160): P.aisEd[ti] = {rm:[[x,y]], add:[[x,y]]}, plan points (m) at the row the sections are sized at.
+// A removed aisle goes, and the sections either side join; a Tier 1 corner centreline that carries the player tunnel stays as a hidden line for the
+// tunnel only (no aisle, not a section boundary above the tunnel). An added aisle sits square to the rows, a whole number of seats from the nearer aisle.
+function ringProject(R,RG,dB,p){let best=null;const at=s=>{s=((s%RG.L)+RG.L)%RG.L;let zi=0;for(let i=0;i<RG.cs.length;i++)if(s>=RG.cs[i]-1e-9)zi=i;return chainPtS(R[zi].ch,s-RG.cs[zi],dB);},d2=s=>{const q=at(s);return (q[0]-p[0])**2+(q[1]-p[1])**2;};
+  for(let s=0;s<RG.L;s+=0.5){const v=d2(s);if(!best||v<best.v)best={s,v};}let lo=best.s-0.5,hi=best.s+0.5;for(let k=0;k<40;k++){const a=lo+(hi-lo)/3,b=hi-(hi-lo)/3;if(d2(a)<d2(b))hi=b;else lo=a;}
+  const sB=(lo+hi)/2;return {s:((sB%RG.L)+RG.L)%RG.L,dist:Math.sqrt(d2(sB)),pt:at(sB)};}
+function aisleEdits(Q,ti,list,R,RG,dB,toA,A){const E=(Q.aisEd||{})[ti];const zoneAt=s=>{let zi=0;for(let i=0;i<RG.cs.length;i++)if(s>=RG.cs[i]-1e-9)zi=i;return zi;},refOf=x=>chainPtS(R[x.zi].ch,x.s-RG.cs[x.zi],dB);
+  list.forEach(x=>{x.ref=refOf(x);});if(!E)return list;const wA=A.w/1000,gp=(A.gap||0)/1000,L=RG.L;
+  (E.rm||[]).forEach(p=>{let bi=-1,bd=3;list.forEach((x,i)=>{if(x.a.ghost)return;const d=Math.hypot(x.ref[0]-p[0],x.ref[1]-p[1]);if(d<bd){bd=d;bi=i;}});if(bi<0)return;
+    const x=list[bi],a=x.a,tun=ti===0&&a.corner&&!a.miter&&!a.ray&&!a.cl&&a.f>0&&a.f<1;if(tun){x.a=Object.assign({},a,{cl:true,ghost:true});}else list.splice(bi,1);});
+  (E.add||[]).forEach(p=>{const pr=ringProject(R,RG,dB,p);if(pr.dist>40)return;let nb=null;list.forEach(x=>{if(x.a.ghost)return;let o=((x.s-pr.s)%L+L)%L;if(o>L/2)o-=L;if(!nb||Math.abs(o)<Math.abs(nb.o))nb={o,x};});
+    let s0=pr.s;if(nb){const sw=R[zoneAt(pr.s)].z.seatW/1000,dd=Math.abs(nb.o),n=Math.max(1,Math.round((dd-wA-2*gp)/sw)),step=n*sw+wA+2*gp;s0=nb.x.s+(nb.o>0?-step:step);}
+    s0=((s0%L)+L)%L;if(list.some(x=>{const o=Math.abs(((x.s-s0)%L+L)%L);return Math.min(o,L-o)<wA;}))return;const t=toA(s0);t.a=Object.assign({},t.a,{user:true});list.push(Object.assign({s:s0,ref:chainPtS(R[t.zi].ch,s0-RG.cs[t.zi],dB)},t));});
+  return list.sort((x,y)=>x.s-y.s);}
 function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;const out=[];let uid=0;
   for(let ti=0;ti<Q.tierCount;ti++){const T={};out.push(T);const R=tierRing(Q,ZR,CH,ti);
     if(!R){const c=CH[ti]||{};for(const k of Object.keys(c)){const ch=c[k];if(ch==='ring')continue;const tr=ZR[k].filter(r=>r.tier===ti);if(!tr.length)continue;   // fallback: stand by stand
@@ -1416,8 +1430,9 @@ function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;co
         best=ps;if(ok)break;}
       (best||[]).forEach(p=>added.push(Object.assign({s:p},toA(p))));};
     if(sect){}else if(!fixed.length)place(0,RG.L);else fixed.forEach((f,i)=>{const nx=fixed[(i+1)%fixed.length];place(f.s,nx.s+(i===fixed.length-1?RG.L:0));});
-    const list=fixed.concat(added).map(x=>({...x,s:((x.s%RG.L)+RG.L)%RG.L})).sort((x,y)=>x.s-y.s);
-    list.forEach(x=>{x.id=++uid;x.a.id=x.id;});
+    let list=fixed.concat(added).map(x=>({...x,s:((x.s%RG.L)+RG.L)%RG.L})).sort((x,y)=>x.s-y.s);
+    list=aisleEdits(Q,ti,list,R,RG,dB,toA,A);
+    list.forEach(x=>{x.id=++uid;x.a.id=x.id;if(x.ref)Object.defineProperty(x.a,'ref',{value:x.ref,enumerable:false,configurable:true,writable:true});});
     if(sect&&sect.mid){const idAt=v=>{const x=list.find(x=>{const d=Math.abs(x.s-v);return d<1e-5||Math.abs(d-RG.L)<1e-5;});return x?x.id:null;};   // middle sections of each stand, for the section editor
       Object.defineProperty(T,'__mid',{enumerable:false,configurable:true,value:sect.mid.map(g=>({k:g.k,n:g.n,keys:g.b.slice(1).map((v,m)=>idAt(g.b[m])+'_'+idAt(v))}))});
       const ed={};(sect.ed||[]).forEach(x=>{const a=idAt(x.b0),b=idAt(x.b1);if(a&&b&&!ed[a+'_'+b])ed[a+'_'+b]={id:x.id,n:x.n,kind:x.kind};});Object.defineProperty(T,'__ed',{enumerable:false,configurable:true,value:ed});}
@@ -1564,7 +1579,7 @@ function placeSeats(a,b,sw,K,fromEnd){const out=[],zones=K.map(k=>[k.s-k.e,k.s+k
 function ringSecs(ti,j,AL){AL=AL||(M&&M.AL);const T=AL&&AL[ti];if(!T)return [];const zs=GEO.map(k=>T[k]).filter(Boolean),ring=zs.length===4&&zs.every(z=>z.ring);const seq=[];
   zs.forEach(Lz=>{if(j>=Lz.tr.length){seq.push({brk:true});return;}const S=rowSections(Lz,j),n=Lz.ais.length;
     S.raws.forEach((rw,m)=>{const a=m?S.cuts[m-1][0]+S.cuts[m-1][1]/2+S.cuts[m-1][2]:0,b=m<n?S.cuts[m][0]-S.cuts[m][1]/2-S.cuts[m][2]:S.Ld;
-      seq.push({raw:Math.max(0,rw),sw:S.sw,piece:{Lz,a,b,d:S.d,raw:Math.max(0,rw)}});if(m<n)seq.push({id:Lz.ais[m].id});});
+      seq.push({raw:Math.max(0,rw),sw:S.sw,piece:{Lz,a,b,d:S.d,raw:Math.max(0,rw)}});if(m<n){const am=Lz.ais[m];if(!am.ghost||(Lz.vom[m]&&am.vr&&am.vr.rows&&am.vr.rows.includes(j)))seq.push({id:am.id});}});
     if(!ring)seq.push({brk:true});});
   const secs=[];let cur=null,lastId=null;
   const close=r=>{if(!cur)return;cur.r=r;cur.n=Math.floor(cur.raw/cur.sw+1e-9);secs.push(cur);cur=null;};
@@ -1583,17 +1598,18 @@ function egFactor(level,seats){const b=egBasis();
   if(b==='std')return (level?0.2:0.3)*25.4;
   const sm=smokeFactor(seats,level?2:1);return (b==='open'?Math.min(level?0.06:0.08,sm):sm)*25.4;}   // open-air may use the table where it permits less
 // plan: aisles as white strips through the rows, vomitories dark from the portal to the first clear row, the tunnel dashed beyond
+let AISHIT='';
 function aisleSvg(){const AL=M.AL;if(!AL||PLAN!=='bowl')return '';const A=AIS(),wA=A.w/1000,wV=(A.vomW+2*vomWall())/1000+2*wA,vc=A.vomW/1000,f=v=>v.toFixed(3);let a='',v='',tun='';
   const strip=(Lz,i,j0,j1,w,lo,hi)=>{const L=[],R=[];for(let j=j0;j<=j1;j++){const r=Lz.tr[j];for(const d of [(lo&&j===j0?lo:r.x)/1000,(hi&&j===j1?hi:r.x+r.T)/1000]){const s=chainS(Lz.ch,Lz.ais[i],d);L.push(chainPtS(Lz.ch,s-w/2,d));R.push(chainPtS(Lz.ch,s+w/2,d));}}
     return 'M'+L.concat(R.reverse()).map(p=>f(p[0])+' '+f(p[1])).join('L')+'Z';};
   const band=(Lz,i,j0,j1,o0,o1,lo,hi)=>{const L=[],R=[];for(let j=j0;j<=j1;j++){const r=Lz.tr[j];for(const d of [(lo!=null&&j===j0?lo:r.x)/1000,(hi!=null&&j===j1?hi:r.x+r.T)/1000]){const s=chainS(Lz.ch,Lz.ais[i],d);L.push(chainPtS(Lz.ch,s+o0,d));R.push(chainPtS(Lz.ch,s+o1,d));}}
     return 'M'+L.concat(R.reverse()).map(p=>f(p[0])+' '+f(p[1])).join('L')+'Z';};   // a strip between two offsets from the aisle line
-  let stp='',red='',vw='',vo='',cl='';
+  let stp='',red='',vw='',vo='',cl='',hit='';
   const gone=goneAisles(AL);   // an aisle with open space on both sides is not drawn
   for(const T of AL)for(const Lz of Object.values(T)){const r=Lz.tr.find(q=>q.cross);if(!r)continue;const st=chainStations(Lz.ch),q1=offsetPts(st,r.x/1000),q2=offsetPts(st,(r.x+r.T)/1000).reverse();   // the cross aisle
     a+='M'+q1.concat(q2).map(p=>f(p[0])+' '+f(p[1])).join('L')+'Z';}
   for(const T of AL)for(const Lz of Object.values(T)){const last=Lz.tr.length-1;
-    Lz.ais.forEach((ai,i)=>{if(gone.has(ai.id))return;if(ai.cl)cl+=band(Lz,i,0,last,0,0);else a+=strip(Lz,i,0,last,cutW(ai,wA));
+    Lz.ais.forEach((ai,i)=>{if(gone.has(ai.id))return;if(ai.ghost){}else if(ai.cl)cl+=band(Lz,i,0,last,0,0);else{a+=strip(Lz,i,0,last,cutW(ai,wA));hit+=`<path data-aisle="${AL.indexOf(T)}:${ai.id}" d="${strip(Lz,i,0,last,Math.max(cutW(ai,wA),1.5))}" fill="#000000" fill-opacity="0" stroke="none" style="cursor:pointer"><title>Aisle (click to edit)</title></path>`;}
       const W2=vomClear(ai)/2000,tw=vomWall()/1000,sa=vSide(ai)/1000;
       Lz.tr.forEach((r,j)=>{const st=aisleStep(Lz.tr,j),w=cutW(ai,wA),inv=vomAt(Lz,i,j)||!!(Lz.vom[i]&&ai.vr&&ai.vr.cross===j),spans=inv?(sa>0?[[-W2-tw-sa,-W2-tw],[W2+tw,W2+tw+sa]]:[]):ai.cl?[]:[[-w/2,w/2]];   // in a vom: the nosings of the two 36 in side aisles
         for(let k=0;k<st.n;k++){const d=(r.x+k*r.T/st.n)/1000,s=chainS(Lz.ch,ai,d);for(const [o0,o1] of spans){const p=chainPtS(Lz.ch,s+o0,d),q=chainPtS(Lz.ch,s+o1,d);stp+=`M${f(p[0])} ${f(p[1])}L${f(q[0])} ${f(q[1])}`;}}
@@ -1601,6 +1617,7 @@ function aisleSvg(){const AL=M.AL;if(!AL||PLAN!=='bowl')return '';const A=AIS(),
       if(Lz.vom[i]&&ai.vr&&ai.vr.rows.length){const j0=ai.vr.rows[0],j1=ai.vr.rows[ai.vr.rows.length-1];a+=strip(Lz,i,j0,j1,vomCut(ai));
         vo+=band(Lz,i,j0,j1,-W2,W2);vw+=band(Lz,i,j0,j1,-W2-tw,-W2)+band(Lz,i,j0,j1,W2,W2+tw);   // opening (to field level) and the two 8 in walls
         if(j1<last){const rk=Lz.tr[j1+1];vw+=band(Lz,i,j1+1,j1+1,-W2-tw,W2+tw,rk.x,rk.x+vomWall());tun+=band(Lz,i,j1+1,last,-W2,W2);}}});}   // header over the top tread; the tunnel beyond, dashed
+  AISHIT=hit;   // click targets for the aisle editor (screen only, added by drawPlan)
   return `<g class="aisles"><path d="${a}" fill="#FFFFFF" fill-rule="nonzero" stroke="var(--ink)" stroke-width="0.35" vector-effect="non-scaling-stroke"/>`
     +(red?`<path d="${red}" fill="#FF8A8A" fill-opacity=".6" stroke="none"/>`:'')+(stp?`<path d="${stp}" fill="none" stroke="#7A7A7A" stroke-width="0.2" vector-effect="non-scaling-stroke"/>`:'')
     +`<path d="${v}" fill="#3C3C3C" stroke="var(--ink)" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
@@ -1825,7 +1842,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.28.06';
+const VERSION='2026.10.28.07';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 function spectScale(){const J=JUNSC,sv=document.querySelector('#junction svg');if(!J||!sv)return;const k=sv.getBoundingClientRect().width/J.W;if(!(k>0))return;
   document.querySelectorAll('#spect svg[data-w]').forEach(e=>{const px=+e.dataset.w*k;e.style.width=px+'px';e.style.maxWidth='none';e.parentNode.style.width=Math.max(px,240)+'px';});}
@@ -2791,7 +2808,7 @@ function vomCands(AL,ti=0){const T=AL&&AL[ti],out=[],pre=ti?ti+':':'';if(!T)retu
     for(let m=0;m<g.keys.length-1;m++)ids.push(+g.keys[m].split('_')[1]);if(all)ids.push(+g.keys[g.keys.length-1].split('_')[1]);
     ids.forEach((id,n)=>{if(id)out.push({key:pre+g.k+'.'+(n+1),id,label:`${sn} ${n+1}`,kind:'aisle',k:g.k,ti});});});
   // the corner centrelines: Tier 1 player tunnels; upper tiers 8 ft spectator voms
-  {const seen=new Set();Object.values(T).forEach(Lz=>Lz.ais.forEach(a=>{if(a.corner&&!a.miter&&!a.ray&&!a.cl&&a.f>0&&a.f<1&&!seen.has(a.id)){seen.add(a.id);const r=Lz.tr[0],d=r.x/1000,p=chainPtS(Lz.ch,chainS(Lz.ch,a,d),d),cn=cornerName(p);
+  {const seen=new Set();Object.values(T).forEach(Lz=>Lz.ais.forEach(a=>{if(a.corner&&!a.miter&&!a.ray&&(!a.cl||a.ghost)&&a.f>0&&a.f<1&&!seen.has(a.id)){seen.add(a.id);const r=Lz.tr[0],d=r.x/1000,p=chainPtS(Lz.ch,chainS(Lz.ch,a,d),d),cn=cornerName(p);
     const m=a.mid&&ti>0?String(a.mid):'';out.push(ti===0?{key:'C.'+cn,id:a.id,label:'Corner '+cn,kind:'corner',ti}:{key:pre+'C.'+cn+m,id:a.id,label:cn+m,kind:'corner2',ti});}}));}   /* Tier 1: the corner tunnel; upper tiers: a spectator vom in each of the two corner aisles (decision 146) */
   return out;}
 function vomRowsOf(ti,nr){const t=VT(ti),mid=Math.floor((nr-1)/2);let c=t.c!=null?Math.round(t.c):mid;c=Math.max(1,Math.min(nr-4,c));return {c,mid,cmin:1,cmax:nr-4};}
@@ -3142,7 +3159,7 @@ function secPanelHTML(){if(!M.AL||!zoned(P))return '<p class="hint" style="paddi
       ${imperial()?`<tr><td>Sightline over standing spectators per platform (A117.1 Table 802.9.2.2)</td><td colspan="2">${sightBad.length?'Below in '+sightBad.join(', '):'All platforms meet'}</td><td>${ok(!sightBad.length)}</td></tr>`:''}
       ${shallow.length?`<tr><td>Platform depth under 48"</td><td colspan="2">${shallow.join(', ')}</td><td>${ok(false)}</td></tr>`:''}
       <tr><td>Seats taken by platforms / by sections switched off</td><td colspan="3">${fmtN(D.lost)} / ${fmtN(D.off)}</td></tr></tbody></table>`;}
-  const ctl=`<div class="seg" style="margin:4px 0 8px;flex-wrap:wrap;gap:6px;align-items:center"><span class="hint" style="margin:0">Design margin over the minimum</span><input id="adaMargin" type="number" min="0" max="200" step="5" value="${P.adaMargin??25}" style="width:64px"> %<button id="adaAuto" title="Spread platforms round every tier until the requirement plus the margin is met">Auto platforms</button><button id="adaClear">Clear platforms</button><button id="secSym" class="${P.secSym===false?'':'on'}" aria-pressed="${P.secSym!==false}" title="On: a seat count also goes to the mirror sections (the other end zone, the other side of the stand, the other three corners). Off: every section is edited on its own.">Symmetric ${P.secSym===false?'off':'on'}</button><button id="secReset" title="All sections on, seats per row back to the computed layout">Reset sections</button></div>`;
+  const ctl=`<div class="seg" style="margin:4px 0 8px;flex-wrap:wrap;gap:6px;align-items:center"><span class="hint" style="margin:0">Design margin over the minimum</span><input id="adaMargin" type="number" min="0" max="200" step="5" value="${P.adaMargin??25}" style="width:64px"> %<button id="adaAuto" title="Spread platforms round every tier until the requirement plus the margin is met">Auto platforms</button><button id="adaClear">Clear platforms</button><button id="secSym" class="${P.secSym===false?'':'on'}" aria-pressed="${P.secSym!==false}" title="On: a seat count also goes to the mirror sections (the other end zone, the other side of the stand, the other three corners). Off: every section is edited on its own.">Symmetric ${P.secSym===false?'off':'on'}</button><button id="aisRestore" title="This tier: aisles removed or added by hand back to the computed layout">Restore aisles</button><button id="secReset" title="All sections on, seats per row and aisles back to the computed layout">Reset sections</button></div>`;
   const list=sectionList(ti);
   const rows=list.map(q=>{const e=S[q.no]||{},md=secEdOf(ti,q.key),pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a),st=zoneName(P,pc.Lz.k,true),w=D&&D.secs[q.no];
     const set=md&&md.set,cnt=md?`<input type="number" data-secn="${md.id}" min="1" max="${A.smax}" step="1" value="${set?md.n:(q.lo===q.hi?q.lo:md.n)}" style="width:58px${set?';border-color:#E8590C':''}"${e.off?' disabled':''}>${set?` <button data-secnclr="${md.id}" title="Back to the computed size">↺</button>`:''}`:(q.lo===q.hi?q.lo:q.lo+'–'+q.hi);
@@ -3196,7 +3213,8 @@ $('secPanel').addEventListener('click',e=>{const b=e.target.closest('button');if
   if(b.id==='adaClear'){Object.keys(SECS()).forEach(k=>{delete P.secs[k].wc;secTidy(k);});update();return;}
   if(b.dataset.vomauto!=null){const ti=+b.dataset.vomauto;vomAuto(ti);const v=vomNeed(ti);toast(`Tier ${ti+1} voms on: ${v?v.act.length:0}`);return;}
   if(b.dataset.vomclr!=null){const ti=+b.dataset.vomclr,on=P.vomOn||{};vomCands(M.AL,ti).forEach(c=>delete on[c.key]);update();return;}
-  if(b.id==='secReset'){P.secN={};Object.keys(SECS()).forEach(k=>{delete P.secs[k].off;secTidy(k);});update();return;}});
+  if(b.id==='aisRestore'){const E=P.aisEd||{};delete E[SECT_TI_()];update();toast(`Tier ${SECT_TI_()+1}: every aisle back to the computed layout.`);return;}
+  if(b.id==='secReset'){P.secN={};P.aisEd={};Object.keys(SECS()).forEach(k=>{delete P.secs[k].off;secTidy(k);});update();return;}});
 $('secPanel').addEventListener('change',e=>{const t=e.target;
   if(t.dataset.secon){const x=secEntry(t.dataset.secon);if(t.checked)delete x.off;else x.off=true;secTidy(t.dataset.secon);update();return;}
   if(t.dataset.secwc){const x=secEntry(t.dataset.secwc);if(t.checked)x.wc=true;else delete x.wc;secTidy(t.dataset.secwc);update();return;}
@@ -3207,9 +3225,41 @@ $('secPanel').addEventListener('change',e=>{const t=e.target;
   if(t.id==='vomW'){const v=+t.value;if(v>0){AIS().vomW=imperial()?v*304.8:v*1000;update();}return;}
   if(t.id==='vomTun'){const v=+t.value;if(v>0){P.vomTun=imperial()?v*304.8:v*1000;update();}return;}
   if(t.id==='adaMargin'){P.adaMargin=Math.max(0,+t.value||0);update();}});
-$('plan').addEventListener('click',e=>{{const o=e.target.closest('[data-offsec],[data-onsec]');if(o){secOnOff(+(o.dataset.offsec||o.dataset.onsec));return;}}   /* the front rows or an open section: switch it off or on */
+$('plan').addEventListener('click',e=>{if(AISADD){const p=planPt(e);if(p){aisleAddAt(p);}return;}
+  {const h=e.target.closest('[data-aisle]');if(h){const [ti,id]=h.dataset.aisle.split(':').map(Number);AISED={ti,id,x:e.clientX,y:e.pageY};aisEdRender();return;}}
+  {const o=e.target.closest('[data-offsec],[data-onsec]');if(o){secOnOff(+(o.dataset.offsec||o.dataset.onsec));return;}}   /* the front rows or an open section: switch it off or on */
   const w=e.target.closest('[data-wcsec]');if(w){const no=+w.dataset.wcsec,S=SECS(),x=S[no]||(S[no]={});if(x.off)return;if(x.wc)delete x.wc;else x.wc=true;secTidy(no);update();toast(`Section ${no}: wheelchair platform ${S[no]&&S[no].wc?'added':'removed'}.`);return;}   /* the back rows of a section: its wheelchair platform on or off */
   const g=e.target.closest('[data-secno]');if(!g)return;SECED={no:+g.dataset.secno,x:e.clientX,y:e.pageY};secEdRender();});   /* a section's number: the plan editor */
+// ---------- aisle editor on the plan (decision 160): click an aisle to remove it; Add aisle, then click, to add one ----------
+let AISED=null,AISADD=false;
+function planPt(e){const g=document.querySelector('#aisHits')||document.querySelector('#plan svg g');const svg=document.querySelector('#plan > svg');if(!svg)return null;const el=g||svg,m=el.getScreenCTM();if(!m)return null;
+  const q=svg.createSVGPoint();q.x=e.clientX;q.y=e.clientY;const r=q.matrixTransform(m.inverse());return [r.x,r.y];}
+function aisMirror(p){const out=[p];if(P.secSym===false)return out;[[-1,1],[1,-1],[-1,-1]].forEach(([a,b])=>{const q=[a*p[0],b*p[1]];if(!out.some(o=>Math.hypot(o[0]-q[0],o[1]-q[1])<1))out.push(q);});return out;}
+function aisEdOf(ti){const E=P.aisEd||(P.aisEd={});return E[ti]||(E[ti]={rm:[],add:[]});}
+function aisInfo(ti,id){const T=M.AL&&M.AL[ti];if(!T)return null;let f=null;for(const Lz of Object.values(T)){const a=Lz.ais.find(x=>x.id===id&&x.ref);if(a){f={Lz,a};break;}}f=f||findAisle(T,id);if(!f)return null;const secs=sectionList(ti).filter(q=>q.key.split('_').map(Number).includes(id));
+  const v=vomCands(M.AL,ti).find(c=>c.id===id),on=v&&(P.vomOn||{})[v.key];return {a:f.a,Lz:f.Lz,secs,vom:on?v:null,user:!!f.a.user};}
+function aisEdRender(){let el=$('aisEd');if(!AISED){if(el)el.remove();return;}const I=aisInfo(AISED.ti,AISED.id);if(!I){AISED=null;if(el)el.remove();return;}
+  if(!el){el=document.createElement('div');el.id='aisEd';el.setAttribute('role','dialog');document.body.appendChild(el);}
+  const A=AIS(),sw=(I.Lz.tr[0]||{}).seatW||22*25.4,extra=Math.floor((A.w+2*(A.gap||0))/sw),lo=I.secs.reduce((t,q)=>t+q.lo,0)+extra,hi=I.secs.reduce((t,q)=>t+q.hi,0)+extra,over=hi>A.smax;
+  const tunnel=I.vom&&I.vom.kind==='corner';
+  el.innerHTML=`<div class="se-h"><b>Aisle</b><span>Tier ${AISED.ti+1}${I.secs.length?' · between sections '+I.secs.map(q=>q.no).join(' and '):''}${I.user?' · added by hand':''}</span><button class="se-x" data-ae="close" aria-label="Close">×</button></div>`
+    +(I.secs.length===2?`<p class="se-n">Removing it joins ${I.secs[0].no} and ${I.secs[1].no}: about ${lo}–${hi} seats per row${over?` <b style="color:#C0262D">over the ${A.smax}-seat maximum</b>`:''}.</p>`:'')
+    +(I.vom?`<p class="se-n">${tunnel?`The player tunnel ${I.vom.label} stays, as an opening on its own.`:`Vomitory ${I.vom.label} goes with it.`}</p>`:'')
+    +`<p class="se-n">${P.secSym===false?'Independent: this aisle only.':'Symmetric: the mirror aisles go too.'}</p>`
+    +`<button data-ae="rm" class="se-w">Remove aisle</button>`;
+  const W=260,x=Math.min(Math.max(8,AISED.x-W/2),document.documentElement.clientWidth-W-8);el.style.left=x+'px';el.style.top=(AISED.y+14)+'px';}
+function aisleRemove(ti,id){const I=aisInfo(ti,id);if(!I||!I.a.ref)return;const E=aisEdOf(ti),p=I.a.ref;
+  if(I.user){const pts=aisMirror(p);E.add=E.add.filter(q=>!pts.some(m=>Math.hypot(m[0]-q[0],m[1]-q[1])<3));}   // an aisle added by hand: just take the addition back
+  else aisMirror(p).forEach(q=>{if(!E.rm.some(o=>Math.hypot(o[0]-q[0],o[1]-q[1])<0.5))E.rm.push(q);});
+  AISED=null;aisEdRender();update();toast(`Aisle removed${P.secSym===false?'':' with its mirror aisles'}, Tier ${ti+1}. Reset sections or Restore aisles puts it back.`);}
+function aisleAddAt(p){if(!M.AL)return;let best=null;M.AL.forEach((T,ti)=>sectionList(ti).forEach(q=>{const d=Math.hypot(q.pt[0]-p[0],q.pt[1]-p[1]);if(!best||d<best.d)best={d,ti};}));if(!best)return;
+  const E=aisEdOf(best.ti);aisMirror(p).forEach(q=>E.add.push(q));AISADD=false;$('aisAddTog').classList.remove('on');$('aisAddTog').setAttribute('aria-pressed','false');$('plan').classList.remove('add-ais');update();
+  toast(`Aisle added on Tier ${best.ti+1}${P.secSym===false?'':' with its mirror aisles'}, a whole number of seats from the nearer aisle.`);}
+$('aisAddTog').addEventListener('click',e=>{AISADD=!AISADD;e.target.classList.toggle('on',AISADD);e.target.setAttribute('aria-pressed',AISADD);$('plan').classList.toggle('add-ais',AISADD);if(AISADD)toast('Click on the bowl plan where the new aisle should go.');});
+document.addEventListener('click',e=>{const el=$('aisEd');if(!el||!AISED)return;const b=e.target.closest('[data-ae]');
+  if(b&&el.contains(b)){if(b.dataset.ae==='close'){AISED=null;aisEdRender();}else if(b.dataset.ae==='rm')aisleRemove(AISED.ti,AISED.id);return;}
+  if(!el.contains(e.target)&&!e.target.closest('[data-aisle]')){AISED=null;aisEdRender();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(AISED){AISED=null;aisEdRender();}if(AISADD)$('aisAddTog').click();}});
 // ---------- code summary: plumbing fixtures (IPC 2021/2024 Table 403.1 = IBC Table 2902.1, stadiums) and concourse loading (decision 58) ----------
 const PLB=()=>P.plumb||(P.plumb={extra:0,factor:1});
 function plumbing(occ){const m=Math.ceil(occ/2),f=Math.ceil(occ/2),wm=m<=1500?Math.ceil(m/75):20+Math.ceil((m-1500)/120),wf=f<=1520?Math.ceil(f/40):38+Math.ceil((f-1520)/60);
@@ -3524,7 +3574,7 @@ function drawPlan(o={}){
   const cs=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]].map(([x,y])=>rotPt(x,y,t)),vx0=Math.min(...cs.map(c=>c[0])),vy0=Math.min(...cs.map(c=>c[1])),
     vW=Math.max(...cs.map(c=>c[0]))-vx0,vH=Math.max(...cs.map(c=>c[1]))-vy0;
   let s=`<svg viewBox="${vx0.toFixed(2)} ${vy0.toFixed(2)} ${vW.toFixed(2)} ${vH.toFixed(2)}"${vH>vW*1.05?' class="portrait"':''} role="img" aria-label="${S.org} ${S.name} ${PLAN==='field'?'field layout':'bowl plan'}, north up">`;
-  let body=(PLAN==='bowl'?planGrid():'')+bufferFill()+S.draw(P,g)+rings+overRowsSvg()+rowLines+secOverlaySvg()+aisleSvg()+seatsSvg()+(o.tight?'':wcHitSvg())+(PLAN==='bowl'?drawDims(bufferDims(),g,fs*.8):'')+`<path d="${ptsPath(bnd)}" fill="none" stroke="${FOCAL}" stroke-width="${(1.7*g.k).toFixed(3)}" stroke-linejoin="round"/>`+((P.sport==='nfl'||P.sport==='ncaafb')?pylons(P).map(([cx,cy,h])=>`<rect x="${g.f(cx-h)}" y="${g.f(cy-h)}" width="${g.f(2*h)}" height="${g.f(2*h)}" fill="${COL_PYLON}"/>`).join(''):''),over='';
+  let body=(PLAN==='bowl'?planGrid():'')+bufferFill()+S.draw(P,g)+rings+overRowsSvg()+rowLines+secOverlaySvg()+aisleSvg()+seatsSvg()+(o.tight?'':wcHitSvg()+(PLAN==='bowl'?`<g id="aisHits">${AISHIT}</g>`:''))+(PLAN==='bowl'?drawDims(bufferDims(),g,fs*.8):'')+`<path d="${ptsPath(bnd)}" fill="none" stroke="${FOCAL}" stroke-width="${(1.7*g.k).toFixed(3)}" stroke-linejoin="round"/>`+((P.sport==='nfl'||P.sport==='ncaafb')?pylons(P).map(([cx,cy,h])=>`<rect x="${g.f(cx-h)}" y="${g.f(cy-h)}" width="${g.f(2*h)}" height="${g.f(2*h)}" fill="${COL_PYLON}"/>`).join(''):''),over='';
   if(PLAN==='bowl'){const sec=sectionAt(),ex=sec[0]+sec[2]*(Rmax+1.5),ey=sec[1]+sec[3]*(Rmax+1.5),lf=W/45;
     const rf=W/105;                                                  // row-number text height (plan metres)
     const at=zoned(P)?GEO.map(k=>{const sd=rectGeo(P).side[k],f=isSide(k)?0.22:0.3;return [k,[sd.p[0]+(sd.q[0]-sd.p[0])*f,sd.p[1]+(sd.q[1]-sd.p[1])*f,sd.n[0],sd.n[1],(sd.q[0]-sd.p[0])/Math.hypot(sd.q[0]-sd.p[0],sd.q[1]-sd.p[1]),(sd.q[1]-sd.p[1])/Math.hypot(sd.q[0]-sd.p[0],sd.q[1]-sd.p[1])]];})
@@ -4468,7 +4518,7 @@ function titleCase(str){
       if(UNITS.has(lo))return p;                                       // keep units lowercase
       if(k===0&&!first&&!last&&SMALL.has(lo))return p;
       return p[0].toUpperCase()+p.slice(1);}).join('-');});}
-const SENTENCE='#secEd .se-n,.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#secPanel table.wrap td+td,#v33dm,#v3Glb,#v3Ifc,#v3Html';
+const SENTENCE='#secEd .se-n,#aisEd .se-n,#aisEd .se-h span,.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#secPanel table.wrap td+td,#v33dm,#v3Glb,#v3Ifc,#v3Html';
 function titleize(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
   while((n=w.nextNode())){const el=n.parentElement;if(!el||el.closest(SENTENCE))continue;const t=titleCase(n.data);if(t!==n.data)n.data=t;}}
 new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData'){const el=m.target.parentElement;if(el&&!el.closest(SENTENCE)){const t=titleCase(m.target.data);if(t!==m.target.data)m.target.data=t;}}
