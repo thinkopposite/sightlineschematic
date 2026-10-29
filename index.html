@@ -357,10 +357,10 @@ td{border-bottom:1px solid var(--line)}
     <div class="panel" id="detail3"></div></div>
     <div id="junWrap" hidden><div class="planhead"><span class="bub" id="bubJ">E</span><h3 id="junTitle">Tier junction</h3>
       <p class="capt">The top of each tier and the bottom of the tier above, cut through the wheelchair platform: heights and distances between the tiers.</p></div>
-    <div class="panel" id="junction"></div></div>
+    <div class="panel" id="junction" style="overflow-x:auto"></div></div>
     <div class="planhead"><span class="bub" id="bubSp">D</span><h3 id="spTitle">Enlarged spectators: eye sight values</h3>
       <p class="capt">The three rows ending at the governing row, dimensioned to the locked eye sight values.</p></div>
-    <div class="panel" id="spect" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px"></div>
+    <div class="panel" id="spect" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px;overflow-x:auto"></div>
 
     <p class="group">Bowl</p>
     <div class="planhead"><span class="bub" id="bubPlan">E</span><h3 id="planTitle">Plan</h3>
@@ -1842,9 +1842,12 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.01';
+const VERSION='2026.10.29.02';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
-function spectScale(){const J=JUNSC,sv=document.querySelector('#junction svg');if(!J||!sv)return;const k=sv.getBoundingClientRect().width/J.W;if(!(k>0))return;
+// the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
+function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
+  const vb=dv.viewBox&&dv.viewBox.baseVal,k=2*dv.getBoundingClientRect().width/((vb&&vb.width)||1);if(!(k>0)||!isFinite(k))return;
+  document.querySelectorAll('#junction svg').forEach(e=>{const w=e.viewBox&&e.viewBox.baseVal&&e.viewBox.baseVal.width;if(!w)return;e.style.width=(w*k)+'px';e.style.maxWidth='none';e.style.margin='0 auto';});
   document.querySelectorAll('#spect svg[data-w]').forEach(e=>{const px=+e.dataset.w*k;e.style.width=px+'px';e.style.maxWidth='none';e.parentNode.style.width=Math.max(px,240)+'px';});}
 addEventListener('resize',()=>spectScale());
 const KEY='sightline-v2';
@@ -3693,7 +3696,7 @@ function update(){
      +`<tr class="tot"><td>Total</td><td>${qVol(tot.V)}</td><td>${qWt(tot.W)}</td><td>${qLen(tot.rail)}</td><td>${qArea(tot.plan)}</td><td></td></tr></tbody>`;}
   $('lgSurf').textContent=surf();$('lgT1').style.background=tierFill(0);$('lgT2').style.background=tierFill(1);
   {const tab=m=>'<table class="fixed" style="margin-top:6px">'+spectatorInfo(m).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+'</table>';
-   const J=JUNSC,sp=$('spect');sp.style.cssText=J?'display:flex;flex-direction:column;align-items:center;gap:20px;padding:12px':'display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px';
+   const J=JUNSC,sp=$('spect');sp.style.cssText=J?'display:flex;flex-direction:column;align-items:center;gap:20px;padding:12px;overflow-x:auto':'display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px';
    sp.innerHTML=SPECT_MODES.map(m=>{let d=drawSpectator(m,J?{fs:J.fs}:{});const w=J?+(d.match(/viewBox="0 0 ([\d.]+)/)||[0,0])[1]:0;if(J&&w)d=d.replace('<svg ',`<svg data-w="${w}" style="display:block;width:100%" `);
      return `<div${J&&w?` data-w="${w}"`:''}><div class="lab"><b>${SPECT_NAMES[m]}</b>, ${enlargedWhere(m)}</div>${d}${tab(m)}</div>`;}).join('');
    spectScale();}
