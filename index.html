@@ -1850,7 +1850,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.11';
+const VERSION='2026.10.29.12';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2161,12 +2161,13 @@ var SWG=0,SWORIG=null;   // during a PDF plot: model units per grid square for d
 // PDF sheets on the Swiss grid: while SWG is set (model units per 1/4 in or 1/2 in grid square at the plot scale), every straight
 // dimension line moves outward onto the next grid line, never sharing a line with an overlapping dimension; 0,0 is recorded for placement.
 // opt.noLab: values only, no descriptive text (decision 163); opt.grid [model x, z of the grid's 0,0]: dimension lines on the background grid (1 ft / 1 m) on screen too
+const MAJ=()=>imperial()?3048:5000,onMaj=(v,o0=0,up=true)=>o0+(up?Math.ceil((v-o0)/MAJ()-1e-9):Math.floor((v-o0)/MAJ()+1e-9))*MAJ();   // the next major gridline (10 ft / 5 m) from a grid origin (decision 172)
 const T9=(o,d)=>o&&o.k?8/o.k:d;const TP=(o,px,d)=>o&&o.k?px/o.k:d;let PXK=0;const PX=(px,d)=>PXK?px/PXK:d;   // TP: a set screen size in a section view; PX: in the plans while PXK (plan px per unit) is set (decision 170)   // screen text set in px (decisions 167-168): 6 px for dimension values, grid scale marks and tread numbers when the view's px per unit (o.k) is known
 function SecDim(X,Y,fs,frame,opt={}){const K=SecDim0(X,Y,fs,frame,opt.vs);if(opt.center)K.center=true;if(opt.noLab){const d=K.dim0;K.dim0=(a,b,o={})=>d(a,b,Object.assign({},o,{lab:null}));}
-  if(!SWG&&!opt.grid)return K;let G,OX=0,OY=0;if(SWG){if(!SWORIG)SWORIG=[+X(0),+Y(0)];G=SWG;}else{G=imperial()?304.8:1000;OX=+X(opt.grid[0]);OY=+Y(opt.grid[1]);}const used=[],d0=K.dim0;
+  if(!SWG&&!opt.grid)return K;let G,OX=0,OY=0;if(SWG){if(!SWORIG)SWORIG=[+X(0),+Y(0)];G=SWG;}else{G=imperial()?304.8:1000;OX=opt.grid[0];OY=opt.grid[1];}   /* model units, like the dimension points (decision 172: was mixed with drawing units, so lines missed the grid) */const used=[],d0=K.dim0;
   const pick=(c,lo,hi,dir,kind,o)=>{const off=kind==='h'?OY:OX;let v=off+(dir>0?Math.ceil((c-off)/G-1e-6)*G:Math.floor((c-off)/G+1e-6)*G);
     const taken=v=>used.some(q=>q.kind===kind&&Math.abs(q.c-v)<1&&Math.min(q.hi,hi)-Math.max(q.lo,lo)>1);
-    const bad=v=>{if(!opt.avoid||(o&&o.fix))return false;const q=kind==='h'?[lo,v,hi,v]:[v,lo,v,hi],m=(lo+hi)/2,b=K.center?K.valBox(o||{},kind==='h'?m:v,kind==='h'?v:m,kind!=='h'):null;return K.blocked(q,b);};
+    const bad=v=>{if(!opt.avoid||(o&&o.fix))return false;const q=kind==='h'?[+X(lo),+Y(v),+X(hi),+Y(v)]:[+X(v),+Y(lo),+X(v),+Y(hi)],m=(lo+hi)/2,b=K.center?(kind==='h'?K.valBox(o||{},+X(m),+Y(v),false):K.valBox(o||{},+X(v),+Y(m),true)):null;return K.blocked([Math.min(q[0],q[2]),Math.min(q[1],q[3]),Math.max(q[0],q[2]),Math.max(q[1],q[3])],b);};
     let v1=v;while(taken(v1))v1+=dir*G;let k=0,v2=v1;while(k<14&&(taken(v2)||bad(v2))){v2+=dir*G;k++;}if(k<14)v1=v2;   /* step out a grid line at a time until clear of the bowl, spectators and sightlines */
     used.push({kind,c:v1,lo,hi});return v1;};
   K.dim0=(a,b,o={})=>{const ref=o.eb||o.ea;
@@ -2342,9 +2343,9 @@ function chainDims(rows,tiers,fs,K){
   const r0=firsts[0],rN=lasts[lasts.length-1],zo=zTop+fs*1.8+sp*firsts.length;
   K.dim([r0.x,zo],[rN.x,zo],{lab:'Overall',val:L(rN.x-r0.x),ea:[r0.x,r0.z],eb:[rN.x,rN.z]});
   // vertical chain left of the point of focus: lowest and top tread of every tier, then the overall
-  const xd=-fs*2.6,vp=[{x:0,z:0}];tiers.forEach((ti,i)=>{vp.push({x:firsts[i].x,z:firsts[i].z,tier:ti});if(lasts[i]!==firsts[i])vp.push({x:lasts[i].x,z:lasts[i].z,tier:ti});});
-  for(let i=1;i<vp.length;i++){const ctl=i===1?'Z:0':(vp[i-1].tier!=null&&vp[i].tier!=null&&vp[i].tier>vp[i-1].tier)?'RISE:'+vp[i].tier:null;K.dim([xd,vp[i-1].z],[xd,vp[i].z],{val:L(vp[i].z-vp[i-1].z),ea:i===1?[vp[0].x,vp[0].z]:null,eb:[vp[i].x,vp[i].z],ctl});}
-  const xo=xd-sp;K.dim([xo,0],[xo,rN.z],{lab:'Overall',val:L(rN.z),ea:[xd,0],eb:[xd,rN.z]});
+  const xd=-MAJ(),vp=[{x:0,z:0}];   /* on the major gridlines left of the point of focus (decision 172) */tiers.forEach((ti,i)=>{vp.push({x:firsts[i].x,z:firsts[i].z,tier:ti});if(lasts[i]!==firsts[i])vp.push({x:lasts[i].x,z:lasts[i].z,tier:ti});});
+  for(let i=1;i<vp.length;i++){const ctl=i===1?'Z:0':(vp[i-1].tier!=null&&vp[i].tier!=null&&vp[i].tier>vp[i-1].tier)?'RISE:'+vp[i].tier:null;K.dim([xd,vp[i-1].z],[xd,vp[i].z],{val:L(vp[i].z-vp[i-1].z),ea:i===1?[vp[0].x,vp[0].z]:null,eb:[vp[i].x,vp[i].z],ctl,fix:1});}
+  const xo=xd-MAJ();K.dim([xo,0],[xo,rN.z],{lab:'Overall',val:L(rN.z),ea:[xd,0],eb:[xd,rN.z],fix:1});
 }
 // Sightline detail: the whole Tier 1 bowl on the section side, one spectator per row, sitting or standing (its own toggle).
 // Head circle with the eye dot 4.45 in below its top; dashed body to the tread; red mark 2.25 in above the eye;
@@ -2401,18 +2402,17 @@ function drawDetail(all,o={}){
     if(labels&&C!=null)K.note(e.x+hr+1.5*IN,cy-fs*.2,CV(C),{size:TP(o,6,fs*.52),anchor:'start',fill:low?'var(--sl-low)':isMin?'#0000FF':'var(--ink)',wt:isMin?800:600,ref:isMin?'cval':null});
     K.reserve(e.x-hr,cy-hr,e.x+hr,cy+hr);});
   // top spectator: eye (sitting) or head (standing) height, right of the bowl
-  const eT=ey[ey.length-1],xd=last.x+last.T+fs*3.6,zTop=m==='stand'?last.z+E.stH+HEAD:eT.z;
-  K.dim([xd,last.z],[xd,zTop],{lab:m==='stand'?'Standing head':'Sitting eye',val:L(m==='stand'?E.stH+HEAD:E.sitH),ref:m==='stand'?'head':'sit',ctl:m==='stand'?'STAND':'SIT',ea:[last.x+last.T,last.z],eb:[eT.x,zTop],side:-1});
+  const eT=ey[ey.length-1],xd=onMaj(last.x+last.T+600,NF?r0.x:0),zTop=m==='stand'?last.z+E.stH+HEAD:eT.z;
+  K.dim([xd,last.z],[xd,zTop],{lab:m==='stand'?'Standing head':'Sitting eye',val:L(m==='stand'?E.stH+HEAD:E.sitH),ref:m==='stand'?'head':'sit',ctl:m==='stand'?'STAND':'SIT',ea:[last.x+last.T,last.z],eb:[eT.x,zTop],side:-1,fix:1});   /* one line with the rise below it, on a major gridline (decision 172) */
   // vertical: bottom tread above the field, one tread in front of the leg wall; overall to the top tread, right of the bowl
   if(!NF)K.dim([r0.x-r0.T,0],[r0.x-r0.T,r0.z],{lab:'Bottom tread',val:L(r0.z),eb:[r0.x,r0.z],ctl:'Z:0'});
-  else K.note(r0.x-fs*.4,r0.z-fs*1.1,`Bottom tread ${L(r0.z)} above the ${surfLow()}`,{size:TP(o,6,fs*.5),anchor:'end',fill:c,wt:450});
-  {const z0=NF?r0.z:0,xo=xd+fs*2.4;K.dim([xo,z0],[xo,last.z],{lab:NF?`Tier ${ti+1} rise`:'Overall',val:L(last.z-z0),ea:[r0.x,z0],eb:[xd,last.z],side:-1});}
+  {const z0=NF?r0.z:0,xo=xd;K.dim([xo,z0],[xo,last.z],{lab:NF?`Tier ${ti+1} rise`:'Overall',val:L(last.z-z0),ea:[r0.x,z0],eb:[last.x+last.T,last.z],side:-1,fix:1});}
   // horizontal chain below the bowl: point of focus to the first riser, the first tread, then the typical tread
   const yc=NF?r0.z-(ti>=1?LEG2:slabT())-fs*1.4:-(band+fs*1.3),pts=(NF?[r0.x,r0.x+r0.T,r0.x+r0.T+(rs[1]?rs[1].T:0)]:[0,r0.x,r0.x+r0.T,r0.x+r0.T+(rs[1]?rs[1].T:0)]).filter((v,i,a)=>i===0||v>a[i-1]+1);
   const zo=x=>NF?r0.z-slabT():-band;
   for(let i=1;i<pts.length;i++){const typ=i===pts.length-1&&i>=2,lab=!NF&&i===1?'Focus to riser':typ?'Tread (TYP.)':'First tread';
     K.dim([pts[i-1],yc],[pts[i],yc],{lab,val:L(pts[i]-pts[i-1]),ea:[pts[i-1],zo(pts[i-1])],eb:[pts[i],zo(pts[i])],side:-1,ctl:!NF&&i===1?'D:0':typ?'T:'+ti:'T0:'+ti});}
-  if(ti>=1)K.dim([r0.x+slabT()+fs*.9,r0.z-LEG2],[r0.x+slabT()+fs*.9,r0.z],{lab:'Leg wall',val:L(LEG2),ref:'leg',ea:[r0.x+slabT(),r0.z-LEG2],side:-1});
+  if(ti>=1)K.dim([r0.x-150,r0.z-LEG2],[r0.x-150,r0.z],{lab:'Leg wall',val:L(LEG2),ref:'leg',ea:[r0.x,r0.z-LEG2],eb:[r0.x,r0.z]});   // left of the leg wall (decision 172)
   s+=K.out();
   return s+'</svg>';
 }
@@ -4037,7 +4037,7 @@ function plotSpectators(sh){const A=swArea(sh),u=A.u,k2=u/0.25,modes=SPECT_MODES
 const pg0=lo=>lo.length>=4?lo.length-3:lo.length;   // rows in front of the wheelchair platform
 function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-1),up=all.filter(r=>r.tier===tu);if(!lo.length||!up.length)return `<p class="empty" style="padding:16px">No Tier ${tu+1} rows.</p>`;
   const IN=25.4,E=P.eye,hr=4.5*IN,headTop=4.45*IN,n=lo.length,lb=lo[n-1],f=up[0],NL=8,NU=5,u2=up[Math.min(NU-1,up.length-1)],a0=lo[Math.max(0,n-NL)],   /* lower tier: 8 rows, upper: 5 (decision 161: three more each way) */t=slabT(),fs=o.fs||300,pg=secPlat(lo);
-  const xR=Math.max(u2.x+u2.T,lb.x+lb.T,f.x+f.T),X0=a0.x-fs*3,X1=xR+fs*9,eyeTop=Math.max(...up.slice(0,NU).map(r=>r.sit.ez),f.z+P.railH),Z0=a0.z-t-fs*13,Z1=eyeTop+hr*2+fs*5,W=X1-X0,H=Z1-Z0;
+  const xR=Math.max(u2.x+u2.T,lb.x+lb.T,f.x+f.T),X0=a0.x-fs*3,X1=Math.max(xR+fs*9,Math.max(lb.x+lb.T+fs*4,f.x)+25+3*304.8+fs*4),eyeTop=Math.max(...up.slice(0,NU).map(r=>r.sit.ez),f.z+P.railH),Z0=a0.z-t-fs*13,Z1=Math.max(eyeTop+hr*2+fs*5,onMaj(eyeTop+hr*2+fs*.6)+fs*2.5),W=X1-X0,H=Z1-Z0;
   const X=x=>(x-X0).toFixed(1),Y=z=>(Z1-z).toFixed(1),K=SecDim(X,Y,fs,[W,H],{noLab:1,center:1,grid:[0,0],avoid:1,vs:T9(o,null)});
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Tier ${tu} to Tier ${tu+1} junction section">`+gridBg(X0,X1,Z0,Z1,X,Y,0,0,T9(o,fs*.8/.9));
   s+=`<polygon points="${profileOf(lo,tu-1).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(tu-1)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`
@@ -4070,15 +4070,14 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
    if(up.length>1){const a=up[0],b=up[1],zl=b.sit.ez*a.sit.ex/b.sit.ex;K.dim([a.sit.ex-2*IN,a.sit.ez],[a.sit.ex-2*IN,zl],{lab:'C sitting',val:CV(zl-a.sit.ez),ref:'cval',ctl:'CV:'+tu,fill:zl-a.sit.ez<a.target-0.05?'var(--fail)':null});}
    {const xo=f.x+RAIL_SET-25.4,rt=f.z+P.railH,c=railClear(f,{x:f.sit.ex,z:f.sit.ez});K.dim([xo-fs*.9,rt],[xo-fs*.9,rt+c],{lab:'Over rail, sitting',val:CV(c),ref:'guard',fill:c<0?'var(--sl-low)':null,side:-1});}}
   // vertical, right: the rise between the tiers, the leg wall and the clear height under it, the guard on the upper front row
-  const xv=xR+fs*1.5,cl=f.z-LEG2-lb.z;
-  K.dim([xv,lb.z],[xv,f.z],{lab:`Tier ${tu} top tread to Tier ${tu+1} bottom tread`,val:L(f.z-lb.z),ea:[lb.x+lb.T,lb.z],eb:[f.x+f.T,f.z],ctl:'RISE:'+tu,side:-1});
-  K.dim([f.x-fs*2.5,f.z-LEG2],[f.x-fs*2.5,f.z],{lab:'Leg wall',val:L(LEG2),ref:'leg',ea:[f.x,f.z-LEG2],eb:[f.x,f.z]});   // a column left of the leg wall (decision 169)
-  const cxE=Math.max(f.x,lb.x+lb.T+fs*4,lb.x+lb.T+fs*6.5),xc=cxE+fs*.5;K.dim([xc,lb.z],[xc,f.z-LEG2],{lab:'Clear height',val:L(cl),ref:'headroom',ea:[cxE,lb.z],eb:[f.x+slabT(),f.z-LEG2],fill:cl<P.minHead-0.5?'var(--fail)':null,side:-1});   // a column at the concourse end, the leg wall's underside carried across (decision 169)
-  K.dim([f.x+RAIL_SET+fs*1.1,f.z],[f.x+RAIL_SET+fs*1.1,f.z+P.railH],{lab:'Guard',val:L(P.railH),ea:[f.x+RAIL_SET,f.z],eb:[f.x+RAIL_SET,f.z+P.railH],side:-1});
+  const cl=f.z-LEG2-lb.z,cxEnd=Math.max(lb.x+lb.T+fs*4,f.x),xc=cxEnd+25,xv=xc+3*304.8;   // clear height just past the concourse end, the rise between the tiers 3 ft beyond (decision 172)
+  K.dim([xv,lb.z],[xv,f.z],{lab:`Tier ${tu} top tread to Tier ${tu+1} bottom tread`,val:L(f.z-lb.z),ea:[lb.x+lb.T,lb.z],eb:[f.x+f.T,f.z],ctl:'RISE:'+tu,side:-1,fix:1});
+  {const xl=f.x+f.T/2;K.dim([xl,f.z-LEG2],[xl,f.z],{lab:'Leg wall',val:L(LEG2),ref:'leg',ea:[f.x+slabT(),f.z-LEG2],eb:[f.x,f.z],fix:1})
+    .dim([xl,f.z],[xl,f.z+P.railH],{lab:'Guard',val:L(P.railH),ea:[f.x,f.z],eb:[f.x+RAIL_SET,f.z+P.railH],fix:1});}   // leg wall and guard in one column over the first tread (decision 172)
+  K.dim([xc,lb.z],[xc,f.z-LEG2],{lab:'Clear height',val:L(cl),ref:'headroom',ea:[cxEnd,lb.z],eb:[f.x+slabT(),f.z-LEG2],fill:cl<P.minHead-0.5?'var(--fail)':null,side:-1});   // a column at the concourse end, the leg wall's underside carried across (decision 169)
   // the wheelchair platform: its height over the row in front, the wheelchair eye, the setback and the eye distance behind the platform face
-  if(pg){const sd=lo[n-4];if(sd){K.dim([sd.x-fs*1.2,sd.z],[sd.x-fs*1.2,pg.zP],{lab:`Platform over row ${sd.row}`,val:L(pg.zP-sd.z),ref:'wcplat',ea:[sd.x+sd.T,sd.z],eb:[pg.edge,pg.zP]});}
-    if(sd){const st={x:sd.x+E.stOff,z:sd.z+E.stH},zl=pg.eye.z*st.x/pg.eye.x;K.dim([st.x+hr+fs*.6,st.z],[st.x+hr+fs*.6,zl],{lab:'C standing',val:CV(zl-st.z),ref:'wcplat',fill:zl-st.z<0?'var(--fail)':null,side:-1});
-      const si={x:sd.sit.ex,z:sd.sit.ez},zs=pg.eye.z*si.x/pg.eye.x;K.dim([si.x-hr-fs*.6,si.z],[si.x-hr-fs*.6,zs],{lab:'C sitting',val:CV(zs-si.z),ref:'wcplat',fill:zs-si.z<0?'var(--fail)':null});}
+  if(pg){const sd=lo[n-4];   /* platform over the row in front: shown in the spectator view (decision 172) */
+    if(sd){const si={x:sd.sit.ex,z:sd.sit.ez},zs=pg.eye.z*si.x/pg.eye.x;K.dim([si.x-hr-fs*.6,si.z],[si.x-hr-fs*.6,zs],{lab:'C sitting',val:CV(zs-si.z),ref:'wcplat',fill:zs-si.z<0?'var(--fail)':null});}
     K.dim([pg.top.x,pg.zP],[pg.top.x,pg.eye.z],{lab:'Wheelchair eye',val:L(E.wcH),eb:[pg.eye.x+hr*1.2,pg.eye.z],side:-1});}   // at the platform's back edge (decision 169)
   // horizontal, below: the top tread below, the riser offset between the tiers, the concourse, the platform setback and depth, the first tread above
   const yb=a0.z-t-fs*1.6,zb=x=>a0.z-t;
@@ -4089,7 +4088,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   if(Math.abs(dx)<=1)K.note(f.x+fs*.4,f.z-LEG2-fs*1.2,`First riser over the top riser below`,{size:TP(o,6,fs*.5),anchor:'start',fill:'var(--dim)',wt:450});
   else if(Math.abs(f.x+f.T-lb.x)<=1)K.note(f.x+f.T+fs*.3,f.z-fs*.9,`Second riser over the top riser below`,{size:TP(o,6,fs*.5),anchor:'start',fill:'var(--dim)',wt:450});
   if(f.x>cx0+1)K.dim([cx0,lb.z+fs*1.2],[f.x,lb.z+fs*1.2],{lab:'Concourse',val:L(f.x-cx0),ea:[cx0,lb.z],eb:[f.x,lb.z]});
-  {const ups=up.slice(0,NU),zc=Math.max(...ups.map(r=>r.sit.ez))+hr*2+fs*1.2,pts=[f.x,...ups.map(r=>r.x+r.T)];   // the Tier N+1 treads, one chain along the top of the drawing (decision 169)
+  {const ups=up.slice(0,NU),zc=onMaj(Math.max(...ups.map(r=>r.sit.ez))+hr*2+fs*.6),pts=[f.x,...ups.map(r=>r.x+r.T)];   // the Tier N+1 treads, one chain along the top of the drawing (decision 169)
    for(let i=1;i<pts.length;i++){const r=ups[i-1];K.dim([pts[i-1],zc],[pts[i],zc],{val:L(pts[i]-pts[i-1]),ea:[pts[i-1],i===1?f.z:ups[i-2].z],eb:[pts[i],r.z],fix:1,ctl:i===1?'T0:'+tu:null});}}
   // labels
   K.note(cx0+fs*.3,lb.z+fs*.3,tu===1?'Main concourse':'Upper concourse',{size:TP(o,6,fs*.55),anchor:'start',fill:'var(--muted)',wt:400});
