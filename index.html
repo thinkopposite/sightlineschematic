@@ -384,10 +384,10 @@ td{border-bottom:1px solid var(--line)}
       <p class="capt">One section at true seat width: seats, end-seat space, aisles and clear width between rows.</p>
       <div><div class="seg" id="enlTabs" role="group" aria-label="Enlarged section"></div></div></div>
     <div class="panel" id="enl"></div>
-    <div class="planhead"><span class="bub" id="bubEnlC">H</span><h3 id="enlcTitle">Enlarged plan: typical corner</h3>
+    <div class="planhead" hidden><span class="bub" id="bubEnlC">H</span><h3 id="enlcTitle">Enlarged plan: typical corner</h3>
       <p class="capt">The sections round one corner at true seat width, with seat numbers. North-west by default. Every tier is drawn at the same scale.</p>
       <div><div class="seg" id="enlcTabs" role="group" aria-label="Enlarged corner"></div></div></div>
-    <div class="panel" id="enlc"></div>
+    <div class="panel" id="enlc" hidden></div>
     <p class="hint" id="planNote"></p>
 
     <p class="group">Schedules</p>
@@ -1825,7 +1825,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.28.04';
+const VERSION='2026.10.28.05';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 function spectScale(){const J=JUNSC,sv=document.querySelector('#junction svg');if(!J||!sv)return;const k=sv.getBoundingClientRect().width/J.W;if(!(k>0))return;
   document.querySelectorAll('#spect svg[data-w]').forEach(e=>{const px=+e.dataset.w*k;e.style.width=px+'px';e.style.maxWidth='none';e.parentNode.style.width=Math.max(px,240)+'px';});}
@@ -3653,8 +3653,8 @@ function update(){
    $('enlTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlt="${i}" class="${!ENL.pick&&Math.min(ENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
      +[westKey(),eastKey(),GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='S')||'R'].map(k=>`<button data-enls="${k}" class="${!ENL.pick&&enlSide()===k?'on':''}">${zoneName(P,k)}</button>`).join('')
      +`<select id="enlPick" aria-label="Any section" title="Show any section" style="margin-left:8px"><option value="">Any section…</option>${Array.from({length:P.tierCount},(_,ti)=>`<optgroup label="Tier ${ti+1}">${sectionList(ti).filter(q=>!((P.secs||{})[q.no]||{}).off).sort((a,b)=>a.no-b.no).map(q=>`<option value="${q.no}"${ENL.pick===q.no?' selected':''}>${q.no}, ${zoneName(P,q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a).Lz.k)}</option>`).join('')}</optgroup>`).join('')}</select>`:'';
-   $('enlc').innerHTML=ok?drawCornerEnlarged():'<p class="empty" style="padding:16px">Choose the computed aisle layout to see a typical corner.</p>';$('enlcTitle').textContent=ok?cornerTitle():'Enlarged plan: typical corner';
-   $('enlcTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlct="${i}" class="${Math.min(CENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
+   /* the typical-corner frame is off the web page (decision 158); corner sections still get their own enlarged sheets in the PDF set and can be picked in the section list */
+   if(0)$('enlcTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlct="${i}" class="${Math.min(CENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
      +Object.keys(CORNERS).map(c=>`<button data-enlc="${c}" class="${enlCorner()===c?'on':''}" title="${CORNERS[c]} corner">${c}</button>`).join(''):'';}
   // the isometric views are drawn for the PDF set only (plotIso); on screen the 3D view replaces them
   renderOpts();v3Schedule();
