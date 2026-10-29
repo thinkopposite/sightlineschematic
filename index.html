@@ -1850,7 +1850,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.10';
+const VERSION='2026.10.29.11';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2454,12 +2454,13 @@ function drawPlatform(o={}){
   K.note((edge+top.x)/2,(zP+p2.z)/2-fs*.2,'Platform',{size:TP(o,6,fs*.52)});
   K.reserve(eye.x-31.5*IN,zP,eye.x+15*IN,zP+41*IN);                                     // the wheelchair figure
   K.dim([edge,eye.z+HEAD+fs*1.4],[eye.x,eye.z+HEAD+fs*1.4],{lab:'Platform riser to eye',val:D4(eye.x-edge),ref:'wcoff',ctl:'WCOFF',ea:[edge,zP+P.railH],eb:[eye.x,eye.z]});
-  {const xe=top.x+top.T+9*IN;K.dim([xe,zP],[xe,eye.z],{lab:'Wheelchair eye',val:D4(E.wcH),ref:'wceye',ctl:'WCH',ea:[top.x+top.T,zP],eb:[eye.x,eye.z],side:-1});}
-  K.dim([riserX-12*IN,sd.z],[riserX-12*IN,zP],{lab:`Platform, min ${D4(Math.max(0,g.Hreq)*25.4)}`,val:D4(zP-sd.z),ref:'wcplat',eb:[edge,zP]});
+  {const xe=top.x+top.T+9*IN;K.dim([xe,zP],[xe,eye.z],{lab:'Wheelchair eye',val:D4(E.wcH),ref:'wceye',ctl:'WCH',ea:[top.x+top.T,zP],eb:[eye.x+hr,eye.z],side:-1,fix:1});}
+  // one column on the gridline just in front of the row riser: platform height over the row in front, then the guard rail on top (decision 171)
+  {const xP=riserX-2*IN;K.dim([xP,sd.z],[xP,zP],{lab:`Platform, min ${D4(Math.max(0,g.Hreq)*25.4)}`,val:D4(zP-sd.z),ref:'wcplat',ea:[sd.x+sd.T,sd.z],eb:[edge,zP],fix:1})
+    .dim([xP,zP],[xP,zP+P.railH],{lab:'Guard rail',val:D4(P.railH),ref:'guard',ea:[edge,zP],eb:[edge-2*IN,zP+P.railH],fix:1});}
   K.dim([riserX,p1.z+3*IN],[edge,p1.z+3*IN],{lab:'Setback',val:D4(setback),ref:'setback',ea:[riserX,p1.z],eb:[edge,p1.z]});
-  K.dim([edge-5*IN,zP],[edge-5*IN,zP+P.railH],{lab:'Guard rail',val:D4(P.railH),ref:'guard',eb:[edge-2*IN,zP+P.railH]});
-  standers.forEach((p,k)=>{const zz=p.r.z+10*IN;K.dim([p.r.x,zz],[p.e.x,zz],{val:D4(E.stOff),ref:k===0?'stand':null,ea:[p.r.x,p.r.z],ctl:'STOFF'});
-    {const xv=p.r.x+p.r.T-hr-4*IN;K.dim([xv,p.r.z],[xv,p.e.z],{lab:k?'':'Standing eye',val:D4(E.stH),ref:k?null:'stand',ctl:'STAND',eb:[p.e.x,p.e.z]});}});   /* where the sitting head would be, less 4 in */
+  standers.forEach((p,k)=>{const zz=p.r.z+4*IN;if(k===0)K.dim([p.r.x,zz],[p.e.x,zz],{val:D4(E.stOff),ref:'stand',ea:[p.r.x,p.r.z],eb:[p.e.x,p.r.z],ctl:'STOFF',fix:1});   /* the 8 in standing offset once, low on the first row (decision 171) */
+    {const xv=p.e.x+hr+0.5*IN;K.dim([xv,p.r.z],[xv,p.e.z],{lab:k?'':'Standing eye',val:D4(E.stH),ref:k?null:'stand',ctl:'STAND',ea:[p.e.x,p.r.z],eb:[p.e.x+hr,p.e.z],fix:1});}});   /* just right of the standing head, its extension line from the eye (decision 171) */
   {const zl=eye.z*st.x/eye.x;K.dim([st.x+2*IN,st.z],[st.x+2*IN,zl],{lab:'C standing',val:CV(zl-st.z),ref:'wcplat',ctl:'CV:0',side:-1});}
   s+=K.out();
   return s+'</svg>';
