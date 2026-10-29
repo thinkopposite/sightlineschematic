@@ -1825,7 +1825,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.28.05';
+const VERSION='2026.10.28.06';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 function spectScale(){const J=JUNSC,sv=document.querySelector('#junction svg');if(!J||!sv)return;const k=sv.getBoundingClientRect().width/J.W;if(!(k>0))return;
   document.querySelectorAll('#spect svg[data-w]').forEach(e=>{const px=+e.dataset.w*k;e.style.width=px+'px';e.style.maxWidth='none';e.parentNode.style.width=Math.max(px,240)+'px';});}
@@ -3643,7 +3643,7 @@ function update(){
      +`<tr class="tot"><td>Total</td><td>${qVol(tot.V)}</td><td>${qWt(tot.W)}</td><td>${qLen(tot.rail)}</td><td>${qArea(tot.plan)}</td><td></td></tr></tbody>`;}
   $('lgSurf').textContent=surf();$('lgT1').style.background=tierFill(0);$('lgT2').style.background=tierFill(1);
   {const tab=m=>'<table class="fixed" style="margin-top:6px">'+spectatorInfo(m).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+'</table>';
-   const J=JUNSC,sp=$('spect');sp.style.cssText=J?'display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:12px 24px;padding:12px':'display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px';
+   const J=JUNSC,sp=$('spect');sp.style.cssText=J?'display:flex;flex-direction:column;align-items:center;gap:20px;padding:12px':'display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px';
    sp.innerHTML=SPECT_MODES.map(m=>{let d=drawSpectator(m,J?{fs:J.fs}:{});const w=J?+(d.match(/viewBox="0 0 ([\d.]+)/)||[0,0])[1]:0;if(J&&w)d=d.replace('<svg ',`<svg data-w="${w}" style="display:block;width:100%" `);
      return `<div${J&&w?` data-w="${w}"`:''}><div class="lab"><b>${SPECT_NAMES[m]}</b>, ${enlargedWhere(m)}</div>${d}${tab(m)}</div>`;}).join('');
    spectScale();}
@@ -3935,7 +3935,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   const EXd=secExtras(all,tu-1,X,Y,{cut:'seat',zone:o.zone},X0),SK=EXd.skip;s+=EXd.s+EXd.top;   // the wheelchair platform, its guard and wheelchair spectator
   s+=`<rect x="${X(f.x+RAIL_SET-25.4)}" y="${Y(f.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"><title>Guard ${L(P.railH)}</title></rect>`;
   const stR=pg?new Set(lo.slice(Math.max(0,n-5),n-3)):new Set();   // the rows in front of the wheelchair platform stand (decision 150)
-  const sp=[...lo.slice(Math.max(0,n-5)),...up.slice(0,2)].filter(r=>!SK.has(r)&&!stR.has(r));
+  const sp=[...lo.slice(Math.max(0,n-5)),...up.slice(0,2)].filter(r=>!SK.has(r));   // every row seated (decision 159); the rows in front of the platform also stand
   stR.forEach(r=>{const e={x:r.x+E.stOff,z:r.z+E.stH},cy=e.z+headTop-hr,C=rowC(lo,lo.indexOf(r),'stand'),col=C!=null&&C<r.target-0.05?'--sl-low':'--sl-stand';
     s+=`<line x1="${X(e.x)}" y1="${Y(e.z)}" x2="${X(X0)}" y2="${Y(e.z*X0/e.x)}" stroke="var(${col})" stroke-width="0.6" opacity=".8" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(e.x)}" y1="${Y(cy-hr)}" x2="${X(e.x)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`
@@ -3943,12 +3943,19 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
       +`<line x1="${X(e.x-3.5*IN)}" y1="${Y(e.z+2.25*IN)}" x2="${X(e.x+3.5*IN)}" y2="${Y(e.z+2.25*IN)}" stroke="#FF0000" stroke-width="1" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${(fs*.1).toFixed(1)}" fill="var(--eye-stand)" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`;
     K.note(r.x+r.T*.17,r.z+fs*.18,`${r.tier+1}-${r.row}`,{size:fs*.42});K.reserve(e.x-hr,cy-hr,e.x+hr,cy+hr);K.avoid(e.x,cy-hr,e.x,r.z);});
-  sp.forEach(r=>{const e=r.sit,cy=e.ez+headTop-hr,ok=status(r)==='pass'||status(r)==='front';
-    s+=`<line x1="${X(e.ex)}" y1="${Y(e.ez)}" x2="${X(X0)}" y2="${Y(e.ez*X0/e.ex)}" stroke="var(${ok?'--sl-ok':'--sl-low'})" stroke-width="0.6" opacity=".8" vector-effect="non-scaling-stroke"/>`
-      +`<line x1="${X(e.ex)}" y1="${Y(cy-hr)}" x2="${X(e.ex)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`
-      +`<circle cx="${X(e.ex)}" cy="${Y(cy)}" r="${hr}" fill="var(--panel)" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`
-      +`<circle cx="${X(e.ex)}" cy="${Y(e.ez)}" r="${(fs*.1).toFixed(1)}" fill="var(--eye-sit)"/>`;
-    K.note(r.x+r.T*.17,r.z+fs*.18,`${r.tier+1}-${r.row}`,{size:fs*.42});K.reserve(e.ex-hr,cy-hr,e.ex+hr,cy+hr);});
+  sp.forEach(r=>{const e=r.sit,cy=e.ez+headTop-hr,grp=r.tier===tu-1?lo:up,C=rowC(grp,grp.indexOf(r),'sit'),bad=(C!=null&&C<r.target-0.05)||(r===f&&railClear(f,{x:e.ex,z:e.ez})<0);   // F style (decision 159)
+    s+=`<line x1="${X(e.ex)}" y1="${Y(e.ez)}" x2="${X(X0)}" y2="${Y(e.ez*X0/e.ex)}" stroke="var(${bad?'--sl-low':'--sl-ok'})" stroke-width="0.7" vector-effect="non-scaling-stroke"/>`
+      +`<line x1="${X(e.ex)}" y1="${Y(cy-hr)}" x2="${X(e.ex)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>`
+      +`<circle cx="${X(e.ex)}" cy="${Y(cy)}" r="${hr}" fill="none" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`
+      +`<line x1="${X(e.ex-3.5*IN)}" y1="${Y(e.ez+2.25*IN)}" x2="${X(e.ex+3.5*IN)}" y2="${Y(e.ez+2.25*IN)}" stroke="#FF0000" stroke-width="1" vector-effect="non-scaling-stroke"/>`
+      +`<circle cx="${X(e.ex)}" cy="${Y(e.ez)}" r="${(IN*.9).toFixed(1)}" fill="var(--eye-sit)" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`;
+    K.avoid(e.ex,e.ez,X0,e.ez*X0/e.ex);if(!stR.has(r))K.note(r.x+r.T*.17,r.z+fs*.18,`${r.tier+1}-${r.row}`,{size:fs*.42});K.reserve(e.ex-hr-IN,cy-hr-IN,e.ex+hr+IN,cy+hr+IN);K.avoid(e.ex,cy-hr,e.ex,r.z);});
+  // seated dimensions in the F style, with reference circles: sitting eye height, C sitting between rows, Tier N+1 row 1 over the rail
+  {const sr=lo.slice(Math.max(0,n-5)).filter(r=>!SK.has(r));
+   if(sr.length){const r=sr[0],xv=r.x+r.T+hr+4*IN;K.dim([xv,r.z],[xv,r.sit.ez],{lab:'Sitting eye',val:L(E.sitH),ref:'sit',ctl:'SIT',eb:[r.sit.ex,r.sit.ez],side:-1});}
+   if(sr.length>1){const a=sr[sr.length-2],b=sr[sr.length-1],zl=b.sit.ez*a.sit.ex/b.sit.ex;K.dim([a.sit.ex-2*IN,a.sit.ez],[a.sit.ex-2*IN,zl],{lab:'C sitting',val:CV(zl-a.sit.ez),ref:'cval',ctl:'CV:'+(tu-1),fill:zl-a.sit.ez<a.target-0.05?'var(--fail)':null});}
+   if(up.length>1){const a=up[0],b=up[1],zl=b.sit.ez*a.sit.ex/b.sit.ex;K.dim([a.sit.ex-2*IN,a.sit.ez],[a.sit.ex-2*IN,zl],{lab:'C sitting',val:CV(zl-a.sit.ez),ref:'cval',ctl:'CV:'+tu,fill:zl-a.sit.ez<a.target-0.05?'var(--fail)':null});}
+   {const xo=f.x+RAIL_SET-25.4,rt=f.z+P.railH,c=railClear(f,{x:f.sit.ex,z:f.sit.ez});K.dim([xo-fs*.9,rt],[xo-fs*.9,rt+c],{lab:'Over rail, sitting',val:CV(c),ref:'guard',fill:c<0?'var(--sl-low)':null,side:-1});}}
   // vertical, right: the rise between the tiers, the leg wall and the clear height under it, the guard on the upper front row
   const xv=xR+fs*1.5,cl=f.z-LEG2-lb.z;
   K.dim([xv,lb.z],[xv,f.z],{lab:`Tier ${tu} top tread to Tier ${tu+1} bottom tread`,val:L(f.z-lb.z),ea:[lb.x+lb.T,lb.z],eb:[f.x+f.T,f.z],ctl:'RISE:'+tu,side:-1});
@@ -3957,7 +3964,8 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   K.dim([f.x+RAIL_SET+fs*1.1,f.z],[f.x+RAIL_SET+fs*1.1,f.z+P.railH],{lab:'Guard',val:L(P.railH),ea:[f.x+RAIL_SET,f.z],eb:[f.x+RAIL_SET,f.z+P.railH],side:-1});
   // the wheelchair platform: its height over the row in front, the wheelchair eye, the setback and the eye distance behind the platform face
   if(pg){const sd=lo[n-4];if(sd){K.dim([sd.x-fs*1.2,sd.z],[sd.x-fs*1.2,pg.zP],{lab:`Platform over row ${sd.row}`,val:L(pg.zP-sd.z),ref:'wcplat',ea:[sd.x+sd.T,sd.z],eb:[pg.edge,pg.zP]});}
-    if(sd){const st={x:sd.x+E.stOff,z:sd.z+E.stH},zl=pg.eye.z*st.x/pg.eye.x;K.dim([st.x+hr+fs*.6,st.z],[st.x+hr+fs*.6,zl],{lab:'C standing',val:CV(zl-st.z),fill:zl-st.z<0?'var(--fail)':null,side:-1});}
+    if(sd){const st={x:sd.x+E.stOff,z:sd.z+E.stH},zl=pg.eye.z*st.x/pg.eye.x;K.dim([st.x+hr+fs*.6,st.z],[st.x+hr+fs*.6,zl],{lab:'C standing',val:CV(zl-st.z),ref:'wcplat',fill:zl-st.z<0?'var(--fail)':null,side:-1});
+      const si={x:sd.sit.ex,z:sd.sit.ez},zs=pg.eye.z*si.x/pg.eye.x;K.dim([si.x-hr-fs*.6,si.z],[si.x-hr-fs*.6,zs],{lab:'C sitting',val:CV(zs-si.z),ref:'wcplat',fill:zs-si.z<0?'var(--fail)':null});}
     K.dim([pg.edge-fs*1.4,pg.zP],[pg.edge-fs*1.4,pg.eye.z],{lab:'Wheelchair eye',val:L(E.wcH),ea:[pg.edge,pg.zP],eb:[pg.eye.x-hr*1.2,pg.eye.z]});}   // left of the platform guard, clear of the wheelchair figure
   // horizontal, below: the top tread below, the riser offset between the tiers, the concourse, the platform setback and depth, the first tread above
   const yb=a0.z-t-fs*1.6,zb=x=>a0.z-t;
