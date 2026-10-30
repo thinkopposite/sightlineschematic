@@ -1903,7 +1903,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.23';
+const VERSION='2026.10.29.24';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -4183,9 +4183,9 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
 
     K.dim([pg.top.x,pg.zP],[pg.top.x,pg.eye.z],{lab:'Wheelchair eye',val:L(E.wcH),eb:[pg.eye.x+hr*1.2,pg.eye.z],side:-1});
     {const zh=pg.eye.z+headTop+hr*0+6*IN;K.dim([pg.edge,zh],[pg.eye.x,zh],{lab:'Wheelchair eye behind the platform face',val:L(E.wcOff),ea:[pg.edge,pg.zP],eb:[pg.eye.x,pg.eye.z]});}   // decision 179: from the spectator views
-    if(sd){const xp=pg.p1.x-4*IN;K.dim([xp,sd.z],[xp,pg.zP],{lab:'Platform above the row in front',val:L(pg.zP-sd.z),ea:[sd.x+sd.T,sd.z],eb:[pg.edge,pg.zP]});}}
+    if(0&&sd){const xp=pg.p1.x-4*IN;K.dim([xp,sd.z],[xp,pg.zP],{lab:'Platform above the row in front',val:L(pg.zP-sd.z),ea:[sd.x+sd.T,sd.z],eb:[pg.edge,pg.zP]});}}
   // the standing spectators in front of the platform: eye height and the offset from the front riser (decision 179)
-  {const r=[...stR][0];if(r){const e={x:r.x+E.stOff,z:r.z+E.stH},xv=e.x-hr-4*IN;K.dim([xv,r.z],[xv,e.z],{lab:'Standing eye',val:L(E.stH),ref:'stand',eb:[e.x,e.z]});
+  {const r=[...stR][0];if(r){const e={x:r.x+E.stOff,z:r.z+E.stH},xv=e.x-hr-4*IN;   /* standing eye height: in the table (decision 184) */
      const zo=r.z+10*IN;K.dim([r.x,zo],[e.x,zo],{lab:'Standing eye from the front riser',val:L(E.stOff),ref:'stand',ea:[r.x,r.z],eb:[e.x,r.z],nosnap:1,fix:1});}}   // at the platform's back edge (decision 169)
   // horizontal, below: the top tread below, the riser offset between the tiers, the concourse, the platform setback and depth, the first tread above
   const GM=imperial()?304.8:1000,GN=imperial()?2:1,yb=Math.floor((lo[Math.max(0,n-NL-1)].z-t)/GM-1e-6)*GM-GN*GM,zb=x=>a0.z-t;   // two grid lines below the lowest tread shown (decision 179)
