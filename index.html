@@ -1060,7 +1060,7 @@ function defaults(){const S=SPORTS.ncaafb,f={};
   return {sport:'ncaafb',L:S.L,W:S.W,lanes:8,fl:330*FT,cf:400*FT,bs:60*FT,north:'L',planOri:'v',sec:'T',tierCount:2,
   zt:[tierDef(20,'all',f),tierDef(20,'all',f),tierDef(20,'all',f)].map(t=>{t.corners='chamfer';                 // chairback on every side
     ['T','B'].forEach(k=>Object.assign(t.z[k],{seat:'standard',seatW:22*25.4}));['L','R'].forEach(k=>Object.assign(t.z[k],{seat:'standard',seatW:22*25.4}));return t;}),   /* 22 in chairback on every side */
-  eye:eyeDefaults(),eyeRev:EYE_REV,tierColors:['#CCCCCC','#999999','#707070'],eyeMode:'sit',slabT:5*25.4,step:12.7,maxRiser:24*25.4,bank:1,maxRake:35,loss:12,vd:700*0.3048,capTarget:30000,rowMax:[80,80,80],railH:26*25.4,minHead:7*304.8,suiteH:4.27,ais:aisDefaults('america'),bulge:{S:0,E:0}};}
+  eye:eyeDefaults(),eyeRev:EYE_REV,tierColors:['#CCCCCC','#999999','#707070'],eyeMode:'sit',slabT:5*25.4,step:12.7,maxRiser:24*25.4,bank:1,maxRake:35,loss:12,vd:700*0.3048,capTarget:30000,rowMax:[80,80,80],fitMove:false,railH:26*25.4,minHead:7*304.8,suiteH:4.27,ais:aisDefaults('america'),bulge:{S:0,E:0}};}
 function defaultsPinned(){const d=Object.assign(defaults(),{riseRev:1,riseRev2:1,seatRev:1,seatRev3:1});   /* fresh bowls skip the one-time migrations */d.zt.forEach(t=>GEO.forEach(k=>t.z[k].target=cvDefault(d.sport)));d.cvRev=2;alignUpperTiers(d);return d;}
 // Saved bowls from before zones: one profile for the whole bowl becomes the same profile on every side.
 function migrate(o){if(!o||o.zt)return o;const d=defaults();
@@ -1855,6 +1855,10 @@ function tierLinks(P){const R=REGION_DEF[regionOf(P.sport)],base=R.rise,stp=impe
         z.dx=near.dx;z.rise=near.rise;ok=false;}}
     out.push({k,ti,dx:z.dx,rise:z.rise,ok});}}
   return out;}
+// sizing keeps the default tier relationship unless asked (decision 186): each upper tier's second riser over the top riser of the tier
+// below, its bottom tread 10'-0" (3.0 m) above that tier's top tread; row 1 shortfalls are reported, not designed out
+function tierDefault(P){const base=REGION_DEF[regionOf(P.sport)].rise;for(let ti=1;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)Object.assign(z,{X:null,dx:0,rise:base});});return [];}
+const fitLinks=P=>P.fitMove?tierLinks(P):tierDefault(P);
 function fitCapacity(P){const em=P.eyeMode;P.eyeMode='sit';try{return fitCapacity0(P);}finally{P.eyeMode=em;}}   // judged for seated spectators and wheelchair positions only (decision 134)
 function fitCapacity0(P){
   const nT=P.tierCount,cap=()=>{const ZR=solveAll(P);return metrics(P,ZR,chains(P,ZR)).cap;};FITSPLIT=null;
@@ -1870,13 +1874,13 @@ function fitCapacity0(P){
     (Mx.AL||[]).forEach((T,ti)=>Object.values(T).forEach(Lz=>{const zr=(ZR[Lz.k]||[]).filter(r=>r.tier===ti);Lz.tr.forEach((r,j)=>{const n=rowSections(Lz,j).seats,q=zr[j];all+=n;if(q&&status(q)==='pass'&&!overRake(q))pass+=n;   /* a row steeper than the rake limit fails too (decision 142) */});}));
     if(Mx.ADA&&Mx.ADA.secs)Object.values(Mx.ADA.secs).forEach(w=>{const n=+w.wc||0;all+=n;if(w.sight)pass+=n;});   // wheelchair spaces: their line of sight (A117.1 802.9) counts too
     return {pass,all,cap:Mx.cap};};
-  const run=sh=>{searchN(sh);tierLinks(P);searchN(sh);const L=tierLinks(P),sc=score();return {sh,L,rows:P.zt.slice(0,nT).map(t=>t.z[GEO[0]].rows),...sc};};
+  const run=sh=>{searchN(sh);fitLinks(P);searchN(sh);const L=fitLinks(P),sc=score();return {sh,L,rows:P.zt.slice(0,nT).map(t=>t.z[GEO[0]].rows),...sc};};
   const even=Array(nT).fill(1/nT),shares=[even];
   if(nT===2)[0.4,0.6,0.3,0.7,0.2,0.8].forEach(a=>shares.push([a,1-a]));
   else for(const a of[0.25,0.45])for(const c of[0.5,0.35,0.65])shares.push([a,(1-a)*c,(1-a)*(1-c)]);
-  tierLinks(P);let best=null;
+  fitLinks(P);let best=null;
   for(const sh of shares){const r=run(sh);r.fail=r.all-r.pass;if(!best||r.fail<best.fail-0.01*r.all)best=r;if(best.fail<=0)break;}   // every seat meets the minimum: stop at the first (most even) split; another split only when it saves more than 1% of the seats
-  lastN=best.rows.reduce((a,b)=>a+b,0);setRows(lastN,best.sh);for(let i=0;i<4;i++){searchN(best.sh);FITLINKS=tierLinks(P);if(cap()>=P.capTarget)break;}   /* until the target holds with the final tier positions */const sc=score();FITSPLIT={rows:P.zt.slice(0,nT).map(t=>t.z[GEO[0]].rows),pass:sc.pass,all:sc.all};
+  lastN=best.rows.reduce((a,b)=>a+b,0);setRows(lastN,best.sh);for(let i=0;i<4;i++){searchN(best.sh);FITLINKS=fitLinks(P);if(cap()>=P.capTarget)break;}   /* until the target holds with the final tier positions */const sc=score();FITSPLIT={rows:P.zt.slice(0,nT).map(t=>t.z[GEO[0]].rows),pass:sc.pass,all:sc.all};
   return cap()>=P.capTarget;
 }
 let FITSPLIT=null;
@@ -1937,7 +1941,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.25';
+const VERSION='2026.10.29.26';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2187,6 +2191,7 @@ function renderControls(){
   h+=step(6,'Capacity','Target seats. Rows are sized to reach it.')+(()=>{const [lo,hi,typ,out]=capLim(P.sport),Sp=SPORTS[P.sport];return slider('capTarget',`Target seats (1,000 seats; ${Sp.org} ${fmt(lo)} to ${fmt(hi)})`,lo,hi,1000,'seats')
     +`<p class="hint">Typical: ${typ}. Outliers: ${out}.</p><details class="capguide"><summary>Capacity guide, all sports</summary>`
     +Object.entries(CAP_LIM).map(([k,[a,b,t,o]])=>`<p class="hint" style="margin:8px 0"><b style="color:var(--ink)">${SPORTS[k]?SPORTS[k].name+' ('+SPORTS[k].org+')':k}: ${fmt(a)} to ${fmt(b)}</b><br>Typical: ${t}.<br>Outliers: ${o}.</p>`).join('')+'</details>';})()+Array.from({length:P.tierCount},(_,i)=>slider(`rowMax.${i}`,`Maximum rows, Tier ${i+1}`,3,80,1,'rows')).join('')+'<p class="hint">Sizing stays within these limits, for reasons other than the C-value (structure, vomitories, egress, the site). If the target can\'t be reached within them, the shortfall is reported.</p>'
+    +(P.tierCount>1?`<div class="lab" style="margin-top:8px">Upper tiers when sizing</div><div class="seg"><button data-fitmove="0" class="${P.fitMove?'':'on'}" aria-pressed="${!P.fitMove}" title="Second riser over the top riser below, 10'-0&quot; (3.0 m) above it; row 1 shortfalls are reported">Default position</button><button data-fitmove="1" class="${P.fitMove?'on':''}" aria-pressed="${!!P.fitMove}" title="Move each upper tier back and up until its row 1 meets the minimum C-value">Move back and up for row 1</button></div>`:'')
     +'<button id="fit" class="primary" style="margin-top:10px;width:100%">Size rows to hit target</button></section>';
   const fixed=[...(P.sport==='nfl'||P.sport==='ncaafb'?[['Football field length',L(360*304.8)],['Football field width',L(160*304.8)]]:[]),
     ['Round risers up to',L(P.step)],['Maximum riser',L(P.maxRiser)],['Rows per riser bank','1'],['Guard rail at row 1 of each tier',`${inchText(P.railH)} high, ${inchText(2*25.4)} thick, on the riser face (inside face on the riser line), ${inchText(8*25.4)} below the tread`],['Minimum Tier-1 top tread to Tier-2 bottom tread',L(RD().riseMin*1000)],['Minimum clear height below the Tier-2 front riser leg',L(P.minHead)],['Upper-tier leg wall',`${L(LEG2)} below the bottom tread`]];
@@ -2254,6 +2259,7 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.link){relink(EDIT.tier,b.dataset.link);}
   else if(b.dataset.corner){P.zt.forEach(t=>t.corners=b.dataset.corner);}
   else if(b.dataset.meet){const [rt,m]=b.dataset.meet.split(':');meetAllC(m,rt);return;}
+  else if(b.dataset.fitmove!=null){P.fitMove=b.dataset.fitmove==='1';persist();renderControls();return;}
   else if(b.id==='fit'){toast('Sizing rows and tier positions…');b.disabled=true;setTimeout(()=>{const ok=fitCapacity(P),ft=v=>L(v*1000),ch=FITLINKS.filter(x=>x.dx>0.001||x.rise>REGION_DEF[regionOf(P.sport)].rise+0.001),bad=FITLINKS.filter(x=>!x.ok);
     const what=x=>{const z=P.zt[x.ti].z[x.k],off=x.dx-(z.tread0??z.tread)/1000;return `${x.dx<0.001?'second riser over the top riser below':Math.abs(off)<0.001?'first riser over the top riser below':`first riser ${ft(Math.abs(off))} ${off>0?'behind':'in front of'} the top riser below`}, ${ft(x.rise)} above the top tread below`;},byT={};ch.forEach(x=>(byT[x.ti]=byT[x.ti]||[]).push(x));
     const lines=Object.entries(byT).map(([ti,xs])=>{const same=xs.length===zoneKeys(P).length&&xs.every(x=>what(x)===what(xs[0]));return same?`Tier ${+ti+1}${zoned(P)?' (every side)':''}: ${what(xs[0])}`:xs.map(x=>`Tier ${+ti+1} ${zoneName(P,x.k,true)}: ${what(x)}`).join('; ');});
