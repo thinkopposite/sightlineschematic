@@ -362,10 +362,10 @@ main .g24 :is(.stat span,.stat b,.lbl,.cap-side,.reft,.refb){line-height:24px!im
 #cap.g24 .bar{margin:8px 0!important;height:8px!important}
 main .seg.g24{padding:0!important;border:0!important}
 main details.g24{padding:0!important;border:0!important}
-#junction table.jinfo{border-collapse:collapse;table-layout:fixed;margin:0 auto 24px;width:min(calc(100% - 48px),768px);line-height:24px}
-#junction table.jinfo td{padding:0 8px;height:24px;line-height:24px;vertical-align:top;border:0;box-shadow:inset 0 -1px 0 var(--line,#ddd);white-space:normal}
-#junction table.jinfo td:first-child{width:38%;padding-left:0}#junction table.jinfo td:last-child{text-align:right;font-weight:600;padding-right:0}
-#junction table.jinfo tr.jh td{text-align:left;padding-left:0;font-weight:700;box-shadow:inset 0 -1px 0 var(--sw-ink,#111)}
+#junInfo table.jinfo{border-collapse:collapse;table-layout:fixed;margin:0;width:min(100%,768px);line-height:24px}#junInfo p.jt{margin:0;line-height:24px}
+#junInfo table.jinfo td{padding:0 8px;height:24px;line-height:24px;vertical-align:top;border:0;box-shadow:inset 0 -1px 0 var(--line,#ddd);white-space:normal}
+#junInfo table.jinfo td:first-child{width:38%;padding-left:0}#junInfo table.jinfo td:last-child{text-align:right;font-weight:600;padding-right:0}
+#junInfo table.jinfo tr.jh td{text-align:left;padding-left:0;font-weight:700;box-shadow:inset 0 -1px 0 var(--sw-ink,#111)}
 #junction .capt{line-height:24px;margin:0!important;padding:0 12px}
 </style>
 </head>
@@ -421,7 +421,7 @@ main details.g24{padding:0!important;border:0!important}
     <div class="panel" id="detail3"></div></div>
     <div id="junWrap" hidden><div class="planhead"><span class="bub" id="bubJ">E</span><h3 id="junTitle">Tier junction</h3>
       <p class="capt">The top of each tier and the bottom of the tier above, cut through the wheelchair platform: heights and distances between the tiers.</p></div>
-    <div class="panel" id="junction" style="overflow-x:auto"></div></div>
+    <div class="panel" id="junction" style="overflow-x:auto"></div><div id="junInfo"></div></div>
 
     <p class="group">Bowl</p>
     <div class="planhead"><span class="bub" id="bubPlan">E</span><h3 id="planTitle">Plan</h3>
@@ -1903,7 +1903,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.19';
+const VERSION='2026.10.29.20';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -1948,7 +1948,7 @@ function gridAlign(){   // decisions 167, 168, 176, 177: headings centred in a c
     let d=((11-cy)%24+24)%24;if(d>12&&(+e.dataset.mt0)+d-24>=0)d-=24;e.style.marginTop=((+e.dataset.mt0)+d)+'px';
     const c=e.querySelector(':scope > .capt');if(c){const rc=c.getBoundingClientRect(),c0=rc.top+12+scrollY;c.style.marginTop=(((11-c0)%24+24)%24)+'px';}}}
 // the blocks on the page grid (decision 177)
-function markG24(){['#cap','#verdict','#stats','#zones','#ctlHint','#planNote','#opts'].forEach(q=>{const e=document.querySelector(q);if(e)e.classList.add('g24');});
+function markG24(){['#cap','#verdict','#stats','#zones','#ctlHint','#planNote','#opts','#junInfo'].forEach(q=>{const e=document.querySelector(q);if(e)e.classList.add('g24');});
   document.querySelectorAll('main > details, main > .legend, main > .seg').forEach(e=>e.classList.add('g24'));}
 markG24();
 document.fonts&&document.fonts.ready.then(()=>gridAlign());document.addEventListener('toggle',()=>requestAnimationFrame(gridAlign),true);
@@ -3814,7 +3814,8 @@ function update(){
      // the tier junctions (and the enlarged spectators) at twice the Tier 2 detail's scale (decision 162)
      const kC=kOf($('detail2')),kJ=kC?2*kC:undefined;
      const jn=ti=>{const a=drawJunction(ZR[P.sec],{tier:ti,zone:P.sec,fs:150}),w=+(a.match(/viewBox="0 0 ([\d.]+)/)||[0,7000])[1];JUNSC={W:w,fs:w/62,k:kJ};return drawJunction(ZR[P.sec],{tier:ti,zone:P.sec,fs:w/62,k:kJ});};
-     const n=ZR[P.sec].some(r=>r.tier===2)&&P.tierCount>2?2:1;$('junction').innerHTML=Array.from({length:n},(_,i)=>(n>1?`<p class="capt" style="margin:8px 12px 0"><b>Tier ${i+1}–${i+2}</b></p>`:'')+jn(i+1).replace('<svg ','<svg style="display:block;width:min(100%,780px);margin:0 auto" ')+junctionInfoHTML(ZR[P.sec],i+1)).join('');
+     const n=ZR[P.sec].some(r=>r.tier===2)&&P.tierCount>2?2:1;$('junction').innerHTML=Array.from({length:n},(_,i)=>(n>1?`<p class="capt" style="margin:8px 12px 0"><b>Tier ${i+1}–${i+2}</b></p>`:'')+jn(i+1).replace('<svg ','<svg style="display:block;width:min(100%,780px);margin:0 auto" ')).join('');
+     $('junInfo').innerHTML=Array.from({length:n},(_,i)=>(n>1?`<p class="jt"><b>Tier ${i+1}–${i+2}</b></p>`:'')+junctionInfoHTML(ZR[P.sec],i+1)).join('');   /* the eye sight values under the frame, outside it (decision 180) */
      $('junTitle').textContent=`Tier junction${n>1?'s':''}: ${n>1?'Tiers 1–2 and 2–3':'Tier 1–2'}, ${zoneName(P,P.sec)}, through the wheelchair platform`;}}
   $('detTitle').textContent=`Sightline detail: Tier 1, ${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'}`;
   document.querySelectorAll('#detTabs [data-dm]').forEach(b=>{const on=b.dataset.dm===DETMODE;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});renderPlan();
