@@ -1903,7 +1903,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.21';
+const VERSION='2026.10.29.22';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -4150,7 +4150,9 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   const EXd=secExtras(all,tu-1,X,Y,{cut:'seat',zone:o.zone},X0),SK=EXd.skip;s+=EXd.s+EXd.top;   // the wheelchair platform, its guard and wheelchair spectator
   s+=`<rect x="${X(f.x+RAIL_SET-25.4)}" y="${Y(f.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"><title>Guard ${L(P.railH)}</title></rect>`;
   const stR=pg?new Set(lo.slice(Math.max(0,n-5),n-3)):new Set();   // the rows in front of the wheelchair platform stand (decision 150)
-  const sp=[...lo.slice(Math.max(0,n-NL)),...up.slice(0,NU)].filter(r=>!SK.has(r));   // every row seated (decision 159); the rows in front of the platform also stand
+  const vis=r=>r.x+r.T>X0+1&&r.x<X1-1&&r.z<Z1&&r.z>Z0;   // every tread in the view (decision 182)
+  const sp=[...lo,...up].filter(r=>vis(r)&&!SK.has(r));   // every row seated (decisions 159, 182); the rows in front of the platform also stand
+  const cMin=g=>Math.min(...g.map((r,i)=>rowC(g,i,'sit')).filter(c=>c!=null)),cm={[tu-1]:cMin(lo),[tu]:cMin(up)};   // every row seated (decision 159); the rows in front of the platform also stand
   stR.forEach(r=>{const e={x:r.x+E.stOff,z:r.z+E.stH},cy=e.z+headTop-hr,C=rowC(lo,lo.indexOf(r),'stand'),col=C!=null&&C<r.target-0.05?'--sl-low':'--sl-stand';
     s+=`<line x1="${X(e.x)}" y1="${Y(e.z)}" x2="${X(X0)}" y2="${Y(e.z*X0/e.x)}" stroke="var(${col})" stroke-width="0.6" opacity=".8" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(e.x)}" y1="${Y(cy-hr)}" x2="${X(e.x)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`
@@ -4164,7 +4166,8 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
       +`<circle cx="${X(e.ex)}" cy="${Y(cy)}" r="${hr}" fill="none" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(e.ex-3.5*IN)}" y1="${Y(e.ez+2.25*IN)}" x2="${X(e.ex+3.5*IN)}" y2="${Y(e.ez+2.25*IN)}" stroke="#FF0000" stroke-width="1" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.ex)}" cy="${Y(e.ez)}" r="${(IN*.9).toFixed(1)}" fill="var(--eye-sit)" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`;
-    K.avoid(e.ex,e.ez,X0,e.ez*X0/e.ex);if(!stR.has(r))K.note(r.x+r.T*.17,r.z+fs*.18,`${r.tier+1}-${r.row}`,{size:T9(o,fs*.42)});K.reserve(e.ex-hr-IN,cy-hr-IN,e.ex+hr+IN,cy+hr+IN);K.avoid(e.ex,cy-hr,e.ex,r.z);});
+    K.avoid(e.ex,e.ez,X0,e.ez*X0/e.ex);if(!stR.has(r))K.note(r.x+r.T*.17,r.z+fs*.18,`${r.tier+1}-${r.row}`,{size:T9(o,fs*.42)});
+    if(C!=null){const isMin=Math.abs(C-cm[r.tier])<1e-6,low=C<r.target-0.05;K.note(e.ex+hr+1.5*IN,cy-fs*.2,CV(C),{size:TP(o,6,fs*.46),anchor:'start',fill:low?'var(--sl-low)':isMin?'#0000FF':'var(--ink)',wt:isMin?800:600,ref:isMin?'cval':null});}   /* C-value right of the head, as in the sightline details (decision 182) */K.reserve(e.ex-hr-IN,cy-hr-IN,e.ex+hr+IN,cy+hr+IN);K.avoid(e.ex,cy-hr,e.ex,r.z);});
   // seated dimensions in the F style, with reference circles: sitting eye height, C sitting between rows, Tier N+1 row 1 over the rail
   {const sr=lo.slice(Math.max(0,n-NL)).filter(r=>!SK.has(r));
    if(sr.length){const r=sr[0],xv=r.sit.ex-hr-4*IN;K.dim([xv,r.z],[xv,r.sit.ez],{lab:'Sitting eye',val:L(E.sitH),ref:'sit',ctl:'SIT',eb:[r.sit.ex,r.sit.ez]});}   /* 4 in left of the first row's head, as in F */
@@ -4199,7 +4202,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   {const ups=up.slice(0,NU),GM=imperial()?304.8:1000,zc=Math.ceil((Math.max(...ups.map(r=>r.sit.ez+headTop),f.z+P.railH))/GM+1e-6)*GM+(imperial()?2:1)*GM,   /* two grid lines above the highest head (decision 179) */pts=[f.x,...ups.map(r=>r.x+r.T)];   // the Tier N+1 treads, one chain along the top of the drawing (decision 169)
    for(let i=1;i<pts.length;i++){const r=ups[i-1];K.dim([pts[i-1],zc],[pts[i],zc],{val:L(pts[i]-pts[i-1]),ea:[pts[i-1],i===1?f.z:ups[i-2].z],eb:[pts[i],r.z],fix:1,ctl:i===1?'T0:'+tu:null});}}
   // labels
-  [...lo.slice(Math.max(0,n-NL)),...up.slice(0,NU)].forEach(r=>{if(r.riser==null||SK.has(r))return;K.note(r.x-fs*.2,r.z-r.riser/2-fs*.1,inchText(r.riser),{size:TP(o,6,fs*.46),anchor:'end',fill:'var(--muted)',wt:400});});   // riser heights left of each riser, as in the sightline details (decision 173)
+  [...lo,...up].filter(vis).forEach(r=>{if(r.riser==null||SK.has(r))return;K.note(r.x-fs*.2,r.z-r.riser/2-fs*.1,inchText(r.riser),{size:TP(o,6,fs*.46),anchor:'end',fill:'var(--muted)',wt:400});});   // riser heights left of each riser, as in the sightline details (decision 173)
   K.note(cx0+fs*.3,lb.z+fs*.3,tu===1?'Main concourse':'Upper concourse',{size:TP(o,6,fs*.55),anchor:'start',fill:'var(--muted)',wt:400});
   K.note(u2.x+u2.T-fs*.2,u2.z-t-fs*.95,`Tier ${tu+1}`,{size:TP(o,10,fs*.8),anchor:'end',fill:'var(--ink)',wt:700});K.note(lb.x+lb.T-fs*.2,lb.z-t-fs*.95,`Tier ${tu}`,{size:TP(o,10,fs*.8),anchor:'end',fill:'var(--ink)',wt:700});   // under the top tread of each tier drawn (decision 169)
   s+=K.out();return s+'</svg>';}
