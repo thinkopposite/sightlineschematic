@@ -1903,7 +1903,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.22';
+const VERSION='2026.10.29.23';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -4202,7 +4202,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   {const ups=up.slice(0,NU),GM=imperial()?304.8:1000,zc=Math.ceil((Math.max(...ups.map(r=>r.sit.ez+headTop),f.z+P.railH))/GM+1e-6)*GM+(imperial()?2:1)*GM,   /* two grid lines above the highest head (decision 179) */pts=[f.x,...ups.map(r=>r.x+r.T)];   // the Tier N+1 treads, one chain along the top of the drawing (decision 169)
    for(let i=1;i<pts.length;i++){const r=ups[i-1];K.dim([pts[i-1],zc],[pts[i],zc],{val:L(pts[i]-pts[i-1]),ea:[pts[i-1],i===1?f.z:ups[i-2].z],eb:[pts[i],r.z],fix:1,ctl:i===1?'T0:'+tu:null});}}
   // labels
-  [...lo,...up].filter(vis).forEach(r=>{if(r.riser==null||SK.has(r))return;K.note(r.x-fs*.2,r.z-r.riser/2-fs*.1,inchText(r.riser),{size:TP(o,6,fs*.46),anchor:'end',fill:'var(--muted)',wt:400});});   // riser heights left of each riser, as in the sightline details (decision 173)
+  [...lo,...up].filter(vis).forEach(r=>{if(r.riser==null||SK.has(r))return;K.note(r.x-fs*.2,r.z-r.riser/2-T9(o,fs*.46)*.35,inchText(r.riser),{size:T9(o,fs*.46),anchor:'end',fill:'var(--muted)',wt:400});});   // riser heights left of each riser, at the dimension size (decisions 173, 183)
   K.note(cx0+fs*.3,lb.z+fs*.3,tu===1?'Main concourse':'Upper concourse',{size:TP(o,6,fs*.55),anchor:'start',fill:'var(--muted)',wt:400});
   K.note(u2.x+u2.T-fs*.2,u2.z-t-fs*.95,`Tier ${tu+1}`,{size:TP(o,10,fs*.8),anchor:'end',fill:'var(--ink)',wt:700});K.note(lb.x+lb.T-fs*.2,lb.z-t-fs*.95,`Tier ${tu}`,{size:TP(o,10,fs*.8),anchor:'end',fill:'var(--ink)',wt:700});   // under the top tread of each tier drawn (decision 169)
   s+=K.out();return s+'</svg>';}
