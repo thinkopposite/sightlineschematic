@@ -311,6 +311,57 @@ h1{font-size:32px}.brand p{font-size:10px}
 .planhead .capt{line-height:24px}   /* each description line fills one 24 px grid cell, text centred in it (decision 168) */
 /* text sizes from the Sightline Text Sizes sheet (decision 170) */
 .reft{font-size:10px}.ctlmark,.ctlmark *{font-size:10px}
+/* vomitory panel on the 24 px page grid (decision 176): every row, input, button, chip and table line is 24 px tall, headings and gaps in whole cells,
+   columns in whole cells; gridAlign() puts the panel's top-left corner on a grid line, so each row's text sits in the middle of a cell */
+.vomgrid{line-height:24px;display:flow-root}
+.vomgrid .vg-h{height:24px;line-height:24px;margin:24px 0 0;font-weight:600}
+.vomgrid .seg{margin:0!important;gap:0 24px!important;row-gap:0!important;align-items:center}
+.vomgrid .seg .hint{line-height:24px;margin:0 8px 0 0!important}
+.vomgrid input[type=number]{height:24px;box-sizing:border-box;padding:0 4px;margin:0;width:72px!important;line-height:22px}
+.vomgrid button{height:24px;min-height:24px;box-sizing:border-box;padding:0 12px;margin:0;line-height:22px}
+.vomgrid table{margin:0!important;border-collapse:collapse}
+.vomgrid table td{padding:0 8px!important;line-height:24px;border:0!important;box-shadow:inset 0 -1px 0 var(--line,#ddd);vertical-align:top}
+.vomgrid .vgrid{grid-template-columns:192px 1fr;column-gap:0;row-gap:0;margin:0;align-items:start}
+.vomgrid .vglab{line-height:24px}
+.vomgrid .vchip{width:120px;height:24px;margin:0;line-height:24px;gap:6px}
+.vomgrid .vchip input{margin:0}
+.vomgrid>p.hint{line-height:24px;margin:24px 0 0}
+/* page-grid rhythm for the blocks between the drawings (decision 177): every line of text and every control one 24 px cell tall, boxes drawn with
+   inset shadows instead of borders (a border would add to the height), whole-cell gaps; gridAlign() puts each block's top on a grid line */
+main .g24{line-height:24px;margin-bottom:0!important}
+main :is(details,p).g24{display:flow-root}
+main details.g24[open]{display:block}
+main .g24 :is(p,div,span,td,th,label,summary,b,a,li,dt,dd,small,i,em,strong):not(svg *){line-height:24px}
+main .g24 :is(p,h3,h4,table,.seg,.tablewrap,.lab,.hint,.capt,ul,ol,.vgrid,div):not(.vomgrid){margin-top:0!important;margin-bottom:0!important}
+main .g24 summary{height:24px;line-height:24px;padding:0;margin:0}
+main details.g24[open] > summary + *{margin-top:24px}
+main .g24 :is(button,select,input[type=number],input[type=text]){height:24px;min-height:24px;box-sizing:border-box;padding-top:0;padding-bottom:0;line-height:22px;margin-top:0;margin-bottom:0}
+main .g24 .seg{row-gap:0!important}
+main .g24 table{border-collapse:collapse}
+main .g24 :is(td,th){padding-top:0!important;padding-bottom:0!important;height:24px;border-top:0!important;border-bottom:0!important;box-shadow:inset 0 -1px 0 var(--line,#ddd)}
+main .g24 .tablewrap,main .tablewrap.g24{border:0!important;box-shadow:none;outline:1px solid var(--sw-ink,#111);outline-offset:-1px;max-height:360px}
+main .g24 input[type=checkbox]{margin-top:0;margin-bottom:0;vertical-align:middle}
+#cap.g24{border:0!important;box-shadow:inset 0 0 0 1px var(--sw-ink,#111);padding:24px 16px!important;row-gap:0!important}
+#cap.g24 .big{line-height:48px!important}
+#verdict.g24{border:0!important;box-shadow:inset 6px 0 0 var(--sw-ink,#111),inset 0 0 0 1px var(--sw-ink,#111);padding:24px 16px 24px 22px!important}
+#stats.g24{gap:24px!important}
+#stats.g24 > *{border:0!important;box-shadow:inset 0 0 0 1px var(--sw-ink,#111);padding:0 12px 24px!important;margin:0!important}
+#stats.g24 b, #stats.g24 .v, #stats.g24 strong{line-height:48px!important}
+#opts.g24{gap:24px!important}
+#opts.g24 > *{border:0!important;box-shadow:inset 0 0 0 1px var(--line,#ccc);padding:24px 12px!important;margin:0!important}
+main .legend.g24{row-gap:0!important}
+main .g24 :is(tr,thead,tbody){border:0!important}
+main .g24 :is(td,th) *{vertical-align:top}
+main .g24 :is(td,th) input[type=checkbox]{vertical-align:top;margin-top:5.5px!important;margin-bottom:0!important}
+#cap.g24 .big{line-height:72px!important}
+#stats.g24 b{line-height:48px!important;display:block}
+#stats.g24 .stat{border:0!important}
+#stats.g24 .stat span{display:block}
+main .g24 :is(.stat span,.stat b,.lbl,.cap-side,.reft,.refb){line-height:24px!important}
+#cap.g24{align-items:start!important}
+#cap.g24 .bar{margin:8px 0!important;height:8px!important}
+main .seg.g24{padding:0!important;border:0!important}
+main details.g24{padding:0!important;border:0!important}
 </style>
 </head>
 <body>
@@ -1850,7 +1901,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.15';
+const VERSION='2026.10.29.18';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -1859,17 +1910,45 @@ function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector
   const fr=[...document.querySelectorAll('#spect .spf')];let wmax=0;
   document.querySelectorAll('#spect svg[data-w]').forEach(e=>{const px=+e.dataset.w*k;e.style.width=px+'px';e.style.maxWidth='none';e.style.margin='0 auto';wmax=Math.max(wmax,px);});
   // the three frames one width; their information tables one width and one column split, so the fields line up frame to frame
-  const fw=Math.max(wmax+32,560);fr.forEach(f=>{f.style.width=fw+'px';const t=f.querySelector('table');if(t){t.style.width=Math.min(fw-32,760)+'px';t.style.margin='10px auto 0';t.style.tableLayout='fixed';
+  const fw=Math.ceil((Math.max(wmax+32,560)-1)/24)*24+1;   /* 24n+1 px: both side borders on grid lines (decision 178) */fr.forEach(f=>{f.style.width=fw+'px';const t=f.querySelector('table');if(t){t.style.width=Math.min(fw-32,760)+'px';t.style.margin='10px auto 0';t.style.tableLayout='fixed';
     t.querySelectorAll('tr').forEach(tr=>{const c=tr.children;if(c[0])c[0].style.width='38%';});}});}
-addEventListener('resize',()=>{spectScale();gridAlign();});
+addEventListener('resize',()=>{mainGrid();spectScale();gridAlign();});
 // headings on the page grid (decision 167): each frame heading (red square, letter, title) and group heading is centred in a 24 px background cell,
 // by adding to the space above it; worked down the page in order, since each nudge moves everything below
-function gridAlign(){const els=[...document.querySelectorAll('main .planhead, main .group')].filter(e=>e.offsetParent!==null);
-  els.forEach(e=>{if(e.dataset.mt0==null)e.dataset.mt0=parseFloat(getComputedStyle(e).marginTop)||0;e.style.marginTop=e.dataset.mt0+'px';});
-  for(const e of els){const t=e.classList.contains('group')?e:(e.querySelector('h3')||e),r=t.getBoundingClientRect(),cy=r.top+(e.classList.contains('group')?(r.height-parseFloat(getComputedStyle(e).paddingBottom||0))/2:r.height/2)+scrollY;
+function mainGrid(){   // decision 178: the main column's content edges on grid lines (left border pixel on a line at 24n-1, right edge at 24n), so view frames, headings and text share the grid
+  const m=document.querySelector('main');if(!m)return;m.style.paddingLeft='';m.style.paddingRight='';const c=getComputedStyle(m),r=m.getBoundingClientRect(),pl=parseFloat(c.paddingLeft)||0,pr=parseFloat(c.paddingRight)||0;
+  const L=r.left+scrollX+pl,R=r.right+scrollX-pr;let dl=((23-L)%24+24)%24;if(dl>12&&pl+dl-24>=8)dl-=24;let dr=((R%24)+24)%24;if(dr>12&&pr+dr-24>=8)dr-=24;   /* nearest line, never under 8 px of padding */
+  m.style.paddingLeft=(pl+dl)+'px';m.style.paddingRight=(pr+dr)+'px';}
+mainGrid();
+function gridAlign(){   // decisions 167, 168, 176, 177: headings centred in a cell; grid blocks with their corner on a grid line (lines at 24n-1); worked down the page in order
+  mainGrid();
+  const sel='main .planhead, main .group, main .panel, main .g24, main .vomgrid, main .g24 :is(table,.tablewrap,.seg,p,.vgrid,.vg-h,summary+div,summary+table)';
+  const els=[...document.querySelectorAll(sel)].filter(e=>e.offsetParent!==null&&!e.closest('[hidden]'));
+  const sub=e=>!e.classList.contains('g24')&&!!e.closest('.g24')&&!e.classList.contains('vomgrid');
+  const mbPrev=e=>{const pv=e.previousElementSibling,pa=e.parentElement;if(!pv||!pa||/flex|grid|table/.test(getComputedStyle(pa).display))return 0;return Math.max(0,parseFloat(getComputedStyle(pv).marginBottom)||0);};   // a top margin collapses with the one above (decision 177)
+  const pan=e=>e.classList.contains('panel');
+  els.forEach(e=>{if(pan(e)){e.style.marginTop='';e.style.left='';if(!e.classList.contains('spf'))e.style.width='';e.style.minHeight='';return;}});
+  els.forEach(e=>{if(pan(e))return;if(sub(e)){if(e.closest('.tablewrap')&&e.tagName==='TABLE')return;e.style.setProperty('margin-top','0px','important');return;}if(e.classList.contains('g24')||e.classList.contains('vomgrid')){e.style.marginTop='0px';e.style.paddingLeft='0px';return;}
+    if(e.dataset.mt0==null)e.dataset.mt0=parseFloat(getComputedStyle(e).marginTop)||0;e.style.marginTop=e.dataset.mt0+'px';const c=e.querySelector(':scope > .capt');if(c)c.style.marginTop='0px';});
+  for(const e of els){
+    if(pan(e)){   // view frames (decision 178): border on grid lines all round, each edge on the line nearest where it was; 24n+1 px wide and tall
+      e.style.position='relative';e.style.boxSizing='border-box';
+      let r=e.getBoundingClientRect();const L=r.left+scrollX;let sx=((23-L)%24+24)%24;if(sx>12)sx-=24;
+      if(!e.classList.contains('spf')){const R=r.right+scrollX,rl=Math.round((R-24)/24)*24+24;e.style.width=Math.max(25,rl-(L+sx))+'px';}   /* right border's outer edge at 24n */
+      r=e.getBoundingClientRect();const top=r.top+scrollY,L2=r.left+scrollX;e.style.marginTop=(((23-top)%24+24)%24+mbPrev(e))+'px';
+      sx=((23-L2)%24+24)%24;if(sx>12)sx-=24;e.style.left=sx+'px';
+      r=e.getBoundingClientRect();e.style.minHeight=(Math.ceil((r.height-1)/24)*24+1)+'px';continue;}
+    if(sub(e)){if(e.closest('.tablewrap')&&e.tagName==='TABLE')continue;const top=e.getBoundingClientRect().top+scrollY;let d=((23-top)%24+24)%24;const prev=e.previousElementSibling;if(prev&&d<6&&!/SUMMARY/.test(prev.tagName))d+=24;e.style.setProperty('margin-top',(d+mbPrev(e))+'px','important');continue;}   // sub-blocks: top on a grid line, a cell of air after the one before
+    if(e.classList.contains('g24')||e.classList.contains('vomgrid')){const r=e.getBoundingClientRect(),top=r.top+scrollY;let d=((23-top)%24+24)%24;if(d<6&&e.classList.contains('g24'))d+=24;e.style.marginTop=(d+mbPrev(e))+'px';   // at least a little air above each block
+      if(e.classList.contains('vomgrid')){const left=e.getBoundingClientRect().left+scrollX;e.style.paddingLeft=(((23-left)%24+24)%24)+'px';}continue;}
+    const t=e.classList.contains('group')?e:(e.querySelector('h3')||e),r=t.getBoundingClientRect(),cy=r.top+(e.classList.contains('group')?(r.height-parseFloat(getComputedStyle(e).paddingBottom||0))/2:r.height/2)+scrollY;
     let d=((11-cy)%24+24)%24;if(d>12&&(+e.dataset.mt0)+d-24>=0)d-=24;e.style.marginTop=((+e.dataset.mt0)+d)+'px';
-    const c=e.querySelector(':scope > .capt');if(c){c.style.marginTop='0px';const rc=c.getBoundingClientRect(),c0=rc.top+12+scrollY;c.style.marginTop=(((11-c0)%24+24)%24)+'px';}}}   /* the description: its lines centred in the cells below */
-document.fonts&&document.fonts.ready.then(()=>gridAlign());
+    const c=e.querySelector(':scope > .capt');if(c){const rc=c.getBoundingClientRect(),c0=rc.top+12+scrollY;c.style.marginTop=(((11-c0)%24+24)%24)+'px';}}}
+// the blocks on the page grid (decision 177)
+function markG24(){['#cap','#verdict','#stats','#zones','#ctlHint','#planNote','#opts'].forEach(q=>{const e=document.querySelector(q);if(e)e.classList.add('g24');});
+  document.querySelectorAll('main > details, main > .legend, main > .seg').forEach(e=>e.classList.add('g24'));}
+markG24();
+document.fonts&&document.fonts.ready.then(()=>gridAlign());document.addEventListener('toggle',()=>requestAnimationFrame(gridAlign),true);
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];}}catch(e){}
@@ -2906,12 +2985,12 @@ function tunnelFit(){const out=[];if(!M||!M.AL)return out;M.AL.forEach((T,ti)=>O
   const d=Lz.tr[a.vr.s||0].x/1000,len=segLen(g,d),cut=vomCut(a);if(cut>len+0.01)out.push(`${a.vomLabel||'Corner tunnel'}: ${L(cut*1000)} wide with its walls and side aisles, but the corner is only ${L(len*1000)} across at row 1, so it runs into the corner aisles. Reduce the stand curve or the tunnel width, or switch the tunnel off.`);})));return out;}
 function vomPanelHTML(){if(!M||!M.AL)return '';const on=P.vomOn||{},imp=imperial(),u=imp?'ft':'m',cv=mm=>imp?+(mm/304.8).toFixed(2):+(mm/1000).toFixed(2);
   const chip=c=>`<label class="vchip"><input type="checkbox" data-vom="${c.key}"${on[c.key]?' checked':''}>${c.kind==='corner'?'T-'+c.key.slice(2):'V'+(c.ti?c.ti+1:'')+'-'+c.label.replace(' ','')}</label>`;
-  let h=`<div style="margin:14px 0 6px;font-weight:600">Vomitories</div>
+  let h=`<div class="vomgrid"><div class="vg-h">Vomitories</div>
     <div class="seg" style="gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 6px"><span class="hint" style="margin:0">Vom clear width (${u})</span><input id="vomW" type="number" min="${imp?4:1.2}" step="${imp?0.5:0.1}" value="${cv(AIS().vomW)}" style="width:64px">
       <span class="hint" style="margin:0">Corner tunnel width (${u})</span><input id="vomTun" type="number" min="${imp?8:2.4}" step="${imp?0.5:0.1}" value="${cv(VTUN())}" style="width:64px"></div>`;
   for(let ti=0;ti<Math.min(P.tierCount,M.AL.length);ti++){const v=vomNeed(ti);if(!v)continue;const groups={};v.cs.forEach(c=>{const g=c.kind==='corner'?'Corner tunnels (players)':c.kind==='corner2'?'Corners':zoneName(P,c.k);(groups[g]=groups[g]||[]).push(c);});
     const prov=v.act.length*v.W,ok=v.act.length&&v.per<=v.W+0.5;
-    h+=`<div style="margin:10px 0 4px;font-weight:600">Tier ${ti+1}</div><table class="fixed wrap" style="margin:0 0 6px"><tbody>
+    h+=`<div class="vg-h">Tier ${ti+1}</div><table class="fixed wrap"><tbody>
       <tr><td>Rows leaving by the voms</td><td>rows 1–${v.split} of Tier ${ti+1} (to the cross aisle, then the voms; equal-travel split above it): ${fmt(v.occ)} spectators</td></tr>
       <tr><td>Egress width needed (level route, ${(v.f/25.4).toFixed(3)}" per occupant)</td><td>${L(v.need,'mm',1,true)} in total: at least ${v.n} vom${v.n>1?'s':''} of ${L(v.W,'mm',1,true)}</td></tr>
       <tr><td>Provided</td><td>${v.act.length} spectator vom${v.act.length===1?'':'s'}, ${L(prov,'mm',1,true)}${v.act.length?`; ${L(v.per,'mm',1,true)} needed per vom`:''} <span style="color:${ok?'#0B6E4F':'#C0262D'}">${v.act.length?(ok?'meets':'short'):'none on'}</span></td></tr>
@@ -2921,7 +3000,7 @@ function vomPanelHTML(){if(!M||!M.AL)return '';const on=P.vomOn||{},imp=imperial
         <button data-vomauto="${ti}" title="Switch on the fewest spectator voms in this tier, spread evenly, for the egress width needed">Auto voms</button><button data-vomclr="${ti}">Clear</button></div>
       <div class="vgrid">${Object.entries(groups).map(([g,cs])=>`<span class="hint vglab">${g}</span><div class="vgchips">${cs.map(chip).join('')}</div>`).join('')}</div>`;}
   {const tw=tunnelFit();if(tw.length)h+=`<p class="hint" style="color:#C0262D">${tw.join(' ')}</p>`;}
-  return h+`<p class="hint">Candidates: the interior middle aisles of each stand (on upper-tier sidelines all six aisles of the middle group) and the corner centrelines (Tier 1: player tunnels; upper tiers: spectator voms); all on by default, switch off what the stadium doesn't need. Each vom: ${L(AIS().vomW)} clear between 8" walls whose tops run 26" above the nosings, an 8" header over the top tread (26" above it), and a 36" stepped aisle along each wall (each serving the seats on its side). Spectator voms open onto a cross aisle at the tier's middle row (no seats in that row) and cut the rows above it up to the first row that clears ${L(AIS().vomH,'mm',1,true)} headroom, where the header sits. The Tier 1 corner tunnels stay at field level for players, carts and equipment, cutting the front rows, and are not counted for spectator egress.</p>`;}
+  return h+`<p class="hint">Candidates: the interior middle aisles of each stand (on upper-tier sidelines all six aisles of the middle group) and the corner centrelines (Tier 1: player tunnels; upper tiers: spectator voms); all on by default, switch off what the stadium doesn't need. Each vom: ${L(AIS().vomW)} clear between 8" walls whose tops run 26" above the nosings, an 8" header over the top tread (26" above it), and a 36" stepped aisle along each wall (each serving the seats on its side). Spectator voms open onto a cross aisle at the tier's middle row (no seats in that row) and cut the rows above it up to the first row that clears ${L(AIS().vomH,'mm',1,true)} headroom, where the header sits. The Tier 1 corner tunnels stay at field level for players, carts and equipment, cutting the front rows, and are not counted for spectator egress.</p></div>`;}
 // ---------- standalone 3D viewer (.html): the live model inlined, three.js from jsDelivr; host it (e.g. on GitHub Pages) or send it ----------
 const V3HTML="<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\"><title>__TITLE__<\/title>\n<meta name=\"claude:viewport-fit-sides\" content=\"cover\">\n<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap\">\n<style>[hidden]{display:none!important}body{margin:0;font-size:14px}\n/* Layout: a full-height model frame under a slim toolbar; the bowl is the page */\n:root{\n  --bg:#F3F3F0; --panel:#FFFFFF; --fg:#1F2224; --muted:#5E656B; --line:#D9DAD4; --accent:#C2410C; --accent-fg:#FFFFFF;\n  --f-display:Archivo,system-ui,-apple-system,\"Segoe UI\",sans-serif; --f-body:Archivo,system-ui,-apple-system,\"Segoe UI\",sans-serif;\n}\n@media (prefers-color-scheme: dark){:root:not([data-theme=\"light\"]){--bg:#17191B;--panel:#202326;--fg:#ECEDEA;--muted:#A4AAAF;--line:#33383C;--accent:#F27C38;--accent-fg:#17191B;color-scheme:dark}}\n:root[data-theme=\"dark\"]{--bg:#17191B;--panel:#202326;--fg:#ECEDEA;--muted:#A4AAAF;--line:#33383C;--accent:#F27C38;--accent-fg:#17191B;color-scheme:dark}\nhtml,body{height:100%}\nbody{background:var(--bg);color:var(--fg);font-family:var(--f-body);display:flex;flex-direction:column;\n  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px;box-sizing:border-box;gap:10px}\nheader{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 18px}\nh1{font-family:var(--f-display);font-weight:600;font-size:1.55rem;letter-spacing:.01em;margin:0;text-wrap:balance}\n.sub{color:var(--muted);font-size:.86rem;margin:2px 0 0;font-variant-numeric:tabular-nums}\n.bar{display:flex;flex-wrap:wrap;gap:8px}\n.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--panel)}\n.seg button{font:500 .84rem var(--f-body);color:var(--fg);background:transparent;border:0;border-right:1px solid var(--line);padding:7px 11px;cursor:pointer}\n.seg button:last-child{border-right:0}\n.seg button[aria-pressed=\"true\"]{background:var(--accent);color:var(--accent-fg)}\n.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}\n#frame{position:relative;flex:1;min-height:360px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}\n#frame canvas{display:block;width:100%;height:100%;touch-action:none}\n#status{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:.95rem;pointer-events:none}\nfooter{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:.8rem}\n.key{display:inline-flex;align-items:center;gap:6px}\n.sw{width:12px;height:12px;border-radius:2px;border:1px solid var(--line)}\n<\/style>\n\n<header>\n  <div>\n    <h1>__H1__<\/h1>\n    <p class=\"sub\">__SUB__<\/p>\n  <\/div>\n  <div class=\"bar\">\n    <div class=\"seg\" role=\"group\" aria-label=\"Camera\">\n      <button id=\"persp\" aria-pressed=\"true\">Perspective<\/button><button id=\"ortho\" aria-pressed=\"false\">Parallel<\/button>\n    <\/div>\n    <div class=\"seg\" role=\"group\" aria-label=\"Views\">\n      <button data-v=\"Top\" aria-pressed=\"false\" title=\"Plan view, north up, parallel camera\">Plan<\/button><button data-v=\"NW\" aria-pressed=\"false\">NW<\/button><button data-v=\"NE\" aria-pressed=\"false\">NE<\/button><button data-v=\"SW\" aria-pressed=\"false\">SW<\/button><button data-v=\"SE\" aria-pressed=\"true\">SE<\/button>\n    <\/div>\n  <\/div>\n<\/header>\n<div id=\"frame\"><div id=\"status\">Loading the bowl\u2026<\/div><\/div>\n<footer>\n  <span>Drag to rotate \u00b7 right-drag or two fingers to pan \u00b7 scroll or pinch to zoom<\/span>\n  <span class=\"key\"><i class=\"sw\" style=\"background:#CCCCCC\"><\/i>Tier 1<\/span>\n  <span class=\"key\"><i class=\"sw\" style=\"background:#999999\"><\/i>Tier 2<\/span>\n  <span class=\"key\"><i class=\"sw\" style=\"background:#80807C\"><\/i>Precast aisle steps<\/span>\n  <span class=\"key\"><i class=\"sw\" style=\"background:#FF4500\"><\/i>Wheelchair platforms<\/span>\n  <span class=\"key\"><i class=\"sw\" style=\"background:#969692\"><\/i>Vomitory walls<\/span>\n<\/footer>\n\n<script type=\"text/plain\" id=\"glb\">__B64__<\/script>\n<script src=\"https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js\"><\/script>\n<script src=\"https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js\"><\/script>\n<script src=\"https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js\"><\/script>\n<script>\n(function(){\n  const DIRS=__DIRS__;\n  const frame=document.getElementById('frame'),status=document.getElementById('status');\n  if(!window.THREE){status.textContent='The 3D library could not load. Check the connection and reload.';return;}\n  const r=new THREE.WebGLRenderer({antialias:true});r.setPixelRatio(Math.min(2,window.devicePixelRatio||1));frame.appendChild(r.domElement);\n  const scene=new THREE.Scene(),persp=new THREE.PerspectiveCamera(32,1,0.5,5000),ortho=new THREE.OrthographicCamera(-1,1,1,-1,-5000,5000);\n  scene.add(new THREE.HemisphereLight(0xffffff,0x6f6f68,0.62));\n  const sun=new THREE.DirectionalLight(0xffffff,0.55);sun.position.set(-105,300,-165);scene.add(sun);\n  const fill=new THREE.DirectionalLight(0xffffff,0.28);fill.position.set(120,105,180);scene.add(fill);\n  const ground=new THREE.Mesh(new THREE.PlaneGeometry(8000,8000),new THREE.MeshBasicMaterial({color:0xFFFFFF}));ground.rotation.x=-Math.PI/2;ground.position.y=-0.03;scene.add(ground);\n  let cam=persp,model=null,view='SE',oh=100;\n  const ctl=new THREE.OrbitControls(cam,r.domElement);ctl.screenSpacePanning=true;ctl.maxPolarAngle=Math.PI/2;ctl.addEventListener('change',render);\n  function bg(){r.setClearColor(new THREE.Color('#C0C0C0'));}\n  function frustum(){const a=(frame.clientWidth||1)/(frame.clientHeight||1),h=oh/2;ortho.left=-h*a;ortho.right=h*a;ortho.top=h;ortho.bottom=-h;ortho.updateProjectionMatrix();}\n  function size(){const w=frame.clientWidth,h=frame.clientHeight;if(!w||!h)return;r.setSize(w,h,false);persp.aspect=w/h;persp.updateProjectionMatrix();frustum();render();}\n  function render(){bg();r.render(scene,cam);}\n  function press(sel,on){document.querySelectorAll(sel).forEach(b=>b.setAttribute('aria-pressed',String(on(b))));}\n  function fit(v){view=v;if(!model)return;const box=new THREE.Box3().setFromObject(model),c=box.getCenter(new THREE.Vector3()),d=new THREE.Vector3(...DIRS[v]).normalize();\n    const up=new THREE.Vector3(0,1,0),xA=up.clone().cross(d).normalize(),yA=d.clone().cross(xA),asp=(frame.clientWidth||1)/(frame.clientHeight||1),tV=Math.tan(persp.fov*Math.PI/360),tH=tV*asp;\n    let dist=0,hw=0,hh=0;for(const X of [box.min.x,box.max.x])for(const Y of [box.min.y,box.max.y])for(const Z of [box.min.z,box.max.z]){const q=new THREE.Vector3(X,Y,Z).sub(c),x=q.dot(xA),y=q.dot(yA),z=q.dot(d);dist=Math.max(dist,Math.abs(y)/tV+z,Math.abs(x)/tH+z);hw=Math.max(hw,Math.abs(x));hh=Math.max(hh,Math.abs(y));}\n    const M1=v==='Top'?1.04:0.86;dist*=M1;persp.position.copy(c.clone().add(d.clone().multiplyScalar(dist)));persp.near=dist/100;persp.far=dist*20;persp.zoom=1;persp.updateProjectionMatrix();\n    oh=Math.max(2*hh,2*hw/asp)*M1;ortho.zoom=1;ortho.position.copy(persp.position);frustum();ctl.target.copy(c);ctl.update();press('[data-v]',b=>b.dataset.v===v);render();}\n  function proj(mode){const to=mode==='ortho'?ortho:persp;if(to===cam)return;const t=ctl.target,dist=cam.position.distanceTo(t);\n    if(mode==='ortho'){oh=2*dist*Math.tan(persp.fov*Math.PI/360)/(cam.zoom||1);ortho.zoom=1;frustum();ortho.position.copy(cam.position);}\n    else{const dd=oh/(2*Math.tan(persp.fov*Math.PI/360))/(cam.zoom||1),dir=cam.position.clone().sub(t).normalize();persp.position.copy(t.clone().add(dir.multiplyScalar(dd)));persp.near=dd/100;persp.far=dd*20;persp.updateProjectionMatrix();}\n    cam=to;ctl.object=to;ctl.update();press('#persp,#ortho',b=>(b.id==='ortho')===(mode==='ortho'));render();}\n  document.getElementById('persp').addEventListener('click',()=>proj('persp'));\n  document.getElementById('ortho').addEventListener('click',()=>proj('ortho'));\n  document.querySelectorAll('[data-v]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.v==='Top')proj('ortho');fit(b.dataset.v);}));\n  new ResizeObserver(size).observe(frame);\n  window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',render);\n  const fail=()=>{status.textContent='The model file could not be loaded. Reload the page to try again.';};\n  Promise.resolve(document.getElementById('glb').textContent).then(b64=>{   // the .glb, as base64 text\n    const bin=atob(b64.trim()),buf=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)buf[i]=bin.charCodeAt(i);\n    new THREE.GLTFLoader().parse(buf.buffer,'',g=>{model=g.scene;model.traverse(o=>{if(o.isMesh&&o.material){const m=o.material;if(m.map)m.map.encoding=THREE.LinearEncoding;o.material=new THREE.MeshLambertMaterial({color:m.color,map:m.map||null,side:THREE.DoubleSide,flatShading:true});}});   /* the same flat shading as the app */scene.add(model);status.hidden=true;size();fit(view);},fail);}).catch(fail);\n  size();\n})();\n<\/script>\n\n<\/body><\/html>\n";
 async function v3ViewerHTML(){await v3Init();if(!V3.grp)await v3Build();await loadThree('GLTFExporter.js');
@@ -3225,7 +3304,7 @@ function secPanelHTML(){if(!M.AL||!zoned(P))return '<p class="hint" style="paddi
   return `<div class="seg" role="group" aria-label="Tier" style="margin:6px 0">${tabs}</div>${chk}${ctl}
     <div class="tablewrap" style="max-height:420px"><table class="fixed" id="secTable"><thead><tr><th>Section</th><th>Stand</th><th>Seats per row</th><th>On</th><th>Platform</th><th>Wheelchair / companion</th><th>Check</th></tr></thead><tbody>${rows}</tbody></table></div>
     <p class="hint">Seats per row can be set for the middle sections (the other middle sections of that stand share the rest so the stand keeps its length; Spread), the end section of each stand beside the corner (the middle sections share the change), and the corner sections (the rest of that corner shares it). Seats per row are set at the row the sections are sized at. Symmetric on: an edit also goes to the mirror sections of the same tier. Tap a section number on the bowl plan to find it here. Platforms sit at the back of the tier, over rows ${(()=>{const zs=GEO.map(k=>T[k]).filter(Boolean),nr=Math.max(...zs.map(z=>z.tr.length));return nr>=4?(nr-2)+'–'+(nr-1):'n/a';})()}: companion, two wheelchair spaces at 33", companion, repeated, with one single pair (36") where the length allows. Switched-off sections are taken out of the seat count and egress; their structure is still drawn.</p>${vomPanelHTML()}`;}
-function renderSecPanel(){const el=$('secPanel');if(!el)return;const sc=el.querySelector('.tablewrap'),top=sc?sc.scrollTop:0;el.innerHTML=secPanelHTML();const s2=el.querySelector('.tablewrap');if(s2)s2.scrollTop=top;
+function renderSecPanel(){requestAnimationFrame(()=>typeof gridAlign==='function'&&gridAlign());const el=$('secPanel');if(!el)return;const sc=el.querySelector('.tablewrap'),top=sc?sc.scrollTop:0;el.innerHTML=secPanelHTML();const s2=el.querySelector('.tablewrap');if(s2)s2.scrollTop=top;
   if(SECT_HL){const r=el.querySelector(`[data-secrow="${SECT_HL}"]`);if(r&&s2)s2.scrollTop=r.offsetTop-s2.clientHeight/2;}}
 // ---------- section editor on the plan (decision 106): click a section's number to change its seats per row; the table stays as the full editor ----------
 let SECED=null;   // {no,x,y}: the open plan editor, page position
