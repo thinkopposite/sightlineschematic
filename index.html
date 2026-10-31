@@ -1050,6 +1050,7 @@ function tierDef(rows,link,o={}){return {link,corners:'auto',z:Object.fromEntrie
 // Eye sight values: one standard for chairback and bench seats (heights above the tread the spectator is on).
 // Sitting eye over the back riser; standing eye 8 in back from the front riser. Head = eye + 2 x 2 1/4 in.
 const HEAD=2*2.25*25.4,EYE_REV=5,eyeDefaults=()=>({sitH:44*25.4,stH:63.45*25.4,stHead:67.65*25.4,stSh:55.65*25.4,wcH:47.45*25.4,stOff:8*25.4,wcOff:30*25.4});   /* standing and wheelchair values: DOJ, United States v. Ellerbe Becket, Exhibit B (decision 193) */
+const EB_SHORT='DOJ Ellerbe Becket Exhibit B',EB_FULL='DOJ Ellerbe Becket Exhibit B: Exhibit B of the U.S. Department of Justice (DOJ) agreement/consent order in United States of America v. Ellerbe Becket, Inc.';   // the source of the standing and wheelchair defaults (decisions 193, 194)
 const stHeadOf=E=>E.stHead!=null?E.stHead:E.stH+HEAD;   // standing head height (Exhibit B: 67.65 in)   /* wheelchair eye 30 in behind the platform riser (decision 120) */
 /* metric eye standard: the imperial values rounded to 5 mm (44 in, 63.5 in, 47.45 in, 8 in, 36 in) */
 const eyeDefaultsMetric=()=>({sitH:1120,stH:1615,wcH:1205,stOff:200,wcOff:760}),eyeFor=r=>r==='world'?eyeDefaultsMetric():eyeDefaults(),SLAB={america:[4,5,6].map(n=>n*25.4),world:[100,125,150]},slabDef=r=>r==='world'?125:5*25.4;   /* platform: eye 48 in above it, 36 in behind the inside face of the guard rail */   /* wheelchair: eye 48 in high, 3'-0" behind the front of the space (Joseph's reference) */
@@ -1948,7 +1949,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.31.03';
+const VERSION='2026.10.31.04';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2189,10 +2190,10 @@ function renderControls(){
   if(G.length>1)h+='<div class="tabs sub" role="tablist">'+G.map((g,i)=>`<button role="tab" data-eg="${i}" class="${i===EDIT.g?'on':''}" aria-selected="${i===EDIT.g}">${groupName(P,ti,g).replace(/ \(.*\)/,'')}</button>`).join('')+'</div>';
   h+=`<p class="zhead">${groupName(P,ti,G[EDIT.g])}</p>`+zoneEditor(ti,G[EDIT.g])+'</div></section>';
   h+=step(4,'Sightline standard','Locked eye sight values, then solve every riser to the C-value.')+`<div class="eyes"><div class="lab" style="margin-top:0;color:var(--accent-deep)"><b>Eye sight values (do not change)</b></div><div class="seg"><button id="eyeLock" aria-pressed="${!EYELOCK}" class="${EYELOCK?'on':''}">${EYELOCK?'🔒 Locked':'🔓 Unlocked'}</button></div>`
-    +slider('eye.sitH',`Sitting eye height (${imperial()?'1/2 inch':'5 mm'})`,imperial()?24*25.4:610,imperial()?84*25.4:2135,imperial()?12.7:5,'mm')+slider('eye.stH','Standing eye height, average 63.45" (1612 mm)',imperial()?24*25.4:610,imperial()?84*25.4:2135,imperial()?1.27:1,'mm')+slider('eye.stHead','Standing head height, average 67.65" (1718 mm)',imperial()?36*25.4:915,imperial()?90*25.4:2285,imperial()?1.27:1,'mm')+slider('eye.stSh','Standing shoulder height, average 55.65" (1414 mm)',imperial()?30*25.4:760,imperial()?80*25.4:2030,imperial()?1.27:1,'mm')
-    +slider('eye.wcH','Wheelchair eye height, average 47.45" (1205 mm) per A117.1 table basis',36*25.4,60*25.4,1.27,'mm')
-    +'<p class="hint" style="margin-top:2px">Standing and wheelchair values: the average anthropometric dimensions in DOJ, United States v. Ellerbe Becket, Exhibit B (wheelchair eye 47.45", 30" from the eye to the tier edge; standing head 67.65", eye 63.45", shoulder 55.65"). They are averages, not code minimums; test lower values to check shorter users.</p>'
-    +slider('eye.wcOff',`Wheelchair eye behind platform riser (${imperial()?'1/2 inch':'5 mm'})`,0,imperial()?60*25.4:1525,imperial()?12.7:5,'mm')
+    +slider('eye.sitH',`Sitting eye height (${imperial()?'1/2 inch':'5 mm'})`,imperial()?24*25.4:610,imperial()?84*25.4:2135,imperial()?12.7:5,'mm')+slider('eye.stH','Standing eye height, average 63.45" (1612 mm), '+EB_SHORT,imperial()?24*25.4:610,imperial()?84*25.4:2135,imperial()?1.27:1,'mm')+slider('eye.stHead','Standing head height, average 67.65" (1718 mm), '+EB_SHORT,imperial()?36*25.4:915,imperial()?90*25.4:2285,imperial()?1.27:1,'mm')+slider('eye.stSh','Standing shoulder height, average 55.65" (1414 mm), '+EB_SHORT,imperial()?30*25.4:760,imperial()?80*25.4:2030,imperial()?1.27:1,'mm')
+    +slider('eye.wcH','Wheelchair eye height, average 47.45" (1205 mm), '+EB_SHORT,36*25.4,60*25.4,1.27,'mm')
+    +`<p class="hint" style="margin-top:2px">Standing and wheelchair values are the average anthropometric dimensions of ${EB_FULL} (1) wheelchair eye height 47.45"; (2) eye of a wheelchair user to the edge of the tier the wheelchair rests on 30"; (3) standing head height 67.65"; (4) standing eye height 63.45"; (5) standing shoulder height 55.65". Averages, not code minimums; test lower values to check shorter users.</p>`
+    +slider('eye.wcOff',`Wheelchair eye to the tier edge, average 30" (762 mm), ${EB_SHORT}`,0,imperial()?60*25.4:1525,imperial()?12.7:5,'mm')
     +'<table class="fixed" id="eyeDerived"></table>'+'</div>';
   {const vals=Array.from({length:P.tierCount},(_,ti)=>[...new Set(GEO.map(k=>P.zt[ti].z[k]).filter(z=>z&&z.on!==false).map(z=>Math.round(z.target*1e4)/1e4))]),same=new Set(vals.flat()).size===1;
    h+=`<div class="cvlock"><div class="lab" style="margin-top:16px;color:var(--accent-deep)"><b>Absolute minimum C-value (do not change)</b></div><div class="seg"><button id="cvLock" aria-pressed="${!CVLOCK}" class="${CVLOCK?'on':''}">${CVLOCK?'🔒 Locked':'🔓 Unlocked'}</button></div>`
@@ -3088,7 +3089,7 @@ function spectatorInfo(mode){
   if(mode==='plat')return platformInfo();
   if(mode==='wc'){const E=P.eye,rs=spectatorRows(),last=rs[rs.length-1],m=rs[rs.length-2];if(!last||!m)return [];
     const e={x:last.x+last.T,z:last.z+E.wcH},p={x:m.x+m.T,z:m.z+E.sitH},C=e.z*p.x/e.x-p.z;
-    return [['Wheelchair eye height',`${wcTxt(E.wcH)} above the tread (average, per A117.1 table basis)`],['Wheelchair eye, horizontal','aligned to the back riser'],['Wheelchair head height',`${wcTxt(E.wcH+HEAD)} (eye + 2 × ${inchText(HEAD/2)})`],
+    return [['Wheelchair eye height',`${wcTxt(E.wcH)} above the tread (average, ${EB_SHORT})`],['Wheelchair eye, horizontal','aligned to the back riser'],['Wheelchair head height',`${wcTxt(E.wcH+HEAD)} (eye + 2 × ${inchText(HEAD/2)})`],
       ['Red line',`${inchText(HEAD/2)} above the eye`],[`C-value, row ${last.row} (wheelchair) over row ${m.row}`,`${CV(C)} (minimum ${CV(last.target)})`],['Rows in front','sitting spectators']];}const E=P.eye,rs=spectatorRows(),t1=(ZR.T||[]).filter(r=>r.tier===0),i=t1.indexOf(rs[rs.length-1]),C=rowC(t1,i,mode),tg=rs[rs.length-1]?.target,rf=rs[rs.length-2];
   const ci=v=>v==null?'n/a':CV(v);
   return mode==='stand'?[['Standing eye height',`${L(E.stH)} above the tread`],['Standing eye, horizontal',`${L(E.stOff)} back from the front riser`],['Standing head height',`${L(stHeadOf(E))} (eye + 2 × ${inchText(HEAD/2)})`],
@@ -3106,7 +3107,7 @@ function platformGeo(){const rs=spectatorRows(),n=rs.length;if(n<4)return null;c
   return {rs,sd,p1,p2,top,zP,edge,riserX,setback:SETBACK,railC,front:fws,eye,st,standers,X,Y,Hreq,H,C};}
 function platformInfo(){const g=platformGeo();if(!g)return [];const E=P.eye;
   return [['Platform',`infill over rows ${g.p1.row}–${g.p2.row}, level with row ${g.top.row}; front face set back ${inchText(g.setback)} from the row ${g.p1.row} riser; 26" guard rail on that face`],
-    ['Wheelchair eye',`${wcTxt(E.wcH)} above the platform (average, per A117.1 table basis); ${inchText(E.wcOff)} behind the platform riser, which is also the guard rail's inside face (Ref. 6, 9)`],['Front of wheelchair space','12" max from the riser (ICC A117.1 802.9.2.1; Ref. 8)'],
+    ['Wheelchair eye',`${wcTxt(E.wcH)} above the platform; ${inchText(E.wcOff)} behind the platform riser (averages, ${EB_SHORT}), which is also the guard rail's inside face (Ref. 6, 9)`],['Front of wheelchair space','12" max from the riser (ICC A117.1 802.9.2.1; Ref. 8)'],
     [`Platform above row ${g.sd.row}`,`${inchText(g.H*25.4)} (A117.1 Table 802.9.2.2 minimum ${inchText(Math.max(0,g.Hreq)*25.4)}: ${g.H>=g.Hreq-0.01?'meets':'below'}; Ref. 7)`],
     [`C-value over the standing spectator, row ${g.sd.row}`,CV(g.C)],[`Rows ${g.standers.map(p=>p.r.row).join(', ')}`,'standing']];}
 function drawSpectator(mode,o={}){
@@ -4180,7 +4181,7 @@ function junctionInfo(all,tu){const IN=25.4,E=P.eye,lo=all.filter(r=>r.tier===tu
   const pg=wcTier(tu-1)?secPlat(lo):null;
   if(pg&&n>=5){const sd=lo[n-4],st={x:sd.x+E.stOff,z:sd.z+E.stH},X=sd.T/IN,Y=(sd.riser??pg.p1.riser??0)/IN,Hreq=(2*X+34)*(Y-2.25)/X+(20.2-Y),H=(pg.zP-sd.z)/IN,C=pg.eye.z*st.x/pg.eye.x-st.z;
     G.push(['Wheelchair platform',[['Platform',`infill over rows ${pg.p1.row}–${pg.p2.row}, level with row ${pg.top.row}; front face ${inchText(WC_SETBACK)} behind the row ${pg.p1.row} riser; ${L(P.railH)} guard rail on that face`],
-      ['Wheelchair eye',`${wcTxt(E.wcH)} above the platform (average, A117.1 table basis); ${inchText(E.wcOff)} behind the platform face (Ref. 6, 9)`],['Front of wheelchair space','12" max from the riser (ICC A117.1 802.9.2.1; Ref. 8)'],
+      ['Wheelchair eye',`${wcTxt(E.wcH)} above the platform; ${inchText(E.wcOff)} behind the platform face (averages, ${EB_SHORT}; Ref. 6, 9)`],['Front of wheelchair space','12" max from the riser (ICC A117.1 802.9.2.1; Ref. 8)'],
       [`Platform above row ${sd.row}`,`${inchText(H*IN)} (A117.1 Table 802.9.2.2 minimum ${inchText(Math.max(0,Hreq)*IN)}: ${H>=Hreq-0.01?'meets':'below'}; Ref. 7)`],
       [`C over the standing spectator, row ${sd.row}`,CV(C)],[`Rows ${lo.slice(Math.max(0,n-5),n-3).map(r=>r.row).join(', ')}`,'standing']]]);}
   {const f=up[0],e1={x:f.sit.ex,z:f.sit.ez},e2={x:f.x+E.stOff,z:f.z+E.stH},rows=[['Guard rail',`${L(P.railH)} above row ${f.row}, on the riser face`],[`Over the rail, row ${f.row}, seated (no C-value: front row)`,f.railC!=null?`${CV(f.railC)} ${f.railC>=0?'clear':'(the rail blocks the view)'}`:CV(railClear(f,e1))],[`Over the rail, row ${f.row}, standing`,CV(railClear(f,e2))]];
@@ -4455,23 +4456,23 @@ function refList(){const E=P.eye,Sp=SPORTS[P.sport],cv=cvSet(P.sport),z=P.zt[0].
       basis:'Eye position of a seated spectator used in the C-value calculation.',
       cite:'Project design criterion (input). No US code sets a seated eye height.'},
     stand:{item:'Standing eye height and position',val:`${L(E.stH)} above the tread, ${L(E.stOff)} back from the front riser`,type:'des',
-      basis:'Eye position of a standing spectator used for the standing C-value and as the head line the wheelchair sightline must clear.',
-      cite:'Project design criterion (input).'},
+      basis:`Eye position of a standing spectator used for the standing C-value and for the wheelchair sightline over standing spectators. Averages: eye ${L(E.stH)}, head ${L(stHeadOf(E))}, shoulder ${L(E.stSh??55.65*25.4)}.`,
+      cite:EB_FULL+' The 8" offset from the front riser is a project design criterion.'},
     head:{item:'Head height',val:`Eye + ${inchText(HEAD)} (2 × ${inchText(HEAD/2)}); red line ${inchText(HEAD/2)} above the eye`,type:'des',
       basis:`Top of head drawn ${inchText(HEAD)} above the eye; the red line marks the ${inchText(HEAD/2)} allowance above the eye.`,
       cite:'Drawing convention of this app.'},
     wceye:{item:'Wheelchair eye height',val:wcTxt(E.wcH)+' above the platform (average)',type:'avg',
       basis:'Average seated eye height of a wheelchair user. It is the value built into the A117.1 Table 802.9.2.2 formula: 20.2 = 67.65 (standing head height) − 47.45 (wheelchair eye height). It is an average, not a code minimum; test a lower value to check shorter users.',
-      cite:'United States v. Ellerbe Becket, Inc. (D. Minn.), consent order 1998, Exhibit B (wheelchair space elevations over standing spectators); ICC A117.1-2017 Table 802.9.2.2 basis.'},
+      cite:EB_FULL+' Also the basis of ICC A117.1-2017 Table 802.9.2.2.'},
     wcplat:{item:'Wheelchair space elevation over standing spectators',val:g?`Platform ${inchText(g.H*25.4)} above row ${g.sd.row}; required ${inchText(Math.max(0,g.Hreq)*25.4)} (${g.H>=g.Hreq-0.01?'meets':'below'})`:'n/a',type:'code',
       basis:'Where spectators are expected to stand, wheelchair spaces shall provide a line of sight over the heads of standing spectators in the first row in front. Required elevation H = (2X + 34)(Y − 2.25) / X + (20.2 − Y), where X = tread depth and Y = riser height, inches. The C standing value drawn at scenario 2 is the wheelchair sightline over that standing head.',
       cite:'ICC A117.1-2017 §802.9.2 and Table 802.9.2.2 (via IBC 2024 §1108.2 / §1111.1); 2010 ADA Standards §802.2.2 (lines of sight over standing spectators).'},
     wcfront:{item:'Front of wheelchair space to the riser',val:`${inchText(12*25.4)} maximum`,type:'code',
       basis:`The front of the wheelchair space shall be ${inchText(12*25.4)} maximum from the back of the chair or bench in front, so the table elevation applies.`,
       cite:'ICC A117.1-2017 §802.9.2.1; 2010 ADA Standards §802.2.2.1.'},
-    wcoff:{item:'Wheelchair eye behind the platform riser',val:`${inchText(E.wcOff)} behind the platform face (the guard rail's inside face)`,type:'des',
-      basis:'Horizontal eye position of the wheelchair user inside the space; the space itself is 48" minimum deep for front or rear entry.',
-      cite:'Project design criterion (input); wheelchair space depth per 2010 ADA Standards §802.1.3 and ICC A117.1-2017 §802.'},
+    wcoff:{item:'Wheelchair eye behind the platform riser',val:`${inchText(E.wcOff)} behind the platform face (the guard rail's inside face)`,type:'avg',
+      basis:'Average horizontal distance from the eye of a person sitting in a wheelchair to the edge of the tier on which the wheelchair rests; the space itself is 48" minimum deep for front or rear entry.',
+      cite:EB_FULL+' Wheelchair space depth per 2010 ADA Standards §802.1.3 and ICC A117.1-2017 §802.'},
     setback:{item:'Platform setback from the row riser',val:inchText(6*25.4),type:'des',
       basis:`The infill platform face sits ${inchText(6*25.4)} behind the row riser; the guard rail and wheelchair user move with it.`,
       cite:'Project design criterion.'},
@@ -4572,7 +4573,7 @@ function pdfProjectInfo(doc,o){const {pw,ph,m}=o,Sp=SPORTS[P.sport],k=Math.min(1
      ['Least headroom under a tier',M.heads&&M.heads.length?L(Math.min(...M.heads.map(h=>h.h))):'n/a'],['Live load reference','Grandstands 100 psf (IBC Table 1607.1); confirm with the structural engineer'],
      ['Guard load reference','50 plf and 200 lb concentrated (IBC 1607.9.1); confirm with the structural engineer'],
      ['Not included','rakers, columns, beams, foundations, vomitories, aisle stairs and handrails, rear guards, concourse slabs']]);}
-  sec('Eye sight values',[['Sitting eye',`${L(E.sitH)}, aligned to the back riser`],['Standing eye',`${L(E.stH)}, ${L(E.stOff)} from the front riser`],['Wheelchair eye',wcTxt(E.wcH)+' (average, per A117.1 table basis)'],['Head height',`eye + 2 × ${inchText(HEAD/2)}`]]);
+  sec('Eye sight values',[['Sitting eye',`${L(E.sitH)}, aligned to the back riser`],['Standing eye',`${L(E.stH)}, ${L(E.stOff)} from the front riser`],['Wheelchair eye',wcTxt(E.wcH)+` (average, ${EB_SHORT})`],['Wheelchair eye to tier edge',`${inchText(E.wcOff)} (average, ${EB_SHORT})`],['Standing head',`${L(stHeadOf(E))} (average, ${EB_SHORT})`],['Standing shoulder',`${L(E.stSh??55.65*25.4)} (average, ${EB_SHORT})`],['Seated head height',`eye + 2 × ${inchText(HEAD/2)}`]]);
   sec('Results',[['Seats, all',fmt(seatCount().out.find(o=>o.label==='Total, all seats').t)],[`Seats less ${lossTxt()}`,fmt(M.cap)],
     ['Lowest C-value (current mode)',M.worst?CV(M.worst.C):'n/a'],['Steepest rake',M.steep?M.steep.rake.toFixed(1)+'°':'n/a'],
     [`Top row above the ${surfLow()}`,L(M.height*1000)],['Farthest viewing distance',L(M.vd*1000)],['Checks',$('verdict').textContent]]);
