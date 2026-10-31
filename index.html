@@ -1001,10 +1001,10 @@ const CV_SPORT={nfl:'football',ncaafb:'football',nba:'basketball',ncaabb:'basket
   fifa:'fifa',icc:'cricket',fiba:'fiba',fivb:'fiba',usta:'tennis',itf:'tennis',rugbyu:'rugby',rugbyl:'rugby',fih:'rugby',usatf:'athletics'};
 const CV_SETS=Object.fromEntries(Object.entries(CV_ROWS).map(([k,[n,st,basis,a,t,p]])=>[k,{src:`${n}: ${basis} (${st.toLowerCase()})`,opts:[['Absolute minimum',a],['Target',t],['Premium',p]]}]));
 const cvSet=sport=>CV_SETS[CV_SPORT[sport]]||CV_SETS.rugby,cvDefault=sport=>cvSet(sport).opts[0][1];
-const SEATS={standard:{name:'Chairback',seatW:22*25.4,widths:[19,20,21,22]},bench:{name:'Bench',seatW:18*25.4,widths:[18,19,20,21]}};
+const SEATS={standard:{name:'Chairback',seatW:22*25.4,widths:[19,20,21,22]},bench:{name:'Bench',seatW:18*25.4,widths:[18,19,20,21,22]}};
 /* seat widths in mm by region: American in whole inches (22 in chairback, 18 in bench); international in mm, chairback 500 mm
    (FIFA Stadium Guidelines 5.2: seat centres 500 mm minimum), bench 460 mm (Green Guide minimum seat width) */
-const SEATW={america:{standard:{def:22*25.4,opts:[19,20,21,22].map(v=>v*25.4)},bench:{def:18*25.4,opts:[18,19,20,21].map(v=>v*25.4)}},
+const SEATW={america:{standard:{def:22*25.4,opts:[19,20,21,22].map(v=>v*25.4)},bench:{def:18*25.4,opts:[18,19,20,21,22].map(v=>v*25.4)}   /* bench up to 22 in (decision 191) */},
   world:{standard:{def:500,opts:[480,500,520,550]},bench:{def:460,opts:[450,460,480,500]}}};
 const seatSpec=(kind,sport)=>SEATW[regionOf(sport||P.sport)][kind==='bench'?'bench':'standard'];
 // ---------- seating capacity limits by sport (target seats slider) ----------
@@ -1052,7 +1052,8 @@ function tierDef(rows,link,o={}){return {link,corners:'auto',z:Object.fromEntrie
 const HEAD=2*2.25*25.4,EYE_REV=4,eyeDefaults=()=>({sitH:44*25.4,stH:63.5*25.4,wcH:47.45*25.4,stOff:8*25.4,wcOff:30*25.4});   /* wheelchair eye 30 in behind the platform riser (decision 120) */
 /* metric eye standard: the imperial values rounded to 5 mm (44 in, 63.5 in, 47.45 in, 8 in, 36 in) */
 const eyeDefaultsMetric=()=>({sitH:1120,stH:1615,wcH:1205,stOff:200,wcOff:760}),eyeFor=r=>r==='world'?eyeDefaultsMetric():eyeDefaults(),SLAB={america:[4,5,6].map(n=>n*25.4),world:[100,125,150]},slabDef=r=>r==='world'?125:5*25.4;   /* platform: eye 48 in above it, 36 in behind the inside face of the guard rail */   /* wheelchair: eye 48 in high, 3'-0" behind the front of the space (Joseph's reference) */
-let EYELOCK=true;                                                        // eye sight values can only be edited once unlocked
+let EYELOCK=true,CVLOCK=true;   // the absolute minimum C-value is locked too (decision 190)
+                                                        // eye sight values can only be edited once unlocked
 const isBench=seat=>seat==='bench';
 // eye position for a row: [distance back from the row's front riser, height above its tread]
 function eyeAt(P,seat,T,mode){const e=P.eye;return mode==='stand'?[e.stOff,e.stH]:[T,e.sitH];}
@@ -1137,7 +1138,7 @@ function gapsOf(P){const Q=Object.assign({},P,{tierCount:3}),g={};
     g[k][ti]=lo.length&&up?(up.x-(lo[lo.length-1].x+lo[lo.length-1].T))/1000:P.zt[ti].z[k].gap;}}return g;}
 function alignUpperTiers(P){P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>t.z[k].X=null);});}
 function keepGaps(P,g){for(let ti=1;ti<3;ti++)for(const k of GEO)Object.assign(P.zt[ti].z[k],{X:null,gap:g[k][ti]});pinUpperTiers(P);}
-function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';if(!FIELD_SPORTS.includes(P.sport))P.sport='ncaafb';if(!P.bulge||typeof P.bulge!=='object')P.bulge={S:0,E:0};['S','E'].forEach(k=>{P.bulge[k]=Math.max(0,Math.min(k==='S'?7.62:6.096,+P.bulge[k]||0));});   /* sidelines up to 25 ft (7.6 m), end stands 20 ft (6.1 m) (decision 145) */   /* court and rink sports are out of scope (decision 81) */const d=defaults();if(!Array.isArray(P.rowMax))P.rowMax=[80,80,80];P.rowMax=[0,1,2].map(i=>Math.max(3,Math.min(80,Math.round(+P.rowMax[i]||80))));   /* row limits per tier for sizing (decision 185) */
+function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';if(!FIELD_SPORTS.includes(P.sport))P.sport='ncaafb';if(!P.bulge||typeof P.bulge!=='object')P.bulge={S:0,E:0};['S','E'].forEach(k=>{P.bulge[k]=Math.max(0,Math.min(k==='S'?7.62:6.096,+P.bulge[k]||0));});   /* sidelines up to 25 ft (7.6 m), end stands 20 ft (6.1 m) (decision 145) */   /* court and rink sports are out of scope (decision 81) */const d=defaults();if(P.ais&&P.ais.mode==='loss')P.ais.mode='layout';if(!Array.isArray(P.rowMax))P.rowMax=[80,80,80];P.rowMax=[0,1,2].map(i=>Math.max(3,Math.min(80,Math.round(+P.rowMax[i]||80))));   /* row limits per tier for sizing (decision 185) */
   if(P.eyeRev===3&&P.eye){const w=P.eye.wcOff;if(Math.abs(w-36*25.4)<1||Math.abs(w-915)<1)P.eye.wcOff=w>914.5&&w<915.5?760:30*25.4;P.eyeRev=EYE_REV;}   /* rev 4: only the old 36 in default moves to 30 in; other eye values kept */
   if(P.eyeRev!==EYE_REV){P.eye=eyeDefaults();P.eyeRev=EYE_REV;}P.eye=Object.assign(eyeDefaults(),P.eye||{});delete P.eye.bnFront;if(P.eyeMode!=='stand')P.eyeMode='sit';
   if(!P.eyeWc3){if([47.5,48].some(v=>Math.abs(P.eye.wcH-v*25.4)<0.01))P.eye.wcH=47.45*25.4;P.eyeWc3=1;}if(!(P.eye.wcH>0))P.eye.wcH=(P.eye.platH>0?P.eye.platH:47.45*25.4);delete P.eye.platH;   /* one wheelchair eye: 47.45 in, A117.1 table basis */
@@ -1552,7 +1553,7 @@ function egress(){const AL=M.AL;if(!AL)return null;const imp=imperial(),fS=egFac
     out.tiers.push(t);}
   out.secMax=Math.max(...out.tiers.map(t=>t.secMax));return out;}
 function aisEditor(){const A=AIS(),imp=imperial(),lay=A.mode==='layout';
-  let h='<div class="seg" style="margin-top:0">'+[['layout','Computed layout'],['loss','Percentage allowance']].map(([k,n])=>`<button data-aismode="${k}" class="${A.mode===k?'on':''}" aria-pressed="${A.mode===k}">${n}</button>`).join('')+'</div>';
+  let h='';   /* computed layout only; the percentage allowance is gone (decision 190) */
   if(!lay)return h+slider('loss','Seats lost to aisles (1 %)',0,30,1,'%')+'<p class="hint">A flat allowance off every row. Switch to the computed layout to draw the aisles on the plan and check them.</p>';
   if(imp){const zs=[];for(let ti=0;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)zs.push([ti,k,z]);});
     const seen={},lines=[];zs.forEach(([ti,k,z])=>{const r=ibcRow(z),key=[z.seat,z.tread,z.seatW].join('|');if(seen[key])return;seen[key]=1;
@@ -1941,7 +1942,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.30.03';
+const VERSION='2026.10.31.01';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2108,12 +2109,12 @@ function applySport(k){const x=SPORTS[k],g=gapsOf(P);sportUnits(k);renderUnits()
 // zt.<tier>.<keys>.<param> edits a group of zones together, so linked sides can never drift apart
 function lowerTop(ti,k){const lo=solveZone(Object.assign({},P,{tierCount:Math.max(P.tierCount,ti+1)}),k).filter(r=>r.tier===ti-1);return lo[lo.length-1];}
 const BULGE_MAX={S:25,E:20};   // set-back limits in feet: sidelines 25', end stands 20' (decision 145)
-function get(path){if(path.startsWith('bulgeFt.'))return Math.round((P.bulge[path.slice(8)]||0)/0.3048);   // set-backs in whole feet (decisions 143, 144)
+function get(path){if(path==='cvAll.target'){const z=P.zt[0].z[GEO.find(k=>P.zt[0].z[k])];return z.target;}if(path.startsWith('bulgeFt.'))return Math.round((P.bulge[path.slice(8)]||0)/0.3048);   // set-backs in whole feet (decisions 143, 144)
   if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.'),z=P.zt[+ti].z[ks[0]];
     if(p==='Zabs'){const t=lowerTop(+ti,ks[0]);return Math.round(((t?t.z:0)/1000+z.rise)*1e4)/1e4;}
     if(p==='X'&&z.X==null){const t=lowerTop(+ti,ks[0]);return t?Math.round(t.x/1000*1e4)/1e4:0;}
     return z[p];}return path.split('.').reduce((o,k)=>o[k],P);}
-function set(path,v){if(path.startsWith('bulgeFt.')){const k=path.slice(8);P.bulge[k]=Math.max(0,Math.min(BULGE_MAX[k],Math.round(+v||0)))*0.3048;const e=document.getElementById('bulgeRad');if(e)e.textContent=bulgeRadTxt();return;}
+function set(path,v){if(path==='cvAll.target'){for(let ti=0;ti<3;ti++)GEO.forEach(k=>{const z=P.zt[ti]&&P.zt[ti].z[k];if(z)z.target=v;});return;}if(path.startsWith('bulgeFt.')){const k=path.slice(8);P.bulge[k]=Math.max(0,Math.min(BULGE_MAX[k],Math.round(+v||0)))*0.3048;const e=document.getElementById('bulgeRad');if(e)e.textContent=bulgeRadTxt();return;}
   if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.');
     if(p==='Zabs'){for(const k of ks){const t=lowerTop(+ti,k);P.zt[+ti].z[k].rise=Math.max(RD().rise,v-(t?t.z:0)/1000);}return;}   // never under 10'-0" (3.0 m) above the tier below (decision 132)
     for(const k of ks)P.zt[+ti].z[k][p]=v;if(p==='X')renderControls();return;}
@@ -2138,7 +2139,7 @@ function zoneEditor(ti,g){
     +`<p class="hint">${z.riser==='constant'?`One riser for every row: the smallest ${L(P.step)} step that meets the C-value, up to the ${L(P.maxRiser)} maximum.`:`Each riser sized to meet the C-value, in ${L(P.step)} steps.`} Sized for ${BASIS[z.basis]||'sitting'} spectators.</p>`;
   {const R=RD(),u=imperial()?'1 inch':'10 mm';h+=slider(pre+'.rows','Rows (1 row)',3,80,1,'rows')+slider(pre+'.tread',`Typical row depth (${u})`,R.treadMin,R.treadMax,R.tStep,'mm')
     +slider(pre+'.tread0',`Bottom row depth (${u})`,R.treadMin,R.tread0Max,R.tStep,'mm')
-    +cvEditor(pre,z,ti);}
+    ;}   /* the absolute minimum C-value moved to Sightline standard, locked (decision 190) */
   const Sp=SPORTS[P.sport],imp=imperial();
   const tStp=z.tread/1000,tLab=`${L(z.tread)}, one row`;   // one row depth per step (decision 137)
   if(ti===0)h+=slider(pre+'.D',`Sideline depth (${tLab})`,Sp.Dmin??0,imp?60*0.3048:18,tStp,'m')
@@ -2154,7 +2155,10 @@ function zoneEditor(ti,g){
 function renderControls(){
   const grp=(r,lab)=>`<optgroup label="${lab}">`+Object.entries(SPORTS).filter(([k,x])=>x.region===r&&FIELD_SPORTS.includes(k)).map(([k,x])=>`<option value="${k}"${P.sport===k?' selected':''}>${x.name} (${x.org})</option>`).join('')+'</optgroup>';
   const step=(n,t,sub)=>`<section class="step"><div class="step-h"><span class="bub">${n}</span><h2>${t}</h2><p>${sub}</p></div>`;
-  let h=step(1,'Field','Sport, governing rules, units and orientation.')+'<select id="sportSel" class="sel" aria-label="Sport and governing body">'+grp('america','American sports')+grp('world','International sports')+'</select>';
+  let h='<section class="step" id="tgtTop">'+(()=>{const [lo,hi,typ,out]=capLim(P.sport),Sp=SPORTS[P.sport];return slider('capTarget',`Target seats (1,000 seats; ${Sp.org} ${fmt(lo)} to ${fmt(hi)})`,lo,hi,1000,'seats')
+    +`<p class="hint">Typical: ${typ}. Outliers: ${out}.</p><details class="capguide"><summary>Capacity guide, all sports</summary>`
+    +Object.entries(CAP_LIM).map(([k,[a,b,t,o]])=>`<p class="hint" style="margin:8px 0"><b style="color:var(--ink)">${SPORTS[k]?SPORTS[k].name+' ('+SPORTS[k].org+')':k}: ${fmt(a)} to ${fmt(b)}</b><br>Typical: ${t}.<br>Outliers: ${o}.</p>`).join('')+'</details>';})()+'</section>';   /* target seats first (decision 190) */
+  h+=step(1,'Field','Sport, governing rules, units and orientation.')+'<select id="sportSel" class="sel" aria-label="Sport and governing body">'+grp('america','American sports')+grp('world','International sports')+'</select>';
   h+=`<div class="lab">Units: <b style="color:var(--ink)">${imperial()?'Imperial':'Metric'}</b></div><p class="hint">${imperial()?'American sports use imperial: inches to 2 decimals below 10\'-0", feet and inches at or above.':'International sports use metric: millimetres below 10 m, metres to 3 decimals at or above (1000 mm = 1 m).'}</p>`;
   if(zoned(P))h+=`<div class="sl"><div class="sl-top"><label for="northSel">Field orientation</label></div><select id="northSel" class="sel">${[['v','Vertical football field, north up'],['h','Landscape football field, north left']].map(([k,n])=>`<option value="${k}"${P.planOri===k?' selected':''}>${n}</option>`).join('')}</select></div>`;
   h+='</section>';
@@ -2184,13 +2188,14 @@ function renderControls(){
     +'<p class="hint" style="margin-top:2px">47.45" is the average eye height built into A117.1 Table 802.9.2.2, not a code minimum. Test a lower eye height to check shorter users.</p>'
     +slider('eye.wcOff',`Wheelchair eye behind platform riser (${imperial()?'1/2 inch':'5 mm'})`,0,imperial()?60*25.4:1525,imperial()?12.7:5,'mm')
     +'<table class="fixed" id="eyeDerived"></table>'+'</div>';
-  h+='<div class="lab" style="margin-top:16px"><b style="color:var(--ink)">All C-values meet minimum</b></div>'+[['parabolic','Parabolic risers'],['constant','Constant risers']].map(([k,n])=>`<div class="lab">${n}</div><div class="seg">`
-      +[['sit','Sitting'],['both','Sitting and standing']].map(([m,t])=>`<button data-meet="${k}:${m}" class="${meetNow()===k+':'+m?'on':''}" aria-pressed="${meetNow()===k+':'+m}">${t}</button>`).join('')+'</div>').join('')
-    +'<p class="hint">Re-sizes the risers on every tier and side in ½" steps so each row meets its minimum C-value. Sitting and standing also covers standing on its own. Constant risers stop at the maximum riser.</p></section>';
+  {const vals=Array.from({length:P.tierCount},(_,ti)=>[...new Set(GEO.map(k=>P.zt[ti].z[k]).filter(z=>z&&z.on!==false).map(z=>Math.round(z.target*1e4)/1e4))]),same=new Set(vals.flat()).size===1;
+   h+=`<div class="cvlock"><div class="lab" style="margin-top:16px;color:var(--accent-deep)"><b>Absolute minimum C-value (do not change)</b></div><div class="seg"><button id="cvLock" aria-pressed="${!CVLOCK}" class="${CVLOCK?'on':''}">${CVLOCK?'🔒 Locked':'🔓 Unlocked'}</button></div>`
+     +(CVLOCK?'<table class="fixed">'+(same?`<tr><td>Every tier</td><td>${CV(vals[0][0])}</td></tr>`:vals.map((v,ti)=>`<tr><td>Tier ${ti+1}</td><td>${v.map(CV).join(' / ')}</td></tr>`).join(''))+'</table>'+`<p class="hint">${cvSet(P.sport).src}. Unlock to override, for every tier or tier by tier.</p>`
+       :cvEditor('cvAll',P.zt[0].z[GEO.find(k=>P.zt[0].z[k])],0).replace('Absolute minimum C-value override','Every tier')+Array.from({length:P.tierCount},(_,ti)=>`<div class="lab">Tier ${ti+1}</div>`+cvEditor(`zt.${ti}.${GEO.filter(k=>P.zt[ti].z[k]).join('')}`,P.zt[ti].z[GEO.find(k=>P.zt[ti].z[k])],ti).replace('Absolute minimum C-value override',`Tier ${ti+1} override`)).join(''))+'</div>';}
+  h+='<div class="lab" style="margin-top:16px"><b style="color:var(--ink)">All C-values meet minimum</b></div><div class="seg">'+[['parabolic','Parabolic risers'],['constant','Constant risers']].map(([k,n])=>`<button data-meet="${k}:sit" class="${meetNow()===k+':sit'?'on':''}" aria-pressed="${meetNow()===k+':sit'}">${n}</button>`).join('')+'</div>'
+    +'<p class="hint">Re-sizes the risers on every tier and side in ½" steps so each row meets its minimum C-value for seated spectators. Constant risers stop at the maximum riser.</p></section>';
   h+=step(5,'Aisles','Aisle spacing to code and the egress check.')+aisEditor()+'</section>';
-  h+=step(6,'Capacity','Target seats. Rows are sized to reach it.')+(()=>{const [lo,hi,typ,out]=capLim(P.sport),Sp=SPORTS[P.sport];return slider('capTarget',`Target seats (1,000 seats; ${Sp.org} ${fmt(lo)} to ${fmt(hi)})`,lo,hi,1000,'seats')
-    +`<p class="hint">Typical: ${typ}. Outliers: ${out}.</p><details class="capguide"><summary>Capacity guide, all sports</summary>`
-    +Object.entries(CAP_LIM).map(([k,[a,b,t,o]])=>`<p class="hint" style="margin:8px 0"><b style="color:var(--ink)">${SPORTS[k]?SPORTS[k].name+' ('+SPORTS[k].org+')':k}: ${fmt(a)} to ${fmt(b)}</b><br>Typical: ${t}.<br>Outliers: ${o}.</p>`).join('')+'</details>';})()+Array.from({length:P.tierCount},(_,i)=>slider(`rowMax.${i}`,`Maximum rows, Tier ${i+1}`,3,80,1,'rows')).join('')+'<p class="hint">Sizing stays within these limits, for reasons other than the C-value (structure, vomitories, egress, the site). If the target can\'t be reached within them, the shortfall is reported.</p>'
+  h+=step(6,'Capacity','Rows are sized to reach the target seats, within the row limits.')+Array.from({length:P.tierCount},(_,i)=>slider(`rowMax.${i}`,`Maximum rows, Tier ${i+1}`,3,80,1,'rows')).join('')+'<p class="hint">Sizing stays within these limits, for reasons other than the C-value (structure, vomitories, egress, the site). If the target can\'t be reached within them, the shortfall is reported.</p>'
     +(P.tierCount>1?`<div class="lab" style="margin-top:8px">Upper tiers when sizing</div><div class="seg"><button data-fitmove="0" class="${P.fitMove?'':'on'}" aria-pressed="${!P.fitMove}" title="Second riser over the top riser below, 10'-0&quot; (3.0 m) above it; row 1 shortfalls are reported">Default position</button><button data-fitmove="1" class="${P.fitMove?'on':''}" aria-pressed="${!!P.fitMove}" title="Move each upper tier back and up until its row 1 meets the minimum C-value">Move back and up for row 1</button></div>`:'')
     +'<button id="fit" class="primary" style="margin-top:10px;width:100%">Size rows to hit target</button></section>';
   const fixed=[...(P.sport==='nfl'||P.sport==='ncaafb'?[['Football field length',L(360*304.8)],['Football field width',L(160*304.8)]]:[]),
@@ -2247,6 +2252,7 @@ $('controls').addEventListener('click',e=>{
     if(+ti)for(const k of ks)P.zt[+ti].z[k].X=null;pinUpperTiers(P);toast('Stand values reset to the defaults.');}
   else if(b.id==='advReset'){const d=defaults();Object.assign(P,{maxRake:d.maxRake,vd:d.vd,loss:d.loss});toast('Advanced values reset to the defaults.');}
   else if(b.id==='eyeLock'){EYELOCK=!EYELOCK;renderControls();return;}
+  else if(b.id==='cvLock'){CVLOCK=!CVLOCK;renderControls();return;}
   else if(b.id==='eyeReset'){P.eye=eyeDefaults();toast('Eye sight values reset to the standard.');}
   else if(b.dataset.on){set(b.dataset.on+'.on',!get(b.dataset.on+'.on'));}
   else if(b.dataset.tc){const n=+b.dataset.tc;if(n===2&&P.tierCount!==2)GEO.forEach(k=>{const a=P.zt[0].z[k],c=P.zt[1].z[k];if(!a||!c)return;const N=a.rows+c.rows;a.rows=Math.ceil(N/2);c.rows=N-a.rows;});P.tierCount=n;}
@@ -2269,7 +2275,7 @@ $('controls').addEventListener('click',e=>{
     toast((ok?'Rows sized to hit the target'+sp:`Target is out of reach within the row limits (${P.rowMax.slice(0,P.tierCount).map((n,i)=>`Tier ${i+1} ${n}`).join(', ')} rows). Raise a limit or add a tier`)+sfx+(lines.length?`. Tiers moved so their front rows meet the absolute minimum C: ${lines.join('; ')}`:'. Tier relationships at their defaults')+(bt.length?`. ${bt.join(', ')} front rows can't reach the minimum over the guard and the tier below; set to the closest`:'')+'.');b.disabled=false;CUR=null;renderControls();update();},40);return;}   /* a few seconds for three tiers: the message first */
   else if(b.id==='reset'){const met=regionOf(P.sport)==='world';
     if(!confirm(met?'Reset every value to the metric defaults (Association Football, FIFA)?':'Reset every value to the imperial defaults (College Football, NCAA)?'))return;
-    P=defaultsPinned();EDIT={tier:0,g:0};EYELOCK=true;CUR=null;
+    P=defaultsPinned();EDIT={tier:0,g:0};EYELOCK=true;CVLOCK=true;CUR=null;
     if(met){applySport('fifa');P.zt.forEach(t=>GEO.forEach(k=>t.z[k].target=60));}clampCap(P);toast(met?'All values reset to the metric defaults.':'All values reset to the imperial defaults.');}
   else return;
   CUR=null;renderControls();update();
@@ -3899,7 +3905,7 @@ function renderOpts(){
 }
 $('opts').addEventListener('click',e=>{
   const d=e.target.closest('[data-del]');if(d){OPTS.splice(+d.dataset.del,1);CUR=null;persist();renderOpts();return;}
-  const o=e.target.closest('[data-o]');if(!o)return;const i=+o.dataset.o;P=fixP(Object.assign(defaults(),migrate(JSON.parse(JSON.stringify(OPTS[i].P)))));if(!OPTS[i].P.ais)P.ais=Object.assign(aisDefaults(regionOf(P.sport)),{mode:'loss'});EDIT={tier:0,g:0};renderControls();update();CUR=i;renderOpts();
+  const o=e.target.closest('[data-o]');if(!o)return;const i=+o.dataset.o;P=fixP(Object.assign(defaults(),migrate(JSON.parse(JSON.stringify(OPTS[i].P)))));if(!OPTS[i].P.ais)P.ais=aisDefaults(regionOf(P.sport));EDIT={tier:0,g:0};renderControls();update();CUR=i;renderOpts();
 });
 $('opts').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.dataset.o!=null)e.target.click();});
 $('saveOpt').onclick=()=>{
