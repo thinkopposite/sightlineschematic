@@ -1350,9 +1350,9 @@ function cornerSet(R,zi,i,dBk,gp){const ch=R[zi].ch,g=ch[i],pw=ch[i-1],nw=ch[i+1
   return {L:{i:i-1,from:1,e,miter:true,corner:true,ray:true},R:{i:i+1,from:0,e,miter:true,corner:true,ray:true},C:Object.assign({i,f:0.5,corner:true},fits?{cl:true}:{})};}
 // interior corner aisles (decisions 146, 148): Tier 1, and Tier 2 on a chamfered corner, one aisle on the corner's middle (two equal sections); Tier 2 on a round corner and Tier 3 two aisles (three
 // equal sections), equal along the corner between its outer aisles (or its ends, a round corner) at the reference depth
-function cornerMids(posOf,zi,i,ti,cs){const pA=posOf(zi,{i,f:0}),pB=posOf(zi,{i,f:1}),pC=(pA+pB)/2,span=pB-pA;if(Math.abs(span)<1e-9)return [{i,f:0.5,corner:true}];
+function cornerMids(posOf,zi,i,ti,cs,sq){const pA=posOf(zi,{i,f:0}),pB=posOf(zi,{i,f:1}),pC=(pA+pB)/2,span=pB-pA;if(Math.abs(span)<1e-9)return [{i,f:0.5,corner:true}];
   const lo=cs?posOf(zi,cs.L)-pC:-span/2,hi=cs?posOf(zi,cs.R)-pC:span/2,n=ti===0||(ti===1&&cs)?2:3,out=[];   /* Tier 2 chamfered corners: one aisle (decision 148) */
-  for(let k=1;k<n;k++){const t=lo+(hi-lo)*k/n,f=Math.max(0.02,Math.min(0.98,0.5+t/span));out.push(Object.assign({i,f:Math.round(f*1e6)/1e6,corner:true},n>2?{mid:k}:{}));}return out;}
+  for(let k=1;k<n;k++){const t=lo+(hi-lo)*k/n,f=Math.max(0.02,Math.min(0.98,0.5+t/span));out.push(Object.assign(sq&&Math.abs(t)>1e-6?{i,t:Math.round(t*1e6)/1e6,corner:true}:{i,f:Math.round(f*1e6)/1e6,corner:true},n>2?{mid:k}:{}));}return out;}   /* sq: a straight chamfer, aisles at a fixed offset from its middle, so square to the rows at every depth (decision 188) */
 // fill between fixed aisles and stand ends at offset d so no section exceeds cap (a stand end takes a half section)
 function fillAisles(ch,fixed,d,cap,dF,cw){const L=chainLen(ch,d),bd=[{s:0,end:true},...fixed.map(a=>({s:chainS(ch,a,d),a})).sort((x,y)=>x.s-y.s),{s:L,end:true}],out=fixed.map(a=>({s:chainS(ch,a,d),a}));
   for(let b=1;b<bd.length;b++){const A0=bd[b-1],B0=bd[b],S=B0.s-A0.s;if(S<=1e-9)continue;let ps=[];
@@ -1437,8 +1437,8 @@ function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti,Q){const OV=(Q&&Q.secN)
     const C0=c.s<Ea-1e-6?c.s+L:c.s,sg=RG.seg.find(q=>q.zi===c.zi&&q.i===c.a.i),cs=sg&&segDiag(sg.g)?cornerSet(R,c.zi,c.a.i,dBk,gp):null,bends=!cs&&ti>0&&sg&&segDiag(sg.g);let hl=bends?sg.l/2:0;
     // the corner: a chamfer takes an aisle along each outer edge of its wedge and a section line (or, on long rows, an aisle) on its centreline;
     // a round corner one aisle on its centreline
-    if(cs){const pc=posOf(c.zi,c.a),dl=posOf(c.zi,cs.L)-pc,dr=posOf(c.zi,cs.R)-pc;extra.push({s:C0+dl,zi:c.zi,a:cs.L},...cornerMids(posOf,c.zi,c.a.i,ti,cs).map(m=>({s:C0+posOf(c.zi,m)-pc,zi:c.zi,a:m})),{s:C0+dr,zi:c.zi,a:cs.R});hl=Math.max(-dl,dr);}
-    else{const pc=posOf(c.zi,c.a);cornerMids(posOf,c.zi,c.a.i,ti,null).forEach(m=>extra.push({s:C0+posOf(c.zi,m)-pc,zi:c.zi,a:m}));if(bends)extra.push({s:C0-hl,zi:c.zi,a:{i:c.a.i,f:0,miter:true,corner:true}},{s:C0+hl,zi:c.zi,a:{i:c.a.i,f:1,miter:true,corner:true}});}
+    if(cs){const pc=posOf(c.zi,c.a),dl=posOf(c.zi,cs.L)-pc,dr=posOf(c.zi,cs.R)-pc;extra.push({s:C0+dl,zi:c.zi,a:cs.L},...cornerMids(posOf,c.zi,c.a.i,ti,cs,true).map(m=>({s:C0+posOf(c.zi,m)-pc,zi:c.zi,a:m})),{s:C0+dr,zi:c.zi,a:cs.R});hl=Math.max(-dl,dr);}
+    else{const pc=posOf(c.zi,c.a);cornerMids(posOf,c.zi,c.a.i,ti,null,!!(sg&&segDiag(sg.g))).forEach(m=>extra.push({s:C0+posOf(c.zi,m)-pc,zi:c.zi,a:m}));if(bends)extra.push({s:C0-hl,zi:c.zi,a:{i:c.a.i,f:0,miter:true,corner:true}},{s:C0+hl,zi:c.zi,a:{i:c.a.i,f:1,miter:true,corner:true}});}
     // each side of the corner aisle(s): an aisle at the end of the straight run if the corner section is still too long
     [[S.rt,Ea,1,0,C0-hl],[N.lt,Eb,-1,wrap,C0+hl]].forEach(([list,E,dir,off,C])=>{const last=list[list.length-1]+off;if(seats(Math.abs(C-last),sw)<=A.smax)return;
       if(Math.abs(E-last)<1e-3){if(seats(Math.abs(C-E),sw)>A.smax)flags.push(1);return;}
@@ -1453,14 +1453,14 @@ function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti,Q){const OV=(Q&&Q.secN)
       if(seats(Math.abs(C-E),sw)>A.smax)flags.push(1);});});
   // corner sections set by hand (decision 151): the corner's own aisles move; sections not set share the rest of the corner equally
   const allS=()=>sides.flatMap(S=>S.rt.concat(S.lt)).concat(extra.map(x=>x.s)),ED=[],sOf=(x,v)=>Math.floor((x-wA-2*gp)/v+1e-9),mo=v=>((v%L)+L)%L;
-  {const grp={};extra.forEach(x=>{const a=x.a;if(a.corner&&!a.miter&&!a.ray&&!a.cl&&a.f>0&&a.f<1)(grp[x.zi+'.'+a.i]||(grp[x.zi+'.'+a.i]=[])).push(x);});
+  {const grp={};extra.forEach(x=>{const a=x.a;if(a.corner&&!a.miter&&!a.ray&&!a.cl&&(a.t!=null||a.f>0&&a.f<1))(grp[x.zi+'.'+a.i]||(grp[x.zi+'.'+a.i]=[])).push(x);});
    Object.entries(grp).forEach(([gk,ms])=>{ms.sort((p,q)=>p.s-q.s);const m0=ms[0].s,off=v=>{const o=mo(v-m0+L/2)-L/2;return o;},os=ms.map(x=>off(x.s)),lo0=os[0]-1e-4,hi0=os[os.length-1]+1e-4;
      let lo=null,hi=null;allS().forEach(v=>{const o=off(v);if(o<lo0&&(lo==null||o>lo))lo=o;if(o>hi0&&(hi==null||o<hi))hi=o;});if(lo==null||hi==null)return;
      const zi=ms[0].zi,i=ms[0].a.i,sw=R[zi].z.seatW/1000,n=ms.length+1,id=j=>ti+'.C.'+gk+'.'+j,set=Array.from({length:n},(_,j)=>OV[id(j)]);
      if(set.some(v=>v!=null)){const fixedW=set.reduce((a,v)=>a+(v!=null?v*sw+2*gp+wA:0),0),free=set.filter(v=>v==null).length,fw=free?Math.max(sw,(hi-lo-fixedW)/free):0;
        const wd=set.map(v=>v!=null?v*sw+2*gp+wA:fw),sc0=free?1:(hi-lo)/wd.reduce((a,b)=>a+b,0);let c=lo;
        const pA=posOf(zi,{i,f:0}),pB=posOf(zi,{i,f:1}),span=pB-pA,p0=posOf(zi,ms[0].a);
-       ms.forEach((x,k)=>{c+=wd[k]*(free?1:sc0);const f=Math.max(0.02,Math.min(0.98,(p0+c-pA)/span));x.a=Object.assign({},x.a,{f:Math.round(f*1e6)/1e6});x.s=m0+(posOf(zi,x.a)-p0);});}
+       ms.forEach((x,k)=>{c+=wd[k]*(free?1:sc0);const f=Math.max(0.02,Math.min(0.98,(p0+c-pA)/span));x.a=Object.assign({},x.a,x.a.t!=null?{t:Math.round((p0+c-pA-span/2)*1e6)/1e6}:{f:Math.round(f*1e6)/1e6});x.s=m0+(posOf(zi,x.a)-p0);});}
      const b=[lo,...ms.map(x=>off(x.s)),hi];for(let j=0;j<n;j++)ED.push({id:id(j),kind:'corner',b0:mo(m0+b[j]),b1:mo(m0+b[j+1]),n:sOf(b[j+1]-b[j],sw)});});}
   // end sections: from each stand's outer middle aisle to the next aisle toward the corner
   {const pos=allS().map(mo);sides.forEach(S=>{const k=R[S.zi].k,sw=S.sw,b=S.bounds;[['eL',b[0],-1],['eR',b[b.length-1],1]].forEach(([e,v,dir])=>{let best=null;
@@ -1480,7 +1480,7 @@ function ringProject(R,RG,dB,p){let best=null;const at=s=>{s=((s%RG.L)+RG.L)%RG.
 function aisleEdits(Q,ti,list,R,RG,dB,toA,A){const E=(Q.aisEd||{})[ti];const zoneAt=s=>{let zi=0;for(let i=0;i<RG.cs.length;i++)if(s>=RG.cs[i]-1e-9)zi=i;return zi;},refOf=x=>chainPtS(R[x.zi].ch,x.s-RG.cs[x.zi],dB);
   list.forEach(x=>{x.ref=refOf(x);});if(!E)return list;const wA=A.w/1000,gp=(A.gap||0)/1000,L=RG.L;
   (E.rm||[]).forEach(p=>{let bi=-1,bd=3;list.forEach((x,i)=>{if(x.a.ghost)return;const d=Math.hypot(x.ref[0]-p[0],x.ref[1]-p[1]);if(d<bd){bd=d;bi=i;}});if(bi<0)return;
-    const x=list[bi],a=x.a,tun=ti===0&&a.corner&&!a.miter&&!a.ray&&!a.cl&&a.f>0&&a.f<1;if(tun){x.a=Object.assign({},a,{cl:true,ghost:true});}else list.splice(bi,1);});
+    const x=list[bi],a=x.a,tun=ti===0&&a.corner&&!a.miter&&!a.ray&&!a.cl&&(a.t!=null||a.f>0&&a.f<1);if(tun){x.a=Object.assign({},a,{cl:true,ghost:true});}else list.splice(bi,1);});
   (E.add||[]).forEach(p=>{const pr=ringProject(R,RG,dB,p);if(pr.dist>40)return;let nb=null;list.forEach(x=>{if(x.a.ghost)return;let o=((x.s-pr.s)%L+L)%L;if(o>L/2)o-=L;if(!nb||Math.abs(o)<Math.abs(nb.o))nb={o,x};});
     let s0=pr.s;if(nb){const sw=R[zoneAt(pr.s)].z.seatW/1000,dd=Math.abs(nb.o),n=Math.max(1,Math.round((dd-wA-2*gp)/sw)),step=n*sw+wA+2*gp;s0=nb.x.s+(nb.o>0?-step:step);}
     s0=((s0%L)+L)%L;if(list.some(x=>{const o=Math.abs(((x.s-s0)%L+L)%L);return Math.min(o,L-o)<wA;}))return;const t=toA(s0);t.a=Object.assign({},t.a,{user:true});list.push(Object.assign({s:s0,ref:chainPtS(R[t.zi].ch,s0-RG.cs[t.zi],dB)},t));});
@@ -1507,7 +1507,7 @@ function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;co
     if(false&&!imperial()&&below&&R.every((z,zi)=>sameChain(below[zi].ch,z.ch))){   /* metric upper tiers now build their own corners (decision 146) */fixed=below.list.map(x=>({s:posOf(x.zi,x.a),zi:x.zi,a:Object.assign({},x.a)}));
       fixed.forEach(x=>{if(x.a.cl){const cs=cornerSet(R,x.zi,x.a.i,dBk,gp0);if(!cs||!cs.C.cl)delete x.a.cl;}});}   // a section line carried up stays one only where this tier's rows fit
     else RG.seg.forEach(q=>{if(segDiag(q.g)||q.g.t==='ARC'&&!q.g.side){const a={i:q.i,f:0.5,corner:true},cs=segDiag(q.g)?cornerSet(R,q.zi,q.i,dBk,gp0):null;
-      [...(cs?[cs.L]:[]),...cornerMids(posOf,q.zi,q.i,ti,cs),...(cs?[cs.R]:[])].forEach(b=>fixed.push({s:posOf(q.zi,b),zi:q.zi,a:b}));}});   // corner aisles by tier (decision 146)
+      [...(cs?[cs.L]:[]),...cornerMids(posOf,q.zi,q.i,ti,cs,segDiag(q.g)),...(cs?[cs.R]:[])].forEach(b=>fixed.push({s:posOf(q.zi,b),zi:q.zi,a:b}));}});   // corner aisles by tier (decision 146)
     let sect=null;if(imperial()){const b0=ti>0&&out[0].__ring,al=b0&&R.every((z,zi)=>sameChain(b0[zi].ch,z.ch))?b0.list.map(x=>posOf(x.zi,x.a)):[];sect=sectAisles(R,RG,runs,posOf,toA,A,al,ti>0&&out[0].__secN||{},ti,Q);if(sect){fixed=sect;Object.defineProperty(T,'__secN',{enumerable:false,value:sect.secN,configurable:true});}}
     fixed.sort((x,y)=>x.s-y.s);
     const added=[],place=(A0,B0)=>{const S=B0-A0;if(S<=Math.min(capAt(A0+1e-6),capAt(B0-1e-6))+1e-9)return;
@@ -1941,7 +1941,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.30.01';
+const VERSION='2026.10.30.02';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2982,7 +2982,7 @@ function vomCands(AL,ti=0){const T=AL&&AL[ti],out=[],pre=ti?ti+':':'';if(!T)retu
     for(let m=0;m<g.keys.length-1;m++)ids.push(+g.keys[m].split('_')[1]);if(all)ids.push(+g.keys[g.keys.length-1].split('_')[1]);
     ids.forEach((id,n)=>{if(id)out.push({key:pre+g.k+'.'+(n+1),id,label:`${sn} ${n+1}`,kind:'aisle',k:g.k,ti});});});
   // the corner centrelines: Tier 1 player tunnels; upper tiers 8 ft spectator voms
-  {const seen=new Set();Object.values(T).forEach(Lz=>Lz.ais.forEach(a=>{if(a.corner&&!a.miter&&!a.ray&&(!a.cl||a.ghost)&&a.f>0&&a.f<1&&!seen.has(a.id)){seen.add(a.id);const r=Lz.tr[0],d=r.x/1000,p=chainPtS(Lz.ch,chainS(Lz.ch,a,d),d),cn=cornerName(p);
+  {const seen=new Set();Object.values(T).forEach(Lz=>Lz.ais.forEach(a=>{if(a.corner&&!a.miter&&!a.ray&&(!a.cl||a.ghost)&&(a.t!=null||a.f>0&&a.f<1)&&!seen.has(a.id)){seen.add(a.id);const r=Lz.tr[0],d=r.x/1000,p=chainPtS(Lz.ch,chainS(Lz.ch,a,d),d),cn=cornerName(p);
     const m=a.mid&&ti>0?String(a.mid):'';out.push(ti===0?{key:'C.'+cn,id:a.id,label:'Corner '+cn,kind:'corner',ti}:{key:pre+'C.'+cn+m,id:a.id,label:cn+m,kind:'corner2',ti});}}));}   /* Tier 1: the corner tunnel; upper tiers: a spectator vom in each of the two corner aisles (decision 146) */
   return out;}
 function vomRowsOf(ti,nr){const t=VT(ti),mid=Math.floor((nr-1)/2);let c=t.c!=null?Math.round(t.c):mid;c=Math.max(1,Math.min(nr-4,c));return {c,mid,cmin:1,cmax:nr-4};}
