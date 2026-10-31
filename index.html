@@ -1113,7 +1113,7 @@ function meetAllC(mode,rt){
   P.step=12.7;                                                           // 1/2 in increments
   P.zt.forEach(t=>GEO.forEach(k=>Object.assign(t.z[k],{basis:mode,riser:rt})));
   P.eyeMode=mode==='stand'?'stand':'sit';tierLinks(P);CUR=null;renderControls();update();   // the tier relationships too (decision 132)
-  const short=Object.values(ZR).flat().filter(r=>(r.Cd!=null&&r.Cd<r.target-0.05)||(r.railC!=null&&status(r)!=='pass')),sides=[...new Set(short.map(r=>`Tier ${r.tier+1} ${zoneName(P,r.zone,true)}`))];
+  const short=Object.values(ZR).flat().filter(r=>(r.Cd!=null&&r.Cd<r.target-0.05)||(status(r)==='blocked')),sides=[...new Set(short.map(r=>`Tier ${r.tier+1} ${zoneName(P,r.zone,true)}`))];
   const rs=[];if(rt==='constant')for(let ti=0;ti<P.tierCount;ti++){const r=ZR[P.sec].find(x=>x.tier===ti&&x.riser!=null);if(r)rs.push(`Tier ${ti+1} ${L(r.riser)}`);}
   toast(short.length?`${rt==='constant'?`Constant risers stop at the ${L(P.maxRiser)} maximum: `:''}${sides.join(', ')} still below the ${BASIS[mode]} minimum.`
     :`Every row meets its ${BASIS[mode]} minimum C with ${rt} risers in ${L(P.step)} steps${rs.length?` (${zoneName(P,P.sec)}: ${rs.join(', ')})`:''}.`);
@@ -1171,7 +1171,7 @@ const RAKE_IBC=()=>regionOf(P.sport)!=='world';
 function rakeLim(r){if(!RAKE_IBC())return P.maxRake;const T=r.rT||r.T;const n=Math.max(1,Math.floor(T/(11*25.4)+1e-9));return Math.atan(8*25.4*n/T)*180/Math.PI;}
 const overRake=r=>r.rake!=null&&r.rake>rakeLim(r)+1e-6;
 const rakeRule=()=>RAKE_IBC()?'the IBC stepped-aisle limit (8" risers, 11" treads)':`${P.maxRake}° (Green Guide)`;
-function status(r){if(r.railC!=null){const c=frontC(r);return c>=r.target-0.05?'pass':c>=r.target*2/3?'reduced':'fail';}if(r.C==null)return'front';   /* row 1 against the absolute minimum C too (decision 132) */
+function status(r){if(r.railC!=null)return r.railC>=0?'front':'blocked';if(r.C==null)return'front';   /* row 1 of every tier: no spectators in front, so no C-value; only whether the guard rail blocks the view (decision 192) */
   if(r.C>=r.target-0.05)return'pass';if(r.C>=r.target*2/3)return'reduced';return'fail';}
 // ---------- plan geometry of each zone (screen coords, metres, Y down) ----------
 function rectGeo(P){const S=SPORTS[P.sport],a=P.L/2,b=P.W/2,R=S.shape==='rrect'?Math.min(S.R,a,b):0;
@@ -1264,35 +1264,39 @@ function lenAt(ch,d){return ch==='ring'?polyPerim(boundary(P))+2*Math.PI*d:chain
 // C-value compliance (decision 185): every seat below its tier's absolute minimum C-value, by tier, section and row, with the wheelchair
 // spaces whose line of sight falls short (A117.1 802.9). A scheme with any is reported as not meeting the specified C-values.
 let SHORT=null;
-function cShortfalls(){const out=[];if(!M||!M.AL)return {rows:out,seats:0,wc:0,wcList:[]};const S=P.secs||{},zr={};
+function cShortfalls(){const out=[],rails=[];if(!M||!M.AL)return {rows:out,seats:0,wc:0,wcList:[],rails,railSeats:0};const S=P.secs||{},zr={};
   const rowOf=(k,ti,j)=>{const key=k+':'+ti;if(!zr[key])zr[key]=(ZR[k]||[]).filter(r=>r.tier===ti);return zr[key][j];};
   M.AL.forEach((T,ti)=>{const zs=Object.values(T);if(!zs.length)return;const nr=Math.max(...zs.map(Lz=>Lz.tr.length)),map={};sectionList(ti).forEach(q=>map[q.key]=q.no);
     for(let j=0;j<nr;j++){if(zs.some(Lz=>Lz.tr[j]&&Lz.tr[j].cross))continue;ringSecs(ti,j).forEach(sc=>{if(!sc.n)return;const no=map[sc.l+'_'+sc.r]||null;if(no&&(S[no]||{}).off)return;
-      let w=null;sc.pieces.forEach(pc=>{const q=rowOf(pc.Lz.k,ti,j);if(!q)return;const st=status(q);if(st==='pass'||st==='front')return;const c=q.railC!=null?frontC(q):q.C;if(c==null)return;if(!w||c<w.c)w={c,q};});
-      if(w)out.push({ti,j,no,row:w.q.row,seats:sc.n,C:w.c,tg:w.q.target,zone:w.q.zone,pieces:sc.pieces,why:w.q.railC!=null?(ti?'Row 1: over the guard and the top row of the tier below':'Row 1: over the front guard'):'Over the row in front'});});}});
+      let w=null,bk=null;sc.pieces.forEach(pc=>{const q=rowOf(pc.Lz.k,ti,j);if(!q)return;const st=status(q);if(st==='blocked'){if(!bk||q.railC<bk.railC)bk=q;return;}if(st==='pass'||st==='front'||q.C==null)return;if(!w||q.C<w.c)w={c:q.C,q};});
+      if(w)out.push({ti,j,no,row:w.q.row,seats:sc.n,C:w.c,tg:w.q.target,zone:w.q.zone,pieces:sc.pieces,why:'Over the row in front'});
+      if(bk)rails.push({ti,j,no,row:bk.row,seats:sc.n,clr:bk.railC,zone:bk.zone,pieces:sc.pieces});});}});   /* front rows: no C-value; the guard rail in the sightline is listed apart (decision 192) */
   out.sort((a,b)=>a.ti-b.ti||(a.no||0)-(b.no||0)||a.row-b.row);
   const wcList=Object.values((M.ADA&&M.ADA.secs)||{}).filter(w=>(+w.wc||0)>0&&!w.sight);
-  return {rows:out,seats:out.reduce((a,b)=>a+b.seats,0),wc:wcList.reduce((a,w)=>a+(+w.wc||0),0),wcList};}
-function shortSvg(){const S=SHORT;if(!S||!S.rows.length||PLAN!=='bowl'||!M.AL)return '';const f=v=>v.toFixed(3);let d='';
-  S.rows.forEach(x=>x.pieces.forEach(pc=>{if(!(pc.b-pc.a>1e-3))return;const r=pc.Lz.tr[x.j];if(!r)return;const ch=pc.Lz.ch,d0=r.x/1000,d1=(r.x+r.T)/1000,Lm=chainLen(ch,pc.d)||1,k0=chainLen(ch,d0)/Lm,k1=chainLen(ch,d1)/Lm,N=Math.max(2,Math.ceil((pc.b-pc.a)/2)),A=[],B=[];
+  return {rows:out,seats:out.reduce((a,b)=>a+b.seats,0),wc:wcList.reduce((a,w)=>a+(+w.wc||0),0),wcList,rails,railSeats:rails.reduce((a,b)=>a+b.seats,0)};}
+function shortSvg(){const S=SHORT;if(!S||!(S.rows.length||S.rails.length)||PLAN!=='bowl'||!M.AL)return '';const f=v=>v.toFixed(3);let d='',dr='';
+  const band=(list,add)=>list.forEach(x=>x.pieces.forEach(pc=>{if(!(pc.b-pc.a>1e-3))return;const r=pc.Lz.tr[x.j];if(!r)return;const ch=pc.Lz.ch,d0=r.x/1000,d1=(r.x+r.T)/1000,Lm=chainLen(ch,pc.d)||1,k0=chainLen(ch,d0)/Lm,k1=chainLen(ch,d1)/Lm,N=Math.max(2,Math.ceil((pc.b-pc.a)/2)),A=[],B=[];
     for(let i=0;i<=N;i++){const sv=pc.a+(pc.b-pc.a)*i/N;A.push(chainPtS(ch,sv*k0,d0));B.push(chainPtS(ch,sv*k1,d1));}
-    d+='M'+A.concat(B.reverse()).map(p=>f(p[0])+' '+f(p[1])).join('L')+'Z';}));
-  return d?`<path d="${d}" fill="var(--sl-low)" fill-opacity=".55" stroke="none"><title>Seats below the minimum C-value</title></path>`:'';}
+    add('M'+A.concat(B.reverse()).map(p=>f(p[0])+' '+f(p[1])).join('L')+'Z');}));
+  band(S.rows,v=>d+=v);band(S.rails,v=>dr+=v);
+  return (d?`<path d="${d}" fill="var(--sl-low)" fill-opacity=".55" stroke="none"><title>Seats below the minimum C-value</title></path>`:'')+(dr?`<path d="${dr}" fill="#EF9F27" fill-opacity=".7" stroke="none"><title>Front row: the guard rail blocks the view (no C-value applies)</title></path>`:'');}
 function complyHTML(){const S=SHORT;if(!S)return '';const q=engQuant(),tot=q.reduce((a,t)=>({V:a.V+t.V,W:a.W+t.W}),{V:0,W:0}),bad=S.seats>0||S.wc>0,pct=M.cap?S.seats/M.cap*100:0;
   const rows=Array.from({length:P.tierCount},(_,ti)=>{const n=Math.max(0,...zoneKeys(P).map(k=>(ZR[k]||[]).filter(r=>r.tier===ti).length));return `Tier ${ti+1} ${n}`;}).join(', ');
   const tg=Array.from({length:P.tierCount},(_,ti)=>[...new Set(GEO.map(k=>P.zt[ti].z[k]).filter(z=>z&&z.on!==false).map(z=>CV(z.target)))].join(' / '));
   const tgt=new Set(tg).size===1?`${tg[0]}, every tier`:tg.map((v,i)=>`Tier ${i+1} ${v}`).join('; ');
   const ln=[['Specified minimum C-value',tgt],['Rows',rows],['Seats',`${fmt(M.cap)} of the ${fmt(P.capTarget)} target${M.cap>=P.capTarget?'':' (short by '+fmt(P.capTarget-M.cap)+')'}`],
     ['Seats below the minimum C-value',bad?`${fmt(S.seats)} (${pct.toFixed(1)}%)${S.wc?`, and ${S.wc} wheelchair spaces`:''}`:'none'],
+    ['Front rows (no C-value): view over the guard rail',S.railSeats?`${fmt(S.railSeats)} seats with the rail in the sightline`:'clear'],
     ['Risers',q.map(t=>`Tier ${t.ti+1} ${inchText(t.rMin)}–${inchText(t.rMax)}`).join('; ')+' (½" steps, row by row)'],
     ['Top tread above the field (preliminary bowl height)',L(M.height*1000,'m',1,true)],['Concrete, seating tiers (preliminary)',`${qVol(tot.V)}, ${qWt(tot.W)}`]];
-  return `<p class="verdict ${bad?'bad':'ok'}" style="margin:0"><b>${bad?'Does not meet the specified C-values.':'Meets the specified C-values.'}</b> ${bad?'The seats below the minimum are listed under C-value shortfalls and shown red on the bowl plan.':'Every seat and wheelchair space reaches its tier\'s absolute minimum C-value.'}</p>`
-    +'<table class="fixed">'+ln.map(([a,b])=>`<tr><td>${a}</td><td class="${a.startsWith('Seats below')&&bad?'fail':''}">${b}</td></tr>`).join('')+'</table>';}
-function shortHTML(){const S=SHORT;if(!S)return '';if(!S.rows.length&&!S.wcList.length)return '<tbody><tr><td>None. Every seat meets its tier\'s absolute minimum C-value.</td></tr></tbody>';
+  return `<p class="verdict ${bad?'bad':'ok'}" style="margin:0"><b>${bad?'Does not meet the specified C-values.':'Meets the specified C-values.'}</b> ${bad?'The seats below the minimum are listed under C-value shortfalls and shown red on the bowl plan.':'Every seat and wheelchair space reaches its tier\'s absolute minimum C-value.'}${S.railSeats?` Front rows have no C-value, but the guard rail blocks the view from ${fmt(S.railSeats)} of their seats (amber on the plan, listed under C-value shortfalls).`:''}</p>`
+    +'<table class="fixed">'+ln.map(([a,b])=>`<tr><td>${a}</td><td class="${(a.startsWith('Seats below')&&bad)||(a.startsWith('Front rows')&&S.railSeats)?'fail':''}">${b}</td></tr>`).join('')+'</table>';}
+function shortHTML(){const S=SHORT;if(!S)return '';if(!S.rows.length&&!S.wcList.length&&!S.rails.length)return '<tbody><tr><td>None. Every seat meets its tier\'s absolute minimum C-value.</td></tr></tbody>';
   return '<thead><tr><th>Tier</th><th>Section</th><th>Row</th><th>Seats</th><th>C-value</th><th>Minimum</th><th>Short by</th><th>Where</th></tr></thead><tbody>'
     +S.rows.map(x=>`<tr><td>${x.ti+1}</td><td>${x.no||'–'}</td><td>${x.row}</td><td>${fmt(x.seats)}</td><td class="fail">${CV(x.C)}</td><td>${CV(x.tg)}</td><td>${CV(x.tg-x.C)}</td><td>${zoneName(P,x.zone,true)}: ${x.why}</td></tr>`).join('')
+    +S.rails.map(x=>`<tr><td>${x.ti+1}</td><td>${x.no||'–'}</td><td>${x.row}</td><td>${fmt(x.seats)}</td><td colspan="3" class="fail">Rail ${CV(-x.clr)} above the sightline</td><td>${zoneName(P,x.zone,true)}: front row, no C-value; the guard rail blocks the view</td></tr>`).join('')
     +S.wcList.map(w=>`<tr><td>${w.ti+1}</td><td>${w.no}</td><td>${(w.rows||[]).join('–')}</td><td>${w.wc} wheelchair</td><td class="fail">–</td><td>–</td><td>–</td><td>Platform below the A117.1 802.9.2.2 height</td></tr>`).join('')
-    +`<tr class="tot"><td colspan="3">Total</td><td>${fmt(S.seats)}${S.wc?` + ${S.wc} wheelchair`:''}</td><td colspan="4"></td></tr></tbody>`;}
+    +`<tr class="tot"><td colspan="3">Total below the minimum C-value</td><td>${fmt(S.seats)}${S.wc?` + ${S.wc} wheelchair`:''}</td><td colspan="4">${S.railSeats?`Front rows with the rail in the sightline: ${fmt(S.railSeats)} seats (no C-value applies)`:''}</td></tr></tbody>`;}
 function engQuant(){const out=[];
   for(let ti=0;ti<P.tierCount;ti++){let V=0,A=0,rail=0,plan=0,rows=0,rMin=Infinity,rMax=0,rkMin=Infinity,rkMax=0,top=0;
     for(const k of Object.keys(CH[ti]||{})){const tr=ZR[k].filter(r=>r.tier===ti);if(!tr.length)continue;const ch=CH[ti][k];
@@ -1841,7 +1845,7 @@ function tierLinks(P){const R=REGION_DEF[regionOf(P.sport)],base=R.rise,stp=impe
   for(const k of GEO){const sg=sig(k);if(done[sg]){const src=done[sg];for(let ti=1;ti<P.tierCount;ti++){const z=P.zt[ti].z[k],zs=P.zt[ti].z[src];if(!z||!z.on)break;Object.assign(z,{X:null,dx:zs.dx,rise:zs.rise});const o=out.find(x=>x.k===src&&x.ti===ti);if(o)out.push({...o,k});}continue;}done[sg]=k;
     for(let ti=1;ti<P.tierCount;ti++){const z=P.zt[ti].z[k];if(!z||!z.on)break;Object.assign(z,{X:null,dx:0,rise:base});
     const row1=()=>applyEyes(solveZone(P,k)).find(r=>r.tier===ti&&r.up1),tg=z.target-0.05;
-    const okRail=()=>{const r=row1();return r&&r.railC>=tg;},okAll=()=>{const r=row1();return r&&frontC(r)>=tg;};
+    const okRail=()=>{const r=row1();return r&&r.railC>=0;},okAll=okRail;   /* row 1: the guard rail must not block the view; no C-value (decision 192) */
     if(okAll())continue;
     const dxMin=()=>{z.dx=0;if(okRail())return 0;let lo=0,hi=null;for(let d=0.5;d<=60;d+=0.5){z.dx=d;if(okRail()){hi=d;break;}lo=d;}if(hi==null)return null;
       for(let i=0;i<16;i++){const m=(lo+hi)/2;z.dx=m;if(okRail())hi=m;else lo=m;}z.dx=up(hi);return z.dx;};
@@ -1872,7 +1876,7 @@ function fitCapacity0(P){
   let lastN=null;const searchN=sh=>{let lo=nT*minR-1,hi=P.rowMax.slice(0,nT).reduce((a,b)=>a+b,0);if(lastN){const a=Math.max(lo,lastN-24),b=Math.min(hi,lastN+24);setRows(b,sh);if(cap()>=P.capTarget){hi=b;setRows(a,sh);if(cap()<P.capTarget)lo=a;}}
       setRows(hi,sh);if(cap()<P.capTarget)return hi;while(hi-lo>1){const m=(lo+hi)>>1;setRows(m,sh);if(cap()>=P.capTarget)hi=m;else lo=m;}setRows(hi,sh);lastN=hi;return hi;};
   const score=()=>{const ZR=solveAll(P),Mx=metrics(P,ZR,chains(P,ZR));let pass=0,all=0;
-    (Mx.AL||[]).forEach((T,ti)=>Object.values(T).forEach(Lz=>{const zr=(ZR[Lz.k]||[]).filter(r=>r.tier===ti);Lz.tr.forEach((r,j)=>{const n=rowSections(Lz,j).seats,q=zr[j];all+=n;if(q&&status(q)==='pass'&&!overRake(q))pass+=n;   /* a row steeper than the rake limit fails too (decision 142) */});}));
+    (Mx.AL||[]).forEach((T,ti)=>Object.values(T).forEach(Lz=>{const zr=(ZR[Lz.k]||[]).filter(r=>r.tier===ti);Lz.tr.forEach((r,j)=>{const q=zr[j];if(q&&q.railC!=null)return;const n=rowSections(Lz,j).seats;all+=n;   /* front rows: no C-value, left out (decision 192) */if(q&&status(q)==='pass'&&!overRake(q))pass+=n;   /* a row steeper than the rake limit fails too (decision 142) */});}));
     if(Mx.ADA&&Mx.ADA.secs)Object.values(Mx.ADA.secs).forEach(w=>{const n=+w.wc||0;all+=n;if(w.sight)pass+=n;});   // wheelchair spaces: their line of sight (A117.1 802.9) counts too
     return {pass,all,cap:Mx.cap};};
   const run=sh=>{searchN(sh);fitLinks(P);searchN(sh);const L=fitLinks(P),sc=score();return {sh,L,rows:P.zt.slice(0,nT).map(t=>t.z[GEO[0]].rows),...sc};};
@@ -1942,7 +1946,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.31.01';
+const VERSION='2026.10.31.02';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -3827,7 +3831,7 @@ function update(){
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);
   const pct=Math.min(100,M.cap/P.capTarget*100),ok=M.cap>=P.capTarget;
   $('cap').innerHTML=`<div><div class="big">${fmt(M.cap)}</div><div class="lbl">Estimated seats</div></div><div><div class="bar"><i class="${ok?'ok':''}" style="width:${pct}%"></i></div><div class="lbl" style="margin-top:5px">${ok?'Meets':'Short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</div></div><div class="cap-side">${M.tierSeats.map((s,i)=>`Tier ${i+1}: ${fmt(s)}`).join('<br>')}</div>`;
-  $('zones').innerHTML=zoneTable();SHORT=cShortfalls();$('comply').innerHTML=complyHTML();$('shortTable').innerHTML=shortHTML();$('shortSum').textContent=`C-value shortfalls: ${SHORT.seats||SHORT.wc?fmt(SHORT.seats)+' seats'+(SHORT.wc?' + '+SHORT.wc+' wheelchair':''):'none'}`;$('shortHint').textContent='Each row of a section below its tier\'s absolute minimum C-value. Row 1 of a tier is judged over the guard in front (and the top row of the tier below). Seated spectators; the C-value per tier is set under Sightline standard.';renderSecPanel();secEdRender();{const cp=$('codePanel');if(cp)cp.innerHTML=codeHTML();}
+  $('zones').innerHTML=zoneTable();SHORT=cShortfalls();$('comply').innerHTML=complyHTML();$('shortTable').innerHTML=shortHTML();$('shortSum').textContent=`C-value shortfalls: ${SHORT.seats||SHORT.wc?fmt(SHORT.seats)+' seats'+(SHORT.wc?' + '+SHORT.wc+' wheelchair':''):'none'}${SHORT.railSeats?`; guard rail in the front-row sightline: ${fmt(SHORT.railSeats)} seats`:''}`;$('shortHint').textContent='Each row of a section below its tier\'s absolute minimum C-value. Row 1 of every tier has no spectators in front, so no C-value applies; it is only checked for the guard rail blocking the view. Seated spectators; the C-value per tier is set under Sightline standard.';renderSecPanel();secEdRender();{const cp=$('codePanel');if(cp)cp.innerHTML=codeHTML();}
   const hmin=M.heads.length?Math.min(...M.heads.map(h=>h.h)):null;
   const st=[[ZR[P.sec].length,zoned(P)?`Rows, ${zoneName(P,P.sec,true)}`:'Rows',0],[M.worst?CV(M.worst.C):'n/a','Lowest C-value',M.below>0],[M.steep?M.steep.rake.toFixed(1)+'°':'n/a','Steepest rake',M.over>0],[L(M.vd*1000,'m',0,true),'Farthest viewing distance',M.vd>P.vd],[L(M.height*1000,'m',1,true),`Top row above ${surfLow()}`,0],[hmin==null?'n/a':L(hmin),'Least headroom under a tier',M.lowHead.length>0]];
   $('stats').innerHTML=st.map(([b,l,bad])=>`<div class="stat ${bad?'bad':''}"><b>${b}</b><span>${l}</span></div>`).join('');
@@ -3836,7 +3840,7 @@ function update(){
   const perZone=(pred,what)=>{const c=zoneKeys(P).map(k=>[k,ZR[k].filter(pred).length]).filter(x=>x[1]);if(!c.length)return;
     const same=c.length===zoneKeys(P).length&&c.every(x=>x[1]===c[0][1]),n=c[0][1];
     msg.push(same?`${n} row${n>1?'s':''} ${what}${zoned(P)?' on every side':''}`:c.map(([k,n])=>`${zoneName(P,k,true)} ${n}`).join(', ')+` row${c.length>1||c[0][1]>1?'s':''} ${what}`);};
-  perZone(r=>r.C!=null&&status(r)!=='pass','below their C-value target');perZone(r=>r.railC!=null&&r.railC>=0&&status(r)!=='pass','front rows below their C-value target over the guard'+(P.tierCount>1?' or the tier below':''));perZone(overRake,`steeper than ${rakeRule()}`);perZone(r=>r.riser!=null&&r.riser>P.maxRiser+0.01,`with risers over ${L(P.maxRiser)}`);
+  perZone(r=>r.C!=null&&status(r)!=='pass','below their C-value target');perZone(overRake,`steeper than ${rakeRule()}`);perZone(r=>r.riser!=null&&r.riser>P.maxRiser+0.01,`with risers over ${L(P.maxRiser)}`);
   if(M.vd>P.vd)msg.push(`back row beyond the ${L(P.vd*1000,'m',0,true)} viewing distance limit`);
   M.rails.forEach(r=>msg.push(`${zl(r)} front row can't see the point of focus over the ${L(P.railH)} guard`));
   M.lowHead.forEach(h=>msg.push(`${L(h.h)} headroom under ${zl(h)}`));
@@ -3870,7 +3874,7 @@ function update(){
   $('detTitle').textContent=`Sightline detail: Tier 1, ${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'}`;
   document.querySelectorAll('#detTabs [data-dm]').forEach(b=>{const on=b.dataset.dm===DETMODE;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});renderPlan();
   const Sp=SPORTS[P.sport];$('planTitle').textContent=`${Sp.org}: ${Sp.name}`;
-  $('planNote').innerHTML=`<span style="display:inline-block;width:18px;height:3px;background:${FOCAL};vertical-align:middle;margin-right:6px"></span>Point-of-focus boundary, dimensioned. Drawn from ${Sp.rule}. Field ${fieldDesc(P)}. Check against the current edition before issuing drawings.`+(SHORT&&SHORT.rows.length?` <br><span style="display:inline-block;width:14px;height:9px;background:var(--sl-low);opacity:.55;vertical-align:middle;margin-right:5px"></span>Seats below the minimum C-value (${fmt(SHORT.seats)})`:'')+(M.AL?` <br><span style="display:inline-block;width:14px;height:9px;background:#FFFFFF;border:1px solid var(--ink);vertical-align:middle;margin-right:5px"></span>Aisles`+(imperial()?` <span style="display:inline-block;width:14px;height:9px;background:#FF8A8A;vertical-align:middle;margin:0 5px 0 10px"></span>Row over the IBC maximum of ${ibcRow(P.zt[0].z.T).n} seats per row (${L(ibcRow(P.zt[0].z.T).C)} clear, ${L(AIS().chairD||14*25.4)} seat)`:''):'');
+  $('planNote').innerHTML=`<span style="display:inline-block;width:18px;height:3px;background:${FOCAL};vertical-align:middle;margin-right:6px"></span>Point-of-focus boundary, dimensioned. Drawn from ${Sp.rule}. Field ${fieldDesc(P)}. Check against the current edition before issuing drawings.`+(SHORT&&SHORT.rails.length?` <br><span style="display:inline-block;width:14px;height:9px;background:#EF9F27;opacity:.7;vertical-align:middle;margin-right:5px"></span>Front-row seats with the guard rail in the sightline (${fmt(SHORT.railSeats)})`:'')+(SHORT&&SHORT.rows.length?` <br><span style="display:inline-block;width:14px;height:9px;background:var(--sl-low);opacity:.55;vertical-align:middle;margin-right:5px"></span>Seats below the minimum C-value (${fmt(SHORT.seats)})`:'')+(M.AL?` <br><span style="display:inline-block;width:14px;height:9px;background:#FFFFFF;border:1px solid var(--ink);vertical-align:middle;margin-right:5px"></span>Aisles`+(imperial()?` <span style="display:inline-block;width:14px;height:9px;background:#FF8A8A;vertical-align:middle;margin:0 5px 0 10px"></span>Row over the IBC maximum of ${ibcRow(P.zt[0].z.T).n} seats per row (${L(ibcRow(P.zt[0].z.T).C)} clear, ${L(AIS().chairD||14*25.4)} seat)`:''):'');
   const tc=mm=>plain(mm),tu=imperial()||!unitSuffix().trim()?'':` (${unitSuffix().trim()})`;
   $('schedHead').textContent='Row schedule: '+zoneName(P,P.sec);
   $('table').innerHTML=`<thead><tr><th>Row</th><th>Riser from focus${tu}</th><th>Tread height${tu}</th><th>Riser${tu}</th><th>Rake</th><th>C-value${tu}</th></tr></thead><tbody>`+ZR[P.sec].map(r=>`<tr><td>Tier ${r.tier+1}, row ${r.row}</td><td>${tc(r.x)}</td><td>${tc(r.z)}</td><td class="${r.riser>P.maxRiser+0.01?'steep':''}">${r.riser==null?'':tc(r.riser)}</td><td class="${overRake(r)?'steep':''}">${r.rake==null?'':r.rake.toFixed(1)+'°'}</td><td class="${status(r)}">${r.C!=null?CV(r.C):r.railC!=null?'guard '+(r.railC>=0?'+':'')+CV(r.railC):'front row'}</td></tr>`).join('')+'</tbody>';
@@ -4177,7 +4181,7 @@ function junctionInfo(all,tu){const IN=25.4,E=P.eye,lo=all.filter(r=>r.tier===tu
       ['Wheelchair eye',`${wcTxt(E.wcH)} above the platform (average, A117.1 table basis); ${inchText(E.wcOff)} behind the platform face (Ref. 6, 9)`],['Front of wheelchair space','12" max from the riser (ICC A117.1 802.9.2.1; Ref. 8)'],
       [`Platform above row ${sd.row}`,`${inchText(H*IN)} (A117.1 Table 802.9.2.2 minimum ${inchText(Math.max(0,Hreq)*IN)}: ${H>=Hreq-0.01?'meets':'below'}; Ref. 7)`],
       [`C over the standing spectator, row ${sd.row}`,CV(C)],[`Rows ${lo.slice(Math.max(0,n-5),n-3).map(r=>r.row).join(', ')}`,'standing']]]);}
-  {const f=up[0],e1={x:f.sit.ex,z:f.sit.ez},e2={x:f.x+E.stOff,z:f.z+E.stH},rows=[['Guard rail',`${L(P.railH)} above row ${f.row}, on the riser face`],[`Row ${f.row} C, seated (over the guard and the top row below)`,CV(f.railC!=null?frontC(f):railClear(f,e1))],[`Over the rail, row ${f.row}, standing`,CV(railClear(f,e2))]];
+  {const f=up[0],e1={x:f.sit.ex,z:f.sit.ez},e2={x:f.x+E.stOff,z:f.z+E.stH},rows=[['Guard rail',`${L(P.railH)} above row ${f.row}, on the riser face`],[`Over the rail, row ${f.row}, seated (no C-value: front row)`,f.railC!=null?`${CV(f.railC)} ${f.railC>=0?'clear':'(the rail blocks the view)'}`:CV(railClear(f,e1))],[`Over the rail, row ${f.row}, standing`,CV(railClear(f,e2))]];
    if(up[1])rows.push([`C, row ${up[1].row} over row ${f.row}`,`sitting ${ci(rowC(up,1,'sit'))}, standing ${ci(rowC(up,1,'stand'))} (minimum ${ci(up[1].target)})`]);
    G.push([`Tier ${tu+1} row ${f.row} at the guard rail`,rows]);}
   return G;}
