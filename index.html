@@ -1941,7 +1941,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.29.26';
+const VERSION='2026.10.30.01';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2451,8 +2451,8 @@ function drawSection(rows,o={}){
   if(w){const i=rows.indexOf(w),p=rows[i-1],zl=p.ez+w.C;
     /* lowest-C marker removed: the value is in Results and the tables */}
   tiers.forEach(ti=>{if(!ti)return;const f=rows.find(r=>r.tier===ti),lb=rows.filter(r=>r.tier===ti-1).pop();if(!f||!lb)return;   // clear height under the leg wall
-    const zb=f.z-LEG2,x=f.x+slabT()+fs*.5,c=zb-lb.z;if(c<=0)return;
-    K.dim([x,lb.z],[x,zb],{lab:'Clearance',val:L(c),ref:'headroom',ctl:'RISE:'+ti,ea:[lb.x+lb.T,lb.z],eb:[f.x+slabT(),zb],fill:c<P.minHead?'var(--fail)':null,side:-1});});
+    const zb=f.z-LEG2,cx0=lb.x+lb.T,cx1=Math.max(cx0+4000,f.x),lw=cx0+fs*.3+TP(o,10,fs*.62)*.56*14,x=onMaj(Math.max(cx1,lw)+fs*1.6),c=zb-lb.z;if(c<=0)return;   // on the next major gridline past the concourse end, clear of its label (decision 187)
+    K.dim([x,lb.z],[x,zb],{lab:'Clearance',val:L(c),ref:'headroom',ctl:'RISE:'+ti,ea:[lb.x+lb.T,lb.z],eb:[f.x+slabT(),zb],fill:c<P.minHead-0.5?'var(--fail)':null,side:-1});});
   chainDims(rows,tiers,fs*.9,K);s+=K.out();
   s+=`<line x1="${X(0)}" y1="${+Y(0)+band}" x2="${X(0)}" y2="${+Y(0)-fs*1.6}" stroke="${FOCAL}" stroke-width="1.3" vector-effect="non-scaling-stroke"/>`;
   s+=`<circle cx="${X(0)}" cy="${Y(0)}" r="${dot*1.8}" fill="var(--ink)"/><text x="${X(0)}" y="${(+Y(0)+band+fs*1.05).toFixed(0)}" font-size="${TP(o,10,fs*.85)}" fill="var(--ink)" text-anchor="middle">Point of focus</text></svg>`;
