@@ -1941,7 +1941,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.30.02';
+const VERSION='2026.10.30.03';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -4215,7 +4215,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
    if(sr.length){const r=sr[0],xv=r.sit.ex-hr-4*IN;K.dim([xv,r.z],[xv,r.sit.ez],{lab:'Sitting eye',val:L(E.sitH),ref:'sit',ctl:'SIT',eb:[r.sit.ex,r.sit.ez]});}   /* 4 in left of the first row's head, as in F */
    /* C-values and the over-rail clearance are read in the sightline details and spectator views, not here (decision 173) */}
   // vertical, right: the rise between the tiers, the leg wall and the clear height under it, the guard on the upper front row
-  const cl=f.z-LEG2-lb.z,cxEnd=Math.max(lb.x+lb.T+fs*4,f.x),xc=cxEnd+25,xv=xc+3*304.8;   // clear height just past the concourse end, the rise between the tiers 3 ft beyond (decision 172)
+  const cl=f.z-LEG2-lb.z,cxEnd=Math.max(lb.x+lb.T+fs*4,f.x),xc=(up[2]||up[up.length-1]).x,xv=(up[3]||up[up.length-1]).x+(up[3]?0:3*304.8);   // clear height on the riser line of the upper tier's row 3, the rise on row 4's (decision 189)   // clear height just past the concourse end, the rise between the tiers 3 ft beyond (decision 172)
   K.dim([xv,lb.z],[xv,f.z],{lab:`Tier ${tu} top tread to Tier ${tu+1} bottom tread`,val:L(f.z-lb.z),ea:[lb.x+lb.T,lb.z],eb:[f.x+f.T,f.z],ctl:'RISE:'+tu,side:-1,fix:1});
   {const xl=f.x+f.T/2;K.dim([xl,f.z-LEG2],[xl,f.z],{lab:'Leg wall',val:L(LEG2),ref:'leg',ea:[f.x+slabT(),f.z-LEG2],eb:[f.x,f.z],fix:1})
     .dim([xl,f.z],[xl,f.z+P.railH],{lab:'Guard',val:L(P.railH),ea:[f.x,f.z],eb:[f.x+RAIL_SET,f.z+P.railH],fix:1});}   // leg wall and guard in one column over the first tread (decision 172)
@@ -4240,7 +4240,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   const dx=f.x-lb.x;   /* the riser offset between the tiers is no longer dimensioned here (decision 169) */
   if(Math.abs(dx)<=1)K.note(f.x+fs*.4,f.z-LEG2-fs*1.2,`First riser over the top riser below`,{size:TP(o,6,fs*.5),anchor:'start',fill:'var(--dim)',wt:450});
   else if(Math.abs(f.x+f.T-lb.x)<=1)K.note(f.x+f.T+fs*.3,f.z-fs*.9,`Second riser over the top riser below`,{size:TP(o,6,fs*.5),anchor:'start',fill:'var(--dim)',wt:450});
-  if(f.x>cx0+1)K.dim([cx0,lb.z+fs*1.2],[f.x,lb.z+fs*1.2],{lab:'Concourse',val:L(f.x-cx0),ea:[cx0,lb.z],eb:[f.x,lb.z]});
+  if(0&&f.x>cx0+1)K.dim([cx0,lb.z+fs*1.2],[f.x,lb.z+fs*1.2],{lab:'Concourse',val:L(f.x-cx0),ea:[cx0,lb.z],eb:[f.x,lb.z]});
   {const ups=up.slice(0,NU),GM=imperial()?304.8:1000,zc=Math.ceil((Math.max(...ups.map(r=>r.sit.ez+headTop),f.z+P.railH))/GM+1e-6)*GM+(imperial()?2:1)*GM,   /* two grid lines above the highest head (decision 179) */pts=[f.x,...ups.map(r=>r.x+r.T)];   // the Tier N+1 treads, one chain along the top of the drawing (decision 169)
    for(let i=1;i<pts.length;i++){const r=ups[i-1];K.dim([pts[i-1],zc],[pts[i],zc],{val:L(pts[i]-pts[i-1]),ea:[pts[i-1],i===1?f.z:ups[i-2].z],eb:[pts[i],r.z],fix:1,ctl:i===1?'T0:'+tu:null});}}
   // labels
