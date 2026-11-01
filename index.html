@@ -1054,6 +1054,8 @@ function tierDef(rows,link,o={}){return {link,corners:'auto',z:Object.fromEntrie
 // Sitting eye over the back riser; standing eye 8 in back from the front riser. Head = eye + 2 x 2 1/4 in.
 const HEAD=2*2.25*25.4,EYE_REV=5,eyeDefaults=()=>({sitH:44*25.4,stH:63.45*25.4,stHead:67.65*25.4,stSh:55.65*25.4,wcH:47.45*25.4,stOff:8*25.4,wcOff:30*25.4});   /* standing and wheelchair values: DOJ, United States v. Ellerbe Becket, Exhibit B (decision 193) */
 const EB_SHORT='DOJ Ellerbe Becket Exhibit B',EB_FULL='DOJ Ellerbe Becket Exhibit B: Exhibit B of the U.S. Department of Justice (DOJ) agreement/consent order in United States of America v. Ellerbe Becket, Inc.';   // the source of the standing and wheelchair defaults (decisions 193, 194)
+// standing spectator's shoulder (decision 205): a thin black top half circle, the head's diameter, its top at the Exhibit B shoulder height (55.65 in) below the standing eye
+const shoulderSvg=(X,Y,ex,ez,hr)=>{const E=P.eye,zs=ez-E.stH+(E.stSh??55.65*25.4)-hr,f=v=>(+v).toFixed(1);   /* the arc's top at the shoulder height */return `<path d="M${f(X(ex-hr))} ${f(Y(zs))}A${f(hr)} ${f(hr)} 0 0 1 ${f(X(ex+hr))} ${f(Y(zs))}" fill="none" stroke="#000000" stroke-width="0.8" vector-effect="non-scaling-stroke"><title>Standing shoulder ${L(E.stSh??55.65*25.4)}</title></path>`;};
 const stHeadOf=E=>E.stHead!=null?E.stHead:E.stH+HEAD;   // standing head height (Exhibit B: 67.65 in)   /* wheelchair eye 30 in behind the platform riser (decision 120) */
 /* metric eye standard: the imperial values rounded to 5 mm (44 in, 63.5 in, 47.45 in, 8 in, 36 in) */
 const eyeDefaultsMetric=()=>({sitH:1120,stH:1615,wcH:1205,stOff:200,wcOff:760}),eyeFor=r=>r==='world'?eyeDefaultsMetric():eyeDefaults(),SLAB={america:[4,5,6].map(n=>n*25.4),world:[100,125,150]},slabDef=r=>r==='world'?125:5*25.4;   /* platform: eye 48 in above it, 36 in behind the inside face of the guard rail */   /* wheelchair: eye 48 in high, 3'-0" behind the front of the space (Joseph's reference) */
@@ -1952,7 +1954,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.02';
+const VERSION='2026.11.01.03';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2540,7 +2542,7 @@ function drawDetail(all,o={}){
     s+=`<line x1="${X(e.x)}" y1="${Y(cy-hr)}" x2="${X(e.x)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.x)}" cy="${Y(cy)}" r="${hr}" fill="var(--panel)" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(e.x-3*IN)}" y1="${Y(e.z+2.25*IN)}" x2="${X(e.x+3*IN)}" y2="${Y(e.z+2.25*IN)}" stroke="#FF0000" stroke-width="0.8" vector-effect="non-scaling-stroke"/>`
-      +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(fs*.1)}" fill="var(${m==='stand'?'--eye-stand':'--eye-sit'})" stroke="var(--eye-sit)" stroke-width=".5" vector-effect="non-scaling-stroke"/>`;
+      +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(fs*.1)}" fill="var(${m==='stand'?'--eye-stand':'--eye-sit'})" stroke="var(--eye-sit)" stroke-width=".5" vector-effect="non-scaling-stroke"/>`+(m==='stand'?shoulderSvg(X,Y,e.x,e.z,hr):'');
     // C-value to the right of the head, 4 decimals; the lowest in blue
     if(labels&&C!=null)K.note(e.x+hr+1.5*IN,cy-fs*.2,CV(C),{size:TP(o,6,fs*.52),anchor:'start',fill:low?'var(--sl-low)':isMin?'#0000FF':'var(--ink)',wt:isMin?800:600,ref:isMin?'cval':null});
     K.reserve(e.x-hr,cy-hr,e.x+hr,cy+hr);});
@@ -2594,7 +2596,7 @@ function drawPlatform(o={}){
     s+=(p.k==='wc'?wheelchairFigure(e.x,zP,X,Y):`<line x1="${X(e.x)}" y1="${Y(cy-hr)}" x2="${X(e.x)}" y2="${Y(floor)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>`)
       +`<circle cx="${X(e.x)}" cy="${Y(cy)}" r="${hr}" fill="none" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(e.x-3.5*IN)}" y1="${Y(e.z+2.25*IN)}" x2="${X(e.x+3.5*IN)}" y2="${Y(e.z+2.25*IN)}" stroke="#FF0000" stroke-width="1" vector-effect="non-scaling-stroke"/>`
-      +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(IN*.9)}" fill="var(${p.k==='stand'?'--eye-stand':'--eye-sit'})" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`
+      +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(IN*.9)}" fill="var(${p.k==='stand'?'--eye-stand':'--eye-sit'})" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`+(p.k==='stand'?shoulderSvg(X,Y,e.x,e.z,hr):'')
       ;K.reserve(e.x-hr-IN,cy-hr-IN,e.x+hr+IN,cy+hr+IN);if(p.k!=='wc')K.avoid(e.x,cy-hr,e.x,floor);});
   rs.forEach(r=>K.note(r.x+r.T/2,r.z-t-fs*.8,`Row ${r.row}`,{size:T9(o,fs*.52)}));
   K.note((edge+top.x)/2,(zP+p2.z)/2-fs*.2,'Platform',{size:TP(o,6,fs*.52)});
@@ -3139,7 +3141,7 @@ function drawSpectator(mode,o={}){
     s+=`<line x1="${X(e.x)}" y1="${Y(cy-hr)}" x2="${X(e.x)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.x)}" cy="${Y(cy)}" r="${hr}" fill="none" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(e.x-3.5*IN)}" y1="${Y(e.z+2.25*IN)}" x2="${X(e.x+3.5*IN)}" y2="${Y(e.z+2.25*IN)}" stroke="#FF0000" stroke-width="1" vector-effect="non-scaling-stroke"/>`
-      +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(IN*.9)}" fill="var(${col})" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`;
+      +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(IN*.9)}" fill="var(${col})" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`+(col==='--eye-stand'?shoulderSvg(X,Y,e.x,e.z,hr):'');
     K.reserve(e.x-hr-IN,cy-hr-IN,e.x+hr+IN,cy+hr+IN).avoid(e.x,cy-hr,e.x,r.z);}));   /* head with 1 in clearance; the dashed body line */
   rs.forEach(r=>K.note(r.x+r.T/2,r.z-t-fs*.8,`Row ${r.row}`,{size:T9(o,fs*.52)}));
   if(T2)rs.forEach(r=>{if(r.riser!=null)K.note(r.x-fs*.2,r.z-r.riser/2-fs*.1,D4(r.riser),{size:TP(o,6,fs*.46),anchor:'end',fill:'var(--muted)',wt:400});});   // riser heights left of each riser (decision 175)
@@ -4224,7 +4226,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
       +`<line x1="${X(e.x)}" y1="${Y(cy-hr)}" x2="${X(e.x)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.x)}" cy="${Y(cy)}" r="${hr}" fill="var(--panel)" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(e.x-3.5*IN)}" y1="${Y(e.z+2.25*IN)}" x2="${X(e.x+3.5*IN)}" y2="${Y(e.z+2.25*IN)}" stroke="#FF0000" stroke-width="1" vector-effect="non-scaling-stroke"/>`
-      +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${(fs*.1).toFixed(1)}" fill="var(--eye-stand)" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`;
+      +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${(fs*.1).toFixed(1)}" fill="var(--eye-stand)" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`+shoulderSvg(X,Y,e.x,e.z,hr);
     K.note(r.x+r.T*.17,r.z+fs*.18,`${r.tier+1}-${r.row}`,{size:T9(o,fs*.42)});K.reserve(e.x-hr,cy-hr,e.x+hr,cy+hr);K.avoid(e.x,cy-hr,e.x,r.z);});
   sp.forEach(r=>{const e=r.sit,cy=e.ez+headTop-hr,grp=r.tier===tu-1?lo:up,C=rowC(grp,grp.indexOf(r),'sit'),bad=(C!=null&&C<r.target-0.05)||(r===f&&railClear(f,{x:e.ex,z:e.ez})<0);   // F style (decision 159)
     s+=`<line x1="${X(e.ex)}" y1="${Y(e.ez)}" x2="${X(X0)}" y2="${Y(e.ez*X0/e.ex)}" stroke="var(${bad?'--sl-low':'--sl-ok'})" stroke-width="0.7" vector-effect="non-scaling-stroke"/>`
