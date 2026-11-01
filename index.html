@@ -1954,7 +1954,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.03';
+const VERSION='2026.11.01.04';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -4176,6 +4176,46 @@ function plotSpectators(sh){const A=swArea(sh),u=A.u,k2=u/0.25,modes=SPECT_MODES
     const svg=swissSheet(sh,{title,big:['Enlarged','Spectators'],draws:[Object.assign({svg:swDraw(trueStrokes(fit.d[i],fit.u)).replace('<svg ','<svg data-dims="1" '),w,h,x:A.x0+(A.aw-w)/2,y:A.y0+(ah-h)/2},fit.org[i]?{ox:fit.org[i][0]*fit.k,oy:fit.org[i][1]*fit.k,sq:swSq(A.u,fit.sc)}:{})],extra,scale:swScale(sh,fit.sc.label,fit.k),
       tile3:[`${i+1} / ${modes.length}`,'VIEW',names[m].replace(/^\d+\.\s*/,'')]});
     return {svg,scale:fit.sc.label,sheet:sh,what:'spect',title};});}
+// Spectator dimensions sheet (decision 206): seated, standing and wheelchair spectators side by side, dimensioned, with the code
+// and Exhibit B references for each value on the right
+function drawAnthro(o={}){const IN=25.4,E=P.eye,hr=4.5*IN,headTop=4.45*IN,fs=o.fs||110;
+  const xS=0,xT=48*IN,edge=88*IN,xW=edge+E.wcOff,z0=0;   // seated, standing, wheelchair (eye 30 in behind the tier edge)
+  const X0=-30*IN,X1=xW+34*IN,Z0=-fs*3,Z1=stHeadOf(E)+fs*3.5,W=X1-X0,H=Z1-Z0;
+  const X=x=>(x-X0).toFixed(1),Y=z=>(Z1-z).toFixed(1),K=SecDim(X,Y,fs,[W,H],{noLab:1,center:1,grid:[0,0],avoid:1,vs:PT(8,null)});
+  let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Spectator dimensions">`+gridBg(X0,X1,Z0,Z1,X,Y,0,0,0);
+  const ink='stroke="var(--ink)" vector-effect="non-scaling-stroke"';
+  s+=`<line x1="${X(X0)}" y1="${Y(0)}" x2="${X(edge)}" y2="${Y(0)}" ${ink} stroke-width="2"/>`;   // tread
+  {const t=slabT();s+=`<polygon points="${[[edge,0],[X1,0],[X1,-t],[edge,-t]].map(q=>X(q[0])+','+Y(q[1])).join(' ')}" fill="${tierFill(0)}" ${ink} stroke-width="1"/>`
+     +`<rect x="${X(edge+RAIL_SET-25.4)}" y="${Y(P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"/>`;}   // platform edge and its guard
+  const head=(ex,ez,col,floor,sh)=>{const cy=ez+headTop-hr;return `<line x1="${X(ex)}" y1="${Y(cy-hr)}" x2="${X(ex)}" y2="${Y(floor)}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>`
+    +`<circle cx="${X(ex)}" cy="${Y(cy)}" r="${hr}" fill="none" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`
+    +`<line x1="${X(ex-3.5*IN)}" y1="${Y(ez+2.25*IN)}" x2="${X(ex+3.5*IN)}" y2="${Y(ez+2.25*IN)}" stroke="#FF0000" stroke-width="1" vector-effect="non-scaling-stroke"/>`
+    +`<circle cx="${X(ex)}" cy="${Y(ez)}" r="${(IN*.9).toFixed(1)}" fill="var(${col})" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`+(sh?shoulderSvg(X,Y,ex,ez,hr):'');};
+  s+=head(xS,E.sitH,'--eye-sit',0)+head(xT,E.stH,'--eye-stand',0,1)+wheelchairFigure(xW,0,X,Y)+`<circle cx="${X(xW)}" cy="${Y(E.wcH+headTop-hr)}" r="${hr}" fill="none" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/><circle cx="${X(xW)}" cy="${Y(E.wcH)}" r="${(IN*.9).toFixed(1)}" fill="var(--eye-sit)" vector-effect="non-scaling-stroke"/>`;
+  [[xS,E.sitH],[xT,E.stH],[xW,E.wcH]].forEach(([x,z])=>K.reserve(x-hr-IN,z-hr-IN,x+hr+IN,z+hr+IN));
+  // dimensions: seated eye and head; standing shoulder, eye and head; wheelchair eye, eye to the tier edge, guard
+  const v=(x,h,ref,ea,eb)=>K.dim([x,0],[x,h],{val:L(h),ref,ea,eb,fix:1,side:-1});
+  v(xS+10*IN,E.sitH,'sit',null,[xS,E.sitH]);v(xS+18*IN,E.sitH+HEAD,'head',null,[xS,E.sitH+HEAD]);
+  v(xT+10*IN,E.stSh??55.65*IN,'stand',null,[xT+hr,E.stSh??55.65*IN]);v(xT+16*IN,E.stH,'stand',null,[xT,E.stH]);v(xT+22*IN,stHeadOf(E),'head',null,[xT,stHeadOf(E)]);
+  v(xW+22*IN,E.wcH,'wceye',[edge,0],[xW,E.wcH]);
+  K.dim([edge-6*IN,0],[edge-6*IN,P.railH],{val:L(P.railH),ref:'guard',eb:[edge,P.railH],fix:1});
+  K.dim([edge,E.wcH+hr+6*IN],[xW,E.wcH+hr+6*IN],{val:L(E.wcOff),ref:'wcoff',ea:[edge,P.railH],eb:[xW,E.wcH],fix:1});
+  [['Seated',xS],['Standing',xT],['Wheelchair',xW]].forEach(([t,x])=>K.note(x,-fs*1.8,t,{size:PT(8,fs*.6),wt:700}));
+  return s+K.out()+'</svg>';}
+function plotAnthro(sh){const A=swArea(sh),u=A.u,k2=u/0.25,lw=A.aw*0.56;let fit=null;
+  for(const sc of DETAIL_SCALES()){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;PTU=25.4*sc.ratio/72;let svg;try{svg=drawAnthro({fs:sh.txt*1.7*25.4*sc.ratio});}finally{PTU=0;}const o=SWORIG;SWG=0;SWORIG=null;
+    const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number);if(v[0]*k<=lw&&v[1]*k<=A.ah){fit={sc,k,svg,o,w:v[0]*k,h:v[1]*k,u:25.4*sc.ratio};break;}}
+  if(!fit)return null;
+  const keys=['sit','stand','head','wceye','wcoff','wcplat','wcfront','guard'],R=refList().filter(r=>keys.includes(r.key));
+  const x0=A.x0+A.aw*0.6,cw=A.aw*0.4,wrap=(t,pt)=>{const n=Math.max(20,Math.floor(cw*72/(pt*0.5*k2)/1));const out=[];let l='';String(t).split(' ').forEach(w=>{if((l+' '+w).trim().length>n){out.push(l.trim());l=w;}else l+=' '+w;});if(l.trim())out.push(l.trim());return out;};
+  let y=A.y0+u,extra=swT(x0,swBase(y,u,8,k2),'CODE REFERENCES',{pt:8,b:1,k:k2});y+=u;extra+=swRect(x0,y-.1*u,cw,.6*k2/72,SW.ink);y+=.5*u;
+  R.forEach(r=>{if(y>A.y0+A.ah-2*u)return;extra+=swT(x0,swBase(y,u,8,k2),`${r.no}. ${r.item}`,{pt:8,b:1,k:k2});y+=u;
+    extra+=swT(x0,swBase(y,u,8,k2),r.val,{pt:8,k:k2,fill:SW.red});y+=u;
+    wrap(r.cite,7).forEach(l=>{if(y>A.y0+A.ah-u)return;extra+=swT(x0,swBase(y,u,7,k2),l,{pt:7,k:k2,fill:SW.grey});y+=u*0.8;});y+=u*0.4;});
+  const d=Object.assign({svg:swDraw(trueStrokes(fit.svg,fit.u)).replace('<svg ','<svg data-dims="1" '),w:fit.w,h:fit.h,x:A.x0,y:A.y0+(A.ah-fit.h)/2},fit.o?{ox:fit.o[0]*fit.k,oy:fit.o[1]*fit.k,sq:swSq(A.u,fit.sc)}:{});
+  const title='Spectator dimensions: seated, standing and wheelchair';
+  const svg=swissSheet(sh,{title,big:['Spectator','Dimensions'],draws:[d],extra,scale:swScale(sh,fit.sc.label,fit.k),tile3:[`${L(P.eye.wcH)}`,'WHEELCHAIR EYE',EB_SHORT]});
+  return {svg,scale:fit.sc.label,sheet:sh,what:'anthro',title};}
 // Bowl section (both tiers, the side picked above the section) on one landscape sheet, largest standard scale that fits.
 // Tier junction (decision 136): the top of a tier and the bottom of the tier above, cut through the wheelchair platform at the top of the
 // lower tier. Both profiles, the platform with its guard and wheelchair spectator, seated spectators and their sightlines, the upper tier's
@@ -4414,13 +4454,13 @@ async function exportPdfSet(kind){
     const overall=SZ.flatMap(z=>cutsOf(z).map(c=>plotSection(big,z,secSc,c))),tiers=SZ.flatMap(z=>cutsOf(z).flatMap(c=>Array.from({length:P.tierCount},(_,i)=>plotTier(big,i,tierSc,z,c))));
     const jn=P.tierCount>1?(()=>{const fns=SZ.flatMap(z=>Array.from({length:P.tierCount-1},(_,i)=>sc=>plotJunction(big,z,i+1,sc))),js0=PLOT_SCALES().find(q=>imperial()?Math.abs(q.ratio-(/arch/i.test(big.name)?24:48))<1e-6:q.ratio===(/arch/i.test(big.name)?25:50)),js=js0?Object.assign({},js0,{win:1}):catScale(fns);   /* tier junctions: 1/4" = 1'-0" (1/2" on ARCH E, the same view), centred on the junction (decision 200) */
       return SZ.flatMap(z=>Array.from({length:P.tierCount-1},(_,i)=>plotJunction(big,z,i+1,js))).filter(Boolean);})():[];
-    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[...overall,...tiers,...jn,...(()=>{const ps=catScale([sc=>plotOne(big,'plan',0,false,'h',sc),sc=>plotOne(big,'plan',0,false,'v',sc)]);   /* the largest permitted scale that fits (decision 117) */   /* bowl plans: one scale (decision 110) */   /* bowl plans: 1/64" = 1'-0" on 11 x 17 (decision 104), 1" = 25' on ARCH E (decision 102) */
+    const ss=SHOWSEATS;SHOWSEATS=false;const draws=[...overall,...tiers,...jn,plotAnthro(small),...plotSpectators(small),...(()=>{const ps=catScale(   /* spectator dimensions and the enlarged spectators before the bowl plans (decision 206) */[sc=>plotOne(big,'plan',0,false,'h',sc),sc=>plotOne(big,'plan',0,false,'v',sc)]);   /* the largest permitted scale that fits (decision 117) */   /* bowl plans: one scale (decision 110) */   /* bowl plans: 1/64" = 1'-0" on 11 x 17 (decision 104), 1" = 25' on ARCH E (decision 102) */
       return [plotOne(big,'plan',0,false,'h',ps),plotOne(big,'plan',0,false,'v',ps)];})(),   /* largest standard scale inside the Swiss frame (1" = 50' no longer fits 11 x 17 above the 1-1/2 in band) */...(M.AL&&zoned(P)?(()=>{const e=ENL,ce=CENL,set=[()=>{ENL={tier:0,side:westKey()};}];   /* the typical section, then every other unique section on its own, square to the sheet (decision 109) */
       {const shown=new Set(),add=nos=>nos.forEach(n=>shown.add(n));   /* every unique section in the set once (decision 108): the typical and corner sheets count for theirs */
         {const E=enlargedData(0,westKey());if(E){const q=sectionList(0).find(x=>x.key===E.L0.a.id+'_'+E.R0.a.id);if(q)shown.add(q.no);}}
         uniqueSections().forEach(u=>{if(u.nos.some(n=>shown.has(n)))return;set.push(()=>{ENL={tier:u.ti,side:null,one:u};});});}
       const sc=catScale(set.map(f=>s2=>{f();return plotEnlarged(big,s2,true);}));   /* enlarged plans: one scale (decision 110) */   /* 11 x 17 / A3: 1" = 16'-0" (1:200), every plan whole (decision 103) */   /* ARCH E / A0: 1" = 5'-0" (1:50), every plan on one sheet (decision 101) */   /* every enlarged plan at 1" = 10'-0" (1:100); a plan too big for one sheet runs on to the next (decision 98) */
-      const out=set.flatMap(f=>{f();const r=plotEnlarged(big,sc);return Array.isArray(r)?r:[r];});ENL=e;CENL=ce;return out.filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE'),...plotSpectators(small)];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
+      const out=set.flatMap(f=>{f();const r=plotEnlarged(big,sc);return Array.isArray(r)?r:[r];});ENL=e;CENL=ce;return out.filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE')];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
     if(draws.some(p=>!p))throw new Error('A drawing does not fit its sheet at any standard scale.');
     const port={pw:small.h,ph:small.w,m:0.5};                                             // 11 x 17 (A3) portrait pages
     const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'p',unit:'in',format:[port.pw,port.ph]});   /* page 1: the cover */
