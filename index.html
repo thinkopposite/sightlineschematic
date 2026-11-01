@@ -370,7 +370,6 @@ main details.g24{padding:0!important;border:0!important}
 @media (max-width:1399px){#junction table.jinfo td:last-child{white-space:normal}}   /* narrower windows: long values wrap rather than overflow the frame */
 #junction table.jinfo tr.jh td{text-align:left;padding-left:0;font-weight:700;box-shadow:inset 0 -1px 0 var(--sw-ink,#111)}
 #junction .capt{line-height:24px;margin:0!important;padding:0 12px}
-#section.panel{background:transparent}   /* the overall bowl section over the page grid (decision 208) */
 </style>
 </head>
 <body>
@@ -1955,7 +1954,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.07';
+const VERSION='2026.11.01.08';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2452,7 +2451,7 @@ function drawSection(rows,o={}){
   s+=`<text x="${+X(0)/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(1)}" fill="#fff" text-anchor="middle" font-weight="600">${surf()}</text>`;
   if(fx>fs*3.2)s+=`<text x="${+X(0)+fx/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(1)}" fill="#fff" text-anchor="middle" font-weight="600">Buffer zone ${L(fx)}</text>`;
   const tiers=[...new Set(rows.map(r=>r.tier))];
-  tiers.forEach(ti=>{const tr=rows.filter(r=>r.tier===ti);K.avoidPoly(profileOf(tr,ti));s+=benchSvg(tr,X,Y)+`<polygon points="${profileOf(tr,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;});
+  tiers.forEach(ti=>{const tr=rows.filter(r=>r.tier===ti);K.avoidPoly(profileOf(tr,ti));s+=benchSvg(tr,X,Y)+`<polygon points="${profileOf(tr,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" fill-opacity=".45" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;});
   const EX={},SK=new Set();let EXtop='';tiers.forEach(ti=>{const e=secExtras(rows,ti,X,Y,o,0);EX[ti]=e;s+=e.s;EXtop+=e.top;e.skip.forEach(r=>SK.add(r));});if(o.cut)s+=secGoal(o.zone,X,Y,fs);
   tiers.forEach(ti=>{if(!ti)return;const tr=rows.filter(r=>r.tier===ti),f=tr[0],lo=rows.filter(r=>r.tier===ti-1),lb=lo[lo.length-1],cz=lb.z;
     const cx0=lb.x+lb.T,cx1=Math.max(cx0+4000,f.x);                                   // concourse floor behind the tier below
@@ -2530,7 +2529,7 @@ function drawDetail(all,o={}){
     +`<text x="${f1(+X(0)/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(TP(o,8,fs*.65))}" fill="#fff" font-weight="600" text-anchor="middle">${surf()}</text>`
     +`<text x="${f1(+X(0)+bufX/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(TP(o,8,fs*.65))}" fill="#fff" font-weight="600" text-anchor="middle">Buffer zone</text>`
     +`<line x1="${X(0)}" y1="${f1(+Y(0)+band)}" x2="${X(0)}" y2="${f1(+Y(0)-fs*1.6)}" stroke="${FOCAL}" stroke-width="1.2" vector-effect="non-scaling-stroke"/><circle cx="${X(0)}" cy="${Y(0)}" r="${f1(fs*.22)}" fill="var(--ink)"/>`;}
-  K.avoidPoly(profileOf(rs,ti));s+=`<polygon points="${profileOf(rs,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`+benchSvg(rs,X,Y);
+  K.avoidPoly(profileOf(rs,ti));s+=`<polygon points="${profileOf(rs,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" fill-opacity=".45" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`+benchSvg(rs,X,Y);
   s+=`<rect x="${X(r0.x+RAIL_SET-25.4)}" y="${Y(r0.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"/>`;   // 26 in guard rail, 2 in thick, centreline 3 in behind the riser
   const EXd=secExtras(all,ti,X,Y,o,NF?X0:0),SKd=EXd.skip;s+=EXd.s+EXd.top;if(o.cut&&!NF)s+=secGoal(o.zone,X,Y,fs);
   // sightlines to the point of focus
@@ -4158,7 +4157,7 @@ function plotTier(sh,ti,fixScale,zone,cut){zone=zone||'T';/* fixScale: use this 
     if((w<=A.aw&&h<=A.ah)||fixScale){fit={sc,k,w,h,svg,u:25.4*sc.ratio,o,fits:w<=A.aw&&h<=A.ah};break;}}
   if(!fit)return null;
   const title=`Tier ${ti+1} sightline section ${cut==='vom'?'2':'1'}, ${zoneName(P,zone)}, ${cut==='vom'?'through the centre of '+((secVom(zone,ti)||{}).label||'the vomitory'):'through the seating, '+(DETMODE==='stand'?'standing':'sitting')}`,cs=rows.filter(r=>r.C!=null),lo=cs.reduce((a,r)=>!a||r.C<a.C?r:a,null);
-  const d={svg:pdfClear(swDraw(trueStrokes(fit.svg,fit.u))).replace('<svg ','<svg data-dims="1" '),w:fit.w,h:fit.h};if(fit.o)Object.assign(d,{ox:fit.o[0]*fit.k,oy:fit.o[1]*fit.k,sq:swSq(A.u,fit.sc)});
+  const d={svg:swDraw(trueStrokes(fit.svg,fit.u)).replace('<svg ','<svg data-dims="1" '),w:fit.w,h:fit.h};if(fit.o)Object.assign(d,{ox:fit.o[0]*fit.k,oy:fit.o[1]*fit.k,sq:swSq(A.u,fit.sc)});
   const svg=swissSheet(sh,{title,big:[`Tier ${ti+1}`,'Sightlines'],draws:[d],scale:swScale(sh,fit.sc.label,fit.k),tile3:lo?[CV(lo.C),'LOWEST C-VALUE',`Row ${lo.row}, ${DETMODE==='stand'?'standing':'sitting'}.`]:null});
   return {svg,scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'tier',title,fits:fit.fits};}
 function scaleBar(sh,fit){const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=sh.txt*3.2,per=(imperial()?304.8:1000)*fit.k,divs=[1,2,5,10,20,25,50,100,200,500];let u=divs[0];for(const q of divs)if(q*5*per<=sh.w*.22)u=q;
@@ -4333,7 +4332,7 @@ function plotSection(sh,zone,force,cut){const Z=ZR[zone||P.sec],A=swArea(sh);let
     if((w<=A.aw&&h<=A.ah)||force){fit={sc,k,w,h,svg,u:25.4*sc.ratio,o,fits:w<=A.aw&&h<=A.ah};break;}}
   if(!fit)return null;
   const title=`Bowl section ${cut==='vom'?'2':'1'}, overall, ${zoneName(P,zone||P.sec)}, ${cut==='vom'?'through the centre of '+((secVom(zone||P.sec,0)||{}).label||'the vomitory'):'through the seating, '+(P.eyeMode==='stand'?'standing':'sitting')}`;
-  const d={svg:pdfClear(swDraw(trueStrokes(fit.svg,fit.u))).replace('<svg ','<svg data-dims="1" '),w:fit.w,h:fit.h};if(fit.o)Object.assign(d,{ox:fit.o[0]*fit.k,oy:fit.o[1]*fit.k,sq:swSq(A.u,fit.sc)});
+  const d={svg:swDraw(trueStrokes(fit.svg,fit.u)).replace('<svg ','<svg data-dims="1" '),w:fit.w,h:fit.h};if(fit.o)Object.assign(d,{ox:fit.o[0]*fit.k,oy:fit.o[1]*fit.k,sq:swSq(A.u,fit.sc)});
   const svg=swissSheet(sh,{title,big:['Bowl','Section'],draws:[d],scale:swScale(sh,fit.sc.label,fit.k),tile3:M.steep?[`${M.steep.rake.toFixed(1)}°`,'STEEPEST RAKE',`Top row ${L(M.height*1000)} above the field.`]:null});
   return {svg,scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'section',title,fits:fit.fits};}
 // Seat count, one 11 x 17 portrait page per tier; the grand totals go on the last tier's page.
