@@ -1874,7 +1874,9 @@ function tierLinks(P){const R=REGION_DEF[regionOf(P.sport)],base=R.rise,stp=impe
 // below, its bottom tread 10'-0" (3.0 m) above that tier's top tread; row 1 shortfalls are reported, not designed out
 function tierDefault(P){const base=REGION_DEF[regionOf(P.sport)].rise;for(let ti=1;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)Object.assign(z,{X:null,dx:0,rise:base});});return [];}
 const fitLinks=P=>P.fitMove?tierLinks(P):tierDefault(P);
-function fitCapacity(P){const em=P.eyeMode;P.eyeMode='sit';try{return fitCapacity0(P);}finally{P.eyeMode=em;}}   // judged for seated spectators and wheelchair positions only (decision 134)
+function fitCapacity(P){const em=P.eyeMode;P.eyeMode='sit';const S=P.secs||(P.secs={});if(zoned(P)){Object.keys(S).forEach(k=>{if(S[k].wc){delete S[k].wc;if(!Object.keys(S[k]).length)delete S[k];}});P.wcMode='default';}   /* platforms in the default sections while sizing (decision 216) */
+  try{return fitCapacity0(P);}finally{P.eyeMode=em;if(P.wcMode==='default'){const ZR=solveAll(P),Mx=metrics(P,ZR,chains(P,ZR));FITWC=[];FITADA=Mx.ADA;(Mx.AL||[]).forEach((T,ti)=>wcDefaultSet(ti,Mx.AL).forEach(no=>{if(S[no]&&S[no].off)return;(S[no]=S[no]||{}).wc=true;FITWC.push(no);}));delete P.wcMode;}}}
+let FITWC=[],FITADA=null;   // judged for seated spectators and wheelchair positions only (decision 134)
 function fitCapacity0(P){
   const nT=P.tierCount,cap=()=>{const ZR=solveAll(P);return metrics(P,ZR,chains(P,ZR)).cap;};FITSPLIT=null;
   if(nT===1){const base=GEO.map(k=>[P.zt[0].z[k],P.zt[0].z[k].rows]),apply=f=>base.forEach(([z,b])=>z.rows=Math.max(3,Math.min(P.rowMax[0],Math.round(b*f))));
@@ -1956,7 +1958,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.13';
+const VERSION='2026.11.01.14';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2286,7 +2288,7 @@ $('controls').addEventListener('click',e=>{
     const bt=[...new Set(bad.map(x=>x.ti))].map(ti=>`Tier ${ti+1}`);
     const sp=FITSPLIT?`: ${FITSPLIT.rows.map((n,i)=>`Tier ${i+1} ${n} rows`).join(', ')}; ${FITSPLIT.pass>=FITSPLIT.all?'every seat meets':`${(100*FITSPLIT.pass/FITSPLIT.all).toFixed(1)}% of seats meet`} the absolute minimum C (seated, wheelchair positions included) within ${rakeRule()}`:'';
     const sf=cShortfalls(),sfx=sf.seats||sf.wc?`. Does not meet the specified C-values: ${fmt(sf.seats)} seats${sf.wc?` and ${sf.wc} wheelchair spaces`:''} below the minimum (see C-value shortfalls)`:'. Every seat meets the specified C-values';
-    toast((ok?'Rows sized to hit the target'+sp:`Target is out of reach within the row limits (${P.rowMax.slice(0,P.tierCount).map((n,i)=>`Tier ${i+1} ${n}`).join(', ')} rows). Raise a limit or add a tier`)+sfx+(lines.length?`. Tiers moved so their front rows meet the absolute minimum C: ${lines.join('; ')}`:'. Tier relationships at their defaults')+(bt.length?`. ${bt.join(', ')} front rows can't reach the minimum over the guard and the tier below; set to the closest`:'')+'.');b.disabled=false;CUR=null;renderControls();update();},40);return;}   /* a few seconds for three tiers: the message first */
+    toast((ok?'Rows sized to hit the target'+sp:`Target is out of reach within the row limits (${P.rowMax.slice(0,P.tierCount).map((n,i)=>`Tier ${i+1} ${n}`).join(', ')} rows). Raise a limit or add a tier`)+sfx+(lines.length?`. Tiers moved so their front rows meet the absolute minimum C: ${lines.join('; ')}`:'. Tier relationships at their defaults')+(bt.length?`. ${bt.join(', ')} front rows can't reach the minimum over the guard and the tier below; set to the closest`:'')+(FITWC.length?`. Wheelchair platforms in the default centre sections: ${FITWC.slice().sort((x,y)=>x-y).join(', ')}${FITADA&&FITADA.wc<FITADA.req?` (${fmt(FITADA.wc)} wheelchair spaces of ${fmt(FITADA.req)} required; add platforms in the section editor)`:''}`:'')+'.');b.disabled=false;CUR=null;renderControls();update();},40);return;}   /* a few seconds for three tiers: the message first */
   else if(b.id==='reset'){const met=regionOf(P.sport)==='world';
     if(!confirm(met?'Reset every value to the metric defaults (Association Football, FIFA)?':'Reset every value to the imperial defaults (College Football, NCAA)?'))return;
     P=defaultsPinned();EDIT={tier:0,g:0};EYELOCK=true;CVLOCK=true;CUR=null;
@@ -3281,11 +3283,21 @@ function wcReq(n){if(n<4)return 0;if(n<=25)return 1;if(n<=50)return 2;if(n<=150)
 function wcModules(len,sw){const IN=0.0254,pair=2*sw+66*IN,one=sw+36*IN;let np=Math.max(0,Math.floor(len/pair+1e-9)),rem=len-np*pair,single=rem>=one-1e-9?1:0;return {pairs:np,single,wc:2*np+single,comp:2*np+single,used:np*pair+single*one};}
 function secNoMap(ti,AL){const m={};sectionList(ti,AL).forEach(q=>m[q.key]=q.no);return m;}
 // seats off: switched-off sections lose every row; platform sections lose the two rows below the tier's top row (the infill, decision 56)
+/* default wheelchair platform sections for Size rows to hit target (decision 216): on each concourse tier, per stand, its centre
+   sections, those on the stand's straight run (a section crossing the joint with a corner counts). East/West: 4 -> centre 2,
+   5 -> centre 3, 6 -> centre 4; North/South: 2 -> both, 3 -> all 3. Other counts follow the same pattern: 4 or more -> all but
+   the end one on each side; fewer -> all. Round bowls (not zoned): none here, Auto spreads them. */
+function wcDefaultSet(ti,AL){const out=new Set();AL=AL||(M&&M.AL);const T=AL&&AL[ti];if(!T||!zoned(P)||!wcTier(ti))return out;const at={};
+  Object.values(T).forEach(Lz=>{const gl=Lz.ch.map((g,i)=>g.t==='LINE'?i:-1).filter(i=>i>=0);Lz.ais.forEach(a=>{if(gl.includes(a.i))at[a.id]=Lz.k;});});
+  const by={};sectionList(ti,AL).forEach(q=>{const k=at[q.mid.l]!=null?at[q.mid.l]:at[q.mid.r];if(k==null)return;const pc=q.mid.pieces.find(x=>x.Lz.k===k);(by[k]=by[k]||[]).push({no:q.no,a:pc?pc.a:0});});
+  Object.values(by).forEach(L=>{L.sort((x,y)=>x.a-y.a);const n=L.length,m=n>=4?n-2:n,s0=Math.floor((n-m)/2);L.slice(s0,s0+m).forEach(x=>out.add(x.no));});
+  return out;}
+const isPlat=(S,no,DW)=>{const e=S[no];if(e&&e.off)return false;return DW?DW.has(+no):!!(e&&e.wc);};
 function secAdjust(P,AL){const S=P.secs||{},IN=25.4,out={secs:{},wc:0,comp:0,lost:0,off:0,aisleSeats:0,byTier:[],byStand:{}};
-  AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);out.byTier[ti]={wc:0,comp:0,secs:0};if(!zs.length)return;const map=secNoMap(ti,AL),lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
+  AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);out.byTier[ti]={wc:0,comp:0,secs:0};if(!zs.length)return;const DW=P.wcMode==='default'?wcDefaultSet(ti,AL):null,map=secNoMap(ti,AL),lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
     const nr=Math.max(...zs.map(z=>z.tr.length));
     for(let j=0;j<nr;j++)ringSecs(ti,j,AL).forEach(sc=>{const no=map[sc.l+'_'+sc.r],e=no&&S[no];const n=Math.min(sc.n,lim);if(n<=0)return;
-      const plat=e&&e.wc&&!e.off,take=e&&e.off?n:0;
+      const plat=!!no&&isPlat(S,no,DW),take=e&&e.off?n:0;
       // aisle seats: one at each aisle end of the row (decision 57, 5% designated)
       if(!(e&&e.off)){out.aisleSeats+=Math.min(n,(sc.l!=null)+(sc.r!=null));}
       const pcs=sc.pieces.filter(pc=>pc.Lz.tr[j]),inPlat=pc=>{const L=pc.Lz.tr.length;return j===L-3||j===L-2;};
@@ -3294,7 +3306,7 @@ function secAdjust(P,AL){const S=P.secs||{},IN=25.4,out={secs:{},wc:0,comp:0,los
       const sh=tk.map(pc=>Math.min(want,Math.floor(pc.raw/sc.sw+1e-9)));let d=want-sh.reduce((a,b)=>a+b,0);if(d>0){const bi=tk.reduce((b,pc,i)=>pc.raw>tk[b].raw?i:b,0);sh[bi]+=d;}
       tk.forEach((pc,i)=>{const r=pc.Lz.tr[j];if(r.net==null)return;const t=Math.min(sh[i],r.net);r.net-=t;r.secOff=(r.secOff||0)+t;if(plat)out.lost+=t;else out.off+=t;});});
     // the platforms: spaces along the platform row (the row below the top row) and the sightline over standing spectators per stand
-    sectionList(ti,AL).forEach(q=>{const e=S[q.no];if(!e||!e.wc||e.off)return;const pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a),Lz=pc.Lz,tr=Lz.tr,L=tr.length;if(L<4)return;
+    sectionList(ti,AL).forEach(q=>{if(!isPlat(S,q.no,DW))return;const pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a),Lz=pc.Lz,tr=Lz.tr,L=tr.length;if(L<4)return;
       const j=L-2,sc=ringSecs(ti,j,AL).find(x=>x.l+'_'+x.r===q.key);if(!sc)return;const mod=wcModules(sc.raw,sc.sw);
       const sd=tr[L-4],p1=tr[L-3],top=tr[L-1],X=sd.T/IN,Y=((sd.riser??p1.riser)||0)/IN,Hreq=(2*X+34)*(Y-2.25)/X+(20.2-Y),H=(top.z-sd.z)/IN,depth=(p1.T+tr[L-2].T)/IN-6;
       const st=zoneName(P,Lz.k,true);out.secs[q.no]={no:q.no,ti,k:Lz.k,stand:st,len:sc.raw,...mod,H,Hreq,sight:!imperial()||H>=Hreq-0.01,depth,deep:depth>=48-0.01,rows:[tr[L-3].row,tr[L-2].row]};
