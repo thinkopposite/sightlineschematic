@@ -362,11 +362,12 @@ main .g24 :is(.stat span,.stat b,.lbl,.cap-side,.reft,.refb){line-height:24px!im
 #cap.g24 .bar{margin:8px 0!important;height:8px!important}
 main .seg.g24{padding:0!important;border:0!important}
 main details.g24{padding:0!important;border:0!important}
-#junction table.jinfo{border-collapse:collapse;table-layout:fixed;margin:0;width:min(100%,768px);line-height:24px}#junction p.jt{margin:0;line-height:24px}
+#junction table.jinfo{border-collapse:collapse;table-layout:auto;margin:0;width:100%;line-height:24px}#junction p.jt{margin:0;line-height:24px}
 #junction{display:flow-root}
 #junction table.jinfo,#junction table.jinfo tr,#junction table.jinfo td{background:transparent!important}
-#junction table.jinfo td{padding:0 8px;height:24px;line-height:24px;vertical-align:top;border:0;box-shadow:inset 0 -1px 0 var(--line,#ddd);white-space:normal}
-#junction table.jinfo td:first-child{width:38%;padding-left:0}#junction table.jinfo td:last-child{text-align:right;font-weight:600;padding-right:0}
+#junction table.jinfo td{padding:0 8px;height:24px;line-height:24px;vertical-align:top;border:0;box-shadow:inset 0 -1px 0 var(--line,#ddd);white-space:nowrap}
+#junction table.jinfo td:first-child{width:1%;padding-left:0;padding-right:24px}#junction table.jinfo td:last-child{text-align:left;font-weight:600;padding-right:0}   /* one line per item, both columns flush left, the full frame width (decision 204) */
+@media (max-width:1399px){#junction table.jinfo td:last-child{white-space:normal}}   /* narrower windows: long values wrap rather than overflow the frame */
 #junction table.jinfo tr.jh td{text-align:left;padding-left:0;font-weight:700;box-shadow:inset 0 -1px 0 var(--sw-ink,#111)}
 #junction .capt{line-height:24px;margin:0!important;padding:0 12px}
 </style>
@@ -1951,7 +1952,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.01';
+const VERSION='2026.11.01.02';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -4186,8 +4187,8 @@ function junctionInfo(all,tu){const IN=25.4,E=P.eye,lo=all.filter(r=>r.tier===tu
    if(k>0)G[0][1].push([`Governing C, Tier ${tu}: row ${lo[k].row} over row ${lo[k-1].row}`,`sitting ${ci(b)}, standing ${ci(rowC(lo,k,'stand'))} (minimum ${ci(lo[k].target)})`]);}
   const pg=wcTier(tu-1)?secPlat(lo):null;
   if(pg&&n>=5){const sd=lo[n-4],st={x:sd.x+E.stOff,z:sd.z+E.stH},X=sd.T/IN,Y=(sd.riser??pg.p1.riser??0)/IN,Hreq=(2*X+34)*(Y-2.25)/X+(20.2-Y),H=(pg.zP-sd.z)/IN,C=pg.eye.z*st.x/pg.eye.x-st.z;
-    G.push(['Wheelchair platform',[['Platform',`infill over rows ${pg.p1.row}–${pg.p2.row}, level with row ${pg.top.row}; front face ${inchText(WC_SETBACK)} behind the row ${pg.p1.row} riser; ${L(P.railH)} guard rail on that face`],
-      ['Wheelchair eye',`${wcTxt(E.wcH)} above the platform; ${inchText(E.wcOff)} behind the platform face (averages, ${EB_SHORT}; Ref. 6, 9)`],['Front of wheelchair space','12" max from the riser (ICC A117.1 802.9.2.1; Ref. 8)'],
+    G.push(['Wheelchair platform',[['Platform',`infill over rows ${pg.p1.row}–${pg.p2.row}, level with row ${pg.top.row}`],['Platform face',`${inchText(WC_SETBACK)} behind the row ${pg.p1.row} riser; ${L(P.railH)} guard rail on the face`],
+      ['Wheelchair eye',`${wcTxt(E.wcH)} above the platform, ${inchText(E.wcOff)} behind its face (Ref. 6, 9)`],['Wheelchair eye source',`averages, ${EB_SHORT}`],   /* one line each (decision 204) */['Front of wheelchair space','12" max from the riser (ICC A117.1 802.9.2.1; Ref. 8)'],
       [`Platform above row ${sd.row}`,`${inchText(H*IN)} (A117.1 Table 802.9.2.2 minimum ${inchText(Math.max(0,Hreq)*IN)}: ${H>=Hreq-0.01?'meets':'below'}; Ref. 7)`],
       [`C over the standing spectator, row ${sd.row}`,CV(C)],[`Rows ${lo.slice(Math.max(0,n-5),n-3).map(r=>r.row).join(', ')}`,'standing']]]);}
   {const f=up[0],e1={x:f.sit.ex,z:f.sit.ez},e2={x:f.x+E.stOff,z:f.z+E.stH},rows=[['Guard rail',`${L(P.railH)} above row ${f.row}, on the riser face`],[`Over the rail, row ${f.row}, seated (no C-value: front row)`,f.railC!=null?`${CV(f.railC)} ${f.railC>=0?'clear':'(the rail blocks the view)'}`:CV(railClear(f,e1))],[`Over the rail, row ${f.row}, standing`,CV(railClear(f,e2))]];
