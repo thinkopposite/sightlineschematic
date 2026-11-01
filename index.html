@@ -1949,7 +1949,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.31.07';
+const VERSION='2026.10.31.08';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -3144,7 +3144,7 @@ function drawSpectator(mode,o={}){
     if(r!==last&&!T2&&i>0){const xv=si[i].x-hr-4*IN;K.dim([xv,r.z],[xv,st[i].z],{lab:i===1?'Standing eye':'',val:D4(E.stH),ref:i===1?'stand':null,ctl:'STAND',eb:[st[i].x,st[i].z],fix:1});}});   /* in place, never pushed aside (decision 195) */   /* 4 in left of the sitting head */
   // top row: sitting and standing eye and head heights, stacked to the right
   {const xb=last.x+last.T,sp=fs*2.4;[['Sitting eye',E.sitH,si[n-1].x],['Sitting head',E.sitH+HEAD,si[n-1].x],['Standing eye',E.stH,st[n-1].x],['Standing head',stHeadOf(E),st[n-1].x]]
-    .forEach(([lab,h,ex],k)=>{if(k===1||k===3)return;const x=T2?xb+(k?40:14)*IN:xb+9*IN+k*sp;   /* eye heights only (decision 195) */K.dim([x,last.z],[x,last.z+h],{lab,val:D4(h),ref:['sit','head','stand','head'][k],ctl:k<2?'SIT':'STAND',ea:k?null:[xb,last.z],eb:[ex,last.z+h],side:-1});});}
+    .forEach(([lab,h,ex],k)=>{if(k===1||k===3)return;const x=T2?xb+(k?40:14)*IN:xb+9*IN+k*sp;   /* eye heights only (decision 195) */K.dim([x,last.z],[x,last.z+h],{lab,val:D4(h),ref:['sit','head','stand','head'][k],ctl:k<2?'SIT':'STAND',ea:[xb,last.z],eb:[ex,last.z+h],side:-1});   /* every height dimension's base extended from the top tread (decision 198) */});}
   // tread and riser
   if(0&&!T2)K.dim([m.x,m.z-t-fs*2.4],[m.x+m.T,m.z-t-fs*2.4],{lab:'Tread',val:D4(m.T),ref:'tread',ctl:'T:'+r0.tier,ea:[m.x,m.z-t],eb:[m.x+m.T,m.z-t],side:-1});
   if(0&&last.riser!=null&&!T2)K.dim([m.x+m.T-3*IN,m.z],[m.x+m.T-3*IN,last.z],{lab:'Riser',val:D4(last.riser),ref:'cval',ctl:'CV:'+r0.tier,eb:[last.x,last.z]});
@@ -4200,7 +4200,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   const xe=o.fillW&&o.fillW>X1_-X0_?(o.fillW-(X1_-X0_))/2:0,X0=X0_-2*xe,X1=X1_;   /* fill to the left only, so the upper tier ends with its last dimensioned tread (decision 197) */   // the grid out to the frame's edges (decision 181)
   // decision 196: both tread chains run over every tread in the view, two small grid lines (the sheet grid on paper) clear of the treads and heads
   const GG=SWG||(imperial()?304.8:1000),GGN=SWG?2:(imperial()?2:1),loV=lo.slice(Math.max(0,n-NL2)).filter(r=>r.x>=X0-1),upV=up.filter(r=>r.x+r.T<=X1+1);   /* every tread in the view (decision 197) */   /* four more treads below and six more above than the spectators of decision 161 */
-  const ybC=Math.floor(((loV[0]||a0).z-t)/GG-1e-6)*GG-GGN*GG,zcC=Math.ceil(Math.max(...upV.map(r=>r.sit.ez+headTop),f.z+P.railH)/GG+1e-6)*GG+GGN*GG;
+  const ybC=Math.floor(((loV[0]||a0).z-t)/GG-1e-6)*GG,zcC=Math.ceil(Math.max(...upV.map(r=>r.sit.ez+headTop),f.z+P.railH)/GG+1e-6)*GG;   /* no chains: the frame closes in (decision 198) */
   const Z1=zcC+fs*4,Z0=ybC-fs*3.5-(o.padB||0),W=X1-X0,H=Z1-Z0;   // the grid out to the frame's edges (decision 181)
   const X=x=>(x-X0).toFixed(1),Y=z=>(Z1-z).toFixed(1),K=SecDim(X,Y,fs,[W,H],{noLab:1,center:1,grid:[0,0],avoid:1,vs:T9(o,null)});
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Tier ${tu} to Tier ${tu+1} junction section">`+gridBg(X0,X1,Z0,Z1,X,Y,0,0,T9(o,fs*.8/.9));
@@ -4238,7 +4238,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   // vertical, right: the rise between the tiers, the leg wall and the clear height under it, the guard on the upper front row
   const cl=f.z-LEG2-lb.z,cxEnd=Math.max(lb.x+lb.T+fs*4,f.x),xc=(up[2]||up[up.length-1]).x,xv=(up[3]||up[up.length-1]).x+(up[3]?0:3*304.8);   // clear height on the riser line of the upper tier's row 3, the rise on row 4's (decision 189)   // clear height just past the concourse end, the rise between the tiers 3 ft beyond (decision 172)
   K.dim([xv,lb.z],[xv,f.z],{lab:`Tier ${tu} top tread to Tier ${tu+1} bottom tread`,val:L(f.z-lb.z),ea:[lb.x+lb.T,lb.z],eb:[f.x+f.T,f.z],ctl:'RISE:'+tu,side:-1,fix:1});
-  {const xl=f.x+f.T/2;K.dim([xl,f.z-LEG2],[xl,f.z],{lab:'Leg wall',val:L(LEG2),ref:'leg',ea:[f.x+slabT(),f.z-LEG2],eb:[f.x,f.z],fix:1})
+  if(0){const xl=f.x+f.T/2;K.dim([xl,f.z-LEG2],[xl,f.z],{lab:'Leg wall',val:L(LEG2),ref:'leg',ea:[f.x+slabT(),f.z-LEG2],eb:[f.x,f.z],fix:1})
     .dim([xl,f.z],[xl,f.z+P.railH],{lab:'Guard',val:L(P.railH),ea:[f.x,f.z],eb:[f.x+RAIL_SET,f.z+P.railH],fix:1});}   // leg wall and guard in one column over the first tread (decision 172)
   K.dim([xc,lb.z],[xc,f.z-LEG2],{lab:'Clear height',val:L(cl),ref:'headroom',ea:[cxEnd,lb.z],eb:[f.x+slabT(),f.z-LEG2],fill:cl<P.minHead-0.5?'var(--fail)':null,side:-1});   // a column at the concourse end, the leg wall's underside carried across (decision 169)
   // the wheelchair platform: its height over the row in front, the wheelchair eye, the setback and the eye distance behind the platform face
@@ -4255,7 +4255,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   {const shown=loV,pts=[];   // one chain under the lower tier: each tread, the platform setback, the platform, the top tread (decision 173)
    shown.forEach(r=>{if(pg&&(r===pg.p1||r===pg.p2||r===lb))return;pts.push([r.x,r.z]);});
    if(pg){pts.push([pg.p1.x,pg.p1.z],[pg.top.x,pg.zP]);}   /* the 6 in setback no longer split out (decision 196) */else pts.push([lb.x,lb.z]);pts.push([lb.x+lb.T,lb.z]);
-   for(let i=1;i<pts.length;i++)if(pts[i][0]-pts[i-1][0]>1)K.dim([pts[i-1][0],yb],[pts[i][0],yb],{val:L(pts[i][0]-pts[i-1][0]),ea:pts[i-1],eb:pts[i],fix:1});}
+   for(let i=1;i<pts.length;i++)if(0&&pts[i][0]-pts[i-1][0]>1)K.dim([pts[i-1][0],yb],[pts[i][0],yb],{val:L(pts[i][0]-pts[i-1][0]),ea:pts[i-1],eb:pts[i],fix:1});}
   if(pg){
     K.note(pg.edge+fs*.3,pg.zP-fs*.9,`Platform face ${inchText(pg.edge-pg.p1.x)} behind the row riser`,{size:TP(o,6,fs*.42),anchor:'start',fill:'var(--muted)',wt:400});}
   const dx=f.x-lb.x;   /* the riser offset between the tiers is no longer dimensioned here (decision 169) */
@@ -4263,7 +4263,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   else if(Math.abs(f.x+f.T-lb.x)<=1)K.note(f.x+f.T+fs*.3,f.z-fs*.9,`Second riser over the top riser below`,{size:TP(o,6,fs*.5),anchor:'start',fill:'var(--dim)',wt:450});
   if(0&&f.x>cx0+1)K.dim([cx0,lb.z+fs*1.2],[f.x,lb.z+fs*1.2],{lab:'Concourse',val:L(f.x-cx0),ea:[cx0,lb.z],eb:[f.x,lb.z]});
   {const ups=upV,zc=zcC,   /* two grid lines above the highest head (decision 179) */pts=[f.x,...ups.map(r=>r.x+r.T)];   // the Tier N+1 treads, one chain along the top of the drawing (decision 169)
-   for(let i=1;i<pts.length;i++){const r=ups[i-1];K.dim([pts[i-1],zc],[pts[i],zc],{val:L(pts[i]-pts[i-1]),ea:[pts[i-1],i===1?f.z:ups[i-2].z],eb:[pts[i],r.z],fix:1,ctl:i===1?'T0:'+tu:null});}}
+   for(let i=1;i<pts.length;i++){if(1)break;   /* tread chains removed (decision 198) */const r=ups[i-1];K.dim([pts[i-1],zc],[pts[i],zc],{val:L(pts[i]-pts[i-1]),ea:[pts[i-1],i===1?f.z:ups[i-2].z],eb:[pts[i],r.z],fix:1,ctl:i===1?'T0:'+tu:null});}}
   // labels
   [...lo,...up].filter(vis).forEach(r=>{if(r.riser==null||SK.has(r))return;K.note(r.x-fs*.2,r.z-r.riser/2-T9(o,fs*.46)*.35,inchText(r.riser),{size:T9(o,fs*.46),anchor:'end',fill:'var(--muted)',wt:400});});   // riser heights left of each riser, at the dimension size (decisions 173, 183)
   K.note(cx0+fs*.3,lb.z+fs*.3,tu===1?'Main concourse':'Upper concourse',{size:TP(o,6,fs*.55),anchor:'start',fill:'var(--muted)',wt:400});
