@@ -1949,7 +1949,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.10.31.11';
+const VERSION='2026.10.31.12';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2299,6 +2299,7 @@ var SWG=0,SWORIG=null;   // during a PDF plot: model units per grid square for d
 // dimension line moves outward onto the next grid line, never sharing a line with an overlapping dimension; 0,0 is recorded for placement.
 // opt.noLab: values only, no descriptive text (decision 163); opt.grid [model x, z of the grid's 0,0]: dimension lines on the background grid (1 ft / 1 m) on screen too
 const MAJ=()=>imperial()?3048:5000,onMaj=(v,o0=0,up=true)=>o0+(up?Math.ceil((v-o0)/MAJ()-1e-9):Math.floor((v-o0)/MAJ()+1e-9))*MAJ();   // the next major gridline (10 ft / 5 m) from a grid origin (decision 172)
+var PTU=0;const PT=(pt,d)=>PTU?pt*PTU:d;   // PDF: model units per point while a section sheet plots (decision 202)
 const T9=(o,d)=>o&&o.k?8/o.k:d;const TP=(o,px,d)=>o&&o.k?px/o.k:d;let PXK=0;const PX=(px,d)=>PXK?px/PXK:d;   // TP: a set screen size in a section view; PX: in the plans while PXK (plan px per unit) is set (decision 170)   // screen text set in px (decisions 167-168): 6 px for dimension values, grid scale marks and tread numbers when the view's px per unit (o.k) is known
 function SecDim(X,Y,fs,frame,opt={}){const K=SecDim0(X,Y,fs,frame,opt.vs);if(opt.center)K.center=true;if(opt.noLab){const d=K.dim0;K.dim0=(a,b,o={})=>d(a,b,Object.assign({},o,{lab:null}));}
   if(!SWG&&!opt.grid)return K;let G,OX=0,OY=0;if(SWG){if(!SWORIG)SWORIG=[+X(0),+Y(0)];G=SWG;}else{G=imperial()?304.8:1000;OX=opt.grid[0];OY=opt.grid[1];}   /* model units, like the dimension points (decision 172: was mixed with drawing units, so lines missed the grid) */const used=[],d0=K.dim0;
@@ -2410,7 +2411,7 @@ function secExtras(rows,ti,X,Y,o,xe){const IN=25.4,tr=rows.filter(r=>r.tier===ti
       +`<polygon points="${wall.map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="#E4E4E4" stroke="var(--ink)" stroke-width="0.6" vector-effect="non-scaling-stroke"><title>Vomitory side wall beyond</title></polygon>`
       +`<polygon points="${[[xs0,zf-sl],[xt+t,zf-sl],[xt+t,zf],[xs0,zf]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"><title>Vomitory floor</title></polygon>`
       +`<polygon points="${[[xt,zk],[xt+t,zk],[xt+t,zk+hd],[xt,zk+hd]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"><title>Vomitory header</title></polygon>`;
-    top+=`<text x="${X((xs0+xt)/2)}" y="${Y(zf+(zk-zf)*0.35)}" font-size="${Math.max(120,(xt-xs0)/9).toFixed(0)}" fill="#DA291C" text-anchor="middle" font-weight="700">${v.label}</text>`;}}
+    top+=`<text x="${X((xs0+xt)/2)}" y="${Y(zf+(zk-zf)*0.35)}" font-size="${PT(ti?6:8,Math.max(120,(xt-xs0)/9)).toFixed(1)}" fill="#DA291C" text-anchor="middle" font-weight="700">${v.label}</text>`;}}
   if(pg){pg.rows.forEach(r=>skip.add(r));const {p1,p2,top:tp,edge,zP,railC,eye}=pg,hr=4.5*IN,cy=eye.z+4.45*IN-hr,col=eye.z*0>0?'':'--sl-ok';
     s+=`<polygon points="${[[edge,p1.z],[edge,zP],[tp.x,zP],[tp.x,p2.z],[p2.x,p2.z],[p2.x,p1.z]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`
       +`<polygon points="${[[edge,p1.z],[edge,zP],[tp.x,zP],[tp.x,p2.z],[p2.x,p2.z],[p2.x,p1.z]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="#FF4500" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"><title>Wheelchair platform infill</title></polygon>`;   /* orange red #FF4500 (decision 147) */
@@ -2428,34 +2429,34 @@ function secGoal(zone,X,Y,fs){if(isSide(zone))return '';const F=0.3048*1000,sp=P
   else if(SPORTS[sp]&&SPORTS[sp].law){const bar=SOC.bar*1000,nt=SOC.netTop*1000,nb=SOC.netBot*1000;s+=ln([0,0],[0,bar],'var(--ink)',2)+ln([0,bar],[nt,bar],'#9A9A96',0.8)+ln([nt,bar],[nb,0],'#9A9A96',0.8);top=bar;}
   else if(SPORTS[sp]&&SPORTS[sp].posts){const o=SPORTS[sp].posts,a=P.L/2,t=Math.min(50,a-1)+o.lw/2;xl=-(a-t)*1000;s+=ln([xl,0],[xl,o.top*1000],'var(--ink)',2)+ln([xl-150,o.bar*1000],[xl+150,o.bar*1000],'var(--ink)',2);top=o.top*1000;}
   else return '';
-  return s+`<text x="${X(xl)}" y="${(+Y(top)-fs*.5).toFixed(0)}" font-size="${(fs*.6).toFixed(0)}" fill="var(--ink)" text-anchor="middle">Goal post</text>`;}
+  return s+`<text x="${X(xl)}" y="${(+Y(top)-fs*.5).toFixed(0)}" font-size="${PT(6,fs*.6).toFixed(1)}" fill="var(--ink)" text-anchor="middle">Goal post</text>`;}
 function drawSection(rows,o={}){
   if(!rows.length)return '<p class="empty" style="padding:16px">No seats on this side.</p>';
   const maxX=Math.max(...rows.map(r=>r.x+r.T)),maxZ=Math.max(...rows.map(r=>Math.max(r.sit.ez,r.stand.ez)));
   const X1=maxX+2500,X0=Math.min(-8000,rows[0].x-10000,-0.16*(X1+8000)),W=X1-X0,fs=o.fs||W/80,dot=o.fs?fs*.16:W/450;
   const nT=new Set(rows.map(r=>r.tier)).size,band=36*25.4,Z0=-(band+fs*2.4),Z1=Math.max(maxZ+fs*(3.4+2.3*(nT+1)),o.cut?goalTopZ(o.zone)+fs*1.6:0),H=Z1-Z0;   // 36 in bands below; a dimension per tier and an overall one above the bowl
-  const X=x=>(x-X0).toFixed(0),Y=z=>(Z1-z).toFixed(0),K=SecDim(X,Y,fs*.9,[W,H],{noLab:1,center:1,grid:[0,0],avoid:1,vs:T9(o,null)});
+  const X=x=>(x-X0).toFixed(0),Y=z=>(Z1-z).toFixed(0),K=SecDim(X,Y,fs*.9,[W,H],{noLab:1,center:1,grid:[0,0],avoid:1,vs:PT(8,T9(o,null))});
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" data-fs="${fs.toFixed(2)}" role="img" aria-label="Bowl section with sightlines">`;
   const GS=imperial()?20*304.8:5000,gl=g=>imperial()?`${Math.round(g/304.8)}'`:fmode()==='m-dec'||fmode()==='mm-m'&&g>=10000?`${Math.round(g/1000)} m`:fmode()==='cm'?`${EN(g/10)} cm`:`${EN(g)} mm`;
   s+=gridBg(X0,X1,Z0,Z1,X,Y);
   for(let g=Math.ceil(X0/GS)*GS;g<=X1;g+=GS)s+=`<line class="appgrid" x1="${X(g)}" y1="0" x2="${X(g)}" y2="${H}" stroke="var(--edge)" stroke-width="0.8" opacity=".7" vector-effect="non-scaling-stroke"/><text class="appgrid" x="${X(g)}" y="${H-T9(o,fs*.8)*.45}" font-size="${T9(o,fs*.8)}" fill="var(--muted)" text-anchor="middle">${gl(g)}</text>`;
   for(let g=0;g<=Z1;g+=GS)s+=`<line class="appgrid" x1="0" y1="${Y(g)}" x2="${W}" y2="${Y(g)}" stroke="var(--edge)" stroke-width="0.8" opacity=".7" vector-effect="non-scaling-stroke"/>${g?`<text class="appgrid" x="${T9(o,fs*.8)*.5}" y="${+Y(g)-T9(o,fs*.8)*.35}" font-size="${T9(o,fs*.8)}" fill="var(--muted)">${gl(g)}</text>`:''}`;
-  const fx=rows[0].x,bf=TP(o,10,Math.min(fs*.6,band*.62));
+  const fx=rows[0].x,bf=PT(6,TP(o,10,Math.min(fs*.6,band*.62)));
   s+=`<rect x="0" y="${Y(0)}" width="${X(0)}" height="${band}" fill="var(--pitch)"/><rect x="${X(0)}" y="${Y(0)}" width="${(fx).toFixed(0)}" height="${band}" fill="var(--grass2)"/>`;
-  s+=`<text x="${+X(0)/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(0)}" fill="#fff" text-anchor="middle" font-weight="600">${surf()}</text>`;
-  if(fx>fs*3.2)s+=`<text x="${+X(0)+fx/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(0)}" fill="#fff" text-anchor="middle" font-weight="600">Buffer zone ${L(fx)}</text>`;
+  s+=`<text x="${+X(0)/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(1)}" fill="#fff" text-anchor="middle" font-weight="600">${surf()}</text>`;
+  if(fx>fs*3.2)s+=`<text x="${+X(0)+fx/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(1)}" fill="#fff" text-anchor="middle" font-weight="600">Buffer zone ${L(fx)}</text>`;
   const tiers=[...new Set(rows.map(r=>r.tier))];
   tiers.forEach(ti=>{const tr=rows.filter(r=>r.tier===ti);K.avoidPoly(profileOf(tr,ti));s+=benchSvg(tr,X,Y)+`<polygon points="${profileOf(tr,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>`;});
   const EX={},SK=new Set();let EXtop='';tiers.forEach(ti=>{const e=secExtras(rows,ti,X,Y,o,0);EX[ti]=e;s+=e.s;EXtop+=e.top;e.skip.forEach(r=>SK.add(r));});if(o.cut)s+=secGoal(o.zone,X,Y,fs);
   tiers.forEach(ti=>{if(!ti)return;const tr=rows.filter(r=>r.tier===ti),f=tr[0],lo=rows.filter(r=>r.tier===ti-1),lb=lo[lo.length-1],cz=lb.z;
     const cx0=lb.x+lb.T,cx1=Math.max(cx0+4000,f.x);                                   // concourse floor behind the tier below
-    s+=`<line x1="${X(cx0)}" y1="${Y(cz)}" x2="${X(cx1)}" y2="${Y(cz)}" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${X(cx0+fs*.3)}" y="${+Y(cz)-fs*.35}" font-size="${TP(o,10,fs*.62)}" fill="var(--muted)">${ti===1?'Main':'Upper'} concourse</text>`;
+    s+=`<line x1="${X(cx0)}" y1="${Y(cz)}" x2="${X(cx1)}" y2="${Y(cz)}" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${X(cx0+fs*.3)}" y="${+Y(cz)-fs*.35}" font-size="${PT(6,TP(o,10,fs*.62))}" fill="var(--muted)">${ti===1?'Main':'Upper'} concourse</text>`;
 });
   tiers.forEach(ti=>{const f=rows.find(r=>r.tier===ti);                              // 26 in sightline guard rail at row 1 of every tier
     s+=`<rect x="${X(f.x+RAIL_SET-25.4)}" y="${Y(f.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"><title>Guard rail ${L(P.railH)}, 2 in</title></rect>`
-      ;K.note(f.x-fs*.25,f.z+P.railH+fs*.2,`${inchText(P.railH)} guard rail`,{size:TP(o,6,fs*.45),anchor:'end',fill:'var(--muted)',wt:400});});
-  rows.forEach(r=>{const tf=T9(o,Math.min(fs*.28,r.T*.3));                               // row numbers: above their tread, clear of the riser behind
-    s+=`<text x="${X(r.x+r.T*.35)}" y="${(+Y(r.z)-tf*.3).toFixed(0)}" font-size="${tf.toFixed(0)}" fill="var(--ink)" opacity=".8" text-anchor="middle" font-weight="600">${r.row}</text>`;});
+      ;K.note(f.x-fs*.25,f.z+P.railH+fs*.2,`${inchText(P.railH)} guard rail`,{size:PT(6,TP(o,6,fs*.45)),anchor:'end',fill:'var(--muted)',wt:400});});
+  rows.forEach(r=>{const tf=PT(6,T9(o,Math.min(fs*.28,r.T*.3)));                               // row numbers: above their tread, clear of the riser behind
+    s+=`<text x="${X(r.x+r.T*.35)}" y="${(+Y(r.z)-tf*.3).toFixed(0)}" font-size="${tf.toFixed(1)}" fill="var(--ink)" opacity=".8" text-anchor="middle" font-weight="600">${r.row}</text>`;});
   s+=EXtop;rows.forEach(r=>{if(SK.has(r))return;K.avoid(r.ex,r.ez,0,0);s+=`<line x1="${X(r.ex)}" y1="${Y(r.ez)}" x2="${X(0)}" y2="${Y(0)}" stroke="${status(r)==='pass'||status(r)==='front'?'var(--sl-ok)':'var(--sl-low)'}" stroke-width="0.7" vector-effect="non-scaling-stroke"/>`;});   // sightlines by C-value only: blue meets the minimum, red is below it
   const stand=P.eyeMode==='stand';                                  // one mode at a time: its eye dots and its sightlines only
   rows.forEach(r=>{if(SK.has(r))return;const tip=`Tier ${r.tier+1} row ${r.row}${r.C!=null?', C '+CV(r.C):r.railC!=null?', clears guard by '+CV(r.railC):''}`;
@@ -2468,7 +2469,7 @@ function drawSection(rows,o={}){
     K.dim([x,lb.z],[x,zb],{lab:'Clearance',val:L(c),ref:'headroom',ctl:'RISE:'+ti,ea:[lb.x+lb.T,lb.z],eb:[f.x+slabT(),zb],fill:c<P.minHead-0.5?'var(--fail)':null,side:-1});});
   chainDims(rows,tiers,fs*.9,K);s+=K.out();
   s+=`<line x1="${X(0)}" y1="${+Y(0)+band}" x2="${X(0)}" y2="${+Y(0)-fs*1.6}" stroke="${FOCAL}" stroke-width="1.3" vector-effect="non-scaling-stroke"/>`;
-  s+=`<circle cx="${X(0)}" cy="${Y(0)}" r="${dot*1.8}" fill="var(--ink)"/><text x="${X(0)}" y="${(+Y(0)+band+fs*1.05).toFixed(0)}" font-size="${TP(o,10,fs*.85)}" fill="var(--ink)" text-anchor="middle">Point of focus</text></svg>`;
+  s+=`<circle cx="${X(0)}" cy="${Y(0)}" r="${dot*1.8}" fill="var(--ink)"/><text x="${X(0)}" y="${(+Y(0)+band+fs*1.05).toFixed(0)}" font-size="${PT(6,TP(o,10,fs*.85))}" fill="var(--ink)" text-anchor="middle">Point of focus</text></svg>`;
   return s;
 }
 // Chain dimensions from the point of focus: horizontally to the front riser of each tier's first tread,
@@ -4040,17 +4041,17 @@ function swBarTxt(per){const divs=[1,2,5,10,20,25,50,100,200,500,1000];return {d
 // the drawing area is fixed by the frame; plot functions fit their scale to it
 function swissSheet(sh,o){const u=swU(sh),k=u/0.25,A=swArea(sh),W=sh.w,H=sh.h,f=v=>(+v).toFixed(4),Sp=SPORTS[P.sport],L=2*u,R=o.R||W-2*u,N=Math.round((R-L)/u);
   let s=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}in" height="${f(H)}in" viewBox="0 0 ${f(W)} ${f(H)}">`+swRect(0,0,W,H,SW.paper)+swGrid(sh);
-  const lab={pt:7,b:1,ls:.14,k},orient=W>H?'landscape':'portrait';
-  s+=swT(L,swBase(2*u,u,7,k),'SIGHTLINE SCHEMATIC — DESIGN STUDY',lab)+swT(L,swBase(3*u,u,6.5,k),`REF: ${Sp.org} ${Sp.name} / ${optName()} / ${P.tierCount} TIER${P.tierCount>1?'S':''} / ${fmt(M.cap)} SEATS`.toUpperCase(),{pt:6.5,ls:.06,k,fill:SW.grey})
-    +swT(R,swBase(2*u,u,7,k),`FORMAT: ${imperial()?`${Math.min(W,H)} × ${Math.max(W,H)} `:''}${sh.name.toUpperCase()} ${orient.toUpperCase()}`,{...lab,a:'end'})+swRect(L,4*u-1.5*k/72,R-L,1.5*k/72,SW.ink);
-  if(!o.noHeading)s+=swRect(L,5*u+u/4,u/2,u/2,SW.red)+swT(3*u,swBase(5*u,u,13,k),`%%NO%%. ${String(o.title).toUpperCase()}`,{pt:13,b:1,k});
+  const lab={pt:8,b:1,ls:.14,k},orient=W>H?'landscape':'portrait';
+  s+=swT(L,swBase(2*u,u,8,k),'SIGHTLINE SCHEMATIC — DESIGN STUDY',lab)+swT(L,swBase(3*u,u,8,k),`REF: ${Sp.org} ${Sp.name} / ${optName()} / ${P.tierCount} TIER${P.tierCount>1?'S':''} / ${fmt(M.cap)} SEATS`.toUpperCase(),{pt:8,ls:.06,k,fill:SW.grey})
+    +swT(R,swBase(2*u,u,8,k),`FORMAT: ${imperial()?`${Math.min(W,H)} × ${Math.max(W,H)} `:''}${sh.name.toUpperCase()} ${orient.toUpperCase()}`,{...lab,a:'end'})+swRect(L,4*u-1.5*k/72,R-L,1.5*k/72,SW.ink);
+  if(!o.noHeading)s+=swRect(L,5*u+u/4,u/2,u/2,SW.red)+swT(3*u,swBase(5*u,u,14,k),`%%NO%%. ${String(o.title).toUpperCase()}`,{pt:14,b:1,k});
   // drawing: centred in the area; its 0,0 (point of focus or field centre) on a grid point when known
   let org=null;(o.draws||[]).forEach(d=>{let x=d.x!=null?d.x:A.x0+(A.aw-d.w)/2,y=d.y!=null?d.y:A.y0+(A.ah-d.h)/2;
     if(d.ox!=null){const gx=x+d.ox,gy=y+d.oy;x+=Math.round(gx/u)*u-gx;y+=Math.round(gy/u)*u-gy;org={x:x+d.ox,y:y+d.oy,sq:d.sq,plan:d.plan};}
     s+=`<g class="swdraw" font-family="Archivo, 'Arial Narrow', Arial, sans-serif">`+d.svg.replace('<svg ',`<svg x="${f(x)}" y="${f(y)}" width="${f(d.w)}" height="${f(d.h)}" preserveAspectRatio="xMidYMid meet"${d.clip?'':' overflow="visible"'} `)+'</g>';});
   s+=o.extra||'';
   // scaled measurements on the grid border, every 5 squares from the drawing's 0,0
-  if(org&&org.sq){const gx0=u,gx1=W-u,gy0=u,gy1=H-6*u,tp={pt:5.5,k,fill:'#55554F',ls:.04},un=imperial()?"'":' m',lb=n=>n===0?'0':`${+(Math.abs(n)*org.sq).toFixed(2)}${un}`,ls=n=>n===0?'0':`${+(n*org.sq).toFixed(2)}${un}`;
+  if(org&&org.sq){const gx0=u,gx1=W-u,gy0=u,gy1=H-6*u,tp={pt:8,k,fill:'#55554F',ls:.04},un=imperial()?"'":' m',lb=n=>n===0?'0':`${+(Math.abs(n)*org.sq).toFixed(2)}${un}`,ls=n=>n===0?'0':`${+(n*org.sq).toFixed(2)}${un}`;
     // on the grid edges (decision 130): thin ticks half a grid square long, from the grid edge inward; the numbers just outside the grid,
     // above the top ticks, left of the left ticks and right of the right ticks
     const tw=.5*k/72,h2=u/2;for(let n=Math.ceil((u-org.x)/u);n<=Math.floor((W-u-org.x)/u);n++){if(n%5)continue;const x=org.x+n*u;s+=swT(x,u-.045*k,org.plan?lb(n):ls(n),{...tp,a:'middle'})+swRect(x-tw/2,u,tw,h2,SW.ink);}
@@ -4064,12 +4065,12 @@ function swissSheet(sh,o){const u=swU(sh),k=u/0.25,A=swArea(sh),W=sh.w,H=sh.h,f=
   const sc=o.scale,tiles=o.tiles||[sc?[sc.label,'SCALE',sc.bar?'':(sc.note||'')]:['N.T.S.','SCALE','Not to scale.'],[fmt(M.cap),'SEATS',`${P.tierCount} tier${P.tierCount>1?'s':''}, all stands.`],o.tile3||[String(P.tierCount),'TIERS',`${SPORTS[P.sport].name}.`],['%%NO%%','SHEET','OF %%N%%.',1]];
   tiles.forEach((t,i)=>{const x=L+(tt+1)*u+i*(tw+1)*u,y=y0+u,w=tw*u,h=3*u,inv=t[3];
     s+=swRect(x,y,w,h,inv?SW.ink:'#FFFFFF',inv?null:SW.ink,.75*k/72);
-    const vpt=Math.min(15,w*72/(String(t[0]).length*0.62)/k);
-    s+=swT(x+.5*u,y+1.35*u,t[0],{pt:vpt,b:1,k,fill:SW.red})+swT(x+.5*u,y+1.98*u,t[1],{pt:5.8,b:1,ls:.12,k,fill:inv?'#FFFFFF':SW.ink});
+    const vpt=Math.min(16,w*72/(String(t[0]).length*0.62)/k);
+    s+=swT(x+.5*u,y+1.35*u,t[0],{pt:vpt,b:1,k,fill:SW.red})+swT(x+.5*u,y+1.98*u,t[1],{pt:8,b:1,ls:.12,k,fill:inv?'#FFFFFF':SW.ink});
     if(i===0&&sc&&sc.bar){const b=sc.bar,bw=b.seg;for(let j=0;j<5;j++)s+=swRect(x+.5*u+j*bw,y+2.32*u,bw,.18*u,j%2?'#FFFFFF':SW.ink,SW.ink,.4*k/72);
-      s+=swT(x+.5*u+5*bw+.15*u,y+2.5*u,`0–${b.len} ${imperial()?'FEET':'METRES'}`,{pt:5.5,k,fill:SW.grey});}
-    else s+=swT(x+.5*u,y+2.5*u,t[2],{pt:5.8,k,fill:inv?'#C9C9C5':SW.grey});});
-  s+=swRect(L,H-1.5*u,R-L,.5*k/72,SW.ink);const fy=swBase(H-1.5*u,u,6,k),fp={pt:6,ls:.1,k};
+      s+=swT(x+.5*u+5*bw+.15*u,y+2.5*u,`0–${b.len} ${imperial()?'FEET':'METRES'}`,{pt:8,k,fill:SW.grey});}
+    else s+=swT(x+.5*u,y+2.5*u,t[2],{pt:8,k,fill:inv?'#C9C9C5':SW.grey});});
+  s+=swRect(L,H-1.5*u,R-L,.5*k/72,SW.ink);const fy=swBase(H-1.5*u,u,8,k),fp={pt:8,ls:.1,k};   /* frame sizes from Joseph's sheet (decision 202) */
   s+=swT(L,fy,`PLATE %%NO%% — ${String(o.title).toUpperCase()}`,fp)+swT((L+R)/2,fy,`SIGHTLINE SCHEMATIC ${VERSION} · ${optName().toUpperCase()} · ${new Date().toLocaleDateString()}`,{...fp,a:'middle'})+swT(R,fy,'SHEET %%NO%% OF %%N%%',{...fp,a:'end'});
   return s+'</svg>';}
 // scale tile: label and a five-segment bar no longer than the tile allows (per = paper inches per model mm)
@@ -4280,7 +4281,7 @@ function plotJunction(sh,zone,tu,force){const A=swArea(sh),Z=ZR[zone];if(!Z||!Z.
   const svg=swissSheet(sh,{title,big:[`Tier ${tu}–${tu+1}`,'Junction'],draws:[d],scale:swScale(sh,fit.sc.label,fit.k),tile3:[L(cl),'CLEAR HEIGHT',`Under the Tier ${tu+1} leg wall; minimum ${L(P.minHead)}.`]});
   return {svg,scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'junction',title,fits:fit.fits};}
 function plotSection(sh,zone,force,cut){const Z=ZR[zone||P.sec],A=swArea(sh);let fit=null;
-  for(const sc of (force?[force]:PLOT_SCALES())){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawSection(Z,{fs:sh.txt*25.4*sc.ratio,zone:zone||P.sec,cut}),o=SWORIG;SWG=0;SWORIG=null;
+  for(const sc of (force?[force]:PLOT_SCALES())){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;PTU=25.4*sc.ratio/72;let svg;try{svg=drawSection(Z,{fs:sh.txt*25.4*sc.ratio,zone:zone||P.sec,cut});}finally{PTU=0;}const o=SWORIG;SWG=0;SWORIG=null;   /* fixed point sizes on the bowl section sheets (decision 202) */
     const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;
     if((w<=A.aw&&h<=A.ah)||force){fit={sc,k,w,h,svg,u:25.4*sc.ratio,o,fits:w<=A.aw&&h<=A.ah};break;}}
   if(!fit)return null;
