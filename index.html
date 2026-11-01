@@ -1955,7 +1955,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.11';
+const VERSION='2026.11.01.12';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2305,7 +2305,16 @@ var SWG=0,SWORIG=null;   // during a PDF plot: model units per grid square for d
 // dimension line moves outward onto the next grid line, never sharing a line with an overlapping dimension; 0,0 is recorded for placement.
 // opt.noLab: values only, no descriptive text (decision 163); opt.grid [model x, z of the grid's 0,0]: dimension lines on the background grid (1 ft / 1 m) on screen too
 const MAJ=()=>imperial()?3048:5000,onMaj=(v,o0=0,up=true)=>o0+(up?Math.ceil((v-o0)/MAJ()-1e-9):Math.floor((v-o0)/MAJ()+1e-9))*MAJ();   // the next major gridline (10 ft / 5 m) from a grid origin (decision 172)
-var PTU=0;const PT=(pt,d)=>PTU?pt*PTU:d;   // PDF: model units per point while a section sheet plots (decision 202)
+/* every text in a bowl section in plain text: regular weight, solid black, no fade (decision 214) */
+const plainSec=svg=>svg.replace(/<(text|tspan)\b[^>]*>/g,t=>t.replace(/ font-weight="[^"]*"/g,' font-weight="400"').replace(/ fill="(?!none")[^"]*"/g,' fill="var(--ink)"').replace(/ opacity="[^"]*"/g,''));
+function drawSection(...a){return plainSec(drawSection0(...a));}
+function drawDetail(...a){return plainSec(drawDetail0(...a));}
+function drawPlatform(...a){return plainSec(drawPlatform0(...a));}
+function drawSpectator(...a){return plainSec(drawSpectator0(...a));}
+function drawJunction(...a){return plainSec(drawJunction0(...a));}
+var PTU=0;const PT=(pt,d)=>PTU?pt*PTU:d;
+/* tread numbers: one size in every bowl section, the overall section's 6 pt on the PDF and 8 px on screen (decision 214); o.tru = model units per point on a PDF sheet */
+const TRF=(o,d)=>o&&o.tru?6*o.tru:PT(6,T9(o,d));   // PDF: model units per point while a section sheet plots (decision 202)
 const T9=(o,d)=>o&&o.k?8/o.k:d;const TP=(o,px,d)=>o&&o.k?px/o.k:d;let PXK=0;const PX=(px,d)=>PXK?px/PXK:d;   // TP: a set screen size in a section view; PX: in the plans while PXK (plan px per unit) is set (decision 170)   // screen text set in px (decisions 167-168): 6 px for dimension values, grid scale marks and tread numbers when the view's px per unit (o.k) is known
 function SecDim(X,Y,fs,frame,opt={}){const K=SecDim0(X,Y,fs,frame,opt.vs);if(opt.center)K.center=true;if(opt.noLab){const d=K.dim0;K.dim0=(a,b,o={})=>d(a,b,Object.assign({},o,{lab:null}));}
   if(!SWG&&!opt.grid)return K;let G,OX=0,OY=0;if(SWG){if(!SWORIG)SWORIG=[+X(0),+Y(0)];G=SWG;}else{G=imperial()?304.8:1000;OX=opt.grid[0];OY=opt.grid[1];}   /* model units, like the dimension points (decision 172: was mixed with drawing units, so lines missed the grid) */const used=[],d0=K.dim0;
@@ -2421,7 +2430,7 @@ function secExtras(rows,ti,X,Y,o,xe){const IN=25.4,tr=rows.filter(r=>r.tier===ti
       +`<polygon points="${wall.map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="#E4E4E4" fill-opacity=".45" stroke="var(--ink)" stroke-width="0.5" vector-effect="non-scaling-stroke"><title>Vomitory side wall beyond</title></polygon>`
       +`<polygon points="${[[xs0,zf-sl],[xt+t,zf-sl],[xt+t,zf],[xs0,zf]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"><title>Vomitory floor</title></polygon>`
       +`<polygon points="${[[xt,zk],[xt+t,zk],[xt+t,zk+hd],[xt,zk+hd]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1.2" vector-effect="non-scaling-stroke"><title>Vomitory header</title></polygon>`;
-    top+=`<text x="${X((xs0+xt)/2)}" y="${Y(zf+(zk-zf)*0.35)}" font-size="${PT(ti?6:8,Math.max(120,(xt-xs0)/9)).toFixed(1)}" fill="#DA291C" text-anchor="middle" font-weight="700">${v.label}</text>`;}}
+    {const vf=o.tru?(ti?6:8)*o.tru:PT(ti?6:8,Math.max(120,(xt-xs0)/9));top+=`<text x="${X((xs0+xt)/2)}" y="${(+Y(zf-sl)+vf*1.3).toFixed(1)}" font-size="${vf.toFixed(1)}" fill="var(--ink)" text-anchor="middle" font-weight="400">${v.label}</text>`;}   /* plain text under the vom floor slab, clear of the bowl (decision 214) */}}
   if(pg){pg.rows.forEach(r=>skip.add(r));const {p1,p2,top:tp,edge,zP,railC,eye}=pg,hr=4.5*IN,cy=eye.z+4.45*IN-hr,col=eye.z*0>0?'':'--sl-ok';
     s+=`<polygon points="${[[edge,p1.z],[edge,zP],[tp.x,zP],[tp.x,p2.z],[p2.x,p2.z],[p2.x,p1.z]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="${tierFill(ti)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`
       +`<polygon points="${[[edge,p1.z],[edge,zP],[tp.x,zP],[tp.x,p2.z],[p2.x,p2.z],[p2.x,p1.z]].map(([x,z])=>X(x)+','+Y(z)).join(' ')}" fill="#FF4500" stroke="var(--ink)" stroke-width="0.75" vector-effect="non-scaling-stroke"><title>Wheelchair platform infill</title></polygon>`;   /* orange red #FF4500 (decision 147) */
@@ -2440,7 +2449,7 @@ function secGoal(zone,X,Y,fs){if(isSide(zone))return '';const F=0.3048*1000,sp=P
   else if(SPORTS[sp]&&SPORTS[sp].posts){const o=SPORTS[sp].posts,a=P.L/2,t=Math.min(50,a-1)+o.lw/2;xl=-(a-t)*1000;s+=ln([xl,0],[xl,o.top*1000],'var(--ink)',2)+ln([xl-150,o.bar*1000],[xl+150,o.bar*1000],'var(--ink)',2);top=o.top*1000;}
   else return '';
   return s+`<text x="${X(xl)}" y="${(+Y(top)-fs*.5).toFixed(0)}" font-size="${PT(6,fs*.6).toFixed(1)}" fill="var(--ink)" text-anchor="middle">Goal post</text>`;}
-function drawSection(rows,o={}){
+function drawSection0(rows,o={}){
   if(!rows.length)return '<p class="empty" style="padding:16px">No seats on this side.</p>';
   const maxX=Math.max(...rows.map(r=>r.x+r.T)),maxZ=Math.max(...rows.map(r=>Math.max(r.sit.ez,r.stand.ez)));
   const X1=maxX+2500,X0=Math.min(-8000,rows[0].x-10000,-0.16*(X1+8000)),W=X1-X0,fs=o.fs||W/80,dot=o.fs?fs*.16:W/450;
@@ -2452,7 +2461,7 @@ function drawSection(rows,o={}){
   for(let g=Math.ceil(X0/GS)*GS;g<=X1;g+=GS)s+=`<line class="appgrid" x1="${X(g)}" y1="0" x2="${X(g)}" y2="${H}" stroke="var(--edge)" stroke-width="0.5" opacity=".7" vector-effect="non-scaling-stroke"/><text class="appgrid" x="${X(g)}" y="${H-T9(o,fs*.8)*.45}" font-size="${T9(o,fs*.8)}" fill="var(--muted)" text-anchor="middle">${gl(g)}</text>`;
   for(let g=0;g<=Z1;g+=GS)s+=`<line class="appgrid" x1="0" y1="${Y(g)}" x2="${W}" y2="${Y(g)}" stroke="var(--edge)" stroke-width="0.5" opacity=".7" vector-effect="non-scaling-stroke"/>${g?`<text class="appgrid" x="${T9(o,fs*.8)*.5}" y="${+Y(g)-T9(o,fs*.8)*.35}" font-size="${T9(o,fs*.8)}" fill="var(--muted)">${gl(g)}</text>`:''}`;
   const fx=rows[0].x,bf=PT(6,TP(o,10,Math.min(fs*.6,band*.62)));
-  s+=`<rect x="0" y="${Y(0)}" width="${X(0)}" height="${band}" fill="var(--pitch)" fill-opacity=".45"/><rect x="${X(0)}" y="${Y(0)}" width="${(fx).toFixed(0)}" height="${band}" fill="var(--grass2)" fill-opacity=".45"/>`;
+  s+=`<rect x="0" y="${Y(0)}" width="${X(0)}" height="${band}" fill="var(--pitch)"/><rect x="${X(0)}" y="${Y(0)}" width="${(fx).toFixed(0)}" height="${band}" fill="var(--grass2)"/>`;
   s+=`<text x="${+X(0)/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(1)}" fill="var(--ink)" text-anchor="middle" font-weight="600">${surf()}</text>`;
   if(fx>fs*3.2)s+=`<text x="${+X(0)+fx/2}" y="${(+Y(0)+band/2+bf*.36).toFixed(0)}" font-size="${bf.toFixed(1)}" fill="var(--ink)" text-anchor="middle" font-weight="600">Buffer zone ${L(fx)}</text>`;
   const tiers=[...new Set(rows.map(r=>r.tier))];
@@ -2467,7 +2476,7 @@ function drawSection(rows,o={}){
     s+=`<rect x="${X(f.x+RAIL_SET-25.4)}" y="${Y(f.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"><title>Guard rail ${L(P.railH)}, 2 in</title></rect>`
       ;K.note(f.x-fs*.25,f.z+P.railH+fs*.2,`${inchText(P.railH)} guard rail`,{size:PT(6,TP(o,6,fs*.45)),anchor:'end',fill:'var(--muted)',wt:400});});
   rows.forEach(r=>{const tf=PT(6,T9(o,Math.min(fs*.28,r.T*.3)));                               // row numbers: above their tread, clear of the riser behind
-    s+=`<text x="${X(r.x+r.T*.35)}" y="${(+Y(r.z)-tf*.3).toFixed(0)}" font-size="${tf.toFixed(1)}" fill="var(--ink)"${SWG?'':' opacity=".8"'} text-anchor="middle" font-weight="${SWG?400:600}">${r.row}</text>`;});
+    s+=`<text x="${X(r.x+r.T*.35)}" y="${(+Y(r.z)-tf*.3).toFixed(0)}" font-size="${tf.toFixed(1)}" fill="var(--ink)" text-anchor="middle" font-weight="400">${r.row}</text>`;});
   s+=EXtop;rows.forEach(r=>{if(SK.has(r))return;K.avoid(r.ex,r.ez,0,0);s+=`<line x1="${X(r.ex)}" y1="${Y(r.ez)}" x2="${X(0)}" y2="${Y(0)}" stroke="${status(r)==='pass'||status(r)==='front'?'var(--sl-ok)':'var(--sl-low)'}" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`;});   // sightlines by C-value only: blue meets the minimum, red is below it
   const stand=P.eyeMode==='stand';                                  // one mode at a time: its eye dots and its sightlines only
   rows.forEach(r=>{if(SK.has(r))return;const tip=`Tier ${r.tier+1} row ${r.row}${r.C!=null?', C '+CV(r.C):r.railC!=null?', clears guard by '+CV(r.railC):''}`;
@@ -2515,7 +2524,7 @@ function gridBg(X0,X1,Z0,Z1,X,Y,ox=0,oz=0,lab=0){const mi=imperial()?304.8:1000,
   for(let g=ox+Math.ceil((X0-ox)/mi)*mi;g<=X1+1e-6;g+=mi){const k=(g-ox)/ma,major=Math.abs(k-Math.round(k))<1e-6,seg=`M${X(g)} ${Y(Z0)}V${Y(Z1)}`;if(major)b+=seg;else a+=seg;}
   for(let g=oz+Math.ceil((Z0-oz)/mi)*mi;g<=Z1+1e-6;g+=mi){const k=(g-oz)/ma,major=Math.abs(k-Math.round(k))<1e-6,seg=`M${X(X0)} ${Y(g)}H${X(X1)}`;if(major)b+=seg;else a+=seg;}
   return `<path class="appgrid" d="${a}" fill="none" stroke="var(--grid)" stroke-width="0.35" vector-effect="non-scaling-stroke"/><path class="appgrid" d="${b}" fill="none" stroke="var(--edge)" stroke-width="0.5" opacity=".55" vector-effect="non-scaling-stroke"/>`+tx;}
-function drawDetail(all,o={}){
+function drawDetail0(all,o={}){
   const ti=o.tier||0,rs=all.filter(r=>r.tier===ti);if(!rs.length)return `<p class="empty" style="padding:16px">No Tier ${ti+1} rows.</p>`;
   const bufX=(all.find(r=>r.tier===0)||rs[0]).x;                 // the buffer always ends at the Tier 1 front riser
   const IN=25.4,m=DETMODE,E=P.eye,hr=4.5*IN,headTop=4.45*IN,r0=rs[0],last=rs[rs.length-1],band=36*IN;
@@ -2531,7 +2540,7 @@ function drawDetail(all,o={}){
     +`<text x="${f1(tx)}" y="${f1(ym)}" font-size="${f1(fs*.7)}" fill="${c}" font-weight="600" text-anchor="middle" transform="rotate(-90 ${f1(tx)} ${f1(ym)})">${lab}</text>`;};
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" data-fs="${fs.toFixed(2)}" role="img" aria-label="Tier ${ti+1} sightline detail">`+(NF?gridBg(X0,X1,Z0,Z1,X,Y,r0.x,r0.z,T9(o,fs*.8/.9)):gridBg(X0,X1,Z0,Z1,X,Y,0,0,T9(o,fs*.8/.9)));   // Tier 2: 0,0 at the top of its bottom tread
   // pitch, buffer and the point-of-focus line
-  if(!NF){s+=`<rect x="0" y="${Y(0)}" width="${X(0)}" height="${band}" fill="var(--pitch)" fill-opacity=".45"/><rect x="${X(0)}" y="${Y(0)}" width="${f1(bufX)}" height="${band}" fill="var(--grass2)" fill-opacity=".45"/>`
+  if(!NF){s+=`<rect x="0" y="${Y(0)}" width="${X(0)}" height="${band}" fill="var(--pitch)"/><rect x="${X(0)}" y="${Y(0)}" width="${f1(bufX)}" height="${band}" fill="var(--grass2)"/>`
     +`<text x="${f1(+X(0)/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(TP(o,8,fs*.65))}" fill="var(--ink)" font-weight="600" text-anchor="middle">${surf()}</text>`
     +`<text x="${f1(+X(0)+bufX/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(TP(o,8,fs*.65))}" fill="var(--ink)" font-weight="600" text-anchor="middle">Buffer zone</text>`
     +`<line x1="${X(0)}" y1="${f1(+Y(0)+band)}" x2="${X(0)}" y2="${f1(+Y(0)-fs*1.6)}" stroke="${FOCAL}" stroke-width="1.2" vector-effect="non-scaling-stroke"/><circle cx="${X(0)}" cy="${Y(0)}" r="${f1(fs*.22)}" fill="var(--ink)"/>`;}
@@ -2543,7 +2552,7 @@ function drawDetail(all,o={}){
     const xe=NF?X0:0;K.avoid(e.x,e.z,xe,e.z*xe/e.x);s+=`<line x1="${X(e.x)}" y1="${Y(e.z)}" x2="${X(xe)}" y2="${Y(e.z*xe/e.x)}" stroke="var(${ok?'--sl-ok':'--sl-low'})" stroke-width="0.5" opacity=".8" vector-effect="non-scaling-stroke"/>`;});
   rs.forEach((r,i)=>{if(SKd.has(r))return;const e=ey[i],cy=e.z+headTop-hr,C=Cs[i],low=C!=null&&C<r.target-0.05,isMin=C!=null&&Math.abs(C-cMin)<1e-6;
     // row number on the tread, riser height left of its riser
-    if(labels)K.note(r.x+(m==='stand'?4*IN:r.T*.17),r.z+fs*.18,r.row,{size:T9(o,fs*.5),wt:SWG?400:600});   /* plain on the PDF (decision 209) */
+    if(labels)K.note(r.x+(m==='stand'?4*IN:r.T*.17),r.z+fs*.18,r.row,{size:TRF(o,fs*.5),wt:400});   /* plain on the PDF (decision 209) */
     if(labels&&r.riser!=null)K.note(r.x-fs*.2,r.z-r.riser/2-fs*.18,inchText(r.riser),{size:TP(o,6,fs*.46),anchor:'end',fill:SWG?'var(--ink)':'var(--muted)',wt:400});
     s+=`<line x1="${X(e.x)}" y1="${Y(cy-hr)}" x2="${X(e.x)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.x)}" cy="${Y(cy)}" r="${hr}" fill="var(--panel)" stroke="var(--ink)" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
@@ -2579,7 +2588,7 @@ const D4=v=>imperial()?(fmode()==='arch'?impText(v/25.4):(v/25.4).toFixed(2)+'"'
 function wheelchairFigure(ex,floor,X,Y){const IN=25.4,P_=([dx,dz])=>`${X(ex+dx*IN)},${Y(floor+dz*IN)}`,st='fill="none" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-linejoin="round"';
   return WC_FIG.lines.map(l=>`<polyline points="${l.map(P_).join(' ')}" ${st}/>`).join('')
     +WC_FIG.circles.map(([dx,dz,r])=>`<circle cx="${X(ex+dx*IN)}" cy="${Y(floor+dz*IN)}" r="${(r*IN).toFixed(1)}" ${st}/>`).join('');}
-function drawPlatform(o={}){
+function drawPlatform0(o={}){
   const g=platformGeo();if(!g)return '<p class="empty" style="padding:16px">Needs at least four rows.</p>';
   const {rs,sd,p1,p2,top,zP,edge,riserX,setback,railC,front,eye,st,standers}=g,IN=25.4,E=P.eye,hr=4.5*IN,t=slabT(),fs=o.fs||110,r0=rs[0];
   const X0=r0.x-300-fs*8,X1=top.x+top.T+9*IN+fs*17,Z0=r0.z-30*IN-fs*2.2,Z1=Math.max(st.z,eye.z)+HEAD+fs*4.4,W=X1-X0,H=Z1-Z0;   /* room for the chain above the head */
@@ -2604,7 +2613,7 @@ function drawPlatform(o={}){
       +`<line x1="${X(e.x-3.5*IN)}" y1="${Y(e.z+2.25*IN)}" x2="${X(e.x+3.5*IN)}" y2="${Y(e.z+2.25*IN)}" stroke="#FF0000" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(IN*.9)}" fill="var(${p.k==='stand'?'--eye-stand':'--eye-sit'})" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`+(p.k==='stand'?shoulderSvg(X,Y,e.x,e.z,hr):'')
       ;K.reserve(e.x-hr-IN,cy-hr-IN,e.x+hr+IN,cy+hr+IN);if(p.k!=='wc')K.avoid(e.x,cy-hr,e.x,floor);});
-  rs.forEach(r=>K.note(r.x+r.T/2,r.z-t-fs*.8,`Row ${r.row}`,{size:T9(o,fs*.52)}));
+  rs.forEach(r=>K.note(r.x+r.T/2,r.z-t-fs*.8,`Row ${r.row}`,{size:TRF(o,fs*.52)}));
   K.note((edge+top.x)/2,(zP+p2.z)/2-fs*.2,'Platform',{size:TP(o,6,fs*.52)});
   K.reserve(eye.x-31.5*IN,zP,eye.x+15*IN,zP+41*IN);                                     // the wheelchair figure
   K.dim([edge,eye.z+HEAD+fs*1.4],[eye.x,eye.z+HEAD+fs*1.4],{lab:'Platform riser to eye',val:D4(eye.x-edge),ref:'wcoff',ctl:'WCOFF',ea:[edge,zP+P.railH],eb:[eye.x,eye.z]});
@@ -3126,7 +3135,7 @@ function platformInfo(){const g=platformGeo();if(!g)return [];const E=P.eye;
     ['Wheelchair eye',`${wcTxt(E.wcH)} above the platform; ${inchText(E.wcOff)} behind the platform riser (averages, ${EB_SHORT}), which is also the guard rail's inside face (Ref. 6, 9)`],['Front of wheelchair space','12" max from the riser (ICC A117.1 802.9.2.1; Ref. 8)'],
     [`Platform above row ${g.sd.row}`,`${inchText(g.H*25.4)} (A117.1 Table 802.9.2.2 minimum ${inchText(Math.max(0,g.Hreq)*25.4)}: ${g.H>=g.Hreq-0.01?'meets':'below'}; Ref. 7)`],
     [`C-value over the standing spectator, row ${g.sd.row}`,CV(g.C)],[`Rows ${g.standers.map(p=>p.r.row).join(', ')}`,'standing']];}
-function drawSpectator(mode,o={}){
+function drawSpectator0(mode,o={}){
   if(mode==='plat')return drawPlatform(o);
   const rs=enlargedRows(mode);if(rs.length<2)return '<p class="empty" style="padding:16px">Needs at least two rows.</p>';
   const IN=25.4,E=P.eye,hr=4.5*IN,t=slabT(),fs=o.fs||110,T2=mode==='t2',r0=rs[0],last=rs[rs.length-1],n=rs.length,m=rs[n-2];
@@ -3149,7 +3158,7 @@ function drawSpectator(mode,o={}){
       +`<line x1="${X(e.x-3.5*IN)}" y1="${Y(e.z+2.25*IN)}" x2="${X(e.x+3.5*IN)}" y2="${Y(e.z+2.25*IN)}" stroke="#FF0000" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${f1(IN*.9)}" fill="var(${col})" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`+(col==='--eye-stand'?shoulderSvg(X,Y,e.x,e.z,hr):'');
     K.reserve(e.x-hr-IN,cy-hr-IN,e.x+hr+IN,cy+hr+IN).avoid(e.x,cy-hr,e.x,r.z);}));   /* head with 1 in clearance; the dashed body line */
-  rs.forEach(r=>K.note(r.x+r.T/2,r.z-t-fs*.8,`Row ${r.row}`,{size:T9(o,fs*.52)}));
+  rs.forEach(r=>K.note(r.x+r.T/2,r.z-t-fs*.8,`Row ${r.row}`,{size:TRF(o,fs*.52)}));
   if(T2)rs.forEach(r=>{if(r.riser!=null)K.note(r.x-fs*.2,r.z-r.riser/2-fs*.1,D4(r.riser),{size:TP(o,6,fs*.46),anchor:'end',fill:'var(--muted)',wt:400});});   // riser heights left of each riser (decision 175)
   // every row: front riser to the standing eye, then to the sitting eye over the back riser; standing eye height
   rs.forEach((r,i)=>{const z=r.z+(T2?3:10)*IN;K.dim([r.x,z],[st[i].x,z],{val:D4(E.stOff),ref:i===0?'stand':null,ea:[r.x,r.z],ctl:'STOFF',fix:1});K.dim([st[i].x,z],[r.x+r.T,z],{val:D4(r.T-E.stOff),ea:[st[i].x,r.z],eb:[r.x+r.T,r.z],fix:1});   /* the 8 in offset and the rest of the tread on one line, every row (decision 195) */   /* view 3: the 8 in offsets and per-row standing eyes left out (decision 174) */
@@ -4140,7 +4149,7 @@ function plotOne(sh,what,maxIn,fixed,ori,force){ori=ori||'h';   // force: a set 
       if(hit){fit=hit;break;}}
     if(!fit&&(force||(fixed&&imperial()&&maxIn))){const sc=scs[0],k=1/sc.ratio/25.4,r=draw(sc,0.125);pv=r.v;svg0=r.s0;fit={sc,k,w:pv[2]*1000*k,h:pv[3]*1000*k,svg:svg0,u:25.4*sc.ratio/1000,over:true};}}
   else{const rows=ZR[P.sec].filter(r=>r.tier===0);
-    for(const sc of PLOT_SCALES()){const k=1/sc.ratio/25.4,svg=drawDetail(ZR[P.sec],{fs:sh.txt*25.4*sc.ratio,sparse:(rows[1]||rows[0]).T*k<sh.txt*2.2});
+    for(const sc of PLOT_SCALES()){const k=1/sc.ratio/25.4,svg=drawDetail(ZR[P.sec],{tru:25.4*sc.ratio/72,fs:sh.txt*25.4*sc.ratio,sparse:(rows[1]||rows[0]).T*k<sh.txt*2.2});
       const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;if(w<=aw&&h<=ah){fit={sc,k,w,h,svg,u:25.4*sc.ratio};break;}}}
   if(!fit)return null;
   const name=what==='plan'?(ori==='v'?'Bowl plan, vertical (north up)':'Bowl plan, landscape (north left)'):`Tier 1 sightline detail (${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'})`;
@@ -4158,7 +4167,7 @@ function plotIso(sh,view){const keep=ISOVIEW;ISOVIEW=view;const svg0=drawIso();I
   return {svg,scale:'not to scale',sheet:sh,what:'iso',title};}
 // One tier's sightline section (East), with its sightlines, C-values, risers and dimensions, at the largest standard scale that fits.
 function plotTier(sh,ti,fixScale,zone,cut){zone=zone||'T';/* fixScale: use this scale (Tier 2 follows Tier 1); later tiers drop the point of focus */const A=swArea(sh),rows=ZR[zone].filter(r=>r.tier===ti);let fit=null;
-  for(const sc of (fixScale?[fixScale]:PLOT_SCALES())){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawDetail(ZR[zone],{tier:ti,noFocus:ti>0,fs:sh.txt*25.4*sc.ratio,sparse:(rows[1]||rows[0]).T*k<sh.txt*2.2,zone,cut}),o=SWORIG;SWG=0;SWORIG=null;
+  for(const sc of (fixScale?[fixScale]:PLOT_SCALES())){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawDetail(ZR[zone],{tru:25.4*sc.ratio/72,tier:ti,noFocus:ti>0,fs:sh.txt*25.4*sc.ratio,sparse:(rows[1]||rows[0]).T*k<sh.txt*2.2,zone,cut}),o=SWORIG;SWG=0;SWORIG=null;
     const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number),w=v[0]*k,h=v[1]*k;
     if((w<=A.aw&&h<=A.ah)||fixScale){fit={sc,k,w,h,svg,u:25.4*sc.ratio,o,fits:w<=A.aw&&h<=A.ah};break;}}
   if(!fit)return null;
@@ -4174,7 +4183,7 @@ function scaleBar(sh,fit){const B=sh.B,f=v=>(+v).toFixed(4),sb=sh.txt*4.2,title=
 // Sitting and standing spectators side by side at one standard scale, with the eye sight values listed under each.
 function plotSpectators(sh){const A=swArea(sh),u=A.u,k2=u/0.25,modes=SPECT_MODES,names=SPECT_NAMES;let fit=null;
   const nInfo=Math.max(...modes.map(m=>Math.ceil(spectatorInfo(m).length/2))),infoH=(nInfo+1)*u,ah=A.ah-infoH;   // two columns of eye-sight values under the view, one grid row each
-  for(const sc of DETAIL_SCALES()){const k=1/sc.ratio/25.4,fs=sh.txt*1.7*25.4*sc.ratio,org=[],d=modes.map(m=>{SWG=A.u*25.4*sc.ratio;SWORIG=null;const v=drawSpectator(m,{fs});org.push(SWORIG);SWG=0;SWORIG=null;return v;});   /* dimensions on the sheet grid (decision 196) */   // one scale for every enlarged view
+  for(const sc of DETAIL_SCALES()){const k=1/sc.ratio/25.4,fs=sh.txt*1.7*25.4*sc.ratio,org=[],d=modes.map(m=>{SWG=A.u*25.4*sc.ratio;SWORIG=null;const v=drawSpectator(m,{fs,tru:25.4*sc.ratio/72});org.push(SWORIG);SWG=0;SWORIG=null;return v;});   /* dimensions on the sheet grid (decision 196) */   // one scale for every enlarged view
     const v=d.map(x=>x.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/).slice(1).map(Number));
     if(v.every(([w,h])=>w*k<=A.aw&&h*k<=ah)){fit={sc,k,d,v,org,u:25.4*sc.ratio};break;}}
   if(!fit)return [null];
@@ -4247,7 +4256,7 @@ function junctionInfo(all,tu){const IN=25.4,E=P.eye,lo=all.filter(r=>r.tier===tu
   return G;}
 function junctionInfoHTML(all,tu){const G=junctionInfo(all,tu);if(!G.length)return '';
   return '<table class="jinfo">'+G.map(([h,rows])=>`<tr class="jh"><td colspan="2">${h}</td></tr>`+rows.map(([a,b])=>`<tr><td>${a}</td><td>${b}</td></tr>`).join('')).join('')+'</table>';}
-function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-1),up=all.filter(r=>r.tier===tu);if(!lo.length||!up.length)return `<p class="empty" style="padding:16px">No Tier ${tu+1} rows.</p>`;
+function drawJunction0(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-1),up=all.filter(r=>r.tier===tu);if(!lo.length||!up.length)return `<p class="empty" style="padding:16px">No Tier ${tu+1} rows.</p>`;
   const IN=25.4,E=P.eye,hr=4.5*IN,headTop=4.45*IN,n=lo.length,lb=lo[n-1],f=up[0],NL=8,NU=5,u2=up[Math.min(NU-1,up.length-1)],a0=lo[Math.max(0,n-NL)],   /* lower tier: 8 rows, upper: 5 (decision 161: three more each way) */t=slabT(),fs=o.fs||300,pg=secPlat(lo);
   const loD=lo.slice(Math.max(0,n-6)),upD=up.slice(0,7),NL2=loD.length,NU2=upD.length,aL=lo[Math.max(0,n-NL2)],uR=up[Math.min(NU2,up.length)-1],xR=Math.max(u2.x+u2.T,lb.x+lb.T,f.x+f.T,uR.x+uR.T),X0_=loD[0].x-fs*3,X1_=Math.max(xR+fs*9,Math.max(lb.x+lb.T+fs*4,f.x)+25+3*304.8+fs*4),eyeTop=Math.max(...up.slice(0,NU).map(r=>r.sit.ez),f.z+P.railH);
   const uE=up[Math.min(7,up.length)-1],l0=lo[Math.max(0,n-6)],cxW=(l0.x+uE.x+uE.T)/2,czW=(l0.z-slabT()+Math.max(uE.sit.ez+4.45*25.4,uE.z+P.railH))/2,   /* the window centred on the six risers of each tier (decision 201) */xe=o.win?0:o.fillW&&o.fillW>X1_-X0_?(o.fillW-(X1_-X0_))/2:0,X0=o.win?cxW-o.win[0]/2:X0_-2*xe,X1=o.win?cxW+o.win[0]/2:X1_;   /* win: a fixed window centred between the top of the tier below and the front of the tier above (decision 200) */   /* fill to the left only, so the upper tier ends with its last dimensioned tread (decision 197) */   // the grid out to the frame's edges (decision 181)
@@ -4275,14 +4284,14 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
       +`<circle cx="${X(e.x)}" cy="${Y(cy)}" r="${hr}" fill="var(--panel)" stroke="var(--ink)" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(e.x-3.5*IN)}" y1="${Y(e.z+2.25*IN)}" x2="${X(e.x+3.5*IN)}" y2="${Y(e.z+2.25*IN)}" stroke="#FF0000" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.x)}" cy="${Y(e.z)}" r="${(fs*.1).toFixed(1)}" fill="var(--eye-stand)" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`+shoulderSvg(X,Y,e.x,e.z,hr);
-    K.note(r.x+r.T*.17,r.z+fs*.18,`${r.tier+1}-${r.row}`,{size:T9(o,fs*.42)});K.reserve(e.x-hr,cy-hr,e.x+hr,cy+hr);K.avoid(e.x,cy-hr,e.x,r.z);});
+    K.note(r.x+r.T*.17,r.z+fs*.18,`${r.tier+1}-${r.row}`,{size:TRF(o,fs*.42)});K.reserve(e.x-hr,cy-hr,e.x+hr,cy+hr);K.avoid(e.x,cy-hr,e.x,r.z);});
   sp.forEach(r=>{const e=r.sit,cy=e.ez+headTop-hr,grp=r.tier===tu-1?lo:up,C=rowC(grp,grp.indexOf(r),'sit'),bad=(C!=null&&C<r.target-0.05)||(r===f&&railClear(f,{x:e.ex,z:e.ez})<0);   // F style (decision 159)
     s+=`<line x1="${X(e.ex)}" y1="${Y(e.ez)}" x2="${X(X0)}" y2="${Y(e.ez*X0/e.ex)}" stroke="var(${bad?'--sl-low':'--sl-ok'})" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(e.ex)}" y1="${Y(cy-hr)}" x2="${X(e.ex)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.ex)}" cy="${Y(cy)}" r="${hr}" fill="none" stroke="var(--ink)" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
       +`<line x1="${X(e.ex-3.5*IN)}" y1="${Y(e.ez+2.25*IN)}" x2="${X(e.ex+3.5*IN)}" y2="${Y(e.ez+2.25*IN)}" stroke="#FF0000" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
       +`<circle cx="${X(e.ex)}" cy="${Y(e.ez)}" r="${(IN*.9).toFixed(1)}" fill="var(--eye-sit)" stroke="var(--eye-sit)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`;
-    K.avoid(e.ex,e.ez,X0,e.ez*X0/e.ex);if(!stR.has(r))K.note(r.x+r.T*.17,r.z+fs*.18,`${r.tier+1}-${r.row}`,{size:T9(o,fs*.42)});
+    K.avoid(e.ex,e.ez,X0,e.ez*X0/e.ex);if(!stR.has(r))K.note(r.x+r.T*.17,r.z+fs*.18,`${r.tier+1}-${r.row}`,{size:TRF(o,fs*.42)});
     if(C!=null){const isMin=Math.abs(C-cm[r.tier])<1e-6,low=C<r.target-0.05;K.note(e.ex+hr+1.5*IN,cy-fs*.2,CV(C),{size:TP(o,6,fs*.46),anchor:'start',fill:low?'var(--sl-low)':isMin?'#0000FF':'var(--ink)',wt:isMin?800:600,ref:isMin?'cval':null});}   /* C-value right of the head, as in the sightline details (decision 182) */K.reserve(e.ex-hr-IN,cy-hr-IN,e.ex+hr+IN,cy+hr+IN);K.avoid(e.ex,cy-hr,e.ex,r.z);});
   // seated dimensions in the F style, with reference circles: sitting eye height, C sitting between rows, Tier N+1 row 1 over the rail
   {const sr=lo.slice(Math.max(0,n-NL)).filter(r=>!SK.has(r));
@@ -4323,7 +4332,7 @@ function drawJunction(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu-
   K.note(u2.x+u2.T-fs*.2,u2.z-t-fs*.95,`Tier ${tu+1}`,{size:TP(o,10,fs*.8),anchor:'end',fill:'var(--ink)',wt:700});K.note(lb.x+lb.T-fs*.2,lb.z-t-fs*.95,`Tier ${tu}`,{size:TP(o,10,fs*.8),anchor:'end',fill:'var(--ink)',wt:700});   // under the top tread of each tier drawn (decision 169)
   s+=K.out();return s+'</svg>';}
 function plotJunction(sh,zone,tu,force){const A=swArea(sh),Z=ZR[zone];if(!Z||!Z.some(r=>r.tier===tu))return null;let fit=null;
-  for(const sc of (force?[force]:PLOT_SCALES())){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawJunction(Z,{tier:tu,zone,fs:sh.txt*25.4*sc.ratio,fillW:A.aw/k*0.995-1,win:force&&force.win?[A.aw/k*0.995,A.ah/k*0.995]:null}),o=SWORIG;   /* profiles and grid across the drawing area (decision 195) */SWG=0;SWORIG=null;
+  for(const sc of (force?[force]:PLOT_SCALES())){const k=1/sc.ratio/25.4;SWG=A.u*25.4*sc.ratio;SWORIG=null;const svg=drawJunction(Z,{tru:25.4*sc.ratio/72,tier:tu,zone,fs:sh.txt*25.4*sc.ratio,fillW:A.aw/k*0.995-1,win:force&&force.win?[A.aw/k*0.995,A.ah/k*0.995]:null}),o=SWORIG;   /* profiles and grid across the drawing area (decision 195) */SWG=0;SWORIG=null;
     const v=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);if(!v)return null;const w=+v[1]*k,h=+v[2]*k;
     if((w<=A.aw&&h<=A.ah)||force){fit={sc,k,w,h,svg,u:25.4*sc.ratio,o,fits:w<=A.aw&&h<=A.ah};break;}}
   if(!fit)return null;
