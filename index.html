@@ -370,6 +370,7 @@ main details.g24{padding:0!important;border:0!important}
 @media (max-width:1399px){#junction table.jinfo td:last-child{white-space:normal}}   /* narrower windows: long values wrap rather than overflow the frame */
 #junction table.jinfo tr.jh td{text-align:left;padding-left:0;font-weight:700;box-shadow:inset 0 -1px 0 var(--sw-ink,#111)}
 #junction .capt{line-height:24px;margin:0!important;padding:0 12px}
+#section.panel{background:transparent}   /* the overall bowl section over the page grid (decision 208) */
 </style>
 </head>
 <body>
@@ -1954,7 +1955,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.05';
+const VERSION='2026.11.01.06';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -4068,7 +4069,7 @@ function swissSheet(sh,o){const u=swU(sh),k=u/0.25,A=swArea(sh),W=sh.w,H=sh.h,f=
   s+=swT(L,y0+2.25*u,String(o.big[0]).toUpperCase(),{pt:tpt,b:1,k})+swT(L,y0+3.75*u,String(o.big[1]).toUpperCase()+'.',{pt:tpt,b:1,k,fill:SW.red});
   const sc=o.scale,tiles=o.tiles||[sc?[sc.label,'SCALE',sc.bar?'':(sc.note||'')]:['N.T.S.','SCALE','Not to scale.'],[fmt(M.cap),'SEATS',`${P.tierCount} tier${P.tierCount>1?'s':''}, all stands.`],o.tile3||[String(P.tierCount),'TIERS',`${SPORTS[P.sport].name}.`],['%%NO%%','SHEET','OF %%N%%.',1]];
   tiles.forEach((t,i)=>{const x=L+(tt+1)*u+i*(tw+1)*u,y=y0+u,w=tw*u,h=3*u,inv=t[3];
-    s+=swRect(x,y,w,h,inv?SW.ink:'#FFFFFF',inv?null:SW.ink,.75*k/72);
+    s+=swRect(x,y,w,h,inv?SW.ink:'none',inv?null:SW.ink,.75*k/72);
     const vpt=Math.min(16,w*72/(String(t[0]).length*0.62)/k);
     s+=swT(x+.5*u,y+1.35*u,t[0],{pt:vpt,b:1,k,fill:SW.red})+swT(x+.5*u,y+1.98*u,t[1],{pt:8,b:1,ls:.12,k,fill:inv?'#FFFFFF':SW.ink});
     if(i===0&&sc&&sc.bar){const b=sc.bar,bw=b.seg;for(let j=0;j<5;j++)s+=swRect(x+.5*u+j*bw,y+2.32*u,bw,.18*u,j%2?'#FFFFFF':SW.ink,SW.ink,.4*k/72);
@@ -4380,7 +4381,7 @@ function swCover(sh,index,keyPlan){const u=swU(sh),G=n=>n*u,k=u/0.25,Sp=SPORTS[P
   const head=(x,y,no,txt)=>swRect(G(x),G(y)+u/4,u/2,u/2,SW.red)+row(x+1,y,`${String(no).padStart(2,'0')}. ${txt.toUpperCase()}`,{pt:13,b:1});
   const table=(x,y,w,cols,rows,o={})=>{let t='';const cw=cols.map(c=>c[1]),tot=cw.reduce((a,b)=>a+b,0),X=[G(x)];cw.forEach((c,i)=>X.push(X[i]+c/tot*G(w)));
     t+=swRect(G(x),G(y),G(w),u,SW.ink);cols.forEach((c,i)=>{const al=c[2]==='r';t+=swT(al?X[i+1]-u/2:X[i]+u/2,swBase(G(y),u,6.5,k),c[0].toUpperCase(),{pt:6.5,b:1,ls:.12,k,fill:'#FFFFFF',a:al?'end':null});});
-    rows.forEach((r,j)=>{const yy=G(y+1+j),last=o.tot&&j===rows.length-1;t+=swRect(G(x),yy,G(w),u,'#FFFFFF')+swRect(G(x),yy+u-(last?1.4:.6)*k/72,G(w),(last?1.4:.6)*k/72,last?SW.ink:'#9A9A96');
+    rows.forEach((r,j)=>{const yy=G(y+1+j),last=o.tot&&j===rows.length-1;t+=swRect(G(x),yy+u-(last?1.4:.6)*k/72,G(w),(last?1.4:.6)*k/72,last?SW.ink:'#9A9A96');
       r.forEach((v,i)=>{const al=cols[i][2]==='r',red=o.redLast&&last&&i===r.length-1;t+=swT(al?X[i+1]-u/2:X[i]+u/2,swBase(yy,u,7.5,k),v,{pt:7.5,b:last?1:0,k,a:al?'end':null,fill:red?SW.red:SW.ink});});});return t;};
   let b='';
   // title: three rows of three squares, baselines on grid lines; description beside it
@@ -4395,7 +4396,7 @@ function swCover(sh,index,keyPlan){const u=swU(sh),G=n=>n*u,k=u/0.25,Sp=SPORTS[P
   const w0=M.worst,vd=imperial()?`${Math.round(M.vd/0.3048)}'`:`${Math.round(M.vd)} m`;
   [[fmt(M.cap),'SEATS',`${P.tierCount} tiers, four stands, four corners.`],[w0?CV(w0.C):'n/a','LOWEST C-VALUE',w0?`${P.eyeMode==='stand'?'Standing':'Sitting'}, Tier ${w0.tier+1}, row ${w0.row}.`:''],
    [vd,'FARTHEST VIEWING DISTANCE','Eye to the farthest point of the field.'],[fmt(M.ADA?M.ADA.req:0),'WHEELCHAIR SPACES REQUIRED',imperial()?'IBC 1108.2.2.1 / ADA 221.2.1.1.':'Accessible spaces required.',1]].forEach((t,i)=>{const x=2+10*i,inv=t[3];
-    b+=swRect(G(x),G(y),G(9),G(6),inv?SW.ink:'#FFFFFF',inv?null:SW.ink,.75*k/72)+swT(G(x+1),swBase(G(y+1),G(2),34,k),t[0],{pt:Math.min(34,G(8)*72/(String(t[0]).length*0.62)/k),b:1,k,fill:SW.red})
+    b+=swRect(G(x),G(y),G(9),G(6),inv?SW.ink:'none',inv?null:SW.ink,.75*k/72)+swT(G(x+1),swBase(G(y+1),G(2),34,k),t[0],{pt:Math.min(34,G(8)*72/(String(t[0]).length*0.62)/k),b:1,k,fill:SW.red})
       +row(x+1,y+3,t[1],{pt:6.2,b:1,ls:.12,fill:inv?'#FFFFFF':SW.ink})+row(x+1,y+4,t[2],{pt:6.2,fill:inv?'#C9C9C5':SW.grey});});
   y+=8;
   // 02 seat count by tier
@@ -4426,7 +4427,7 @@ function swCoverL(sh,index,keyPlan){   /* landscape Project Information (decisio
   const head=(x,y,no,txt)=>swRect(G(x),G(y)+u/4,u/2,u/2,SW.red)+row(x+1,y,`${String(no).padStart(2,'0')}. ${txt.toUpperCase()}`,{pt:13,b:1});
   const table=(x,y,w,cols,rows,o={})=>{let t='';const cw=cols.map(c=>c[1]),tot=cw.reduce((a,b)=>a+b,0),X=[G(x)];cw.forEach((c,i)=>X.push(X[i]+c/tot*G(w)));
     t+=swRect(G(x),G(y),G(w),u,SW.ink);cols.forEach((c,i)=>{const al=c[2]==='r';t+=swT(al?X[i+1]-u/2:X[i]+u/2,swBase(G(y),u,6.5,k),c[0].toUpperCase(),{pt:6.5,b:1,ls:.12,k,fill:'#FFFFFF',a:al?'end':null});});
-    rows.forEach((r,j)=>{const yy=G(y+1+j),last=o.tot&&j===rows.length-1;t+=swRect(G(x),yy,G(w),u,'#FFFFFF')+swRect(G(x),yy+u-(last?1.4:.6)*k/72,G(w),(last?1.4:.6)*k/72,last?SW.ink:'#9A9A96');
+    rows.forEach((r,j)=>{const yy=G(y+1+j),last=o.tot&&j===rows.length-1;t+=swRect(G(x),yy+u-(last?1.4:.6)*k/72,G(w),(last?1.4:.6)*k/72,last?SW.ink:'#9A9A96');
       r.forEach((v,i)=>{const al=cols[i][2]==='r',red=o.redLast&&last&&i===r.length-1;t+=swT(al?X[i+1]-u/2:X[i]+u/2,swBase(yy,u,7.5,k),v,{pt:7.5,b:last?1:0,k,a:al?'end':null,fill:red?SW.red:SW.ink});});});return t;};
   let b='';
   // title: three rows of three squares, baselines on grid lines; description beside it
@@ -4441,7 +4442,7 @@ function swCoverL(sh,index,keyPlan){   /* landscape Project Information (decisio
   const w0=M.worst,vd=imperial()?`${Math.round(M.vd/0.3048)}'`:`${Math.round(M.vd)} m`;
   [[fmt(M.cap),'SEATS',`${P.tierCount} tiers, four stands, four corners.`],[w0?CV(w0.C):'n/a','LOWEST C-VALUE',w0?`${P.eyeMode==='stand'?'Standing':'Sitting'}, Tier ${w0.tier+1}, row ${w0.row}.`:''],
    [vd,'FARTHEST VIEWING DISTANCE','Eye to the farthest point of the field.'],[fmt(M.ADA?M.ADA.req:0),'WHEELCHAIR SPACES REQUIRED',imperial()?'IBC 1108.2.2.1 / ADA 221.2.1.1.':'Accessible spaces required.',1]].forEach((t,i)=>{const x=2+10*i,inv=t[3];
-    b+=swRect(G(x),G(y),G(9),G(5),inv?SW.ink:'#FFFFFF',inv?null:SW.ink,.75*k/72)+swT(G(x+1),swBase(G(y+1),G(2),34,k),t[0],{pt:Math.min(34,G(8)*72/(String(t[0]).length*0.62)/k),b:1,k,fill:SW.red})
+    b+=swRect(G(x),G(y),G(9),G(5),inv?SW.ink:'none',inv?null:SW.ink,.75*k/72)+swT(G(x+1),swBase(G(y+1),G(2),34,k),t[0],{pt:Math.min(34,G(8)*72/(String(t[0]).length*0.62)/k),b:1,k,fill:SW.red})
       +row(x+1,y+2.8,t[1],{pt:6.2,b:1,ls:.12,fill:inv?'#FFFFFF':SW.ink})+row(x+1,y+3.7,t[2],{pt:6.2,fill:inv?'#C9C9C5':SW.grey});});
   y+=5.5;
   // 02 seat count by tier
