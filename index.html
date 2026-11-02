@@ -398,6 +398,7 @@ main .g24 summary,main .planhead .capt,#ctlHint,main .g24 .seg > span{position:r
 /* decision 225: no 12 px regular text: hints, legends, captions and table text at 14 px */
 .hint,.sl-val,.cap-side,.vglab,main .legend span,main .legend b,#ver{font-size:14px!important}
 main table.fixed td,main table.fixed td *:not(input):not(button),#controls table td,#eyeDerived td,#v3Fmt td,#egrTable td,#shortTable td,#codePanel td,#secPanel td{font-size:14px!important}
+button,a.btnlink,summary,.refb{font-size:14px!important}   /* decision 226: no 12 px text anywhere on the page: buttons, tabs and panel headings at 14 px */
 </style>
 </head>
 <body>
@@ -1985,7 +1986,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.23';
+const VERSION='2026.11.01.24';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
