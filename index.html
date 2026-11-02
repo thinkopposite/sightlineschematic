@@ -371,6 +371,13 @@ main details.g24{padding:0!important;border:0!important}
 @media (max-width:1399px){#junction table.jinfo td:last-child{white-space:normal}}   /* narrower windows: long values wrap rather than overflow the frame */
 #junction table.jinfo tr.jh td{text-align:left;padding-left:0;font-weight:700;box-shadow:inset 0 -1px 0 var(--sw-ink,#111)}
 #junction .capt{line-height:24px;margin:0!important;padding:0 12px}
+main .g24 :is(button,select,input[type=number],input[type=text]),main .planhead .seg :is(button,select){height:25px!important;min-height:25px;line-height:23px!important;padding-top:0!important;padding-bottom:0!important}   /* decision 217: every outline on the grid lines: a box 24n+1 px tall from one grid line to another, its text centred in the cells between */
+main .planhead .seg{row-gap:0!important}main .planhead .seg :is(button,select){margin-bottom:-1px!important}
+main .tablewrap{padding-top:1px;box-sizing:border-box}main .g24 .tablewrap,main .tablewrap.g24{max-height:361px}
+main .planhead .capt{line-height:24px!important}
+main .g24 .verdict:not(#verdict){border:0!important;box-shadow:inset 6px 0 0 var(--sw-ink,#111),inset 0 0 0 1px var(--sw-ink,#111);padding:0 14px 1px 20px!important;line-height:24px}
+#cap.g24{padding-bottom:25px!important}#verdict.g24{padding-bottom:25px!important}#stats.g24 > *{padding-bottom:25px!important}#opts.g24 > *{padding-bottom:25px!important}
+main .group{line-height:24px!important;height:24.25px;padding:0!important;border:0!important;box-sizing:border-box;background:linear-gradient(var(--sw-ink,#111),var(--sw-ink,#111)) left bottom/100% 1.5px no-repeat;overflow:visible}   /* the heading text in one cell, its rule centred on the grid line below */
 </style>
 </head>
 <body>
@@ -452,7 +459,7 @@ main details.g24{padding:0!important;border:0!important}
       <p class="capt">One section at true seat width: seats, end-seat space, aisles and clear width between rows.</p>
       <div><div class="seg" id="enlTabs" role="group" aria-label="Enlarged section"></div></div></div>
     <div class="panel" id="enl"></div>
-    <div class="planhead" hidden><span class="bub" id="bubEnlC">H</span><h3 id="enlcTitle">Enlarged plan: typical corner</h3>
+    <div class="planhead" hidden style="display:none"><span class="bub" id="bubEnlC">H</span><h3 id="enlcTitle">Enlarged plan: typical corner</h3>
       <p class="capt">The sections round one corner at true seat width, with seat numbers. North-west by default. Every tier is drawn at the same scale.</p>
       <div><div class="seg" id="enlcTabs" role="group" aria-label="Enlarged corner"></div></div></div>
     <div class="panel" id="enlc" hidden></div>
@@ -1958,7 +1965,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.14';
+const VERSION='2026.11.01.15';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -1982,7 +1989,7 @@ function gridAlign(){   // decisions 167, 168, 176, 177: headings centred in a c
   const sel='main .planhead, main .group, main .panel, main .g24, main .vomgrid, main .g24 :is(table,.tablewrap,.seg,p,.vgrid,.vg-h,summary+div,summary+table)';
   const els=[...document.querySelectorAll(sel)].filter(e=>e.offsetParent!==null&&!e.closest('[hidden]'));
   const sub=e=>!e.classList.contains('g24')&&!!e.closest('.g24')&&!e.classList.contains('vomgrid');
-  const mbPrev=e=>{const pv=e.previousElementSibling,pa=e.parentElement;if(!pv||!pa||/flex|grid|table/.test(getComputedStyle(pa).display))return 0;return Math.max(0,parseFloat(getComputedStyle(pv).marginBottom)||0);};   // a top margin collapses with the one above (decision 177)
+  const mbPrev=e=>{let pv=e.previousElementSibling;while(pv&&(pv.hidden||getComputedStyle(pv).display==='none'))pv=pv.previousElementSibling;const pa=e.parentElement;   /* a hidden sibling takes no part in the margin collapse (decision 217) */if(!pv||!pa||/flex|grid|table/.test(getComputedStyle(pa).display))return 0;return Math.max(0,parseFloat(getComputedStyle(pv).marginBottom)||0);};   // a top margin collapses with the one above (decision 177)
   const pan=e=>e.classList.contains('panel');
   els.forEach(e=>{if(pan(e)){e.style.marginTop='';e.style.left='';if(!e.classList.contains('spf'))e.style.width='';e.style.minHeight='';e.style.height='';return;}});
   els.forEach(e=>{if(pan(e))return;if(sub(e)){if(e.closest('.tablewrap')&&e.tagName==='TABLE')return;e.style.setProperty('margin-top','0px','important');return;}if(e.classList.contains('g24')||e.classList.contains('vomgrid')){e.style.marginTop='0px';e.style.paddingLeft='0px';return;}
@@ -1999,9 +2006,12 @@ function gridAlign(){   // decisions 167, 168, 176, 177: headings centred in a c
     if(sub(e)){if(e.closest('.tablewrap')&&e.tagName==='TABLE')continue;const top=e.getBoundingClientRect().top+scrollY;let d=((23-top)%24+24)%24;const prev=e.previousElementSibling;if(prev&&d<6&&!/SUMMARY/.test(prev.tagName))d+=24;e.style.setProperty('margin-top',(d+mbPrev(e))+'px','important');continue;}   // sub-blocks: top on a grid line, a cell of air after the one before
     if(e.classList.contains('g24')||e.classList.contains('vomgrid')){const r=e.getBoundingClientRect(),top=r.top+scrollY;let d=((23-top)%24+24)%24;if(d<6&&e.classList.contains('g24'))d+=24;e.style.marginTop=(d+mbPrev(e))+'px';   // at least a little air above each block
       if(e.classList.contains('vomgrid')){const left=e.getBoundingClientRect().left+scrollX;e.style.paddingLeft=(((23-left)%24+24)%24)+'px';}continue;}
+    if(e.classList.contains('group')){const top=e.getBoundingClientRect().top+scrollY;let d=((0-top)%24+24)%24;if(d>12&&(+e.dataset.mt0)+d-24>=0)d-=24;e.style.marginTop=((+e.dataset.mt0)+d)+'px';continue;}   /* group headings: the text in one cell, the rule on the grid line (decision 217) */
     const t=e.classList.contains('group')?e:(e.querySelector('h3')||e),r=t.getBoundingClientRect(),cy=r.top+(e.classList.contains('group')?(r.height-parseFloat(getComputedStyle(e).paddingBottom||0))/2:r.height/2)+scrollY;
     let d=((11-cy)%24+24)%24;if(d>12&&(+e.dataset.mt0)+d-24>=0)d-=24;e.style.marginTop=((+e.dataset.mt0)+d)+'px';
-    const c=e.querySelector(':scope > .capt');if(c){const rc=c.getBoundingClientRect(),c0=rc.top+12+scrollY;c.style.marginTop=(((11-c0)%24+24)%24)+'px';}}}
+    const c=e.querySelector(':scope > .capt');if(c){const rc=c.getBoundingClientRect(),c0=rc.top+12+scrollY;c.style.marginTop=(((11-c0)%24+24)%24)+'px';}
+    const sg=e.querySelector('.seg');if(sg&&sg.offsetParent!==null){let cn=sg;while(cn.parentElement&&cn.parentElement!==e)cn=cn.parentElement;cn.style.alignSelf='start';cn.style.marginTop='0px';const tp=sg.getBoundingClientRect().top+scrollY,h3=e.querySelector('h3'),hc=h3?h3.getBoundingClientRect().top+h3.getBoundingClientRect().height/2+scrollY:tp+12;let d=((23-tp)%24+24)%24;const want=hc-12.5-tp;d=d+24*Math.round((want-d)/24);if(d<0)d+=24;cn.style.marginTop=d+'px';}}   /* the view tabs from one grid line to the next (decision 217) */
+  document.querySelectorAll('main .tablewrap').forEach(w=>{if(w.offsetParent===null)return;w.style.height='';{const mh=parseFloat(w.style.maxHeight);if(mh&&Math.abs((mh-1)/24-Math.round((mh-1)/24))>0.01)w.style.maxHeight=(Math.ceil((mh-1)/24)*24+1)+'px';}const h=w.getBoundingClientRect().height;if(Math.abs((h-1)/24-Math.round((h-1)/24))>0.01)w.style.height=(Math.ceil((h-1)/24)*24+1)+'px';});}
 // the blocks on the page grid (decision 177)
 function markG24(){['#cap','#verdict','#stats','#zones','#comply','#ctlHint','#planNote','#opts'].forEach(q=>{const e=document.querySelector(q);if(e)e.classList.add('g24');});
   document.querySelectorAll('main > details, main > .legend, main > .seg').forEach(e=>e.classList.add('g24'));}
@@ -3886,7 +3896,7 @@ function update(){
   M.rails.forEach(r=>msg.push(`${zl(r)} front row can't see the point of focus over the ${L(P.railH)} guard`));
   M.lowHead.forEach(h=>msg.push(`${L(h.h)} headroom under ${zl(h)}`));
   {const er=egressRows();if(er)er.filter(r=>r[2]===false).forEach(r=>msg.push(r[0].replace(/^Tier (\d): /,'Tier $1 ')+' short of the egress requirement'));}
-  const v=$('verdict');v.className='verdict '+(msg.length?'bad':'ok');
+  const v=$('verdict');v.className='verdict g24 '+(msg.length?'bad':'ok');
   v.textContent=msg.length?msg.join('; ')+'.':`All rows meet their C-value targets, front rows included, within ${rakeRule()} and ${L(P.vd*1000,'m',0,true)}.`;
   $('secTabs').innerHTML=zoned(P)?GEO.map(k=>`<button data-sec="${k}" class="${P.sec===k?'on':''}" aria-pressed="${P.sec===k}"${ZR[k].length?'':' disabled'}>${zoneName(P,k,true)}</button>`).join(''):'';
   $('secTitle').textContent='Section: '+zoneName(P,P.sec)+(P.eyeMode==='stand'?', standing':', sitting');
