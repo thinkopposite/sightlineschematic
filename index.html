@@ -388,6 +388,7 @@ main .g24 td :is(button,select,input[type=number],input[type=text]){height:24px!
 #secTable td:first-child{padding-left:12px!important}
 main table :is(td,th){box-shadow:none!important;border-top:0!important;border-bottom:0!important}main .g24 table,main table{box-shadow:none!important}   /* decision 222: no row rules; the page grid lines are the only lines between rows */
 main .tablewrap :is(td,th):first-child{padding-left:12px!important}main .tablewrap :is(td,th):last-child{padding-right:12px!important}
+main .verdict.ok,main .g24 .verdict:not(.bad){background:transparent!important}   /* the message box shows the grid (decision 223) */
 </style>
 </head>
 <body>
@@ -1975,7 +1976,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.20';
+const VERSION='2026.11.01.21';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2025,6 +2026,13 @@ function gridAlign(){   // decisions 167, 168, 176, 177: headings centred in a c
     const W=st.getBoundingClientRect().width,C=Math.floor((W-1)/24);let per=n;while(per>1&&Math.floor((C-(per-1))/per)<7)per--;const cells=C-(per-1),k=Math.floor(cells/per),ex=cells-k*per;
     if(n&&k>0)st.style.gridTemplateColumns=Array.from({length:per},(_,i)=>(24*(k+(i<ex?1:0))+1)+'px').join(' ');
     ks.forEach(c=>{c.style.minHeight='';});const h=Math.max(...ks.map(c=>c.getBoundingClientRect().height));ks.forEach(c=>{c.style.minHeight=(Math.ceil((h-1)/24)*24+1)+'px';});}}
+  document.querySelectorAll('main .g24 .seg, main .seg.g24').forEach(sg=>{if(sg.closest('table')||sg.offsetParent===null)return;   /* buttons, tabs and entry boxes: left and right edges on grid lines, 24n+1 px wide, joined groups sharing a line (decision 223) */
+    const kids=[...sg.children].filter(k=>k.offsetParent!==null);kids.forEach(k=>{k.style.marginLeft='';k.style.removeProperty('width');k.style.removeProperty('max-width');k.style.removeProperty('min-width');k.style.flex='';});sg.style.columnGap='0px';
+    let prevR=null,prevB=false;kids.forEach(k=>{const cs=getComputedStyle(k),bd=parseFloat(cs.borderLeftWidth)>0&&cs.borderLeftStyle!=='none';
+      if(bd){const w=k.getBoundingClientRect().width;k.style.boxSizing='border-box';k.style.flex='none';k.style.setProperty('width',(Math.ceil((w-1)/24-1e-6)*24+1)+'px','important');k.style.setProperty('max-width','none','important');k.style.setProperty('min-width','0','important');}
+      const m0=parseFloat(cs.marginLeft)||0,L=k.getBoundingClientRect().left+scrollX;let d;
+      if(bd&&prevB&&prevR!=null&&Math.abs(L-prevR)<=2)d=(prevR-1)-L;else if(bd){d=((23-L)%24+24)%24;if(prevR!=null&&L+d-prevR<4)d+=24;if(d>=24&&prevR==null)d-=24;}else d=0;
+      if(d)k.style.marginLeft=(m0+d)+'px';const R=k.getBoundingClientRect();prevR=R.right+scrollX;prevB=bd;});});
   document.querySelectorAll('main .tablewrap').forEach(w=>{if(w.offsetParent===null)return;w.style.height='';{const mh=parseFloat(w.style.maxHeight);if(mh&&Math.abs((mh-1)/24-Math.round((mh-1)/24))>0.01)w.style.maxHeight=(Math.ceil((mh-1)/24)*24+1)+'px';}const h=w.getBoundingClientRect().height;if(Math.abs((h-1)/24-Math.round((h-1)/24))>0.01)w.style.height=(Math.ceil((h-1)/24)*24+1)+'px';});}
 // the blocks on the page grid (decision 177)
 function markG24(){['#cap','#verdict','#stats','#zones','#comply','#ctlHint','#planNote','#opts'].forEach(q=>{const e=document.querySelector(q);if(e)e.classList.add('g24');});
