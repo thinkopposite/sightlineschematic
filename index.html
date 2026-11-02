@@ -382,6 +382,14 @@ main .group{line-height:24px!important;height:24.25px;padding:0!important;border
 #cap.g24,#stats.g24 > *{background:transparent!important}   /* results boxes: outlines only, the page grid shows through (decision 220) */
 main table.fixed tbody td{background:transparent!important}
 #stats.g24{gap:23px!important}
+main .tablewrap,main table{background:transparent!important}   /* decision 221: tables show the page grid; only the black header bars stay */
+main tbody tr:not(.hl) td{background:transparent!important}
+main .g24 td :is(button,select,input[type=number],input[type=text]){height:24px!important;min-height:24px!important;margin-top:0!important;margin-bottom:0!important}
+main .g24 table :is(td,th){box-shadow:inset 0 1px 0 var(--line,#ddd)!important}
+main .g24 table{box-shadow:0 1px 0 var(--line,#ddd)}
+main .g24 .tablewrap table :is(td,th),main .tablewrap.g24 table :is(td,th){box-shadow:inset 0 -1px 0 var(--line,#ddd)!important}
+main .g24 .tablewrap table,main .tablewrap.g24 table{box-shadow:none}
+#secTable td:first-child{padding-left:12px!important}
 </style>
 </head>
 <body>
@@ -1969,7 +1977,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.18';
+const VERSION='2026.11.01.19';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
