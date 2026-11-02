@@ -389,6 +389,12 @@ main .g24 td :is(button,select,input[type=number],input[type=text]){height:24px!
 main table :is(td,th){box-shadow:none!important;border-top:0!important;border-bottom:0!important}main .g24 table,main table{box-shadow:none!important}   /* decision 222: no row rules; the page grid lines are the only lines between rows */
 main .tablewrap :is(td,th):first-child{padding-left:12px!important}main .tablewrap :is(td,th):last-child{padding-right:12px!important}
 main .verdict.ok,main .g24 .verdict:not(.bad){background:transparent!important}   /* the message box shows the grid (decision 223) */
+#cap .cap-side{text-align:left!important;justify-self:start}#cap.g24{grid-template-columns:auto 1fr!important}   /* tier totals under the target line, on the left (decision 224) */
+main .g24 :is(td,th){line-height:23px!important;vertical-align:top!important}main .g24 .tablewrap :is(td,th),main .tablewrap.g24 :is(td,th){line-height:21px!important}   /* text centred in the cell: capitals sit about 1 px low in a 24 px line (decision 224) */
+main .g24 :is(td,th) :is(b,span,a,strong,i,em,small){line-height:inherit!important}
+main .g24 summary,main .planhead .capt,#ctlHint,main .g24 .seg > span{position:relative;top:-1px}
+#verdict.g24{padding-top:23px!important;padding-bottom:26px!important}
+#stats.g24 > .stat.bad{background:var(--sw-ink,#111)!important}   /* a failing stat keeps its black box, like the warning box */
 </style>
 </head>
 <body>
@@ -1976,7 +1982,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.21';
+const VERSION='2026.11.01.22';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -3905,7 +3911,7 @@ function update(){
   LEG2=RD().leg;wcClean();persist();if(typeof pdfBgUI==='function')pdfBgUI();if(typeof pdfGridUI==='function')pdfGridUI();ZR=solveAll(P);if(!zoned(P))P.sec='T';if(!ZR[P.sec].length)P.sec=zoneKeys(P).find(k=>ZR[k].length)||'T';
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);
   const pct=Math.min(100,M.cap/P.capTarget*100),ok=M.cap>=P.capTarget;
-  $('cap').innerHTML=`<div><div class="big">${fmt(M.cap)}</div><div class="lbl">Estimated seats</div></div><div><div class="bar"><i class="${ok?'ok':''}" style="width:${pct}%"></i></div><div class="lbl" style="margin-top:5px">${ok?'Meets':'Short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</div></div><div class="cap-side">${M.tierSeats.map((s,i)=>`Tier ${i+1}: ${fmt(s)}`).join('<br>')}</div>`;
+  $('cap').innerHTML=`<div><div class="big">${fmt(M.cap)}</div><div class="lbl">Estimated seats</div></div><div><div class="bar"><i class="${ok?'ok':''}" style="width:${pct}%"></i></div><div class="lbl" style="margin-top:5px">${ok?'Meets':'Short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</div><div class="cap-side">${M.tierSeats.map((s,i)=>`Tier ${i+1}: ${fmt(s)}`).join('<br>')}</div></div>`;
   $('zones').innerHTML=zoneTable();SHORT=cShortfalls();$('comply').innerHTML=complyHTML();$('shortTable').innerHTML=shortHTML();$('shortSum').textContent=`C-value shortfalls: ${SHORT.seats||SHORT.wc?fmt(SHORT.seats)+' seats'+(SHORT.wc?' + '+SHORT.wc+' wheelchair':''):'none'}${SHORT.railSeats?`; guard rail in the front-row sightline: ${fmt(SHORT.railSeats)} seats`:''}`;$('shortHint').textContent='Each row of a section below its tier\'s absolute minimum C-value. Row 1 of every tier has no spectators in front, so no C-value applies; it is only checked for the guard rail blocking the view. Seated spectators; the C-value per tier is set under Sightline standard.';renderSecPanel();secEdRender();{const cp=$('codePanel');if(cp)cp.innerHTML=codeHTML();}
   const hmin=M.heads.length?Math.min(...M.heads.map(h=>h.h)):null;
   const st=[[ZR[P.sec].length,zoned(P)?`Rows, ${zoneName(P,P.sec,true)}`:'Rows',0],[M.worst?CV(M.worst.C):'n/a','Lowest C-value',M.below>0],[M.steep?M.steep.rake.toFixed(1)+'°':'n/a','Steepest rake',M.over>0],[L(M.vd*1000,'m',0,true),'Farthest viewing distance',M.vd>P.vd],[L(M.height*1000,'m',1,true),`Top row above ${surfLow()}`,0],[hmin==null?'n/a':L(hmin),'Least headroom under a tier',M.lowHead.length>0]];
