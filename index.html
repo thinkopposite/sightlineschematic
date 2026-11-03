@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light" data-grid="on">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -399,12 +399,19 @@ main .g24 summary,main .planhead .capt,#ctlHint,main .g24 .seg > span{position:r
 .hint,.sl-val,.cap-side,.vglab,main .legend span,main .legend b,#ver{font-size:14px!important}
 main table.fixed td,main table.fixed td *:not(input):not(button),#controls table td,#eyeDerived td,#v3Fmt td,#egrTable td,#shortTable td,#codePanel td,#secPanel td{font-size:14px!important}
 button,a.btnlink,summary,.refb{font-size:14px!important}   /* decision 226: no 12 px text anywhere on the page: buttons, tabs and panel headings at 14 px */
+main .refb{display:inline-flex!important;align-items:center;justify-content:center;width:22px!important;height:22px!important;line-height:1!important;font-size:14px!important;padding-top:1px;vertical-align:top!important;box-sizing:border-box}   /* the bubble fills its grid cell, its number in the middle (decision 227) */
+:root[data-grid="off"] body{background-image:none!important}   /* No-grid modes: plain page (decision 228) */
+header .actions{align-items:center}
 </style>
 </head>
 <body>
+<script>/* page background mode (decision 228): light or dark, with or without the background grid; light with grid by default, remembered on this computer */
+function applyTheme(m){if(!/^(lg|l|dg|d)$/.test(m||''))m='lg';const r=document.documentElement;r.dataset.theme=m[0]==='d'?'dark':'light';r.dataset.grid=m.length>1?'on':'off';r.style.colorScheme=m[0]==='d'?'dark':'light';window.THEME=m;document.querySelectorAll('#themeSeg [data-thm]').forEach(b=>{b.classList.toggle('on',b.dataset.thm===m);b.setAttribute('aria-pressed',String(b.dataset.thm===m));});}
+try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</script>
 <header>
   <div class="brand"><h1>Sightline Schematic</h1><p>Shape the bowl with sliders. Every riser is solved to your C-value.</p></div>
   <div class="actions">
+    <div class="seg" id="themeSeg" role="group" aria-label="Page background"><button data-thm="lg" title="Light mode with the background grid">Light + Grid</button><button data-thm="l" title="Light mode, no background grid">Light</button><button data-thm="dg" title="Dark mode with the background grid">Dark + Grid</button><button data-thm="d" title="Dark mode, no background grid">Dark</button></div>
     <button id="saveOpt">Save as option</button>
   </div>
 </header>
@@ -1986,7 +1993,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.01.24';
+const VERSION='2026.11.02.01';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -4792,6 +4799,7 @@ function pdfGridUI(){const el=$('pdfGrid');if(!el)return;const on=pdfGridOn();
 function pdfBgUI(){const el=$('pdfBg');if(!el)return;const cur=P.pdfBg==='grey'?'grey':'white';
   el.innerHTML=Object.entries(PDF_BG).map(([k,v])=>`<button data-bg="${k}" class="${k===cur?'on':''}"><span style="display:inline-block;width:12px;height:12px;border:1px solid #9A9A96;background:${v.paper};vertical-align:-2px;margin-right:6px"></span>${v.name}</button>`).join('');}
 $('pdfBg').onclick=e=>{const b=e.target.closest('button[data-bg]');if(!b)return;P.pdfBg=b.dataset.bg;persist();pdfBgUI();toast(`PDF page background: ${PDF_BG[P.pdfBg].name.toLowerCase()}.`);};pdfBgUI();
+$('themeSeg').onclick=e=>{const b=e.target.closest('[data-thm]');if(!b)return;applyTheme(b.dataset.thm);try{localStorage.setItem('sl-theme',b.dataset.thm);}catch(_){}if(typeof gridAlign==='function')gridAlign();};applyTheme(window.THEME);
 $('pdfGrid').onclick=e=>{const b=e.target.closest('button[data-grid]');if(!b)return;P.pdfGrid=b.dataset.grid==='off'?'off':'on';persist();pdfGridUI();toast(P.pdfGrid==='off'?'PDF sheets: no background grid or border scale marks.':'PDF sheets: background grid and border scale marks.');};pdfGridUI();
 $('dlTab').onclick=()=>exportPdfSet('tabloid');$('dlArch').onclick=()=>exportPdfSet('archE');
 
