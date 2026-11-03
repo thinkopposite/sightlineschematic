@@ -1127,7 +1127,7 @@ function solveZone(P,k){
     while(j<n){
       if(j===0){
         if(ti===0){prev=mk(0,z.D*1000,z.Z*1000,null,null);prev.railC=prev.ez*(prev.x+RAIL_SET)/prev.ex-(prev.z+P.railH);}   // row 1 looks over the guard rail, 3 in behind the riser
-        else{const lo0=rows.find(r=>r.tier===ti-1),x0=z.X!=null?z.X*1000:prev.x-Tn(0)+(+z.dx||0)*1000;      // unset: the second riser over the top riser below (decision 137), plus the setback the sizing found (dx, decision 132)
+        else{const lo0=rows.find(r=>r.tier===ti-1),x0=z.Xr!=null&&lo0?lo0.x+z.Xr*1000:z.X!=null?z.X*1000:prev.x-Tn(0)+(+z.dx||0)*1000;      // unset: the second riser over the top riser below (decision 137), plus the setback the sizing found (dx, decision 132)
           prev=mk(0,Math.max(x0,lo0.x+1000),prev.z+(Math.max(z.rise,REGION_DEF[regionOf(P.sport)].rise)+Math.max(0,z.suites)*P.suiteH)*1000,null,null);prev.up1=true;   // at least 10'-0" (3.0 m) above the top tread below
           prev.railC=prev.ez*(prev.x+RAIL_SET)/prev.ex-(prev.z+P.railH);}           // front row looks over the guard, 3 in behind the landing edge
         rows.push(prev);j++;continue;}
@@ -1180,8 +1180,8 @@ function pinUpperTiers(P){}                                          // upper ti
 function gapsOf(P){const Q=Object.assign({},P,{tierCount:3}),g={};
   for(const k of GEO){const zr=solveZone(Q,k);g[k]=[];for(let ti=1;ti<3;ti++){const lo=zr.filter(r=>r.tier===ti-1),up=zr.find(r=>r.tier===ti);
     g[k][ti]=lo.length&&up?(up.x-(lo[lo.length-1].x+lo[lo.length-1].T))/1000:P.zt[ti].z[k].gap;}}return g;}
-function alignUpperTiers(P){P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>t.z[k].X=null);});}
-function keepGaps(P,g){for(let ti=1;ti<3;ti++)for(const k of GEO)Object.assign(P.zt[ti].z[k],{X:null,gap:g[k][ti]});pinUpperTiers(P);}
+function alignUpperTiers(P){P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>{t.z[k].X=null;t.z[k].Xr=null;});});}
+function keepGaps(P,g){for(let ti=1;ti<3;ti++)for(const k of GEO)Object.assign(P.zt[ti].z[k],{X:null,Xr:null,gap:g[k][ti]});pinUpperTiers(P);}
 function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';if(!FIELD_SPORTS.includes(P.sport))P.sport='ncaafb';if(!P.bulge||typeof P.bulge!=='object')P.bulge={S:0,E:0};['S','E'].forEach(k=>{P.bulge[k]=Math.max(0,Math.min(k==='S'?7.62:6.096,+P.bulge[k]||0));});   /* sidelines up to 25 ft (7.6 m), end stands 20 ft (6.1 m) (decision 145) */   /* court and rink sports are out of scope (decision 81) */const d=defaults();if(P.ais&&P.ais.mode==='loss')P.ais.mode='layout';if(!Array.isArray(P.rowMax))P.rowMax=[80,80,80];P.rowMax=[0,1,2].map(i=>Math.max(3,Math.min(80,Math.round(+P.rowMax[i]||80))));   /* row limits per tier for sizing (decision 185) */
   if(P.eyeRev===3&&P.eye){const w=P.eye.wcOff;if(Math.abs(w-36*25.4)<1||Math.abs(w-915)<1)P.eye.wcOff=w>914.5&&w<915.5?760:30*25.4;P.eyeRev=EYE_REV;}   /* rev 4: only the old 36 in default moves to 30 in; other eye values kept */
   if(P.eyeRev===4&&P.eye){if(Math.abs(P.eye.stH-63.5*25.4)<1)P.eye.stH=63.45*25.4;P.eye.stHead=67.65*25.4;P.eye.stSh=55.65*25.4;P.eyeRev=EYE_REV;}   /* rev 5: Exhibit B standing values */
@@ -1887,8 +1887,8 @@ function cornerPlates(P,ZR,CH){const out=[],t=slabT(),k=1000;
 function tierLinks(P){const R=REGION_DEF[regionOf(P.sport)],base=R.rise,stp=imperial()?0.0254:0.01,hiR=imperial()?30*0.3048:9.0,out=[];
   const up=v=>Math.ceil(v/stp-1e-6)*stp;
   const done={},sig=k=>JSON.stringify(P.zt.slice(0,P.tierCount).map(t=>{const z=t.z[k],{dx,rise,X,...o}=z||{};return o;}));   // identical sides solve once
-  for(const k of GEO){const sg=sig(k);if(done[sg]){const src=done[sg];for(let ti=1;ti<P.tierCount;ti++){const z=P.zt[ti].z[k],zs=P.zt[ti].z[src];if(!z||!z.on)break;Object.assign(z,{X:null,dx:zs.dx,rise:zs.rise});const o=out.find(x=>x.k===src&&x.ti===ti);if(o)out.push({...o,k});}continue;}done[sg]=k;
-    for(let ti=1;ti<P.tierCount;ti++){const z=P.zt[ti].z[k];if(!z||!z.on)break;Object.assign(z,{X:null,dx:0,rise:base});
+  for(const k of GEO){const sg=sig(k);if(done[sg]){const src=done[sg];for(let ti=1;ti<P.tierCount;ti++){const z=P.zt[ti].z[k],zs=P.zt[ti].z[src];if(!z||!z.on)break;Object.assign(z,{X:null,Xr:zs.Xr??null,dx:zs.dx,rise:zs.rise});const o=out.find(x=>x.k===src&&x.ti===ti);if(o)out.push({...o,k});}continue;}done[sg]=k;
+    for(let ti=1;ti<P.tierCount;ti++){const z=P.zt[ti].z[k];if(!z||!z.on)break;Object.assign(z,{X:null,Xr:null,dx:0,rise:base});
     const row1=()=>applyEyes(solveZone(P,k)).find(r=>r.tier===ti&&r.up1),tg=z.target-0.05;
     const okRail=()=>{const r=row1();return r&&r.railC>=0;},okAll=okRail;   /* row 1: the guard rail must not block the view; no C-value (decision 192) */
     if(okAll())continue;
@@ -1907,7 +1907,7 @@ function tierLinks(P){const R=REGION_DEF[regionOf(P.sport)],base=R.rise,stp=impe
   return out;}
 // sizing keeps the default tier relationship unless asked (decision 186): each upper tier's second riser over the top riser of the tier
 // below, its bottom tread 10'-0" (3.0 m) above that tier's top tread; row 1 shortfalls are reported, not designed out
-function tierDefault(P){const base=REGION_DEF[regionOf(P.sport)].rise;for(let ti=1;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)Object.assign(z,{X:null,dx:0,rise:base});});return [];}
+function tierDefault(P){const base=REGION_DEF[regionOf(P.sport)].rise;for(let ti=1;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)Object.assign(z,{X:null,Xr:null,dx:0,rise:base});});return [];}
 const fitLinks=P=>P.fitMove?tierLinks(P):tierDefault(P);
 function fitCapacity(P){const em=P.eyeMode;P.eyeMode='sit';const S=P.secs||(P.secs={});if(zoned(P)){Object.keys(S).forEach(k=>{if(S[k].wc){delete S[k].wc;if(!Object.keys(S[k]).length)delete S[k];}});P.wcMode='default';}   /* platforms in the default sections while sizing (decision 216) */
   try{return fitCapacity0(P);}finally{P.eyeMode=em;if(P.wcMode==='default'){const ZR=solveAll(P),Mx=metrics(P,ZR,chains(P,ZR));FITWC=[];FITADA=Mx.ADA;(Mx.AL||[]).forEach((T,ti)=>wcDefaultSet(ti,Mx.AL).forEach(no=>{if(S[no]&&S[no].off)return;(S[no]=S[no]||{}).wc=true;FITWC.push(no);}));delete P.wcMode;}}}
@@ -1993,7 +1993,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.02.01';
+const VERSION='2026.11.02.02';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2152,7 +2152,7 @@ function setUnits(){try{localStorage.setItem(UKEY,JSON.stringify(U))}catch(e){}r
 // ---------- controls ----------
 const META={};let EDIT={tier:0,g:0};
 function ctlKey(path){const E={'eye.sitH':'SIT','eye.stH':'STAND','eye.stOff':'STOFF','eye.wcH':'WCH','eye.wcOff':'WCOFF',L:'L',W:'W'};if(E[path])return E[path];
-  const m=String(path).match(/^zt\.(\d+)\.[A-Z]+\.(\w+)$/);if(!m)return null;return ({D:'D',Z:'Z',tread:'T',tread0:'T0',rise:'RISE',Zabs:'RISE',X:'X',target:'CV'})[m[2]]?({D:'D',Z:'Z',tread:'T',tread0:'T0',rise:'RISE',Zabs:'RISE',X:'X',target:'CV'})[m[2]]+':'+m[1]:null;}
+  const m=String(path).match(/^zt\.(\d+)\.[A-Z]+\.(\w+)$/);if(!m)return null;return ({D:'D',Z:'Z',tread:'T',tread0:'T0',rise:'RISE',Zabs:'RISE',X:'X',Xrel:'X',target:'CV'})[m[2]]?({D:'D',Z:'Z',tread:'T',tread0:'T0',rise:'RISE',Zabs:'RISE',X:'X',Xrel:'X',target:'CV'})[m[2]]+':'+m[1]:null;}
 const CTLMARK='<span class="ctlmark" title="Set on the drawings: hover to see the dimension">●</span> ';
 function slider(path,label,min,max,step,unit){
   const v=get(path),kind=(unit==='m'||unit==='mm')?unit:null;META[path]={min,max,step,kind};
@@ -2172,16 +2172,22 @@ function fieldSliders(){const S=SPORTS[P.sport];
 function applySport(k){const x=SPORTS[k],g=gapsOf(P);sportUnits(k);renderUnits();{const R=REGION_DEF[regionOf(k)];if(regionOf(k)!==regionOf(P.sport)){P.zt.forEach((t,i)=>GEO.forEach(q=>{const z=t.z[q];if(!z)return;Object.assign(z,{tread:R.tread,tread0:R.tread0,treadN:R.tread,seatW:seatSpec(z.seat,k).def});if(i)z.rise=R.rise;}));P.eye=eyeFor(regionOf(k));P.slabT=slabDef(regionOf(k));P.ais=Object.assign(aisDefaults(regionOf(k)),{mode:AIS().mode});}AIS().prem=premDef(k);Object.assign(P,{step:R.step,maxRiser:R.maxRiser,minHead:R.minHead});LEG2=R.leg;}   /* a new sport brings its default units */Object.assign(P,{sport:k});clampCap(P);P.zt.forEach(t=>GEO.forEach(g=>Object.assign(t.z[g],{D:x.D,Z:x.Z,target:cvDefault(k)})));
   if(x.shape==='fan')Object.assign(P,{fl:x.fl,cf:x.cf,bs:x.bs});else if(x.shape==='track')Object.assign(P,{lanes:x.lanes,L:x.L,W:x.W});else Object.assign(P,{L:x.L,W:x.W});keepGaps(P,g);CUR=null;renderControls();update();}
 // zt.<tier>.<keys>.<param> edits a group of zones together, so linked sides can never drift apart
+/* sideline depth inputs (decision 229): depth 1 from the point of focus to the Tier 1 front riser in 1'-0" steps; each further depth from the tier below's front riser to this tier's front riser in 34" steps */
+const DSTEP1=()=>imperial()?0.3048:0.3,DSTEPN=()=>imperial()?34*0.0254:0.85;
+function tierFronts(k){const rs=solveZone(P,k),f=[];rs.forEach(r=>{if(f[r.tier]==null)f[r.tier]=r.x/1000;});return f;}   // each tier's front riser from the point of focus, m
 function lowerTop(ti,k){const lo=solveZone(Object.assign({},P,{tierCount:Math.max(P.tierCount,ti+1)}),k).filter(r=>r.tier===ti-1);return lo[lo.length-1];}
 const BULGE_MAX={S:25,E:20};   // set-back limits in feet: sidelines 25', end stands 20' (decision 145)
 function get(path){if(path==='cvAll.target'){const z=P.zt[0].z[GEO.find(k=>P.zt[0].z[k])];return z.target;}if(path.startsWith('bulgeFt.'))return Math.round((P.bulge[path.slice(8)]||0)/0.3048);   // set-backs in whole feet (decisions 143, 144)
   if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.'),z=P.zt[+ti].z[ks[0]];
     if(p==='Zabs'){const t=lowerTop(+ti,ks[0]);return Math.round(((t?t.z:0)/1000+z.rise)*1e4)/1e4;}
     if(p==='X'&&z.X==null){const t=lowerTop(+ti,ks[0]);return t?Math.round(t.x/1000*1e4)/1e4:0;}
+    if(p==='Xrel'){const f=tierFronts(ks[0]);return f[+ti]!=null&&f[+ti-1]!=null?Math.round((f[+ti]-f[+ti-1])*1e4)/1e4:0;}
     return z[p];}return path.split('.').reduce((o,k)=>o[k],P);}
 function set(path,v){if(path==='cvAll.target'){for(let ti=0;ti<3;ti++)GEO.forEach(k=>{const z=P.zt[ti]&&P.zt[ti].z[k];if(z)z.target=v;});return;}if(path.startsWith('bulgeFt.')){const k=path.slice(8);P.bulge[k]=Math.max(0,Math.min(BULGE_MAX[k],Math.round(+v||0)))*0.3048;const e=document.getElementById('bulgeRad');if(e)e.textContent=bulgeRadTxt();return;}
   if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.');
     if(p==='Zabs'){for(const k of ks){const t=lowerTop(+ti,k);P.zt[+ti].z[k].rise=Math.max(RD().rise,v-(t?t.z:0)/1000);}return;}   // never under 10'-0" (3.0 m) above the tier below (decision 132)
+    if(p==='Xrel'){const st=DSTEPN(),q=Math.max(0,Math.round(v/st)*st);for(const k of ks){const z=P.zt[+ti].z[k];z.Xr=Math.round(q*1e6)/1e6;z.X=null;}renderControls();return;}   /* kept relative: moving the tier below carries this tier with it */   /* from the tier below's front riser, whole 34" steps (decision 229) */
+    if(p==='D'){const st=DSTEP1();v=Math.round(v/st)*st;}   /* whole 1'-0" steps from the point of focus */
     for(const k of ks)P.zt[+ti].z[k][p]=v;if(p==='X')renderControls();return;}
   const ks=path.split('.');const last=ks.pop();ks.reduce((o,k)=>o[k],P)[last]=v;if(ks[0]==='bulge'){const e=document.getElementById('bulgeRad');if(e)e.textContent=bulgeRadTxt();}}
 const CV=v=>v==null?'':imperial()?(v/25.4).toFixed(4)+'"':v.toFixed(4)+' mm';   // every C-value: 4 decimals, e.g. 2.5000" or 60.0000 mm
@@ -2207,11 +2213,11 @@ function zoneEditor(ti,g){
     ;}   /* the absolute minimum C-value moved to Sightline standard, locked (decision 190) */
   const Sp=SPORTS[P.sport],imp=imperial();
   const tStp=z.tread/1000,tLab=`${L(z.tread)}, one row`;   // one row depth per step (decision 137)
-  if(ti===0)h+=slider(pre+'.D',`Sideline depth (${tLab})`,Sp.Dmin??0,imp?60*0.3048:18,tStp,'m')
+  if(ti===0)h+=slider(pre+'.D',`Sideline Depth 1: point of focus to the Tier 1 front riser (${imp?'1\'-0"':'300 mm'})`,Sp.Dmin??0,imp?60*0.3048:18,DSTEP1(),'m')   /* decision 229 */
     +slider(pre+'.Z',`Tier-1 bottom tread above the ${surfLow()} (${imp?'4 inch':'100 mm'})`,Sp.Zmin??0,imp?20*0.3048:6,imp?0.1016:0.1,'m')
     +`<p class="hint">${Sp.name} minimum: ${L((Sp.Dmin??0)*1000)} depth, ${L((Sp.Zmin??0)*1000)} bottom tread.</p>`;
-  else h+=slider(pre+'.X',`Sideline depth (${tLab})`,2*0.3048,400*0.3048,tStp,'m')
-    +(z.X==null?`<p class="hint">${(+z.dx||0)>0.001?`Moved ${L(z.dx*1000)} back from the default (set by sizing to meet the minimum C); it follows Tier ${ti} automatically.`:`Second riser aligned over the Tier-${ti} top riser (the default); it follows Tier ${ti} automatically.`}</p>`
+  else h+=slider(pre+'.Xrel',`Tier ${ti} to Tier ${ti+1}: Tier ${ti} front riser to the Tier ${ti+1} front riser (${imp?'34"':'850 mm'})`,0,imp?300*0.3048:90,DSTEPN(),'m')
+    +(z.X==null&&z.Xr==null?`<p class="hint">${(+z.dx||0)>0.001?`Moved ${L(z.dx*1000)} back from the default (set by sizing to meet the minimum C); it follows Tier ${ti} automatically.`:`Second riser aligned over the Tier-${ti} top riser (the default); it follows Tier ${ti} automatically.`}</p>`
       :`<p class="hint" id="sbHint">${setbackText(ti,g[0])}</p><button data-realign="${ti}" style="margin:4px 0 6px">Back to default: second riser over the Tier-${ti} top riser</button>`)
     +slider(pre+'.rise',`Tier-${ti} top tread to Tier-${ti+1} bottom tread (${imperial()?'1 foot; 10\'-0" to 30\'-0"':'250 mm; 3,000 to 9,000 mm'})`,imperial()?10*0.3048:3.0,imperial()?30*0.3048:9.0,imperial()?0.3048:0.25,'m')
     +`<p class="hint">Clear height below the Tier-${ti+1} leg wall: ${L(z.rise*1000-LEG2)} (leg wall ${L(LEG2)} below the bottom tread; minimum ${L(P.minHead)}).</p>`
@@ -2312,9 +2318,9 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.riser){set(b.dataset.g+'.riser',b.dataset.riser);}
   else if(b.dataset.nudge){const p=b.dataset.np,mt=META[p];let v=get(p)+(+b.dataset.nudge)*mt.step;
     v=Math.min(mt.max,Math.max(mt.min,v));commit(p,Math.round(v*1e6)/1e6,null);if(/\.X$/.test(p))renderControls();return;}
-  else if(b.dataset.realign){GEO.forEach(k=>{P.zt[+b.dataset.realign].z[k].X=null;P.zt[+b.dataset.realign].z[k].dx=0;});}
+  else if(b.dataset.realign){GEO.forEach(k=>{P.zt[+b.dataset.realign].z[k].X=null;P.zt[+b.dataset.realign].z[k].Xr=null;P.zt[+b.dataset.realign].z[k].dx=0;});}
   else if(b.dataset.zreset){const [,ti,ks]=b.dataset.zreset.split('.'),d=defaults().zt[+ti];for(const k of ks){const keep={X:P.zt[+ti].z[k].X};Object.assign(P.zt[+ti].z[k],d.z[k],+ti?keep:{});}
-    if(+ti)for(const k of ks)P.zt[+ti].z[k].X=null;pinUpperTiers(P);toast('Stand values reset to the defaults.');}
+    if(+ti)for(const k of ks){P.zt[+ti].z[k].X=null;P.zt[+ti].z[k].Xr=null;}pinUpperTiers(P);toast('Stand values reset to the defaults.');}
   else if(b.id==='advReset'){const d=defaults();Object.assign(P,{maxRake:d.maxRake,vd:d.vd,loss:d.loss});toast('Advanced values reset to the defaults.');}
   else if(b.id==='eyeLock'){EYELOCK=!EYELOCK;renderControls();return;}
   else if(b.id==='cvLock'){CVLOCK=!CVLOCK;renderControls();return;}
@@ -2551,8 +2557,8 @@ function drawSection0(rows,o={}){
 function chainDims(rows,tiers,fs,K){
   const firsts=tiers.map(ti=>rows.find(r=>r.tier===ti)),lasts=tiers.map(ti=>rows.filter(r=>r.tier===ti).pop()),zTop=Math.max(...rows.map(r=>r.ez)),sp=fs*2.5;
   // horizontal: point of focus to the front riser of each tier, stacked above the section (Tier 1 lowest), then the overall
-  const r0=firsts[0],rN=lasts[lasts.length-1],back=rN.x,lines=[],ch=[[0,r0.x,'Tier 1','D:0',[0,0],[r0.x,r0.z]]];   // decision 197: one chain, the focus to each tier's front and on to the back; the overall above
-  for(let i=1;i<firsts.length;i++){const a=firsts[i-1],r=firsts[i];ch.push([a.x,r.x,`Tier ${r.tier+1}`,'X:'+r.tier,[a.x,a.z],[r.x,r.z]]);}
+  const r0=firsts[0],rN=lasts[lasts.length-1],back=rN.x,lines=[],ch=[[0,r0.x,'Sideline Depth 1','D:0',[0,0],[r0.x,r0.z]]];   // decision 197: one chain, the focus to each tier's front and on to the back; the overall above
+  for(let i=1;i<firsts.length;i++){const a=firsts[i-1],r=firsts[i];ch.push([a.x,r.x,`Tier ${r.tier} to Tier ${r.tier+1}`,'X:'+r.tier,[a.x,a.z],[r.x,r.z]]);}
   {const a=firsts[firsts.length-1];ch.push([a.x,back,'',null,[a.x,a.z],[back,rN.z]]);}
   lines.push(ch,[[0,back,'Focus to the back',null,[0,0],[back,rN.z]]]);
   lines.forEach((ln,i)=>{const z=zTop+fs*1.8+sp*i;ln.forEach(([a,b,lab,ctl,ea,eb])=>{if(b-a>1)K.dim([a,z],[b,z],{lab,val:L(b-a),ea,eb,ctl,fix:1});});});
