@@ -402,6 +402,7 @@ button,a.btnlink,summary,.refb{font-size:14px!important}   /* decision 226: no 1
 main .refb{display:inline-flex!important;align-items:center;justify-content:center;width:22px!important;height:22px!important;line-height:1!important;font-size:14px!important;padding-top:1px;vertical-align:top!important;box-sizing:border-box}   /* the bubble fills its grid cell, its number in the middle (decision 227) */
 :root[data-grid="off"] body{background-image:none!important}   /* No-grid modes: plain page (decision 228) */
 header .actions{align-items:center}
+#finalDlg{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding:48px 16px;overflow:auto}#finalDlg .fd-box{background:var(--sw-paper,#F6F5F2);color:var(--sw-ink,#111);border:1px solid var(--sw-ink,#111);padding:24px;max-width:1200px;width:100%;box-sizing:border-box}#finalDlg td,#finalDlg th{line-height:24px;height:24px;vertical-align:top;padding:0 12px 0 0;font-size:14px;text-align:left!important}#finalDlg td:first-child,#finalDlg th:first-child{padding-left:12px}#finalDlg input[type=radio]{margin:5px 0 0}#finalDlg .group{margin-top:0}#finalDlg td{white-space:nowrap}#finalDlg td:last-child{white-space:normal;height:auto;min-width:260px}
 </style>
 </head>
 <body>
@@ -1908,30 +1909,35 @@ function tierLinks(P){const R=REGION_DEF[regionOf(P.sport)],base=R.rise,stp=impe
 // sizing keeps the default tier relationship unless asked (decision 186): each upper tier's second riser over the top riser of the tier
 // below, its bottom tread 10'-0" (3.0 m) above that tier's top tread; row 1 shortfalls are reported, not designed out
 function tierDefault(P){const base=REGION_DEF[regionOf(P.sport)].rise;for(let ti=1;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)Object.assign(z,{X:null,Xr:null,dx:0,rise:base});});return [];}
-const fitLinks=P=>P.fitMove?tierLinks(P):tierDefault(P);
-function fitCapacity(P){const em=P.eyeMode;P.eyeMode='sit';const S=P.secs||(P.secs={});if(zoned(P)){Object.keys(S).forEach(k=>{if(S[k].wc){delete S[k].wc;if(!Object.keys(S[k]).length)delete S[k];}});P.wcMode='default';}   /* platforms in the default sections while sizing (decision 216) */
-  try{return fitCapacity0(P);}finally{P.eyeMode=em;if(P.wcMode==='default'){const ZR=solveAll(P),Mx=metrics(P,ZR,chains(P,ZR));FITWC=[];FITADA=Mx.ADA;(Mx.AL||[]).forEach((T,ti)=>wcDefaultSet(ti,Mx.AL).forEach(no=>{if(S[no]&&S[no].off)return;(S[no]=S[no]||{}).wc=true;FITWC.push(no);}));delete P.wcMode;}}}
-let FITWC=[],FITADA=null;   // judged for seated spectators and wheelchair positions only (decision 134)
+let FITKEEP=false;   /* Final Calculation (decision 231): keep the designer's tier positions, heights and platforms */
+const fitLinks=P=>FITKEEP?[]:(P.fitMove?tierLinks(P):tierDefault(P));
+function fitScore(P){const ZR=solveAll(P),Mx=metrics(P,ZR,chains(P,ZR));let pass=0,all=0;
+  (Mx.AL||[]).forEach((T,ti)=>Object.values(T).forEach(Lz=>{const zr=(ZR[Lz.k]||[]).filter(r=>r.tier===ti);Lz.tr.forEach((r,j)=>{const q=zr[j];if(q&&q.railC!=null)return;const n=rowSections(Lz,j).seats;all+=n;   /* front rows: no C-value, left out (decision 192) */if(q&&status(q)==='pass'&&!overRake(q))pass+=n;   /* a row steeper than the rake limit fails too (decision 142) */});}));
+  let sight=true;if(Mx.ADA&&Mx.ADA.secs)Object.values(Mx.ADA.secs).forEach(w=>{const n=+w.wc||0;all+=n;if(w.sight)pass+=n;else sight=false;});   // wheelchair spaces: their line of sight over standing spectators in front (A117.1 802.9) counts too
+  return {pass,all,cap:Mx.cap,vd:Mx.vd,height:Mx.height,worst:Mx.worst?Mx.worst.C:null,wc:Mx.ADA?Mx.ADA.wc:0,req:Mx.ADA?Mx.ADA.req:0,sight};}
+const FITF=['rows','D','rise','dx','X','Xr'];
+function fitSnap(P){return {tiers:P.tierCount,z:P.zt.slice(0,P.tierCount).map(t=>Object.fromEntries(GEO.filter(k=>t.z[k]).map(k=>[k,Object.fromEntries(FITF.map(f=>[f,t.z[k][f]]))])))};}
+function fitPut(P,sn){P.tierCount=sn.tiers;sn.z.forEach((zz,ti)=>Object.entries(zz).forEach(([k,o])=>Object.assign(P.zt[ti].z[k],o)));}
+function fitCapacity(P,opt={}){const em=P.eyeMode;P.eyeMode='sit';const S=P.secs||(P.secs={});FITKEEP=!!opt.keep;FITCOL=opt.collect||null;if(zoned(P)&&!opt.keep){Object.keys(S).forEach(k=>{if(S[k].wc){delete S[k].wc;if(!Object.keys(S[k]).length)delete S[k];}});P.wcMode='default';}   /* platforms in the default sections while sizing (decision 216) */
+  try{return fitCapacity0(P);}finally{P.eyeMode=em;FITKEEP=false;FITCOL=null;if(P.wcMode==='default'&&!opt.noPlace){const ZR=solveAll(P),Mx=metrics(P,ZR,chains(P,ZR));FITWC=[];FITADA=Mx.ADA;(Mx.AL||[]).forEach((T,ti)=>wcDefaultSet(ti,Mx.AL).forEach(no=>{if(S[no]&&S[no].off)return;(S[no]=S[no]||{}).wc=true;FITWC.push(no);}));delete P.wcMode;}}}
+let FITWC=[],FITADA=null,FITCOL=null;   // judged for seated spectators and wheelchair positions only (decision 134)
 function fitCapacity0(P){
   const nT=P.tierCount,cap=()=>{const ZR=solveAll(P);return metrics(P,ZR,chains(P,ZR)).cap;};FITSPLIT=null;
   if(nT===1){const base=GEO.map(k=>[P.zt[0].z[k],P.zt[0].z[k].rows]),apply=f=>base.forEach(([z,b])=>z.rows=Math.max(3,Math.min(P.rowMax[0],Math.round(b*f))));
-    let lo=0.1,hi=6;for(let it=0;it<40;it++){const f=(lo+hi)/2;apply(f);if(cap()>=P.capTarget)hi=f;else lo=f;}apply(hi);FITLINKS=[];return cap()>=P.capTarget;}
+    let lo=0.1,hi=6;for(let it=0;it<40;it++){const f=(lo+hi)/2;apply(f);if(cap()>=P.capTarget)hi=f;else lo=f;}apply(hi);FITLINKS=[];if(FITCOL)FITCOL.push(Object.assign(fitSnap(P),fitScore(P)));return cap()>=P.capTarget;}
   // rows per tier (decision 133): the split between tiers is chosen so that the most seats meet the absolute minimum C-value, the capacity
   // target met each time; ties keep the most even split. Each split: total rows to the target, the tier relationships (132), rows again.
   const minR=3,mx=i=>Math.max(minR,P.rowMax[i]||80),maxR=Math.max(...P.rowMax.slice(0,nT)),setRows=(N,sh)=>{const r=sh.map((x,i)=>Math.max(minR,Math.min(mx(i),Math.round(N*x))));{let rem=N-r.reduce((a,b)=>a+b,0);for(let i=0;i<r.length&&rem;i++){const d=rem>0?Math.min(rem,mx(i)-r[i]):Math.max(rem,minR-r[i]);r[i]+=d;rem-=d;}}   /* the rounding left-over to Tier 1 first, then to any tier with room */   /* each tier within its row limit (decision 185) */
-      P.zt.slice(0,nT).forEach((t,i)=>GEO.forEach(k=>t.z[k].rows=r[i]));alignUpperTiers(P);return r;};
+      P.zt.slice(0,nT).forEach((t,i)=>GEO.forEach(k=>t.z[k].rows=r[i]));if(!FITKEEP)alignUpperTiers(P);return r;};
   let lastN=null;const searchN=sh=>{let lo=nT*minR-1,hi=P.rowMax.slice(0,nT).reduce((a,b)=>a+b,0);if(lastN){const a=Math.max(lo,lastN-24),b=Math.min(hi,lastN+24);setRows(b,sh);if(cap()>=P.capTarget){hi=b;setRows(a,sh);if(cap()<P.capTarget)lo=a;}}
       setRows(hi,sh);if(cap()<P.capTarget)return hi;while(hi-lo>1){const m=(lo+hi)>>1;setRows(m,sh);if(cap()>=P.capTarget)hi=m;else lo=m;}setRows(hi,sh);lastN=hi;return hi;};
-  const score=()=>{const ZR=solveAll(P),Mx=metrics(P,ZR,chains(P,ZR));let pass=0,all=0;
-    (Mx.AL||[]).forEach((T,ti)=>Object.values(T).forEach(Lz=>{const zr=(ZR[Lz.k]||[]).filter(r=>r.tier===ti);Lz.tr.forEach((r,j)=>{const q=zr[j];if(q&&q.railC!=null)return;const n=rowSections(Lz,j).seats;all+=n;   /* front rows: no C-value, left out (decision 192) */if(q&&status(q)==='pass'&&!overRake(q))pass+=n;   /* a row steeper than the rake limit fails too (decision 142) */});}));
-    if(Mx.ADA&&Mx.ADA.secs)Object.values(Mx.ADA.secs).forEach(w=>{const n=+w.wc||0;all+=n;if(w.sight)pass+=n;});   // wheelchair spaces: their line of sight (A117.1 802.9) counts too
-    return {pass,all,cap:Mx.cap};};
+  const score=()=>fitScore(P);
   const run=sh=>{searchN(sh);fitLinks(P);searchN(sh);const L=fitLinks(P),sc=score();return {sh,L,rows:P.zt.slice(0,nT).map(t=>t.z[GEO[0]].rows),...sc};};
   const even=Array(nT).fill(1/nT),shares=[even];
   if(nT===2)[0.4,0.6,0.3,0.7,0.2,0.8].forEach(a=>shares.push([a,1-a]));
   else for(const a of[0.25,0.45])for(const c of[0.5,0.35,0.65])shares.push([a,(1-a)*c,(1-a)*(1-c)]);
   fitLinks(P);let best=null;
-  for(const sh of shares){const r=run(sh);r.fail=r.all-r.pass;if(!best||r.fail<best.fail-0.01*r.all)best=r;if(best.fail<=0)break;}   // every seat meets the minimum: stop at the first (most even) split; another split only when it saves more than 1% of the seats
+  for(const sh of shares){const r=run(sh);r.fail=r.all-r.pass;if(FITCOL){for(let i=0;i<3&&r.cap<P.capTarget;i++){searchN(sh);fitLinks(P);Object.assign(r,score());}FITCOL.push(Object.assign(fitSnap(P),score(),{sh}));}if(!best||r.fail<best.fail-0.01*r.all)best=r;if(best.fail<=0&&!FITCOL)break;}   /* collecting (decision 231): every split, each settled to the target */   // every seat meets the minimum: stop at the first (most even) split; another split only when it saves more than 1% of the seats
   lastN=best.rows.reduce((a,b)=>a+b,0);setRows(lastN,best.sh);for(let i=0;i<4;i++){searchN(best.sh);FITLINKS=fitLinks(P);if(cap()>=P.capTarget)break;}   /* until the target holds with the final tier positions */const sc=score();FITSPLIT={rows:P.zt.slice(0,nT).map(t=>t.z[GEO[0]].rows),pass:sc.pass,all:sc.all};
   return cap()>=P.capTarget;
 }
@@ -1993,7 +1999,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.02.03';
+const VERSION='2026.11.02.04';
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2228,12 +2234,16 @@ function renderControls(){
   const step=(n,t,sub)=>`<section class="step"><div class="step-h"><span class="bub">${n}</span><h2>${t}</h2><p>${sub}</p></div>`;
   let h='<section class="step" id="tgtTop">'+(()=>{const [lo,hi,typ,out]=capLim(P.sport),Sp=SPORTS[P.sport];return slider('capTarget',`Target seats (1,000 seats; ${Sp.org} ${fmt(lo)} to ${fmt(hi)})`,lo,hi,1000,'seats')
     +`<p class="hint">Typical: ${typ}. Outliers: ${out}.</p><details class="capguide"><summary>Capacity guide, all sports</summary>`
-    +Object.entries(CAP_LIM).map(([k,[a,b,t,o]])=>`<p class="hint" style="margin:8px 0"><b style="color:var(--ink)">${SPORTS[k]?SPORTS[k].name+' ('+SPORTS[k].org+')':k}: ${fmt(a)} to ${fmt(b)}</b><br>Typical: ${t}.<br>Outliers: ${o}.</p>`).join('')+'</details>';})()+'</section>';   /* target seats first (decision 190) */
-  h+=step(1,'Field','Sport, governing rules, units and orientation.')+'<select id="sportSel" class="sel" aria-label="Sport and governing body">'+grp('america','American sports')+grp('world','International sports')+'</select>';
+    +Object.entries(CAP_LIM).map(([k,[a,b,t,o]])=>`<p class="hint" style="margin:8px 0"><b style="color:var(--ink)">${SPORTS[k]?SPORTS[k].name+' ('+SPORTS[k].org+')':k}: ${fmt(a)} to ${fmt(b)}</b><br>Typical: ${t}.<br>Outliers: ${o}.</p>`).join('')+'</details>';})()
+    +'<div class="lab">Sport</div><select id="sportSel" class="sel" aria-label="Sport and governing body">'+grp('america','American sports')+grp('world','International sports')+'</select>'
+    +'<div class="lab">Tiers</div><div class="seg">'+[1,2,3].map(n=>`<button data-tc="${n}" class="${P.tierCount===n?'on':''}">${n} tier${n>1?'s':''}</button>`).join('')+'</div>'
+    +'<div class="lab">Initial configuration</div><div class="seg stack"><button id="quickCalc" class="primary" title="Rows for each tier from the sport, the tier count and the target">Quick calculation</button><button id="luckyCalc" title="Tries 1, 2 and 3 tiers and every row split; picks the shortest farthest viewing distance that meets the target, the C-values and the code checks">I\'m feeling lucky</button></div>'
+    +'<p class="hint">Then shape the bowl below (sections, curves, depths, tier heights) and finish with Final calculation under Capacity.</p></section>';   /* decision 231: requirements, then an initial configuration */   /* target seats first (decision 190) */
+  h+=step(1,'Field','Governing rules, units and orientation (sport set above).');
   h+=`<div class="lab">Units: <b style="color:var(--ink)">${imperial()?'Imperial':'Metric'}</b></div><p class="hint">${imperial()?'American sports use imperial: inches to 2 decimals below 10\'-0", feet and inches at or above.':'International sports use metric: millimetres below 10 m, metres to 3 decimals at or above (1000 mm = 1 m).'}</p>`;
   if(zoned(P))h+=`<div class="sl"><div class="sl-top"><label for="northSel">Field orientation</label></div><select id="northSel" class="sel">${[['v','Vertical football field, north up'],['h','Landscape football field, north left']].map(([k,n])=>`<option value="${k}"${P.planOri===k?' selected':''}>${n}</option>`).join('')}</select></div>`;
   h+='</section>';
-  h+=step(2,'Bowl','Tiers, slab and corners for the whole bowl.')+'<div class="lab" style="margin-top:0">Tiers</div><div class="seg">'+[1,2,3].map(n=>`<button data-tc="${n}" class="${P.tierCount===n?'on':''}">${n} tier${n>1?'s':''}</button>`).join('')+'</div>';
+  h+=step(2,'Bowl','Slab and corners for the whole bowl (tiers set above).');
   h+=`<div class="lab">Precast thickness: <b style="color:var(--ink)">${L(slabT())}</b></div><p class="hint" style="margin:2px 0 0">Standard for every precast bowl unit (treads and risers), vomitory wall and header wall.</p>`;
   if(zoned(P)){
     h+='<div class="lab">Side profiles: <b style="color:var(--ink)">All four sides match</b></div>';
@@ -2267,8 +2277,8 @@ function renderControls(){
     +'<p class="hint">Re-sizes the risers on every tier and side in ½" steps so each row meets its minimum C-value for seated spectators. Constant risers stop at the maximum riser.</p></section>';
   h+=step(5,'Aisles','Aisle spacing to code and the egress check.')+aisEditor()+'</section>';
   h+=step(6,'Capacity','Rows are sized to reach the target seats, within the row limits.')+Array.from({length:P.tierCount},(_,i)=>slider(`rowMax.${i}`,`Maximum rows, Tier ${i+1}`,3,80,1,'rows')).join('')+'<p class="hint">Sizing stays within these limits, for reasons other than the C-value (structure, vomitories, egress, the site). If the target can\'t be reached within them, the shortfall is reported.</p>'
-    +(P.tierCount>1?`<div class="lab" style="margin-top:8px">Upper tiers when sizing</div><div class="seg"><button data-fitmove="0" class="${P.fitMove?'':'on'}" aria-pressed="${!P.fitMove}" title="Second riser over the top riser below, 10'-0&quot; (3.0 m) above it; row 1 shortfalls are reported">Default position</button><button data-fitmove="1" class="${P.fitMove?'on':''}" aria-pressed="${!!P.fitMove}" title="Move each upper tier back and up until its row 1 meets the minimum C-value">Move back and up for row 1</button></div>`:'')
-    +'<button id="fit" class="primary" style="margin-top:10px;width:100%">Size rows to hit target</button></section>';
+    +(P.tierCount>1?`<div class="lab" style="margin-top:8px">Upper tiers in Quick calculation and I'm feeling lucky</div><div class="seg"><button data-fitmove="0" class="${P.fitMove?'':'on'}" aria-pressed="${!P.fitMove}" title="Second riser over the top riser below, 10'-0&quot; (3.0 m) above it; row 1 shortfalls are reported">Default position</button><button data-fitmove="1" class="${P.fitMove?'on':''}" aria-pressed="${!!P.fitMove}" title="Move each upper tier back and up until its row 1 meets the minimum C-value">Move back and up for row 1</button></div>`:'')
+    +'<button id="fit" class="primary" style="margin-top:10px;width:100%" title="Up to eight configurations that meet the target from your design">Final calculation</button><p class="hint">Keeps your sections, curves and platforms; varies rows per tier, Sideline Depth 1 and tier-to-tier heights. Pick one, or keep your design.</p></section>';
   const fixed=[...(P.sport==='nfl'||P.sport==='ncaafb'?[['Football field length',L(360*304.8)],['Football field width',L(160*304.8)]]:[]),
     ['Round risers up to',L(P.step)],['Maximum riser',L(P.maxRiser)],['Rows per riser bank','1'],['Guard rail at row 1 of each tier',`${inchText(P.railH)} high, ${inchText(2*25.4)} thick, on the riser face (inside face on the riser line), ${inchText(8*25.4)} below the tread`],['Minimum Tier-1 top tread to Tier-2 bottom tread',L(RD().riseMin*1000)],['Minimum clear height below the Tier-2 front riser leg',L(P.minHead)],['Upper-tier leg wall',`${L(LEG2)} below the bottom tread`]];
   h+='<details><summary>Advanced</summary>'+(P.sport==='nfl'||P.sport==='ncaafb'?'':fieldSliders())
@@ -2337,7 +2347,9 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.corner){P.zt.forEach(t=>t.corners=b.dataset.corner);}
   else if(b.dataset.meet){const [rt,m]=b.dataset.meet.split(':');meetAllC(m,rt);return;}
   else if(b.dataset.fitmove!=null){P.fitMove=b.dataset.fitmove==='1';persist();renderControls();return;}
-  else if(b.id==='fit'){toast('Sizing rows and tier positions…');b.disabled=true;setTimeout(()=>{const ok=fitCapacity(P),ft=v=>L(v*1000),ch=FITLINKS.filter(x=>x.dx>0.001||x.rise>REGION_DEF[regionOf(P.sport)].rise+0.001),bad=FITLINKS.filter(x=>!x.ok);
+  else if(b.id==='luckyCalc'){toast('Trying 1, 2 and 3 tiers and every row split…');b.disabled=true;setTimeout(()=>{try{luckyCalc();}finally{b.disabled=false;}},40);return;}
+  else if(b.id==='fit'){toast('Working out up to eight configurations from your design…');b.disabled=true;setTimeout(()=>{let c=[];try{c=finalCandidates();}finally{b.disabled=false;}showFinal(c);},40);return;}
+  else if(b.id==='quickCalc'){toast('Sizing rows and tier positions…');b.disabled=true;setTimeout(()=>{const ok=fitCapacity(P),ft=v=>L(v*1000),ch=FITLINKS.filter(x=>x.dx>0.001||x.rise>REGION_DEF[regionOf(P.sport)].rise+0.001),bad=FITLINKS.filter(x=>!x.ok);
     const what=x=>{const z=P.zt[x.ti].z[x.k],off=x.dx-(z.tread0??z.tread)/1000;return `${x.dx<0.001?'second riser over the top riser below':Math.abs(off)<0.001?'first riser over the top riser below':`first riser ${ft(Math.abs(off))} ${off>0?'behind':'in front of'} the top riser below`}, ${ft(x.rise)} above the top tread below`;},byT={};ch.forEach(x=>(byT[x.ti]=byT[x.ti]||[]).push(x));
     const lines=Object.entries(byT).map(([ti,xs])=>{const same=xs.length===zoneKeys(P).length&&xs.every(x=>what(x)===what(xs[0]));return same?`Tier ${+ti+1}${zoned(P)?' (every side)':''}: ${what(xs[0])}`:xs.map(x=>`Tier ${+ti+1} ${zoneName(P,x.k,true)}: ${what(x)}`).join('; ');});
     const bt=[...new Set(bad.map(x=>x.ti))].map(ti=>`Tier ${ti+1}`);
@@ -4009,6 +4021,56 @@ $('opts').addEventListener('click',e=>{
   const o=e.target.closest('[data-o]');if(!o)return;const i=+o.dataset.o;P=fixP(Object.assign(defaults(),migrate(JSON.parse(JSON.stringify(OPTS[i].P)))));if(!OPTS[i].P.ais)P.ais=aisDefaults(regionOf(P.sport));EDIT={tier:0,g:0};renderControls();update();CUR=i;renderOpts();
 });
 $('opts').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.dataset.o!=null)e.target.click();});
+/* ---------- the design workflow (decision 231): Quick calculation, I'm feeling lucky, Final calculation ---------- */
+function placeDefaultPlatforms(){const S=P.secs||(P.secs={});Object.keys(S).forEach(k=>{if(S[k].wc){delete S[k].wc;if(!Object.keys(S[k]).length)delete S[k];}});if(!zoned(P))return;
+  const ZR=solveAll(P),Mx=metrics(P,ZR,chains(P,ZR));(Mx.AL||[]).forEach((T,ti)=>wcDefaultSet(ti,Mx.AL).forEach(no=>{if(S[no]&&S[no].off)return;(S[no]=S[no]||{}).wc=true;}));}
+const k0Of=p=>GEO.find(k=>p.zt[0].z[k]);
+/* wheelchair spaces to code (decision 231): add platforms, most central sections first (nearest a stand's centre line), until the IBC 1108.2.2.1 count
+   for the target plus a 4% margin is met; then add rows (Tier 1 first, within the limits) until the seats lost to them are made up */
+function topUpPlatforms(){if(!zoned(P))return 0;const S=P.secs||(P.secs={}),mx=()=>{const ZR=solveAll(P);return metrics(P,ZR,chains(P,ZR));};let added=0,Mx=mx();
+  for(let g=0;g<80&&Mx.ADA;g++){const need=wcReq(Math.ceil(Math.max(Mx.cap,P.capTarget)*1.04));if(Mx.ADA.wc>=need)break;let pick=null,ps=1e9;
+    for(let ti=0;ti<P.tierCount;ti++){if(!wcTier(ti))continue;sectionList(ti,Mx.AL).forEach(q=>{const e=S[q.no];if(e&&(e.wc||e.off))return;const Q=Math.PI/2;let a=((q.th%Q)+Q)%Q;a=Math.min(a,Q-a)+ti*1e-3;if(a<ps){ps=a;pick=q;}});}
+    if(!pick)break;(S[pick.no]=S[pick.no]||{}).wc=true;added++;Mx=mx();}
+  for(let g=0;g<40&&Mx.cap<P.capTarget;g++){let done=false;for(let ti=0;ti<P.tierCount&&!done;ti++){const z0=P.zt[ti].z[k0Of(P)];if(z0.rows<(P.rowMax[ti]||80)){GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)z.rows++;});done=true;}}if(!done)break;Mx=mx();}
+  return added;}
+function luckyCalc(){const S0=JSON.stringify(P),col=[];
+  for(const tc of [1,2,3]){P=fixP(JSON.parse(S0));P.tierCount=tc;const arr=[];fitCapacity(P,{collect:arr,noPlace:true});arr.forEach(c=>col.push(c));}
+  P=fixP(JSON.parse(S0));const tgt=P.capTarget,okAll=col.filter(c=>c.cap>=tgt&&c.pass>=c.all&&c.sight),pool=okAll.length?okAll:col.filter(c=>c.cap>=tgt);
+  const best=pool.slice().sort((a,b)=>((a.wc>=a.req?0:1)-(b.wc>=b.req?0:1))||(a.vd-b.vd))[0];
+  if(!best){toast('No tier count reaches the target within the row limits. Raise a limit under Capacity.');return;}
+  fitPut(P,best);placeDefaultPlatforms();const addW=topUpPlatforms();CUR=null;renderControls();update();
+  const k=k0Of(P),rows=P.zt.slice(0,P.tierCount).map(t=>t.z[k].rows);
+  toast(`I'm feeling lucky: ${P.tierCount} tier${P.tierCount>1?'s':''}, ${rows.join(' / ')} rows, ${fmt(M.cap)} seats; farthest viewing distance ${L(M.vd*1000)} (shortest of ${col.filter(c=>c.cap>=tgt).length} configurations that reach the target)${okAll.length?'; every seat meets the minimum C-value':'; no configuration meets every C-value, the closest shown'}${addW?`; ${addW} more wheelchair platform${addW>1?'s':''} added beyond the default sections to meet the wheelchair space count`:''}${M.ADA&&M.ADA.wc<M.ADA.req?`; ${fmt(M.ADA.wc)} of ${fmt(M.ADA.req)} wheelchair spaces, add platforms`:''}.`);}
+function finalCandidates(){const Sorig=JSON.stringify(P);const addW=topUpPlatforms();const S0=JSON.stringify(P);P=fixP(JSON.parse(Sorig));const base=JSON.parse(S0),nT=base.tierCount,u=imperial()?0.3048:0.3,k0=k0Of(base),r0=JSON.parse(Sorig).zt.slice(0,nT).map(t=>t.z[k0].rows),Dmin=(SPORTS[base.sport].Dmin??0),riseMin=RD().rise;
+  const vars=[[0,0],[1,0],[-1,0],[2,0],[-2,0]];if(nT>1)vars.push([0,1],[0,-1],[1,1],[-1,-1]);const out=[];
+  for(const [dd,dr] of vars){P=fixP(JSON.parse(S0));let ok=true;
+    GEO.forEach(k=>{const z=P.zt[0].z[k];if(!z)return;z.D=Math.round((z.D+dd*u)*1e6)/1e6;if(z.D<Dmin-1e-6)ok=false;});
+    for(let ti=1;ti<nT;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(!z)return;z.rise=Math.round((z.rise+dr*u)*1e6)/1e6;if(z.rise<riseMin-1e-6)ok=false;});
+    if(!ok)continue;const arr=[];fitCapacity(P,{keep:true,collect:arr});arr.forEach(c=>{c.dd=dd;c.dr=dr;out.push(c);});}
+  P=fixP(JSON.parse(Sorig));update();
+  const seen=new Set(),res=[];
+  out.forEach(c=>{c.rowsT=c.z.map(zz=>zz[k0].rows);c.close=c.rowsT.reduce((a,v,i)=>a+Math.abs(v-r0[i]),0)+2*Math.abs(c.dd)+2*Math.abs(c.dr)*(nT-1);c.valid=c.cap>=base.capTarget&&c.pass>=c.all&&c.sight;c.wcOK=c.wc>=c.req;});
+  out.filter(c=>c.valid&&!(c.dd===0&&c.dr===0&&c.rowsT.every((v,i)=>v===r0[i]))).sort((a,b)=>((a.wcOK?0:1)-(b.wcOK?0:1))||(a.close-b.close)||(a.vd-b.vd)).forEach(c=>{const key=c.rowsT.join('/')+'|'+c.dd+'|'+c.dr;if(seen.has(key)||res.length>=8)return;seen.add(key);res.push(c);});
+  res.secs=base.secs||{};res.addW=addW;return res;}
+function optNameFor(){const k=k0Of(P);return `${SPORTS[P.sport].name}_${M.cap}_${P.tierCount}_`+P.zt.slice(0,P.tierCount).map(t=>t.z[k].rows).join('_');}
+function saveOptionNamed(name){const rec={name,P:JSON.parse(JSON.stringify(P)),m:{cap:M.cap,tiers:P.tierCount,c:M.worst?Math.round(M.worst.C):0,rake:M.steep?M.steep.rake.toFixed(1):0,h:M.height.toFixed(1),vd:M.vd.toFixed(0)}};
+  const i=OPTS.findIndex(o=>o.name===name);if(i>=0)OPTS[i]=rec;else OPTS.push(rec);CUR=i>=0?i:OPTS.length-1;persist();renderOpts();}
+function showFinal(c){const old=document.getElementById('finalDlg');if(old)old.remove();const nT=P.tierCount,ft=v=>L(v*1000),ftS=v=>imperial()?`${Math.round(v/0.3048)}'-0"`:L(v*1000),sg=(v,f)=>v>0?'+'+f(v):v<0?'−'+f(-v):'',u=imperial()?0.3048:0.3;
+  const k0=k0Of(P),D0=P.zt[0].z[k0].D,r0=P.zt.slice(0,nT).map(t=>t.z[k0].rows),rise0=P.zt.slice(1,nT).map(t=>t.z[k0].rise);
+  const chg=x=>{const a=[];x.rowsT.forEach((v,i)=>{if(v!==r0[i])a.push(`Tier ${i+1} ${v>r0[i]?'+':'−'}${Math.abs(v-r0[i])} row${Math.abs(v-r0[i])>1?'s':''}`);});if(x.dd)a.push(`Sideline Depth 1 ${sg(x.dd*u,ftS)}`);if(x.dr)a.push(`tier-to-tier heights ${sg(x.dr*u,ftS)}`);return a.length?a.join('; '):'Rows only, as drawn';};
+  const row=(i,x)=>{const D=x?D0+x.dd*u:D0,rs=x?rise0.map(v=>v+x.dr*u):rise0,rows=x?x.rowsT:r0,cap=x?x.cap:M.cap,vd=x?x.vd:M.vd;
+    return `<tr><td><input type="radio" name="fo" value="${i}" id="fo${i}"${i===(c.length?0:-1)?' checked':''}></td><td><label for="fo${i}">${x?'Option '+(i+1):'No change'}</label></td><td>${rows.join(' / ')}</td><td>${ft(D)}</td><td>${nT>1?rs.map(ft).join(' / '):'—'}</td><td>${fmt(cap)}${!x&&cap<P.capTarget?' <span style="color:var(--fail)">(short '+fmt(P.capTarget-cap)+')</span>':''}</td><td>${ft(vd)}</td><td>${x?chg(x)+(x.wcOK?'':`; <span style="color:var(--fail)">${fmt(x.wc)} of ${fmt(x.req)} wheelchair spaces</span>`):'Your design as it is'}</td></tr>`;};
+  const d=document.createElement('div');d.id='finalDlg';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label','Final calculation');
+  d.innerHTML=`<div class="fd-box"><p class="group">Final calculation</p><p class="hint">Target ${fmt(P.capTarget)} seats. ${c.length?`${c.length} configuration${c.length>1?'s':''} from your design, closest first. Each meets the target, every row's absolute minimum C-value (the first row of each tier excepted), every wheelchair platform's sightline over standing spectators in front, and the wheelchair space count.${c.addW?` ${c.addW} wheelchair platform${c.addW>1?'s are':' is'} added, most central sections first, to reach the count.`:''}`:'No configuration within ±2\' of your Sideline Depth 1 and ±1\' of your tier heights meets the target, the C-values and the wheelchair sightlines within the row limits. Keep your design, or change it and try again.'}</p>
+    <div class="tablewrap" style="max-height:none"><table class="fixed"><thead><tr><th></th><th>Option</th><th>Rows by tier</th><th>Sideline Depth 1</th><th>Tier-to-tier heights</th><th>Seats</th><th>Farthest view</th><th>Change from your design</th></tr></thead><tbody>${c.map((x,i)=>row(i,x)).join('')}${row(-1,null)}</tbody></table></div>
+    <div class="seg" style="margin-top:24px"><button id="fdApply" class="primary">Apply</button><button id="fdCancel">Cancel</button></div><p class="hint">Apply saves the chosen configuration under Saved options as Sport_Seats_Tiers_Rows per tier.</p></div>`;
+  document.body.appendChild(d);
+  const close=()=>{d.remove();document.removeEventListener('keydown',esc);},esc=e=>{if(e.key==='Escape')close();};document.addEventListener('keydown',esc);
+  d.querySelector('#fdCancel').onclick=close;d.addEventListener('click',e=>{if(e.target===d)close();});
+  d.querySelector('#fdApply').onclick=()=>{const v=+(d.querySelector('input[name=fo]:checked')||{value:-1}).value;close();
+    if(v>=0){fitPut(P,c[v]);P.secs=JSON.parse(JSON.stringify(c.secs||P.secs||{}));}CUR=null;renderControls();update();const nm=optNameFor();saveOptionNamed(nm);
+    toast(v>=0?`Option ${v+1} applied and saved as ${nm}.`:`Design kept as it is and saved as ${nm}${M.cap<P.capTarget?` (${fmt(P.capTarget-M.cap)} short of the target)`:''}.`);};
+  (d.querySelector('input[name=fo]:checked')||d.querySelector('#fdApply')).focus();}
 $('saveOpt').onclick=()=>{
   const used=new Set(OPTS.map(o=>o.name));let n=0;while(used.has('Option '+String.fromCharCode(65+n%26)+(n>=26?Math.floor(n/26):'')))n++;
   const name='Option '+String.fromCharCode(65+n%26)+(n>=26?Math.floor(n/26):'');
