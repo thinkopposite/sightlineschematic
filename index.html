@@ -404,6 +404,7 @@ main .refb{display:inline-flex!important;align-items:center;justify-content:cent
 header .actions{align-items:center}
 #finalDlg{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding:48px 16px;overflow:auto}#finalDlg .fd-box{background:var(--sw-paper,#F6F5F2);color:var(--sw-ink,#111);border:1px solid var(--sw-ink,#111);padding:24px;max-width:1200px;width:100%;box-sizing:border-box}#finalDlg td,#finalDlg th{line-height:24px;height:24px;vertical-align:top;padding:0 12px 0 0;font-size:14px;text-align:left!important}#finalDlg td:first-child,#finalDlg th:first-child{padding-left:12px}#finalDlg input[type=radio]{margin:5px 0 0}#finalDlg .group{margin-top:0}#finalDlg td{white-space:nowrap}#finalDlg td:last-child{white-space:normal;height:auto;min-width:260px}
 main table.count tr.sub td{background:transparent!important}   /* subtotal rows show the grid too (decision 221 follow-up) */
+#plan,#plan *{overflow-anchor:none}   /* zooming the plan must not make the browser scroll the page to follow a drawn line (decision 235) */
 </style>
 </head>
 <body>
@@ -471,7 +472,7 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
     <div class="planhead"><span class="bub" id="bubPlan">E</span><h3 id="planTitle">Plan</h3>
       <p class="capt">Stands coloured by seat type, with buffer depths and row numbers.</p>
       <div><div class="seg" id="planTabs" role="group" aria-label="Plan view"><button data-plan="field" aria-pressed="false">Field layout</button><button data-plan="bowl" aria-pressed="true" class="on">Bowl plan</button></div><div class="seg"><button id="seatTog" aria-pressed="false" title="Draw every seat at its true width (screen only)">Show seats</button></div><div class="seg"><button id="aisAddTog" aria-pressed="false" title="Then click on the bowl plan where the new aisle should go">Add aisle</button></div><div class="seg" id="pzCtl" role="group" aria-label="Zoom"><button data-pz="out" aria-label="Zoom out" title="Zoom out">−</button><button data-pz="fit" title="Fit the whole plan" id="pzVal">100%</button><button data-pz="in" aria-label="Zoom in" title="Zoom in">+</button></div></div></div>
-    <div class="panel" id="plan" title="Ctrl / ⌘ + wheel or pinch to zoom; drag to pan when zoomed in"></div>
+    <div class="panel" id="plan" title="Mouse wheel or pinch to zoom about the pointer; drag to pan when zoomed in"></div>
     <div class="planhead"><span class="bub" id="bub3d">G</span><h3>3D view</h3>
       <p class="capt" id="v3Note">Live model of the bowl. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom. Click (tap) a section's back rows to add or remove its wheelchair platform, its front rows to switch it off, and an open section to switch it back on.</p>
       <div><div id="v3Tabs"><div class="seg" role="group" aria-label="Camera"><button data-v3p="persp" class="on" title="Perspective">Perspective</button><button data-v3p="ortho" title="Parallel projection: no vanishing points, true for measuring (SketchUp: Camera, Parallel Projection)">Parallel</button></div>
@@ -2002,7 +2003,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.04.02';
+const VERSION='2026.11.04.04';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3915,7 +3916,7 @@ $('enlTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(
 $('enlcTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.enlct!=null)CENL.tier=+b.dataset.enlct;if(b.dataset.enlc)CENL.corner=b.dataset.enlc;update();});
 $('pzCtl').addEventListener('click',e=>{const b=e.target.closest('[data-pz]');if(!b)return;const a=b.dataset.pz;if(a==='fit'){PZ={k:1,u:.5,v:.5};pzApply();}else pzZoom(a==='in'?1.6:1/1.6);});
 {const pl=$('plan');let drag=null,moved=false;const pts=new Map();
-  pl.addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey)||!e.target.closest('svg'))return;e.preventDefault();pzZoom(Math.exp(-e.deltaY*(e.deltaMode?0.05:0.002)),e.clientX,e.clientY);},{passive:false});
+  pl.addEventListener('wheel',e=>{if(e.target.closest('button,select,input'))return;if(!(e.ctrlKey||e.metaKey)&&e.deltaY>0&&PZ.k<=1.001)return;e.preventDefault();   /* the mouse wheel zooms the plan about the pointer (decision 235); at full view, rolling out scrolls the page */pzZoom(Math.exp(-e.deltaY*(e.deltaMode?0.05:0.002)),e.clientX,e.clientY);},{passive:false});
   pl.addEventListener('pointerdown',e=>{const svg=e.target.closest('#plan > svg');if(!svg)return;pts.set(e.pointerId,[e.clientX,e.clientY]);
     if(pts.size===2){const [a,b]=[...pts.values()];drag={pinch:Math.hypot(a[0]-b[0],a[1]-b[1])};return;}
     if(PZ.k<=1.001||e.button!==0)return;drag={x:e.clientX,y:e.clientY,u:PZ.u,v:PZ.v};moved=false;});
