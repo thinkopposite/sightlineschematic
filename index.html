@@ -342,8 +342,8 @@ main .g24 table{border-collapse:collapse}
 main .g24 :is(td,th){padding-top:0!important;padding-bottom:0!important;height:24px;border-top:0!important;border-bottom:0!important;box-shadow:inset 0 -1px 0 var(--line,#ddd)}
 main .g24 .tablewrap,main .tablewrap.g24{border:0!important;box-shadow:none;outline:1px solid var(--sw-ink,#111);outline-offset:-1px;max-height:360px}
 main .g24 input[type=checkbox]{margin-top:0;margin-bottom:0;vertical-align:middle}
-#cap.g24{border:0!important;box-shadow:inset 0 0 0 1px var(--sw-ink,#111);padding:24px 16px!important;row-gap:0!important}
-#cap.g24 .big{line-height:48px!important}
+:is(#cap,#cap2).g24{border:0!important;box-shadow:inset 0 0 0 1px var(--sw-ink,#111);padding:24px 16px!important;row-gap:0!important}
+:is(#cap,#cap2).g24 .big{line-height:48px!important}
 #verdict.g24{border:0!important;box-shadow:inset 6px 0 0 var(--sw-ink,#111),inset 0 0 0 1px var(--sw-ink,#111);padding:24px 16px 24px 22px!important}
 #stats.g24{gap:24px!important}
 #stats.g24 > *{border:0!important;box-shadow:inset 0 0 0 1px var(--sw-ink,#111);padding:0 12px 24px!important;margin:0!important}
@@ -354,13 +354,13 @@ main .legend.g24{row-gap:0!important}
 main .g24 :is(tr,thead,tbody){border:0!important}
 main .g24 :is(td,th) *{vertical-align:top}
 main .g24 :is(td,th) input[type=checkbox]{vertical-align:top;margin-top:5.5px!important;margin-bottom:0!important}
-#cap.g24 .big{line-height:72px!important}
+:is(#cap,#cap2).g24 .big{line-height:72px!important}
 #stats.g24 b{line-height:48px!important;display:block}
 #stats.g24 .stat{border:0!important}
 #stats.g24 .stat span{display:block}
 main .g24 :is(.stat span,.stat b,.lbl,.cap-side,.reft,.refb){line-height:24px!important}
-#cap.g24{align-items:start!important}
-#cap.g24 .bar{margin:8px 0!important;height:8px!important}
+:is(#cap,#cap2).g24{align-items:start!important}
+:is(#cap,#cap2).g24 .bar{margin:8px 0!important;height:8px!important}
 main .seg.g24{padding:0!important;border:0!important}
 main details.g24{padding:0!important;border:0!important}
 #junction table.jinfo{border-collapse:collapse;table-layout:auto;margin:0;width:100%;line-height:24px}#junction p.jt{margin:0;line-height:24px}
@@ -376,10 +376,10 @@ main .planhead .seg{row-gap:0!important}main .planhead .seg :is(button,select){m
 main .tablewrap{padding-top:1px;box-sizing:border-box}main .g24 .tablewrap,main .tablewrap.g24{max-height:361px}
 main .planhead .capt{line-height:24px!important}
 main .g24 .verdict:not(#verdict){border:0!important;box-shadow:inset 6px 0 0 var(--sw-ink,#111),inset 0 0 0 1px var(--sw-ink,#111);padding:0 14px 1px 20px!important;line-height:24px}
-#cap.g24{padding-bottom:25px!important}#verdict.g24{padding-bottom:25px!important}#stats.g24 > *{padding-bottom:25px!important}#opts.g24 > *{padding-bottom:25px!important}
+:is(#cap,#cap2).g24{padding-bottom:25px!important}#verdict.g24{padding-bottom:25px!important}#stats.g24 > *{padding-bottom:25px!important}#opts.g24 > *{padding-bottom:25px!important}
 main .group{line-height:24px!important;height:24.25px;padding:0!important;border:0!important;box-sizing:border-box;background:linear-gradient(var(--sw-ink,#111),var(--sw-ink,#111)) left bottom/100% 1.5px no-repeat;overflow:visible}   /* the heading text in one cell, its rule centred on the grid line below */
 #comply table.fixed :is(td,th),#comply table.fixed tr{background:transparent!important}   /* the summary rows show the page grid (decision 218) */
-#cap.g24,#stats.g24 > *{background:transparent!important}   /* results boxes: outlines only, the page grid shows through (decision 220) */
+:is(#cap,#cap2).g24,#stats.g24 > *{background:transparent!important}   /* results boxes: outlines only, the page grid shows through (decision 220) */
 main table.fixed tbody td{background:transparent!important}
 #stats.g24{gap:23px!important}
 main .tablewrap,main table{background:transparent!important}   /* decision 221: tables show the page grid; only the black header bars stay */
@@ -389,7 +389,7 @@ main .g24 td :is(button,select,input[type=number],input[type=text]){height:24px!
 main table :is(td,th){box-shadow:none!important;border-top:0!important;border-bottom:0!important}main .g24 table,main table{box-shadow:none!important}   /* decision 222: no row rules; the page grid lines are the only lines between rows */
 main .tablewrap :is(td,th):first-child{padding-left:12px!important}main .tablewrap :is(td,th):last-child{padding-right:12px!important}
 main .verdict.ok,main .g24 .verdict:not(.bad){background:transparent!important}   /* the message box shows the grid (decision 223) */
-#cap .cap-side{text-align:left!important;justify-self:start}#cap.g24{grid-template-columns:auto 1fr!important}   /* tier totals under the target line, on the left (decision 224) */
+:is(#cap,#cap2) .cap-side{text-align:left!important;justify-self:start}:is(#cap,#cap2).g24{grid-template-columns:auto 1fr!important}   /* tier totals under the target line, on the left (decision 224) */
 main .g24 :is(td,th){line-height:23px!important;vertical-align:top!important}main .g24 .tablewrap :is(td,th),main .tablewrap.g24 :is(td,th){line-height:21px!important}   /* text centred in the cell: capitals sit about 1 px low in a 24 px line (decision 224) */
 main .g24 :is(td,th) :is(b,span,a,strong,i,em,small){line-height:inherit!important}
 main .g24 summary,main .planhead .capt,#ctlHint,main .g24 .seg > span{position:relative;top:-1px}
@@ -403,6 +403,7 @@ main .refb{display:inline-flex!important;align-items:center;justify-content:cent
 :root[data-grid="off"] body{background-image:none!important}   /* No-grid modes: plain page (decision 228) */
 header .actions{align-items:center}
 #finalDlg{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding:48px 16px;overflow:auto}#finalDlg .fd-box{background:var(--sw-paper,#F6F5F2);color:var(--sw-ink,#111);border:1px solid var(--sw-ink,#111);padding:24px;max-width:1200px;width:100%;box-sizing:border-box}#finalDlg td,#finalDlg th{line-height:24px;height:24px;vertical-align:top;padding:0 12px 0 0;font-size:14px;text-align:left!important}#finalDlg td:first-child,#finalDlg th:first-child{padding-left:12px}#finalDlg input[type=radio]{margin:5px 0 0}#finalDlg .group{margin-top:0}#finalDlg td{white-space:nowrap}#finalDlg td:last-child{white-space:normal;height:auto;min-width:260px}
+main table.count tr.sub td{background:transparent!important}   /* subtotal rows show the grid too (decision 221 follow-up) */
 </style>
 </head>
 <body>
@@ -410,7 +411,7 @@ header .actions{align-items:center}
 function applyTheme(m){if(!/^(lg|l|dg|d)$/.test(m||''))m='lg';const r=document.documentElement;r.dataset.theme=m[0]==='d'?'dark':'light';r.dataset.grid=m.length>1?'on':'off';r.style.colorScheme=m[0]==='d'?'dark':'light';window.THEME=m;document.querySelectorAll('#themeSeg [data-thm]').forEach(b=>{b.classList.toggle('on',b.dataset.thm===m);b.setAttribute('aria-pressed',String(b.dataset.thm===m));});}
 try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</script>
 <header>
-  <div class="brand"><h1>Sightline Schematic</h1><p>Shape the bowl with sliders. Every riser is solved to your C-value.</p></div>
+  <div class="brand"><h1>Sightline Schematic</h1><p id="verTop"></p></div>
   <div class="actions">
     <div class="seg" id="themeSeg" role="group" aria-label="Page background"><button data-thm="lg" title="Light mode with the background grid">Light + Grid</button><button data-thm="l" title="Light mode, no background grid">Light</button><button data-thm="dg" title="Dark mode with the background grid">Dark + Grid</button><button data-thm="d" title="Dark mode, no background grid">Dark</button></div>
     <button id="saveOpt">Save as option</button>
@@ -506,6 +507,8 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
     <p class="group">Saved options</p>
     <div class="seg" style="margin:0 0 10px"><button id="bkOpt">Back up options</button><button id="rsOpt">Restore options</button><input type="file" id="rsFile" accept=".json,application/json" hidden></div>
     <div class="opts" id="opts"></div>
+    <p class="group">Seats</p>
+    <div class="cap" id="cap2" aria-label="Estimated seats (repeated at the bottom of the page)"></div>
   </main>
 </div>
 <p class="hint" id="ver" style="padding:0 22px 20px"></p>
@@ -1999,7 +2002,8 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.02.05';
+const VERSION='2026.11.04.02';
+{const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
 function spectScale(){const J=JUNSC;if(!J)return;const dv=document.querySelector('#det2Wrap:not([hidden]) #detail2 svg')||document.querySelector('#detail svg');if(!dv)return;
@@ -2058,7 +2062,7 @@ function gridAlign(){   // decisions 167, 168, 176, 177: headings centred in a c
       if(d)k.style.marginLeft=(m0+d)+'px';const R=k.getBoundingClientRect();prevR=R.right+scrollX;prevB=bd;});});
   document.querySelectorAll('main .tablewrap').forEach(w=>{if(w.offsetParent===null)return;w.style.height='';{const mh=parseFloat(w.style.maxHeight);if(mh&&Math.abs((mh-1)/24-Math.round((mh-1)/24))>0.01)w.style.maxHeight=(Math.ceil((mh-1)/24)*24+1)+'px';}const h=w.getBoundingClientRect().height;if(Math.abs((h-1)/24-Math.round((h-1)/24))>0.01)w.style.height=(Math.ceil((h-1)/24)*24+1)+'px';});}
 // the blocks on the page grid (decision 177)
-function markG24(){['#cap','#verdict','#stats','#zones','#comply','#ctlHint','#planNote','#opts'].forEach(q=>{const e=document.querySelector(q);if(e)e.classList.add('g24');});
+function markG24(){['#cap','#cap2','#verdict','#stats','#zones','#comply','#ctlHint','#planNote','#opts'].forEach(q=>{const e=document.querySelector(q);if(e)e.classList.add('g24');});
   document.querySelectorAll('main > details, main > .legend, main > .seg').forEach(e=>e.classList.add('g24'));}
 markG24();
 document.fonts&&document.fonts.ready.then(()=>gridAlign());document.addEventListener('toggle',()=>requestAnimationFrame(gridAlign),true);
@@ -2286,7 +2290,7 @@ function renderControls(){
       :slider('maxRake','Maximum rake, seated (1 degree; Green Guide 12.10: 35°)',25,40,1,'°'))+slider('vd','Viewing distance limit (1 foot)',300*0.3048,1000*0.3048,0.3048,'m')
     +'<div class="lab">Fixed values</div><table class="fixed">'+fixed.map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('')+'</table>'
     +'<p class="hint">Where neighbouring sides differ, the corner is left open for vomitories, boards or access. Matching sides wrap round the corner.</p>'
-    +'</details><button id="reset" class="primary" style="margin-top:14px;width:100%">Reset all to defaults</button>';
+    +'</details>';   /* Reset all to defaults removed from the page (decision 233) */
   const c=$('controls'), open=c.querySelector('details')?.open;
   c.innerHTML=h; if(open)c.querySelector('details').open=true;
   c.querySelectorAll('.eyes input,.eyes .nudge').forEach(i=>{i.disabled=EYELOCK;i.title=EYELOCK?'Unlock to change':'';});
@@ -2319,6 +2323,8 @@ function markSeat(pre){const t=get(pre+'.tread'),w=get(pre+'.seatW'),s=Object.ke
   document.querySelectorAll(`[data-seat][data-g="${pre}"]`).forEach(b=>b.classList.toggle('on',b.dataset.seat===s));}
 function relink(ti,link){const t=P.zt[ti];t.link=link;
   if(link==='all')GEO.forEach(k=>{if(k==='T')return;const keep={};PER_SIDE.forEach(p=>keep[p]=t.z[k][p]);t.z[k]=Object.assign(JSON.parse(JSON.stringify(t.z.T)),keep);});EDIT.g=0;}
+/* every value back to the defaults: no longer on the page (decision 233), kept for the test scripts */
+function resetAllDefaults(){const b=document.createElement('button');b.id='reset';b.hidden=true;$('controls').appendChild(b);b.click();b.remove();}
 $('controls').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.seat){const pre=b.dataset.g;set(pre+'.seat',b.dataset.seat);set(pre+'.seatW',seatSpec(b.dataset.seat).def);}
@@ -2357,7 +2363,6 @@ $('controls').addEventListener('click',e=>{
     const sf=cShortfalls(),sfx=sf.seats||sf.wc?`. Does not meet the specified C-values: ${fmt(sf.seats)} seats${sf.wc?` and ${sf.wc} wheelchair spaces`:''} below the minimum (see C-value shortfalls)`:'. Every seat meets the specified C-values';
     toast((ok?'Rows sized to hit the target'+sp:`Target is out of reach within the row limits (${P.rowMax.slice(0,P.tierCount).map((n,i)=>`Tier ${i+1} ${n}`).join(', ')} rows). Raise a limit or add a tier`)+sfx+(lines.length?`. Tiers moved so their front rows meet the absolute minimum C: ${lines.join('; ')}`:'. Tier relationships at their defaults')+(bt.length?`. ${bt.join(', ')} front rows can't reach the minimum over the guard and the tier below; set to the closest`:'')+(FITWC.length?`. Wheelchair platforms in the default centre sections: ${FITWC.slice().sort((x,y)=>x-y).join(', ')}${FITADA&&FITADA.wc<FITADA.req?` (${fmt(FITADA.wc)} wheelchair spaces of ${fmt(FITADA.req)} required; add platforms in the section editor)`:''}`:'')+'.');b.disabled=false;CUR=null;renderControls();update();},40);return;}   /* a few seconds for three tiers: the message first */
   else if(b.id==='reset'){const met=regionOf(P.sport)==='world';
-    if(!confirm(met?'Reset every value to the metric defaults (Association Football, FIFA)?':'Reset every value to the imperial defaults (College Football, NCAA)?'))return;
     P=defaultsPinned();EDIT={tier:0,g:0};EYELOCK=true;CVLOCK=true;CUR=null;
     if(met){applySport('fifa');P.zt.forEach(t=>GEO.forEach(k=>t.z[k].target=60));}clampCap(P);toast(met?'All values reset to the metric defaults.':'All values reset to the imperial defaults.');}
   else return;
@@ -3941,6 +3946,7 @@ function update(){
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);
   const pct=Math.min(100,M.cap/P.capTarget*100),ok=M.cap>=P.capTarget;
   $('cap').innerHTML=`<div><div class="big">${fmt(M.cap)}</div><div class="lbl">Estimated seats</div></div><div><div class="bar"><i class="${ok?'ok':''}" style="width:${pct}%"></i></div><div class="lbl" style="margin-top:5px">${ok?'Meets':'Short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</div><div class="cap-side">${M.tierSeats.map((s,i)=>`Tier ${i+1}: ${fmt(s)}`).join('<br>')}</div></div>`;
+  {const c2=$('cap2');if(c2)c2.innerHTML=$('cap').innerHTML;}   /* the seat box repeated at the bottom of the page (decision 233) */
   $('zones').innerHTML=zoneTable();SHORT=cShortfalls();$('comply').innerHTML=complyHTML();$('shortTable').innerHTML=shortHTML();$('shortSum').textContent=`C-value shortfalls: ${SHORT.seats||SHORT.wc?fmt(SHORT.seats)+' seats'+(SHORT.wc?' + '+SHORT.wc+' wheelchair':''):'none'}${SHORT.railSeats?`; guard rail in the front-row sightline: ${fmt(SHORT.railSeats)} seats`:''}`;$('shortHint').textContent='Each row of a section below its tier\'s absolute minimum C-value. Row 1 of every tier has no spectators in front, so no C-value applies; it is only checked for the guard rail blocking the view. Seated spectators; the C-value per tier is set under Sightline standard.';renderSecPanel();secEdRender();{const cp=$('codePanel');if(cp)cp.innerHTML=codeHTML();}
   const hmin=M.heads.length?Math.min(...M.heads.map(h=>h.h)):null;
   const st=[[ZR[P.sec].length,zoned(P)?`Rows, ${zoneName(P,P.sec,true)}`:'Rows',0],[M.worst?CV(M.worst.C):'n/a','Lowest C-value',M.below>0],[M.steep?M.steep.rake.toFixed(1)+'°':'n/a','Steepest rake',M.over>0],[L(M.vd*1000,'m',0,true),'Farthest viewing distance',M.vd>P.vd],[L(M.height*1000,'m',1,true),`Top row above ${surfLow()}`,0],[hmin==null?'n/a':L(hmin),'Least headroom under a tier',M.lowHead.length>0]];
