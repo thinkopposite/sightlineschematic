@@ -405,6 +405,7 @@ header .actions{align-items:center}
 #finalDlg{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding:48px 16px;overflow:auto}#finalDlg .fd-box{background:var(--sw-paper,#F6F5F2);color:var(--sw-ink,#111);border:1px solid var(--sw-ink,#111);padding:24px;max-width:1200px;width:100%;box-sizing:border-box}#finalDlg td,#finalDlg th{line-height:24px;height:24px;vertical-align:top;padding:0 12px 0 0;font-size:14px;text-align:left!important}#finalDlg td:first-child,#finalDlg th:first-child{padding-left:12px}#finalDlg input[type=radio]{margin:5px 0 0}#finalDlg .group{margin-top:0}#finalDlg td{white-space:nowrap}#finalDlg td:last-child{white-space:normal;height:auto;min-width:260px}
 main table.count tr.sub td{background:transparent!important}   /* subtotal rows show the grid too (decision 221 follow-up) */
 #plan,#plan *{overflow-anchor:none}   /* zooming the plan must not make the browser scroll the page to follow a drawn line (decision 235) */
+html,body{overflow-anchor:none}   /* the page keeps its own view on redraws (decision 237) */
 </style>
 </head>
 <body>
@@ -2003,7 +2004,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.04.04';
+const VERSION='2026.11.04.05';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3942,7 +3943,12 @@ function zoneTable(){
     h+=`<tr><td>Tier ${ti+1}${zoned(P)?` <span class="muted">${P.zt[ti].corners==='open'?'open corners':''}</span>`:''}</td>${keys.map(k=>{const r=ZR[k].find(x=>x.tier===ti);
       return `<td>${zs[k]?fmt(zs[k])+(r&&r.seat==='bench'?' <span class="muted">bench</span>':''):'<span class="muted">open</span>'}</td>`;}).join('')}<td><b>${fmt(M.tierSeats[ti]||0)}</b></td></tr>`;}
   return h+`<tr><td>Total</td>${keys.map(k=>`<td>${fmt(tot(k))}</td>`).join('')}<td><b>${fmt(M.cap)}</b></td></tr></tbody></table>`;}
-function update(){
+/* keep the view (decision 237): a change redraws panels and re-snaps the page to the grid, which shifts everything below; the block in the
+   middle of the screen (a view frame, its heading or a results block) is put back where it was, so a click in the 3D view or the plan stays put */
+function viewAnchor(){const mid=innerHeight/2;let best=null,bd=1e9;document.querySelectorAll('main .panel, main .planhead, main .g24, main .group').forEach(e=>{if(e.offsetParent===null)return;const r=e.getBoundingClientRect();if(r.height<1)return;const d=r.top<=mid&&r.bottom>=mid?0:Math.min(Math.abs(r.top-mid),Math.abs(r.bottom-mid));if(d<bd){bd=d;best=e;}});return best;}
+function keepView(fn){const a=scrollY>0?viewAnchor():null,t0=a?a.getBoundingClientRect().top:0;try{fn();}finally{if(a){const fix=()=>{if(!a.isConnected)return;const d=a.getBoundingClientRect().top-t0;if(Math.abs(d)>0.5)window.scrollBy(0,d);};fix();requestAnimationFrame(()=>{fix();requestAnimationFrame(fix);});setTimeout(fix,120);}}}
+function update(){keepView(update0);}
+function update0(){
   LEG2=RD().leg;wcClean();persist();if(typeof pdfBgUI==='function')pdfBgUI();if(typeof pdfGridUI==='function')pdfGridUI();ZR=solveAll(P);if(!zoned(P))P.sec='T';if(!ZR[P.sec].length)P.sec=zoneKeys(P).find(k=>ZR[k].length)||'T';
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);
   const pct=Math.min(100,M.cap/P.capTarget*100),ok=M.cap>=P.capTarget;
