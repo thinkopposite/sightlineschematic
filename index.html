@@ -9,7 +9,7 @@
 
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/jszip.min.js"></script>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23E10600%22/%3E%3Cpath d=%22M9.9 83.0 V66.5 H31.1 V50.0 H50.0 V33.5 H68.9 V17.0 H90.1%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%225.3%22 stroke-linejoin=%22miter%22 stroke-linecap=%22square%22/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23E10600%22/%3E%3Cpath d=%22M8.85 94.1 V72.79 H30.16 V51.48 H51.48 V30.16 H72.79 V8.85 H94.1%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%225.9%22 stroke-linejoin=%22miter%22 stroke-linecap=%22butt%22/%3E%3C/svg%3E">
 <style>
 :root{--sl-ok:#0000FF;--sl-stand:#4FB3F0;--sl-low:#FF0000;--sl-block:#FD3DB5;--dim:#000000;--ref:#B5533C;--seat-chair:#A0526B;--seat-bench:#4A8B9C;--eye-sit:#000080;--eye-stand:#00FFFF;--accent-soft:#E8E6DC;--accent-deep:#9C4A2E;--accent-2:#6A9BCC;--edge:#B0AEA5;--bench:#AFC0D2;--oval:#B5533C;--mark:#FFFFFF;--pitch-dk:#3B7430;--grass2:#8EB03E;--turf:#2F7FA8;--court:#D6AC72;--court2:#B99260;--paint:#9C4A33;--tennis:#3C6FA3;--tennis2:#4E8A5C;--vb:#DD7A3A;--vb2:#2F6FA8;--ice:#F3F8FA;--crease:#9EC7EC;--dirt:#B98559;--strip:#D8C690;--bg:#FAF9F5;--panel:#FFFFFF;--ink:#141413;--muted:#5E5D59;--line:#E8E6DC;--accent:#D97757;--pass:#788C5D;--warn:#9A6A1E;--fail:#B23A26;--pitch:#488B39;--concrete:#BFC3C0;--grid:#EFEDE6;--track:#E8E6DC;
   box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -407,6 +407,7 @@ main table.count tr.sub td{background:transparent!important}   /* subtotal rows 
 #plan,#plan *{overflow-anchor:none}   /* zooming the plan must not make the browser scroll the page to follow a drawn line (decision 235) */
 html,body{overflow-anchor:none}   /* the page keeps its own view on redraws (decision 237) */
 #guideDlg{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;justify-content:center;padding:24px 16px}#guideDlg .gd-box{background:var(--sw-paper,#F6F5F2);border:1px solid var(--sw-ink,#111);width:100%;max-width:1000px;display:flex;flex-direction:column;padding:16px 16px 0;box-sizing:border-box}#guideDlg .gd-head{display:flex;align-items:center;gap:12px;padding-bottom:12px}#guideDlg iframe{flex:1;width:100%;border:0;border-top:1.5px solid var(--sw-ink,#111);background:#fff}
+.brand h1{display:flex;align-items:flex-start;gap:12px}.brand h1 .logo{width:24px;height:24px;flex:none;display:block;margin-top:calc((1em - 24px) / 2)}   /* the favicon beside the title, centred on the first line */
 </style>
 </head>
 <body>
@@ -414,7 +415,7 @@ html,body{overflow-anchor:none}   /* the page keeps its own view on redraws (dec
 function applyTheme(m){if(!/^(lg|l|dg|d)$/.test(m||''))m='lg';const r=document.documentElement;r.dataset.theme=m[0]==='d'?'dark':'light';r.dataset.grid=m.length>1?'on':'off';r.style.colorScheme=m[0]==='d'?'dark':'light';window.THEME=m;document.querySelectorAll('#themeSeg [data-thm]').forEach(b=>{b.classList.toggle('on',b.dataset.thm===m);b.setAttribute('aria-pressed',String(b.dataset.thm===m));});}
 try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</script>
 <header>
-  <div class="brand"><h1>Sightline Schematic</h1><p id="verTop"></p></div>
+  <div class="brand"><h1><svg class="logo" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#E10600"/><path d="M8.85 94.1 V72.79 H30.16 V51.48 H51.48 V30.16 H72.79 V8.85 H94.1" fill="none" stroke="#fff" stroke-width="5.9" stroke-linejoin="miter" stroke-linecap="butt"/></svg><span>Sightline Schematic</span></h1><p id="verTop"></p></div>
   <div class="actions">
     <div class="seg" id="themeSeg" role="group" aria-label="Page background"><button data-thm="lg" title="Light mode with the background grid">Light + Grid</button><button data-thm="l" title="Light mode, no background grid">Light</button><button data-thm="dg" title="Dark mode with the background grid">Dark + Grid</button><button data-thm="d" title="Dark mode, no background grid">Dark</button></div>
     <button id="saveOpt">Save as option</button>
@@ -2009,7 +2010,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.05.13';
+const VERSION='2026.11.05.20';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
