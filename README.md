@@ -8,16 +8,17 @@ Sightline Schematic runs entirely in the browser. Nothing is uploaded, and there
 
 ## Revit
 
-1. In Sightline, click **Export for Revit (.xlsx)**.
-2. In Revit 2024: File > New > Family > `Metric Generic Model.rft`, save it.
-3. Open Dynamo Player, run [`dynamo/Sightline_BowlMass_R2024.dyn`](dynamo/Sightline_BowlMass_R2024.dyn), pick the workbook.
-4. Each stand is built on its own subcategory (`Sightline T1 NEZ`, `Sightline T2 E`, ...). Load the family into the project and place it at the project base point (origin = field centre at pitch level).
+In Sightline, **Deliver › Models › Revit package (.zip)** downloads `Stadium_Bowl_Revit_R2024.zip`: the bowl workbook (`Stadium_Bowl_Excel_YYYYMMDD_hhmmss.xlsx`), the Dynamo graphs in [`dynamo/`](dynamo/) and the step-by-step guides.
 
-Base version: Revit 2024.0 / Dynamo 2.17 (CPython3). No packages needed. Keep this file as the master; a copy saved from Revit 2025+ won't open cleanly in 2024.
+- `Stadium_Bowl_Mass_Revit_R2024.dyn`: the whole bowl in a Generic Model (or Mass) family. Guide: [`guides/Stadium_Bowl_Mass_Revit_R2024_Guide.pdf`](guides/Stadium_Bowl_Mass_Revit_R2024_Guide.pdf)
+- `Stadium_Bowl_Profile_R2024.dyn`: one profile family per tier, origin at the point of focus, for sweeps. Guide: [`guides/Stadium_Bowl_Profile_R2024_Guide.pdf`](guides/Stadium_Bowl_Profile_R2024_Guide.pdf)
+- `Stadium_Bowl_Aisle_Step_R2024.dyn`: the precast aisle steps, in the project.
+
+Base version: Revit 2024.0 / Dynamo 2.17 (CPython3). No packages needed.
 
 ## SketchUp
 
-**Export for SketchUp** downloads a ZIP with a COLLADA file. File > Import > COLLADA. Units are metres; each stand is its own solid.
+**Deliver › Models › SketchUp model (.zip)** downloads `Stadium_Bowl_Mass_Sketchup.zip` with one COLLADA file. File › Import › COLLADA. Units are metres; each stand is its own solid. Guide: [`guides/Stadium_Bowl_Mass_Sketchup_Guide.pdf`](guides/Stadium_Bowl_Mass_Sketchup_Guide.pdf)
 
 ## Files
 
