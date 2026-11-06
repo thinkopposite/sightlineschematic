@@ -426,7 +426,7 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
       <div class="lab">PDF sheet grid</div><div class="seg" id="pdfGrid" style="margin-bottom:8px"></div>
       <div class="seg"><button id="dlTab" class="primary">Download project set (Tabloid)</button><button id="dlArch" class="primary">Download project set (ARCH E)</button></div>
       <p class="sub2">Models</p>
-      <div class="seg"><button id="exRevit">Export for Revit (.xlsx)</button><button id="exSku">Export for SketchUp</button><a class="btnlink" href="dynamo/Sightline_BowlMass_R2024.dyn" download>Revit graph (.dyn)</a><a class="btnlink" href="dynamo/Sightline_AisleSteps_R2024.dyn" download title="Run in the project: places the precast aisle steps">Aisle steps graph (.dyn)</a><a class="btnlink" href="dynamo/Precast_Aisle_Step_family.txt" download title="How to build the Precast Aisle Step family">Aisle step family spec</a></div>
+      <div class="seg"><button id="exRevit">Export for Revit (.xlsx)</button><button id="exSku">Export for SketchUp</button><a class="btnlink" href="dynamo/Sightline_BowlMass_R2024.dyn" download>Revit graph (.dyn)</a><a class="btnlink" href="dynamo/Sightline_ProfileFamilies_R2024.dyn" download title="Run from a Revit 2024 project: makes a profile family per tier from the Export for Revit workbook">Profile families graph (.dyn)</a><a class="btnlink" href="dynamo/Sightline_AisleSteps_R2024.dyn" download title="Run in the project: places the precast aisle steps">Aisle steps graph (.dyn)</a><a class="btnlink" href="dynamo/Precast_Aisle_Step_family.txt" download title="How to build the Precast Aisle Step family">Aisle step family spec</a></div>
     </section></aside>
   <main>
     <p class="group">Results</p>
@@ -2004,7 +2004,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.04.05';
+const VERSION='2026.11.05.01';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -4966,7 +4966,7 @@ $('exRevit').onclick=()=>{
   CH.forEach((c,ti)=>zoneKeys(P).forEach(k=>{const z=P.zt[ti].z[k],on=!!c[k];
     sum.push([ti+1,zoneName(P,k),on?Math.round(M.zoneSeats[ti][k]):0,on?(SEATS[z.seat]||{name:'Custom'}).name:'open',on?z.rows:'',on?z.tread:'',on?z.seatW:'',on?+z.target.toFixed(4):'',zoned(P)?P.zt[ti].corners:'wrap',on?profSheet(ti,k):'',on?(z.riser==='constant'?'Constant':'Parabolic')+` (${BASIS[z.basis]||'sitting'})`:'',on?Math.round(z.tread0*10)/10:'',on?Math.round(z.tread*10)/10:'',on?Math.round(ZR[k].find(r=>r.tier===ti).x*10)/10:'']);}));
   sum.push([],['Profile sheets list closed loops in mm. Origin is the point of focus on the field edge at pitch level. X runs away from the pitch, Z is up.'],
-    ['Bowl pieces: each stand is extruded along LINE pieces and revolved at ARC pieces with its own profile. Sightline_BowlMass_R2024.dyn builds them.']);
+    ['Bowl pieces: each stand is extruded along LINE pieces and revolved at ARC pieces with its own profile. Sightline_BowlMass_R2024.dyn builds them.'],['Profile families: Sightline_ProfileFamilies_R2024.dyn makes one Revit profile family per tier (per tier and side when the sides differ) from the profile sheets, origin at the point of focus, for a Sweep along the point-of-focus boundary.']);
   add(sum,'Summary');
   CH.forEach((c,ti)=>Object.keys(c).forEach(k=>add([['Point','X (mm)','Z (mm)'],...profileOf(ZR[k].filter(r=>r.tier===ti),ti).map((p,i)=>[i+1,Math.round(p[0]*10)/10,Math.round(p[1]*10)/10])],profSheet(ti,k))));
   const r1=v=>v==null?'':Math.round(v*1000)/1000,geo=g=>[g.t,r1(g.x1),r1(g.y1),r1(g.x2),r1(g.y2),r1(g.cx),r1(g.cy),r1(g.r),g.a0==null?'':+g.a0.toFixed(7),g.sw==null?'':+g.sw.toFixed(7)];
