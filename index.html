@@ -9,7 +9,7 @@
 
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/jszip.min.js"></script>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect x=%222%22 y=%222%22 width=%2296%22 height=%2296%22 fill=%22%23fff%22 stroke=%22%231F2A5C%22 stroke-width=%224%22/%3E%3Cpath d=%22M16 74 H34 V58 H50 V42 H66 V26 H84%22 fill=%22none%22 stroke=%22%231F2A5C%22 stroke-width=%224.5%22 stroke-linejoin=%22miter%22 stroke-linecap=%22square%22/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%231F2A5C%22/%3E%3Cpath d=%22M16 74 H34 V58 H50 V42 H66 V26 H84%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%224.5%22 stroke-linejoin=%22miter%22 stroke-linecap=%22square%22/%3E%3C/svg%3E">
 <style>
 :root{--sl-ok:#0000FF;--sl-stand:#4FB3F0;--sl-low:#FF0000;--sl-block:#FD3DB5;--dim:#000000;--ref:#B5533C;--seat-chair:#A0526B;--seat-bench:#4A8B9C;--eye-sit:#000080;--eye-stand:#00FFFF;--accent-soft:#E8E6DC;--accent-deep:#9C4A2E;--accent-2:#6A9BCC;--edge:#B0AEA5;--bench:#AFC0D2;--oval:#B5533C;--mark:#FFFFFF;--pitch-dk:#3B7430;--grass2:#8EB03E;--turf:#2F7FA8;--court:#D6AC72;--court2:#B99260;--paint:#9C4A33;--tennis:#3C6FA3;--tennis2:#4E8A5C;--vb:#DD7A3A;--vb2:#2F6FA8;--ice:#F3F8FA;--crease:#9EC7EC;--dirt:#B98559;--strip:#D8C690;--bg:#FAF9F5;--panel:#FFFFFF;--ink:#141413;--muted:#5E5D59;--line:#E8E6DC;--accent:#D97757;--pass:#788C5D;--warn:#9A6A1E;--fail:#B23A26;--pitch:#488B39;--concrete:#BFC3C0;--grid:#EFEDE6;--track:#E8E6DC;
   box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -2009,7 +2009,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.05.09';
+const VERSION='2026.11.05.10';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
