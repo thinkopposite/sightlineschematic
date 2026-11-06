@@ -1,0 +1,407 @@
+{
+  "Uuid": "07528193-92e8-4ec1-8672-06df2088f567",
+  "IsCustomNode": false,
+  "Description": "Sightline Profile Families | Base version: Revit 2024 (Dynamo 2.17+, CPython3). Makes one Revit profile family per tier (per tier and side when the sides differ) from the Sightline workbook's profile sheets, saves the .rfa files and loads them into the open project for Sweeps. Origin = point of focus, X away from the field, Y up. Family method after Jacob Small's Export-Profile-Family (Computational Dynamics). Run from a project (or any document with Load off).",
+  "Name": "Sightline_ProfileFamilies_R2024",
+  "ElementResolver": {
+    "ResolutionMap": {}
+  },
+  "Inputs": [
+    {
+      "Id": "528847c07e88461ea87d44fa251dc33c",
+      "Name": "1. Sightline workbook (.xlsx)",
+      "Type": "string",
+      "Value": "Choose the Sightline .xlsx",
+      "Description": "The file from Sightline > Deliver > Export for Revit"
+    },
+    {
+      "Id": "711f5c2727944698a41c0f69a0fe3671",
+      "Name": "2. Profile family template (.rft)",
+      "Type": "string",
+      "Value": "C:\\ProgramData\\Autodesk\\RVT 2024\\Family Templates\\English_I\\Profile.rft",
+      "Description": "Revit 2024 Profile.rft (imperial) or Metric Profile.rft"
+    },
+    {
+      "Id": "c1ad85ff244d4b5abf0d2ebdabd2fd4d",
+      "Name": "3. Save the families in",
+      "Type": "string",
+      "Value": "Choose a folder",
+      "Description": "Folder for the .rfa files (same names are overwritten)"
+    },
+    {
+      "Id": "fc3f792d53bd419982cb2b799be4c5b5",
+      "Name": "4. Family name prefix",
+      "Type": "string",
+      "Value": "Sightline_Bowl",
+      "Description": "Families are named Prefix_T1, Prefix_T2 ... (Prefix_T1_E ... when the sides differ)"
+    },
+    {
+      "Id": "5a00b755eab344989fb26dd3aad1a4ce",
+      "Name": "5. Load into the open project",
+      "Type": "boolean",
+      "Value": "true",
+      "Description": "Load each family into the open project, replacing one of the same name"
+    }
+  ],
+  "Outputs": [
+    {
+      "Id": "a1e312c2e26f4298a51897428db87cae",
+      "Name": "Result",
+      "Type": "string",
+      "InitialValue": "",
+      "Description": "Families made, where they were saved, and what to do next"
+    }
+  ],
+  "Nodes": [
+    {
+      "ConcreteType": "CoreNodeModels.Input.Filename, CoreNodeModels",
+      "HintPath": "",
+      "InputValue": "Choose the Sightline .xlsx",
+      "NodeType": "ExtensionNode",
+      "Id": "528847c07e88461ea87d44fa251dc33c",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "122e92b95e9b4b5a8bfe912fb47530f2",
+          "Name": "",
+          "Description": "File Path",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Allows you to select a file on the system to get its filename"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.Filename, CoreNodeModels",
+      "HintPath": "C:\\ProgramData\\Autodesk\\RVT 2024\\Family Templates\\English_I\\Profile.rft",
+      "InputValue": "C:\\ProgramData\\Autodesk\\RVT 2024\\Family Templates\\English_I\\Profile.rft",
+      "NodeType": "ExtensionNode",
+      "Id": "711f5c2727944698a41c0f69a0fe3671",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "e7005731272341e6b4f1bdeeea5c8594",
+          "Name": "",
+          "Description": "File Path",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Allows you to select a file on the system to get its filename"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.Directory, CoreNodeModels",
+      "Id": "c1ad85ff244d4b5abf0d2ebdabd2fd4d",
+      "NodeType": "ExtensionNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "ef06867c26cb4f058ddc11290560070e",
+          "Name": "",
+          "Description": "Directory",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Allows you to select a directory on the system and returns its path",
+      "HintPath": "",
+      "InputValue": "Choose a folder"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.StringInput, CoreNodeModels",
+      "Id": "fc3f792d53bd419982cb2b799be4c5b5",
+      "NodeType": "StringInputNode",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "08d67c967ce246bdaa05a88bf5b339c3",
+          "Name": "",
+          "Description": "String",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Creates a string",
+      "InputValue": "Sightline_Bowl"
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Input.BoolSelector, CoreNodeModels",
+      "NodeType": "BooleanInputNode",
+      "InputValue": true,
+      "Id": "5a00b755eab344989fb26dd3aad1a4ce",
+      "Inputs": [],
+      "Outputs": [
+        {
+          "Id": "a9a0e6b98d294f4b84625410dfd4b29a",
+          "Name": "",
+          "Description": "Boolean",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Selection between a true and false."
+    },
+    {
+      "ConcreteType": "PythonNodeModels.PythonNode, PythonNodeModels",
+      "NodeType": "PythonScriptNode",
+      "Code": "# Sightline Profile Families  |  Dynamo 2.17+ (CPython3)  |  Revit 2024\n# Makes one Revit profile family (.rfa) per tier (or per tier and side when the sides differ) from the profile sheets of\n# the Sightline workbook (Export for Revit), saves it and loads it into the open project, ready for a Sweep.\n# Family method after Jacob Small's \"Create profile family from curves\" (Export-Profile-Family, Computational Dynamics),\n# rewritten for CPython3 and the Revit API directly: no Dynamo geometry, so no unit conversion questions.\n# Profile: closed loop of detail lines on the template's Ref. Level plan; origin = the point of focus (field edge at pitch\n# level); X runs away from the field, Y is up. Treads and risers, the slab underside and the leg wall, exactly as Sightline draws them.\n# Inputs: IN[0] workbook (.xlsx)  IN[1] Profile.rft  IN[2] save folder  IN[3] family name prefix  IN[4] load into the project\nimport clr, os, re, uuid, zipfile\nimport xml.etree.ElementTree as ET\nclr.AddReference('RevitAPI')\nfrom Autodesk.Revit.DB import (IFamilyLoadOptions, SaveAsOptions, FilteredElementCollector, ViewPlan, View, ViewType,\n                               Transaction, Line, XYZ, Family)\nclr.AddReference('RevitServices')\nfrom RevitServices.Persistence import DocumentManager\nfrom RevitServices.Transactions import TransactionManager\n\nMM = 1.0 / 304.8                       # Revit works in feet; the workbook is in mm\nNS = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'\nRID = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id'\n\n\nclass Stop(Exception):\n    pass\n\n\ndef col_of(ref):\n    n = 0\n    for ch in ref:\n        if not ch.isalpha():\n            break\n        n = n * 26 + ord(ch.upper()) - 64\n    return n - 1\n\n\ndef read_xlsx(p):\n    \"\"\"Every sheet as a list of rows, read with the standard library (no Excel needed).\"\"\"\n    with zipfile.ZipFile(p) as z:\n        names = set(z.namelist())\n        shared = []\n        if 'xl/sharedStrings.xml' in names:\n            for si in ET.fromstring(z.read('xl/sharedStrings.xml')).iter(NS + 'si'):\n                shared.append(''.join(t.text or '' for t in si.iter(NS + 't')))\n        rels = {r.get('Id'): r.get('Target') for r in ET.fromstring(z.read('xl/_rels/workbook.xml.rels'))}\n        book = {}\n        for sh in ET.fromstring(z.read('xl/workbook.xml')).iter(NS + 'sheet'):\n            t = (rels.get(sh.get(RID)) or '').replace('\\\\', '/')\n            t = t[1:] if t.startswith('/') else (t if t.startswith('xl/') else 'xl/' + t)\n            if t not in names:\n                continue\n            rows = []\n            for row in ET.fromstring(z.read(t)).iter(NS + 'row'):\n                vals = []\n                for c in row.iter(NS + 'c'):\n                    i = col_of(c.get('r')) if c.get('r') else len(vals)\n                    while len(vals) < i:\n                        vals.append(None)\n                    typ, v = c.get('t'), c.find(NS + 'v')\n                    if typ == 's':\n                        val = shared[int(v.text)]\n                    elif typ == 'inlineStr':\n                        val = ''.join(x.text or '' for x in c.iter(NS + 't'))\n                    elif typ in ('str', 'e'):\n                        val = v.text if v is not None else ''\n                    else:\n                        val = float(v.text) if v is not None and v.text not in (None, '') else None\n                    vals.append(val)\n                rows.append(vals)\n            book[sh.get('name')] = rows\n    return book\n\n\ndef num(v):\n    try:\n        return float(v)\n    except (TypeError, ValueError):\n        return None\n\n\ndef profiles(book):\n    \"\"\"-> [(tier, side, [(x mm, z mm), ...])] from the 'T1 E profile' sheets, in tier order.\"\"\"\n    out = []\n    for name, rows in book.items():\n        m = re.match(r'^T(\\d+) (.+) profile$', name.strip())\n        if not m:\n            continue\n        pts = [(num(r[1]), num(r[2])) for r in rows[1:] if len(r) >= 3 and num(r[1]) is not None and num(r[2]) is not None]\n        if len(pts) >= 3:\n            out.append((int(m.group(1)), m.group(2).strip(), pts))\n    out.sort(key=lambda p: (p[0], p[1]))\n    return out\n\n\ndef clean_name(s):\n    return re.sub(r'[\\\\/:*?\"<>|]+', '-', s).strip()\n\n\nclass LoadOptions(IFamilyLoadOptions):\n    __namespace__ = 'SightlineProfiles_' + uuid.uuid4().hex   # CPython3: a fresh .NET type name on every run\n    def OnFamilyFound(self, familyInUse, overwriteParameterValues):\n        return True                                            # replace a family of the same name\n    def OnSharedFamilyFound(self, sharedFamily, familyInUse, source, overwriteParameterValues):\n        return True\n\n\ndef profile_view(fdoc):\n    for v in FilteredElementCollector(fdoc).OfClass(ViewPlan):\n        if not v.IsTemplate:\n            return v                                           # the Ref. Level plan of the profile template\n    for v in FilteredElementCollector(fdoc).OfClass(View):\n        if not v.IsTemplate and v.ViewType in (ViewType.FloorPlan, ViewType.CeilingPlan, ViewType.DraftingView):\n            return v\n    raise Stop('The template has no plan view to draw the profile in. Use the Profile.rft family template.')\n\n\ndef make_family(app, doc, tmpl, folder, fname, pts, load):\n    fdoc = app.NewFamilyDocument(tmpl)\n    try:\n        view = profile_view(fdoc)\n        tol = app.ShortCurveTolerance * 1.05\n        xyz = []\n        for x, z in pts:\n            p = XYZ(x * MM, z * MM, 0)\n            if not xyz or p.DistanceTo(xyz[-1]) > tol:\n                xyz.append(p)\n        if xyz[0].DistanceTo(xyz[-1]) <= tol:\n            xyz.pop()\n        if len(xyz) < 3:\n            raise Stop('%s: the profile has fewer than three points.' % fname)\n        t = Transaction(fdoc, 'Sightline profile')\n        t.Start()\n        for i in range(len(xyz)):\n            fdoc.FamilyCreate.NewDetailCurve(view, Line.CreateBound(xyz[i], xyz[(i + 1) % len(xyz)]))   # closed loop\n        t.Commit()\n        path = os.path.join(folder, fname + '.rfa')\n        so = SaveAsOptions()\n        so.OverwriteExistingFile = True\n        fdoc.SaveAs(path, so)\n        loaded = None\n        if load:\n            TransactionManager.Instance.ForceCloseTransaction()\n            try:\n                loaded = fdoc.LoadFamily(doc, LoadOptions())   # replaces an earlier load of the same name\n            except Exception:\n                tr = Transaction(doc, 'Load Sightline profile')\n                tr.Start()\n                doc.LoadFamily(path)\n                tr.Commit()\n                loaded = fname\n        return path, len(xyz), loaded\n    finally:\n        fdoc.Close(False)\n\n\ndef run():\n    xlsx, tmpl, folder = IN[0], IN[1], IN[2]\n    prefix = clean_name(str(IN[3] or 'Sightline_Bowl')) or 'Sightline_Bowl'\n    load = bool(IN[4]) if len(IN) > 4 else True\n    if not xlsx or not os.path.isfile(str(xlsx)):\n        raise Stop('1. Pick the workbook from Sightline (Deliver > Export for Revit).')\n    if not tmpl or not os.path.isfile(str(tmpl)) or not str(tmpl).lower().endswith('.rft'):\n        raise Stop('2. Pick the profile family template, e.g. C:\\\\ProgramData\\\\Autodesk\\\\RVT 2024\\\\Family Templates\\\\English_I\\\\Profile.rft '\n                   '(metric: ...\\\\English\\\\Metric Profile.rft).')\n    if not folder or not os.path.isdir(str(folder)):\n        raise Stop('3. Pick a folder to save the profile families in.')\n    try:\n        book = read_xlsx(str(xlsx))\n    except Exception as e:\n        raise Stop('Could not read the workbook: %s' % e)\n    profs = profiles(book)\n    if not profs:\n        raise Stop('No \"T1 E profile\" sheets in this workbook. Export for Revit again from the current Sightline.')\n    # one family per tier when every side has the same profile; otherwise one per tier and side\n    tiers = {}\n    for tier, side, pts in profs:\n        tiers.setdefault(tier, []).append((side, pts))\n    jobs = []\n    for tier in sorted(tiers):\n        sides = tiers[tier]\n        key = lambda p: tuple((round(x, 1), round(z, 1)) for x, z in p)\n        if len(set(key(p) for s, p in sides)) == 1:\n            jobs.append(('%s_T%d' % (prefix, tier), sides[0][1], 'Tier %d, all sides' % tier))\n        else:\n            seen = {}\n            for side, pts in sides:\n                k = key(pts)\n                if k in seen:\n                    seen[k][2].append(side)\n                    continue\n                seen[k] = ['%s_T%d_%s' % (prefix, tier, clean_name(side)), pts, [side]]\n            for nm, pts, ss in seen.values():\n                jobs.append((nm if len(ss) == 1 else nm + '_' + '-'.join(ss[1:]), pts, 'Tier %d, %s' % (tier, ', '.join(ss))))\n    doc = DocumentManager.Instance.CurrentDBDocument\n    app = DocumentManager.Instance.CurrentUIApplication.Application\n    if load and doc.IsFamilyDocument:\n        load = False\n    report, fams = [], []\n    for fname, pts, label in jobs:\n        try:\n            path, n, loaded = make_family(app, doc, str(tmpl), str(folder), fname, pts, load)\n            report.append('%s: %s (%d lines)%s' % (label, path, n, ', loaded' if loaded else ''))\n            if loaded is not None and isinstance(loaded, Family):\n                fams.append(loaded)\n        except Stop as s:\n            report.append(str(s))\n        except Exception as e:\n            report.append('%s: failed - %s' % (fname, e))\n    report.append('Next: in a Sweep, pick the point-of-focus boundary (the red field-edge line) as the path and load or pick the family as the profile; its origin is the point of focus, so it sits at its true distance from the field. Flip it if it faces the field.')\n    return report, fams\n\n\ntry:\n    OUT = run()\nexcept Stop as s:\n    OUT = [str(s)], []\n",
+      "Engine": "CPython3",
+      "VariableInputPorts": true,
+      "Id": "4df8288bd39a4c7a84909eb0fcfa61ad",
+      "Inputs": [
+        {
+          "Id": "3d4b71c7f01e40f3ba9915a8d1420aa1",
+          "Name": "IN[0]",
+          "Description": "Input #0",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "847c5356b58a471bb8c00b5719730eb3",
+          "Name": "IN[1]",
+          "Description": "Input #1",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "2ac7bfad060b4d7b9457625a97542c88",
+          "Name": "IN[2]",
+          "Description": "Input #2",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "5dd77a45b7084075b263fd1a2b2fe62b",
+          "Name": "IN[3]",
+          "Description": "Input #3",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        },
+        {
+          "Id": "58dcea3250a045f891384f0abbd55510",
+          "Name": "IN[4]",
+          "Description": "Input #4",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "2ff9f8eeb1044c5594ecded8240e95b4",
+          "Name": "OUT",
+          "Description": "Result of the python script",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Makes the profile families from the Sightline workbook (after Jacob Small's Export-Profile-Family)."
+    },
+    {
+      "ConcreteType": "CoreNodeModels.Watch, CoreNodeModels",
+      "NodeType": "ExtensionNode",
+      "Id": "a1e312c2e26f4298a51897428db87cae",
+      "Inputs": [
+        {
+          "Id": "4138cbc5e6954c5cbc9e5db4db10aad0",
+          "Name": "",
+          "Description": "Node to show output from",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Outputs": [
+        {
+          "Id": "0efa2a7913e94ca091069366fd5eb062",
+          "Name": "",
+          "Description": "Node output",
+          "UsingDefaultValue": false,
+          "Level": 2,
+          "UseLevels": false,
+          "KeepListStructure": false
+        }
+      ],
+      "Replication": "Disabled",
+      "Description": "Visualize the node's output"
+    }
+  ],
+  "Connectors": [
+    {
+      "Start": "122e92b95e9b4b5a8bfe912fb47530f2",
+      "End": "3d4b71c7f01e40f3ba9915a8d1420aa1",
+      "Id": "ef90153901e84cc6924720eadd9afb41",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "e7005731272341e6b4f1bdeeea5c8594",
+      "End": "847c5356b58a471bb8c00b5719730eb3",
+      "Id": "10f5e0f3353e42d5bfb40837befd0606",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "ef06867c26cb4f058ddc11290560070e",
+      "End": "2ac7bfad060b4d7b9457625a97542c88",
+      "Id": "582efd4f71c14046b671a8fd7402fa78",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "08d67c967ce246bdaa05a88bf5b339c3",
+      "End": "5dd77a45b7084075b263fd1a2b2fe62b",
+      "Id": "cabbca093b224b9da7b68605d0db84f0",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "a9a0e6b98d294f4b84625410dfd4b29a",
+      "End": "58dcea3250a045f891384f0abbd55510",
+      "Id": "232667289a024a36bd991def0909f12e",
+      "IsHidden": "False"
+    },
+    {
+      "Start": "2ff9f8eeb1044c5594ecded8240e95b4",
+      "End": "4138cbc5e6954c5cbc9e5db4db10aad0",
+      "Id": "839bac4d149349208ca3ef292abc2188",
+      "IsHidden": "False"
+    }
+  ],
+  "Dependencies": [],
+  "NodeLibraryDependencies": [],
+  "Thumbnail": "",
+  "GraphDocumentationURL": null,
+  "ExtensionWorkspaceData": [],
+  "Author": "Sightline",
+  "Linting": {
+    "activeLinter": "None",
+    "activeLinterId": "7b75fb44-43fd-4631-a878-29f4d5d8399a",
+    "warningCount": 0,
+    "errorCount": 0
+  },
+  "Bindings": [],
+  "View": {
+    "Dynamo": {
+      "ScaleFactor": 1.0,
+      "HasRunWithoutCrash": true,
+      "IsVisibleInDynamoLibrary": true,
+      "Version": "2.17.0.3472",
+      "RunType": "Manual",
+      "RunPeriod": "1000"
+    },
+    "Camera": {
+      "Name": "Background Preview",
+      "EyeX": -17.0,
+      "EyeY": 24.0,
+      "EyeZ": 50.0,
+      "LookX": 12.0,
+      "LookY": -13.0,
+      "LookZ": -58.0,
+      "UpX": 0.0,
+      "UpY": 1.0,
+      "UpZ": 0.0
+    },
+    "ConnectorPins": [],
+    "NodeViews": [
+      {
+        "Id": "528847c07e88461ea87d44fa251dc33c",
+        "Name": "1. Sightline workbook (.xlsx)",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0,
+        "Y": 0
+      },
+      {
+        "Id": "711f5c2727944698a41c0f69a0fe3671",
+        "Name": "2. Profile family template (.rft)",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0,
+        "Y": 160
+      },
+      {
+        "Id": "c1ad85ff244d4b5abf0d2ebdabd2fd4d",
+        "Name": "3. Save the families in",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0,
+        "Y": 320
+      },
+      {
+        "Id": "fc3f792d53bd419982cb2b799be4c5b5",
+        "Name": "4. Family name prefix",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0,
+        "Y": 480
+      },
+      {
+        "Id": "5a00b755eab344989fb26dd3aad1a4ce",
+        "Name": "5. Load into the open project",
+        "IsSetAsInput": true,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 0,
+        "Y": 640
+      },
+      {
+        "Id": "4df8288bd39a4c7a84909eb0fcfa61ad",
+        "Name": "Sightline profile families",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 420,
+        "Y": 240
+      },
+      {
+        "Id": "a1e312c2e26f4298a51897428db87cae",
+        "Name": "Result",
+        "IsSetAsInput": false,
+        "IsSetAsOutput": false,
+        "Excluded": false,
+        "ShowGeometry": true,
+        "X": 820,
+        "Y": 240
+      }
+    ],
+    "Annotations": [],
+    "X": 0.0,
+    "Y": 0.0,
+    "Zoom": 1.0
+  }
+}
