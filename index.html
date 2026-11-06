@@ -408,6 +408,8 @@ main table.count tr.sub td{background:transparent!important}   /* subtotal rows 
 html,body{overflow-anchor:none}   /* the page keeps its own view on redraws (decision 237) */
 #guideDlg{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);display:flex;justify-content:center;padding:24px 16px}#guideDlg .gd-box{background:var(--sw-paper,#F6F5F2);border:1px solid var(--sw-ink,#111);width:100%;max-width:1000px;display:flex;flex-direction:column;padding:16px 16px 0;box-sizing:border-box}#guideDlg .gd-head{display:flex;align-items:center;gap:12px;padding-bottom:12px}#guideDlg iframe{flex:1;width:100%;border:0;border-top:1.5px solid var(--sw-ink,#111);background:#fff}
 .brand h1{display:flex;align-items:flex-start;gap:12px}.brand h1 .logo{width:24px;height:24px;flex:none;display:block;margin-top:calc((1em - 24px) / 2)}   /* the favicon beside the title, centred on the first line */
+/* frozen title bar (decision 241): on desktop the header stays at the top while the left panel and the right page scroll under it */
+@media (min-width:901px){header{position:sticky;top:0;z-index:40}aside{top:var(--hdrH,0px)!important;max-height:calc(100vh - var(--hdrH,0px))!important}html{scroll-padding-top:calc(var(--hdrH,0px) + 8px)}}
 </style>
 </head>
 <body>
@@ -421,6 +423,7 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
     <button id="saveOpt">Save as option</button>
   </div>
 </header>
+<script>(()=>{const h=document.querySelector('header'),set=()=>document.documentElement.style.setProperty('--hdrH',h.offsetHeight+'px');set();try{new ResizeObserver(set).observe(h);}catch(e){addEventListener('resize',set);}})();</script>
 <div class="layout">
   <aside><div id="controls"></div>
     <section class="step deliver"><div class="step-h"><span class="bub">7</span><h2>Deliver</h2><p>Drawings, schedules and models for the team.</p></div>
@@ -517,9 +520,9 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
     <div class="opts" id="opts"></div>
     <p class="group">Seats</p>
     <div class="cap" id="cap2" aria-label="Estimated seats (repeated at the bottom of the page)"></div>
+    <p class="hint" id="ver" style="padding:24px 0 0"></p>
   </main>
 </div>
-<p class="hint" id="ver" style="padding:0 22px 20px"></p>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 /*SPORTS*/
@@ -2010,7 +2013,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.05.20';
+const VERSION='2026.11.05.21';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
