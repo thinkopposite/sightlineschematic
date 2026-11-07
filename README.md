@@ -4,7 +4,7 @@ Stadium seating bowl designer. Set the field, tiers and side-by-side stand profi
 
 **Open the app:** `https://<your-github-username>.github.io/<repo-name>/`
 
-Sightline Schematic runs entirely in the browser. Nothing is uploaded, and there is no server or account. Saved options live in the browser you saved them in; use **Back up options** / **Restore options** to move them between computers.
+Sightline Schematic runs entirely in the browser. Nothing is uploaded, and there is no server or account. Your work is kept as **projects**: a project name plus its saved options (any mix of sports). The open project stays in your browser between visits; **Save project** writes it to a `.json` file and **Open project** reads it back. Keep the file in Google Drive (or any shared folder) to open it on another computer. In Chrome and Edge, Save writes straight back to the file you opened. Option names and the project name can be edited; double-click an option's name or use the pencil.
 
 ## Revit
 
