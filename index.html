@@ -421,10 +421,10 @@ html,body{overflow-anchor:none}   /* the page keeps its own view on redraws (dec
 /* wider scroll bars (decision 243): 24 px (one grid cell), a 20 px handle at least 72 px long, square, a solid thumb that is easy to grab; Chrome, Edge and Safari */
 ::-webkit-scrollbar{width:24px;height:24px}
 ::-webkit-scrollbar-track{background:var(--sb-track,#E6E4DE);border-left:1px solid var(--sb-edge,#C9C6BE)}
-::-webkit-scrollbar-thumb{background:var(--sb-thumb,#8A877F);border:2px solid var(--sb-track,#E6E4DE);border-radius:0;min-height:72px}
-::-webkit-scrollbar-thumb:hover{background:var(--sb-hover,#111)}::-webkit-scrollbar-thumb:active{background:var(--sb-hover,#111)}
+::-webkit-scrollbar-thumb{background:var(--sb-thumb,#E10600);border:2px solid var(--sb-track,#E6E4DE);border-radius:0;min-height:72px}
+::-webkit-scrollbar-thumb:hover{background:var(--sb-hover,#A30400)}::-webkit-scrollbar-thumb:active{background:var(--sb-hover,#A30400)}
 ::-webkit-scrollbar-corner{background:var(--sb-track,#E6E4DE)}
-:root[data-theme="dark"]{--sb-track:#26282A;--sb-edge:#3A3D40;--sb-thumb:#7C8085;--sb-hover:#ECEDEA}
+:root[data-theme="dark"]{--sb-track:#26282A;--sb-edge:#3A3D40;--sb-thumb:#E10600;--sb-hover:#FF4A3D}
 </style>
 </head>
 <body>
@@ -2030,7 +2030,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.07.04';
+const VERSION='2026.11.07.05';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
