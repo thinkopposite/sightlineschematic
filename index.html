@@ -2030,7 +2030,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.07.05';
+const VERSION='2026.11.08.03';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3040,6 +3040,10 @@ async function v3Build(){if(!V3.on||!M)return;await v3Init();await archivoCSS();
   if(P.sport==='nfl'||P.sport==='ncaafb'){const Fz=0.3048,cb=10*Fz,hw=18.5*Fz/2,up=(P.sport==='nfl'?35:30)*Fz,off=6*Fz,xe=P.L/2,mat=new T.MeshLambertMaterial({color:0xF2C200});
     const bar=(A,B)=>{const a=new T.Vector3(...to(A)),b=new T.Vector3(...to(B)),len=a.distanceTo(b),cy=new T.Mesh(new T.CylinderGeometry(0.06,0.06,len,10),mat);cy.position.copy(a.clone().add(b).multiplyScalar(.5));cy.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),b.clone().sub(a).normalize());g.add(cy);};
     for(const sg of[1,-1]){const x=sg*xe,xb=sg*(xe+off);bar([xb,0,0],[xb,0,cb]);bar([xb,0,cb],[x,0,cb]);bar([x,-hw,cb],[x,hw,cb]);bar([x,-hw,cb],[x,-hw,cb+up]);bar([x,hw,cb],[x,hw,cb+up]);}}
+  // soccer goals (MLS, FIFA), true size as in the isometric view: 12 cm posts and crossbar, 7.32 m between the posts, crossbar underside 2.44 m (IFAB Law 1)
+  if(SPORTS[P.sport]&&SPORTS[P.sport].law){const w=SOC.LW,gw=SOC.goalW/2+w/2,zt=SOC.bar+w/2,xe=P.L/2-w/2,mat=new T.MeshLambertMaterial({color:0xFFFFFF});
+    const bar=(A,B)=>{const a=new T.Vector3(...to(A)),b=new T.Vector3(...to(B)),len=a.distanceTo(b),cy=new T.Mesh(new T.CylinderGeometry(w/2,w/2,len,12),mat);cy.position.copy(a.clone().add(b).multiplyScalar(.5));cy.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),b.clone().sub(a).normalize());cy.name='Goal';g.add(cy);};
+    for(const sg of[1,-1]){const x=sg*xe;bar([x,-gw,0],[x,-gw,zt]);bar([x,gw,0],[x,gw,zt]);bar([x,-gw-w/2,zt],[x,gw+w/2,zt]);}}
   if(V3.grp){V3.scene.remove(V3.grp);V3.grp.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(o.material.map)o.material.map.dispose();o.material.dispose();}});}
   V3.grp=g;V3.scene.add(g);if(!V3.fitted){v3View(V3.view);V3.fitted=true;}else v3Render();
   const nt=groups.reduce((a,G)=>a+G.tri.length/3,0);$('v3Note').textContent=`${fmt(nt)} triangles. Drag to rotate, right-drag (two fingers) to pan, scroll (pinch) to zoom. Click (tap) a section's back rows to add or remove its wheelchair platform, its front rows to switch it off, and an open section to switch it back on.`;}
