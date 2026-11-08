@@ -1163,16 +1163,17 @@ function solveZone(P,k){
           prev=mk(0,Math.max(x0,lo0.x+1000),prev.z+(Math.max(z.rise,REGION_DEF[regionOf(P.sport)].rise)+Math.max(0,z.suites)*P.suiteH)*1000,null,null);prev.up1=true;   // at least 10'-0" (3.0 m) above the top tread below
           prev.railC=prev.ez*(prev.x+RAIL_SET)/prev.ex-(prev.z+P.railH);}           // front row looks over the guard, 3 in behind the landing edge
         rows.push(prev);j++;continue;}
-      if(z.riser==='constant'){const base=prev,cap=Math.max(step,Math.floor(P.maxRiser/step+1e-9)*step);
+      if(z.riser==='constant'){const base=prev,cap=Math.max(step,Math.floor(Math.min(P.maxRiser,ibcRiseCap(Math.min(base.T,z.tread)))/step+1e-9)*step);
         const build=r=>{const g=[];let p=base;for(let q=j;q<n;q++){const row=mk(q,p.x+p.T,p.z+r,p,r);g.push(row);p=row;}return g;};
         let r=guess(base),g;
         for(;;r+=step){if(r>cap){g=build(cap);break;}g=build(r);if(g.every(x=>x.C>=tgt-0.05))break;}
         rows.push(...g);prev=g[g.length-1];j=n;continue;}
       const m=Math.min(bank,n-j);
-      let r=guess(prev),g;
+      const rCap=ibcRiseCap(prev.T),rMax=rCap<Infinity?Math.max(step,Math.floor(rCap/step+1e-9)*step):Infinity;   /* decision 245 */
+      let r=Math.min(guess(prev),rMax),g;
       for(let it=0;it<400;it++){g=[];let p=prev,ok=true;
         for(let q=0;q<m;q++){const row=mk(j+q,p.x+p.T,p.z+r,p,r);if(row.C<tgt-0.05)ok=false;g.push(row);p=row;}
-        if(ok)break;r+=step;}
+        if(ok||r>=rMax)break;r=Math.min(r+step,rMax);}
       rows.push(...g);prev=g[g.length-1];j+=m;
     }
   }
@@ -1247,6 +1248,10 @@ function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGAC
 const RAKE_IBC=()=>regionOf(P.sport)!=='world';
 function rakeLim(r){if(!RAKE_IBC())return P.maxRake;const T=r.rT||r.T;const n=Math.max(1,Math.floor(T/(11*25.4)+1e-9));return Math.atan(8*25.4*n/T)*180/Math.PI;}
 const overRake=r=>r.rake!=null&&r.rake>rakeLim(r)+1e-6;
+/* the IBC stepped-aisle limit overrides the C-value (decision 245): on American sports no row may rise more than 8 in per 11 in of the tread
+   it climbs from (and no more than the maximum riser the precast aisle steps take, 24 in), even when the C-value then falls short; the
+   shortfall is reported as a C-value shortfall. International sports keep the Green Guide rake check as before. */
+function ibcRiseCap(T){if(!RAKE_IBC())return Infinity;const n=Math.max(1,Math.floor(T/(11*25.4)+1e-9));return Math.min(8*25.4*n,P.maxRiser);}
 const rakeRule=()=>RAKE_IBC()?'the IBC stepped-aisle limit (8" risers, 11" treads)':`${P.maxRake}° (Green Guide)`;
 function status(r){if(r.railC!=null)return r.railC>=0?'front':'blocked';if(r.C==null)return'front';   /* row 1 of every tier: no spectators in front, so no C-value; only whether the guard rail blocks the view (decision 192) */
   if(r.C>=r.target-0.05)return'pass';if(r.C>=r.target*2/3)return'reduced';return'fail';}
@@ -2030,7 +2035,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.08.03';
+const VERSION='2026.11.08.04';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2389,8 +2394,9 @@ $('controls').addEventListener('click',e=>{
     const lines=Object.entries(byT).map(([ti,xs])=>{const same=xs.length===zoneKeys(P).length&&xs.every(x=>what(x)===what(xs[0]));return same?`Tier ${+ti+1}${zoned(P)?' (every side)':''}: ${what(xs[0])}`:xs.map(x=>`Tier ${+ti+1} ${zoneName(P,x.k,true)}: ${what(x)}`).join('; ');});
     const bt=[...new Set(bad.map(x=>x.ti))].map(ti=>`Tier ${ti+1}`);
     const sp=FITSPLIT?`: ${FITSPLIT.rows.map((n,i)=>`Tier ${i+1} ${n} rows`).join(', ')}; ${FITSPLIT.pass>=FITSPLIT.all?'every seat meets':`${(100*FITSPLIT.pass/FITSPLIT.all).toFixed(1)}% of seats meet`} the absolute minimum C (seated, wheelchair positions included) within ${rakeRule()}`:'';
+    renderControls();update();   /* the shortfall below is read from the sized bowl, not the one before sizing */
     const sf=cShortfalls(),sfx=sf.seats||sf.wc?`. Does not meet the specified C-values: ${fmt(sf.seats)} seats${sf.wc?` and ${sf.wc} wheelchair spaces`:''} below the minimum (see C-value shortfalls)`:'. Every seat meets the specified C-values';
-    toast((ok?'Rows sized to hit the target'+sp:`Target is out of reach within the row limits (${P.rowMax.slice(0,P.tierCount).map((n,i)=>`Tier ${i+1} ${n}`).join(', ')} rows). Raise a limit or add a tier`)+sfx+(lines.length?`. Tiers moved so their front rows meet the absolute minimum C: ${lines.join('; ')}`:'. Tier relationships at their defaults')+(bt.length?`. ${bt.join(', ')} front rows can't reach the minimum over the guard and the tier below; set to the closest`:'')+(FITWC.length?`. Wheelchair platforms in the default centre sections: ${FITWC.slice().sort((x,y)=>x-y).join(', ')}${FITADA&&FITADA.wc<FITADA.req?` (${fmt(FITADA.wc)} wheelchair spaces of ${fmt(FITADA.req)} required; add platforms in the section editor)`:''}`:'')+'.');b.disabled=false;CUR=null;renderControls();update();},40);return;}   /* a few seconds for three tiers: the message first */
+    toast((ok?'Rows sized to hit the target'+sp:`Target is out of reach within the row limits (${P.rowMax.slice(0,P.tierCount).map((n,i)=>`Tier ${i+1} ${n}`).join(', ')} rows). Raise a limit or add a tier`)+sfx+(lines.length?`. Tiers moved so their front rows meet the absolute minimum C: ${lines.join('; ')}`:'. Tier relationships at their defaults')+(bt.length?`. ${bt.join(', ')} front rows can't reach the minimum over the guard and the tier below; set to the closest`:'')+(FITWC.length?`. Wheelchair platforms in the default centre sections: ${FITWC.slice().sort((x,y)=>x-y).join(', ')}${FITADA&&FITADA.wc<FITADA.req?` (${fmt(FITADA.wc)} wheelchair spaces of ${fmt(FITADA.req)} required; add platforms in the section editor)`:''}`:'')+'.');b.disabled=false;CUR=null;},40);return;}   /* a few seconds for three tiers: the message first */
   else if(b.id==='reset'){const met=regionOf(P.sport)==='world';
     P=defaultsPinned();EDIT={tier:0,g:0};EYELOCK=true;CVLOCK=true;CUR=null;
     if(met){applySport('fifa');P.zt.forEach(t=>GEO.forEach(k=>t.z[k].target=60));}clampCap(P);toast(met?'All values reset to the metric defaults.':'All values reset to the imperial defaults.');}
