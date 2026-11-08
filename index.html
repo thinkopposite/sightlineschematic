@@ -1250,8 +1250,8 @@ function rakeLim(r){if(!RAKE_IBC())return P.maxRake;const T=r.rT||r.T;const n=Ma
 const overRake=r=>r.rake!=null&&r.rake>rakeLim(r)+1e-6;
 /* the IBC stepped-aisle limit overrides the C-value (decision 245): on American sports no row may rise more than 8 in per 11 in of the tread
    it climbs from (and no more than the maximum riser the precast aisle steps take, 24 in), even when the C-value then falls short; the
-   shortfall is reported as a C-value shortfall. International sports keep the Green Guide rake check as before. */
-function ibcRiseCap(T){if(!RAKE_IBC())return Infinity;const n=Math.max(1,Math.floor(T/(11*25.4)+1e-9));return Math.min(8*25.4*n,P.maxRiser);}
+   shortfall is reported as a C-value shortfall. International sports: the same, with the Green Guide 35 deg limit (decision 248). */
+function ibcRiseCap(T){if(!RAKE_IBC())return Math.min(Math.tan((P.maxRake||35)*Math.PI/180)*T,P.maxRiser);   /* Green Guide: the 35 deg seated limit (12.10) and the 600 mm maximum riser override the C-value too (decision 248: the code limit overrides the C-value in both groups) */const n=Math.max(1,Math.floor(T/(11*25.4)+1e-9));return Math.min(8*25.4*n,P.maxRiser);}
 const rakeRule=()=>RAKE_IBC()?'the IBC stepped-aisle limit (8" risers, 11" treads)':`${P.maxRake}° (Green Guide)`;
 function status(r){if(r.railC!=null)return r.railC>=0?'front':'blocked';if(r.C==null)return'front';   /* row 1 of every tier: no spectators in front, so no C-value; only whether the guard rail blocks the view (decision 192) */
   if(r.C>=r.target-0.05)return'pass';if(r.C>=r.target*2/3)return'reduced';return'fail';}
@@ -2035,7 +2035,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.08.04';
+const VERSION='2026.11.08.05';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
