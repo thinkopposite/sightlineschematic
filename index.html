@@ -425,6 +425,28 @@ html,body{overflow-anchor:none}   /* the page keeps its own view on redraws (dec
 ::-webkit-scrollbar-thumb:hover{background:var(--sb-hover,#A30400)}::-webkit-scrollbar-thumb:active{background:var(--sb-hover,#A30400)}
 ::-webkit-scrollbar-corner{background:var(--sb-track,#E6E4DE)}
 :root[data-theme="dark"]{--sb-track:#26282A;--sb-edge:#3A3D40;--sb-thumb:#E10600;--sb-hover:#FF4A3D}
+/* guided setup and project information (decision 250) */
+.projinfo{display:grid;grid-template-columns:auto 1fr auto 1fr;grid-auto-rows:25px;gap:23px 12px;align-items:center;margin:23px 0 0;max-width:960px}.projinfo input,.projinfo select,.pi-num button{height:25px;box-sizing:border-box;padding-top:0!important;padding-bottom:0!important}.projinfo .lab{margin:0}
+.projinfo input,.projinfo select{font:inherit;font-size:14px;padding:4px 8px;border:1px solid var(--sw-ink,#111);background:var(--panel);color:var(--sw-ink,#111);min-width:0}
+.pi-num{display:flex;gap:6px}.pi-num input{flex:1}.pi-num button{min-height:0;padding:2px 10px}.pi-sport{grid-column:2/5;font-size:14px}
+@media (max-width:760px){.projinfo{grid-template-columns:auto 1fr}.pi-sport{grid-column:2}}
+#setupDlg{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;padding:64px 16px;overflow:auto}
+#setupDlg .su-box{background:var(--sw-paper,#F6F5F2);color:var(--sw-ink,#111);border:1px solid var(--sw-ink,#111);width:100%;max-width:760px}
+#setupDlg .su-head{background:#111;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:10px 20px;font-size:14px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.su-dots{display:flex;gap:6px}.su-dots i{width:24px;height:4px;background:#555}.su-dots i.on{background:#E10600}
+#setupDlg .su-body{padding:20px 24px}#setupDlg h2{font-size:22px;margin:0 0 16px}
+.su-cards{display:grid;gap:12px}.su-card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:14px 16px!important;min-height:0;border:1px solid var(--sw-ink,#111)!important;background:var(--panel)!important;color:var(--sw-ink,#111)!important}
+.su-card b{font-size:18px}.su-card span{font-size:14px;font-weight:400;color:var(--muted)}.su-card:hover{outline:3px solid #E10600;outline-offset:-3px}
+.su-off{display:flex;gap:8px;align-items:center;font-size:14px;margin-top:16px;color:var(--muted)}
+.su-form{display:flex;flex-direction:column;gap:6px}.su-form label{font-size:14px;font-weight:700;margin-top:8px}.su-form label em{font-style:normal;font-weight:400;color:var(--muted)}
+.su-form input,.su-form select{font:inherit;font-size:16px;padding:8px 10px;border:1px solid var(--sw-ink,#111);background:var(--panel);color:var(--sw-ink,#111);width:100%;box-sizing:border-box}
+.su-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.su-2 label{display:block}.su-num{display:flex;gap:8px}.su-num button{min-height:0;padding:4px 14px}
+.su-cap{display:grid;grid-template-columns:1fr 140px;gap:12px;align-items:center}.su-cap input[type=range]{padding:0;border:0;background:none}
+.su-hint{font-size:14px;color:var(--muted);margin:6px 0 0}
+.su-tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.su-tier{display:flex!important;flex-direction:column;align-items:center;gap:6px;padding:12px 8px!important;min-height:0;border:1px solid var(--sw-ink,#111)!important;background:var(--panel)!important;color:var(--sw-ink,#111)!important;text-align:center}
+.su-tier svg{width:100%;height:auto;max-width:150px}.su-tier b{font-size:16px}.su-tier span{font-size:14px;font-weight:400;color:var(--muted)}.su-tier.on{outline:3px solid #E10600;outline-offset:-3px}
+.su-nav{display:flex;gap:8px;align-items:center;padding:14px 24px 20px;border-top:1.5px solid var(--sw-ink,#111)}.su-nav span{flex:1}
+@media (max-width:640px){.su-tiers{grid-template-columns:1fr 1fr}.su-2{grid-template-columns:1fr}.su-cap{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -532,6 +554,7 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
 
     <p class="group">Project and saved options</p>
     <div class="projrow"><label for="projName" class="lab" style="margin:0">Project name</label><input id="projName" class="projname" maxlength="80" spellcheck="false" autocomplete="off"></div>
+    <div class="projinfo" id="projInfo"></div>
     <div class="seg" style="margin:8px 0 0"><button id="prNew">New project</button><button id="prOpen">Open project</button><button id="prSave" class="primary">Save project</button><button id="prSaveAs">Save as</button><button id="rsOpt" title="Add the options from another project or backup file to this project">Import options</button><input type="file" id="rsFile" accept=".json,application/json" hidden><input type="file" id="prFile" accept=".json,application/json" hidden></div>
     <p class="hint" id="prStatus" style="margin:6px 0 12px"></p>
     <div class="opts" id="opts"></div>
@@ -2035,7 +2058,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.08.06';
+const VERSION='2026.11.12.01';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2101,14 +2124,14 @@ markG24();
 document.fonts&&document.fonts.ready.then(()=>gridAlign());document.addEventListener('toggle',()=>requestAnimationFrame(gridAlign),true);
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
-const PROJ={name:'Untitled project',fileName:'',handle:null,saved:'',snap:null};   /* the open project (decision 242): name, its file, and what was last saved to it */
-try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];if(s.proj)PROJ.name=s.proj;PROJ.fileName=s.projFile||'';PROJ.saved=s.projSaved||'';PROJ.snap=s.projSnap||null;}}catch(e){}
+const PROJ={name:'Untitled project',fileName:'',handle:null,saved:'',snap:null,number:'',country:'US',region:'',city:'',sport:null};   /* + project information and the project's one sport (guided setup, decision 250) */   /* the open project (decision 242): name, its file, and what was last saved to it */
+let HAD_STATE=false;try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){HAD_STATE=true;P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];if(s.proj)PROJ.name=s.proj;if(s.projInfo)Object.assign(PROJ,{number:s.projInfo.number||'',country:s.projInfo.country||'US',region:s.projInfo.region||'',city:s.projInfo.city||'',sport:s.projInfo.sport||null});PROJ.fileName=s.projFile||'';PROJ.saved=s.projSaved||'';PROJ.snap=s.projSnap||null;}}catch(e){}
 // When the defaults change (DREV goes up), each browser starts once from the new default bowl; saved options are kept.
 const DREV=9;let NEWDEF=false;
 try{if((+localStorage.getItem('sightline-defaults-rev')||0)<DREV){NEWDEF=!!P;P=null;localStorage.setItem('sightline-defaults-rev',String(DREV));localStorage.setItem('sightline-units',JSON.stringify({sys:'imperial',metric:'mm-m',imperial:'arch'}));}}catch(e){}
 if(!P)P=defaultsPinned();
 const $=id=>document.getElementById(id);
-function persist(){try{localStorage.setItem(KEY,JSON.stringify({P,OPTS,proj:PROJ.name,projFile:PROJ.fileName,projSaved:PROJ.saved,projSnap:PROJ.snap}))}catch(e){}if(typeof prStatus==='function'){cancelAnimationFrame(persist.r);persist.r=requestAnimationFrame(prStatus);}}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({P,OPTS,proj:PROJ.name,projFile:PROJ.fileName,projSaved:PROJ.saved,projSnap:PROJ.snap,projInfo:{number:PROJ.number,country:PROJ.country,region:PROJ.region,city:PROJ.city,sport:PROJ.sport}}))}catch(e){}if(typeof prStatus==='function'){cancelAnimationFrame(persist.r);persist.r=requestAnimationFrame(prStatus);}}
 function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),2200);}
 const fmt=n=>Math.round(n).toLocaleString();
 
@@ -2340,7 +2363,7 @@ $('controls').addEventListener('input',e=>{
 });
 // length boxes commit on Enter or leaving the field, so half-typed 12'-6 isn't read early
 $('controls').addEventListener('change',e=>{
-  if(e.target.id==='sportSel'){applySport(e.target.value);return;}
+  if(e.target.id==='sportSel'){sportChange(e.target.value);return;}
   if(e.target.id==='northSel'){P.planOri=e.target.value;CUR=null;renderControls();update();return;}
   {const el=e.target,p=el.dataset.p,mt=p&&META[p];if(mt&&el.type==='number'){let v=parseFloat(el.value);if(!isFinite(v))v=get(p);const c=Math.min(mt.max,Math.max(mt.min,mt.step>=1?Math.round(v/mt.step)*mt.step:v));   /* whole steps (1,000 seats) */
     if(c!==v)toast(`Set to ${fmt(c)} (${fmt(mt.min)} to ${fmt(mt.max)}, in steps of ${fmt(mt.step)})`);el.value=c;commit(p,c,el);return;}}   // number boxes: clamp to the slider range
@@ -4115,7 +4138,7 @@ function finalCandidates(){const Sorig=JSON.stringify(P);const addW=topUpPlatfor
   out.forEach(c=>{c.rowsT=c.z.map(zz=>zz[k0].rows);c.close=c.rowsT.reduce((a,v,i)=>a+Math.abs(v-r0[i]),0)+2*Math.abs(c.dd)+2*Math.abs(c.dr)*(nT-1);c.valid=c.cap>=base.capTarget&&c.pass>=c.all&&c.sight;c.wcOK=c.wc>=c.req;});
   out.filter(c=>c.valid&&!(c.dd===0&&c.dr===0&&c.rowsT.every((v,i)=>v===r0[i]))).sort((a,b)=>((a.wcOK?0:1)-(b.wcOK?0:1))||(a.close-b.close)||(a.vd-b.vd)).forEach(c=>{const key=c.rowsT.join('/')+'|'+c.dd+'|'+c.dr;if(seen.has(key)||res.length>=8)return;seen.add(key);res.push(c);});
   res.secs=base.secs||{};res.addW=addW;return res;}
-function optNameFor(){const k=k0Of(P);return `${SPORTS[P.sport].name}_${M.cap}_${P.tierCount}_`+P.zt.slice(0,P.tierCount).map(t=>t.z[k].rows).join('_');}
+function optNameFor(){const k=k0Of(P);return `${M.cap}_${P.tierCount}T_`+P.zt.slice(0,P.tierCount).map(t=>t.z[k].rows).join('-');}   /* one sport per project: the file name carries the sport (decision 250) */
 function saveOptionNamed(name){const rec={name,P:JSON.parse(JSON.stringify(P)),m:{cap:M.cap,tiers:P.tierCount,c:M.worst?Math.round(M.worst.C):0,rake:M.steep?M.steep.rake.toFixed(1):0,h:M.height.toFixed(1),vd:M.vd.toFixed(0)}};
   const i=OPTS.findIndex(o=>o.name===name);if(i>=0)OPTS[i]=rec;else OPTS.push(rec);CUR=i>=0?i:OPTS.length-1;persist();renderOpts();}
 function showFinal(c){const old=document.getElementById('finalDlg');if(old)old.remove();const nT=P.tierCount,ft=v=>L(v*1000),ftS=v=>imperial()?`${Math.round(v/0.3048)}'-0"`:L(v*1000),sg=(v,f)=>v>0?'+'+f(v):v<0?'−'+f(-v):'',u=imperial()?0.3048:0.3;
@@ -4257,7 +4280,7 @@ function swBarTxt(per){const divs=[1,2,5,10,20,25,50,100,200,500,1000];return {d
 function swissSheet(sh,o){const u=swU(sh),k=u/0.25,A=swArea(sh),W=sh.w,H=sh.h,f=v=>(+v).toFixed(4),Sp=SPORTS[P.sport],L=2*u,R=o.R||W-2*u,N=Math.round((R-L)/u);
   let s=`<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}in" height="${f(H)}in" viewBox="0 0 ${f(W)} ${f(H)}">`+swRect(0,0,W,H,SW.paper)+swGrid(sh);
   const lab={pt:8,b:1,ls:.14,k},orient=W>H?'landscape':'portrait';
-  s+=swT(L,swBase(2*u,u,8,k),'SIGHTLINE SCHEMATIC — DESIGN STUDY',lab)+swT(L,swBase(3*u,u,8,k),`REF: ${Sp.org} ${Sp.name} / ${optName()} / ${P.tierCount} TIER${P.tierCount>1?'S':''} / ${fmt(M.cap)} SEATS`.toUpperCase(),{pt:8,ls:.06,k,fill:SW.grey})
+  s+=swT(L,swBase(2*u,u,8,k),'SIGHTLINE SCHEMATIC — DESIGN STUDY',lab)+swT(L,swBase(3*u,u,8,k),`REF: ${projRef()}${Sp.org} ${Sp.name} / ${optName()} / ${P.tierCount} TIER${P.tierCount>1?'S':''} / ${fmt(M.cap)} SEATS`.toUpperCase(),{pt:8,ls:.06,k,fill:SW.grey})
     +swT(R,swBase(2*u,u,8,k),`FORMAT: ${imperial()?`${Math.min(W,H)} × ${Math.max(W,H)} `:''}${sh.name.toUpperCase()} ${orient.toUpperCase()}`,{...lab,a:'end'})+swRect(L,4*u-1.5*k/72,R-L,1.5*k/72,SW.ink);
   if(!o.noHeading)s+=swRect(L,5*u+u/4,u/2,u/2,SW.red)+swT(3*u,swBase(5*u,u,14,k),`%%NO%%. ${String(o.title).toUpperCase()}`,{pt:14,b:1,k});
   // drawing: centred in the area; its 0,0 (point of focus or field centre) on a grid point when known
@@ -4688,7 +4711,7 @@ function swPdfFrame(doc,title,big){const pw=doc.internal.pageSize.getWidth(),ph=
   const base=(top,h,pt)=>top+h/2+0.36*pt/72;
   {const rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));doc.setFillColor(...rgb(SW.paper));doc.rect(0,0,pw,ph,'F');doc.setDrawColor(...rgb(SW.grid));}doc.setLineWidth(0.0045);   /* the page background option (decision 127) */
   if(pdfGridOn()){for(let x=u;x<=pw-u+1e-6;x+=u)doc.line(x,u,x,ph-6*u);for(let y=u;y<=ph-6*u+1e-6;y+=u)doc.line(u,y,pw-u,y);}
-  T('SIGHTLINE SCHEMATIC — DESIGN STUDY',L,base(2*u,u,7),{pt:7,b:1,ls:.14});T(`REF: ${Sp.org} ${Sp.name} / ${optName()} / ${P.tierCount} TIERS / ${fmt(M.cap)} SEATS`.toUpperCase(),L,base(3*u,u,6.5),{pt:6.5,ls:.06,fill:[107,107,104]});
+  T('SIGHTLINE SCHEMATIC — DESIGN STUDY',L,base(2*u,u,7),{pt:7,b:1,ls:.14});T(`REF: ${projRef()}${Sp.org} ${Sp.name} / ${optName()} / ${P.tierCount} TIERS / ${fmt(M.cap)} SEATS`.toUpperCase(),L,base(3*u,u,6.5),{pt:6.5,ls:.06,fill:[107,107,104]});
   T(`FORMAT: ${imperial()?'11 × 17 TABLOID':'A3'} PORTRAIT`,R,base(2*u,u,7),{pt:7,b:1,ls:.14,a:'right'});doc.setFillColor(17,17,17);doc.rect(L,4*u-1.5/72,R-L,1.5/72,'F');
   doc.setFillColor(218,41,28);doc.rect(L,5*u+u/4,u/2,u/2,'F');T(`${no}. ${title.toUpperCase()}`,3*u,base(5*u,u,13),{pt:13,b:1});
   const y0=ph-6*u,tw=Math.floor((N-4-Math.floor(N/4))/4),tt=N-4-4*tw;doc.setFillColor(17,17,17);doc.rect(L,y0,R-L,.75/72,'F');
@@ -5084,7 +5107,7 @@ function titleCase(str){
       if(UNITS.has(lo))return p;                                       // keep units lowercase
       if(k===0&&!first&&!last&&SMALL.has(lo))return p;
       return p[0].toUpperCase()+p.slice(1);}).join('-');});}
-const SENTENCE='.oname,#prStatus,#prDlg p,#secEd .se-n,#aisEd .se-n,#aisEd .se-h span,.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#secPanel table.wrap td+td,#v33dm,#v3Glb,#v3Ifc,#v3Html';
+const SENTENCE='.oname,#prStatus,#prDlg p,#setupDlg .su-hint,#setupDlg .su-card span,#setupDlg .su-tier span,#setupDlg .su-off,#setupDlg .su-form label em,.pi-sport,#secEd .se-n,#aisEd .se-n,#aisEd .se-h span,.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#secPanel table.wrap td+td,#v33dm,#v3Glb,#v3Ifc,#v3Html';
 function titleize(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
   while((n=w.nextNode())){const el=n.parentElement;if(!el||el.closest(SENTENCE))continue;const t=titleCase(n.data);if(t!==n.data)n.data=t;}}
 new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData'){const el=m.target.parentElement;if(el&&!el.closest(SENTENCE)){const t=titleCase(m.target.data);if(t!==m.target.data)m.target.data=t;}}
@@ -5099,8 +5122,8 @@ if(NEWDEF)toast('Started from the new default bowl. Saved options are unchanged.
    other browsers download a copy. The browser also keeps the open project between visits, as before. ---------- */
 const FSA=!!(window.showSaveFilePicker&&window.showOpenFilePicker);
 const safeName=t=>String(t).replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,'_').replace(/^[._-]+|[._-]+$/g,'').slice(0,100);
-const projJSON=()=>JSON.stringify({app:'Sightline Schematic',kind:'project',version:VERSION,project:PROJ.name,saved:new Date().toISOString(),P,OPTS},null,1);
-const projKey=()=>JSON.stringify([PROJ.name,P,OPTS]);
+const projJSON=()=>JSON.stringify({app:'Sightline Schematic',kind:'project',version:VERSION,project:PROJ.name,info:{number:PROJ.number,country:PROJ.country,region:PROJ.region,city:PROJ.city},sport:projSport(),saved:new Date().toISOString(),P,OPTS},null,1);
+const projKey=()=>JSON.stringify([PROJ.name,PROJ.number,PROJ.country,PROJ.region,PROJ.city,P,OPTS]);
 function projDirty(){return PROJ.snap==null?OPTS.length>0:PROJ.snap!==projKey();}
 function prStatus(){const el=$('prStatus');if(!el)return;const d=projDirty();el.classList.toggle('dirty',d&&!!PROJ.fileName);
   el.textContent=(PROJ.fileName?`File: ${PROJ.fileName}${PROJ.saved?', saved '+new Date(PROJ.saved).toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):''}.`:'Not saved to a file yet.')
@@ -5121,28 +5144,35 @@ async function writeHandle(h){const w=await h.createWritable();await w.write(new
 async function saveProject(asNew){
   try{
     if(!asNew&&PROJ.handle){await writeHandle(PROJ.handle);markSaved(PROJ.handle.name,PROJ.handle);toast(`Saved ${PROJ.handle.name}`);return true;}
-    const def=(PROJ.fileName?PROJ.fileName.replace(/\.json$/i,''):'Stadium_Bowl_Project_'+safeName(PROJ.name))||'Stadium_Bowl_Project';
+    const def=asNew||!PROJ.fileName?projFileBase():PROJ.fileName.replace(/\.json$/i,'');   /* Sport_YYMMDD-hhmm (decision 250) */
     if(FSA){const h=await window.showSaveFilePicker({suggestedName:def+'.json',types:[{description:'Sightline project',accept:{'application/json':['.json']}}]});
       await writeHandle(h);markSaved(h.name,h);toast(`Saved ${h.name}`);return true;}
     const n=await prDialog({title:asNew?'Save project as':'Save project',text:'File name (it downloads to your Downloads folder; move it to Google Drive to open it on another computer):',input:def,ok:'Save'});
-    if(n==null)return false;const fn=(safeName(n.replace(/\.json$/i,''))||'Stadium_Bowl_Project')+'.json';
+    if(n==null)return false;const fn=(safeName(n.replace(/\.json$/i,''))||projFileBase())+'.json';
     offer(fn,new Blob([projJSON()],{type:'application/json'}));markSaved(fn,null);toast(`Saved ${fn}`);return true;
   }catch(e){if(e&&e.name==='AbortError')return false;toast('Could not save the project: '+(e&&e.message||e));return false;}}
-function loadProject(j,fileName,handle){if(!j||!Array.isArray(j.OPTS))throw new Error('not a project');
-  OPTS=j.OPTS.filter(o=>o&&o.P&&o.m).map(o=>Object.assign({},o,{P:migrate(o.P)}));
+async function loadProject(j,fileName,handle){if(!j||!Array.isArray(j.OPTS))throw new Error('not a project');
+  let opts=j.OPTS.filter(o=>o&&o.P&&o.m).map(o=>Object.assign({},o,{P:migrate(o.P)}));
+  const sports=[...new Set(opts.map(o=>o.P.sport).filter(k=>SPORTS[k]))];let keep=j.sport&&SPORTS[j.sport]?j.sport:(sports[0]||(j.P&&j.P.sport));
+  if(sports.length>1){keep=await splitDialog(sports,opts);if(!keep)return false;   /* one sport per project (decision 250): older mixed files are split, one file per sport */
+    const others=sports.filter(k=>k!==keep);let mi=1;for(const k of others){const num=newNumber(j.info&&j.info.country||PROJ.country||'US',mi++),
+      body=JSON.stringify({app:'Sightline Schematic',kind:'project',version:VERSION,project:j.project||'Untitled project',info:Object.assign({},j.info||{},{number:num}),sport:k,saved:new Date().toISOString(),P:Object.assign({},opts.find(o=>o.P.sport===k).P),OPTS:opts.filter(o=>o.P.sport===k)},null,1);
+      await offer(projFileBase(k,num)+'.json',new Blob([body],{type:'application/json'}));}
+    opts=opts.filter(o=>o.P.sport===keep);toast(`Kept the ${SPORTS[keep].name} options; the other sports were saved as ${others.length} separate project file${others.length>1?'s':''}.`);}
+  OPTS=opts;
   if(j.P){P=fixP(Object.assign(defaults(),migrate(j.P)));if(!j.P.ais)P.ais=aisDefaults(regionOf(P.sport));}
   PROJ.name=(j.project||String(fileName||'').replace(/\.json$/i,'').replace(/_/g,' ')||'Untitled project').slice(0,80);
-  CUR=null;EDIT={tier:0,g:0};renderControls();update();renderOpts();markSaved(fileName,handle);toast(`Opened ${fileName}: ${OPTS.length} option${OPTS.length===1?'':'s'}`);}
+  {const i=j.info||{};Object.assign(PROJ,{number:i.number||newNumber(i.country||'US'),country:i.country||'US',region:i.region||'',city:i.city||'',sport:keep||P.sport});}
+  if(keep&&P.sport!==keep){const o=OPTS[0];if(o)P=fixP(Object.assign(defaults(),migrate(JSON.parse(JSON.stringify(o.P)))));}
+  CUR=null;EDIT={tier:0,g:0};renderControls();update();renderOpts();markSaved(fileName,handle);if(sports.length<=1)toast(`Opened ${fileName}: ${OPTS.length} option${OPTS.length===1?'':'s'}`);return true;}
 $('prSave').onclick=()=>saveProject(false);
 $('prSaveAs').onclick=()=>saveProject(true);
 $('prOpen').onclick=async()=>{if(!(await keepChanges('Opening another project replaces the options listed here.')))return;
-  if(FSA){try{const [h]=await window.showOpenFilePicker({types:[{description:'Sightline project',accept:{'application/json':['.json']}}]});const f=await h.getFile();loadProject(JSON.parse(await f.text()),h.name,h);}
+  if(FSA){try{const [h]=await window.showOpenFilePicker({types:[{description:'Sightline project',accept:{'application/json':['.json']}}]});const f=await h.getFile();await loadProject(JSON.parse(await f.text()),h.name,h);}
     catch(e){if(e&&e.name==='AbortError')return;toast('That file is not a Sightline project.');}return;}
   $('prFile').click();};
-$('prFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{loadProject(JSON.parse(await f.text()),f.name,null);}catch(err){toast('That file is not a Sightline project.');}};
-$('prNew').onclick=async()=>{if(!(await keepChanges('A new project starts with no saved options.')))return;
-  const n=await prDialog({title:'New project',text:'Project name. The bowl on screen stays as the starting point; the saved options list starts empty.',input:'Untitled project',ok:'Create'});if(n==null)return;
-  PROJ.name=(n.trim()||'Untitled project').slice(0,80);PROJ.fileName='';PROJ.handle=null;PROJ.saved='';PROJ.snap=null;OPTS=[];CUR=null;persist();renderOpts();toast(`New project: ${PROJ.name}`);};
+$('prFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{await loadProject(JSON.parse(await f.text()),f.name,null);}catch(err){toast('That file is not a Sightline project.');}};
+$('prNew').onclick=async()=>{if(!(await keepChanges('A new project starts with no saved options.')))return;openSetup('info');};   /* the guided setup's project form (decision 250) */
 $('projName').addEventListener('change',e=>{const n=e.target.value.trim().replace(/\s+/g,' ');PROJ.name=(n||'Untitled project').slice(0,80);persist();});
 $('projName').addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
 addEventListener('beforeunload',e=>{if(PROJ.fileName&&projDirty()){e.preventDefault();e.returnValue='';}});
@@ -5151,9 +5181,106 @@ $('rsOpt').onclick=()=>$('rsFile').click();
 $('rsFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   try{const j=JSON.parse(await f.text());if(!Array.isArray(j.OPTS))throw 0;
     const used=new Set(OPTS.map(o=>o.name));let added=0;
-    for(const o of j.OPTS){if(!o||!o.P||!o.m)continue;let name=o.name||'Option';while(used.has(name))name+=' (restored)';used.add(name);OPTS.push(Object.assign({},o,{name,P:migrate(o.P)}));added++;}
-    CUR=null;persist();renderOpts();toast(added?`Imported ${added} option${added>1?'s':''} into ${PROJ.name}`:'No options found in that file');}
+    const sp=projSport();let other=0;for(const o of j.OPTS){if(!o||!o.P||!o.m)continue;if(o.P.sport&&o.P.sport!==sp){other++;continue;}let name=o.name||'Option';while(used.has(name))name+=' (restored)';used.add(name);OPTS.push(Object.assign({},o,{name,P:migrate(o.P)}));added++;}
+    CUR=null;persist();renderOpts();toast((added?`Imported ${added} option${added>1?'s':''} into ${PROJ.name}`:'No options of this project\'s sport in that file')+(other?`. ${other} option${other>1?'s':''} of another sport left out: a project holds one sport.`:''));}
   catch(err){toast('That file is not a Sightline project or options backup.');}};
+/* ---------- guided setup and project information (decision 250) ----------
+   A project holds one sport. File name: sport prefix + project number without the country code, e.g. NCAA_Football_261112-1937.json.
+   The setup: Continue / Open / New project -> project information -> sport and capacity -> tiers -> Quick calculation (or I'm feeling lucky). */
+const PREFIX={ncaafb:'NCAA_Football',nfl:'NFL_Football',mls:'MLS_Soccer',fifa:'FIFA_Football',fih:'FIH_Field_Hockey',rugbyu:'WorldRugbyUnion_Rugby'};
+const COUNTRIES=[['US','United States'],['CA','Canada'],['MX','Mexico'],['GB','United Kingdom'],['IE','Ireland'],['AU','Australia'],['NZ','New Zealand'],['ZA','South Africa'],['IN','India'],
+  ['HK','Hong Kong'],['CN','China'],['JP','Japan'],['KR','South Korea'],['SG','Singapore'],['MY','Malaysia'],['AE','United Arab Emirates'],['QA','Qatar'],['SA','Saudi Arabia'],
+  ['DE','Germany'],['FR','France'],['ES','Spain'],['IT','Italy'],['NL','Netherlands'],['PT','Portugal'],['BR','Brazil'],['AR','Argentina'],['XX','Other']];
+const projSport=()=>PROJ.sport&&SPORTS[PROJ.sport]?PROJ.sport:P.sport;
+function newNumber(cc,addMin){const d=new Date(Date.now()+(addMin||0)*60000),p=n=>String(n).padStart(2,'0');
+  return `${(cc||'US').toUpperCase().slice(0,2)}-${String(d.getFullYear()).slice(2)}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;}
+const numNoCC=n=>String(n||'').replace(/^[A-Za-z]{2}-/,'');
+function projFileBase(sport,num){sport=sport||projSport();num=num||PROJ.number||(PROJ.number=newNumber(PROJ.country));return safeName(`${PREFIX[sport]||'Stadium_Bowl'}_${numNoCC(num)}`);}
+const projRef=()=>PROJ.number||PROJ.name?`${PROJ.number?PROJ.number+' ':''}${PROJ.name&&PROJ.name!=='Untitled project'?PROJ.name+' ':''}/ `:'';
+if(!PROJ.number)PROJ.number=newNumber(PROJ.country);if(!PROJ.sport)PROJ.sport=P.sport;
+// project information in Project and Saved Options
+function renderProjInfo(){const el=$('projInfo');if(!el)return;
+  el.innerHTML=`<label class="lab" for="piNum">Project number</label><span class="pi-num"><input id="piNum" maxlength="14" spellcheck="false" autocomplete="off" value="${esc(PROJ.number)}"><button id="piRegen" title="New number from the current date and time" aria-label="New project number">↻</button></span>`
+    +`<label class="lab" for="piCountry">Country</label><select id="piCountry" class="sel">${COUNTRIES.map(([c,n])=>`<option value="${c}"${PROJ.country===c?' selected':''}>${n} (${c})</option>`).join('')}</select>`
+    +`<label class="lab" for="piRegion">State / region</label><input id="piRegion" maxlength="40" value="${esc(PROJ.region)}" autocomplete="off">`
+    +`<label class="lab" for="piCity">City</label><input id="piCity" maxlength="60" value="${esc(PROJ.city)}" autocomplete="off">`
+    +`<label class="lab">Sport</label><span class="pi-sport">${esc(SPORTS[projSport()].name)} (${esc(SPORTS[projSport()].org)}), one sport per project</span>`;
+  const upd=()=>{PROJ.number=$('piNum').value.trim().toUpperCase().slice(0,14)||newNumber(PROJ.country);PROJ.country=$('piCountry').value;PROJ.region=$('piRegion').value.trim();PROJ.city=$('piCity').value.trim();persist();};
+  ['piNum','piCountry','piRegion','piCity'].forEach(id=>$(id).addEventListener('change',()=>{upd();if(id==='piCountry')$('piNum').value=PROJ.number=PROJ.number.replace(/^[A-Z]{2}-/,PROJ.country+'-');}));
+  $('piRegen').onclick=()=>{PROJ.number=newNumber(PROJ.country);$('piNum').value=PROJ.number;persist();};}
+renderProjInfo();
+// changing the sport starts a new project (one sport per project)
+async function sportChange(k){if(k===projSport()){return;}
+  if(!OPTS.length&&!PROJ.fileName){PROJ.sport=k;applySport(k);persist();renderProjInfo();return;}   /* nothing saved yet: the project simply takes the new sport */
+  const r=await prDialog({title:`Start a new ${SPORTS[k].name} project?`,text:`A project holds one sport. "${esc(PROJ.name)}" (${esc(SPORTS[projSport()].name)}) keeps its options; the new project keeps the name and location and gets a new project number.`,ok:'Save and start new',alt:'Start new without saving',cancel:'Cancel'});
+  if(r==null){renderControls();return;}
+  if(r===true&&!(await saveProject(false))){renderControls();return;}
+  {const old=PROJ.number;let n=newNumber(PROJ.country),i=1;while(numNoCC(n)===numNoCC(old)&&i<60)n=newNumber(PROJ.country,i++);Object.assign(PROJ,{number:n,fileName:'',handle:null,saved:'',snap:null,sport:k});}   /* a new time stamp, never the old number */OPTS=[];CUR=null;applySport(k);persist();renderOpts();renderProjInfo();
+  toast(`New ${SPORTS[k].name} project, ${PROJ.number}. Save it to create ${projFileBase()}.json.`);}
+// older files with several sports: choose one to keep
+function splitDialog(sports,opts){return new Promise(res=>{const old=$('prDlg');if(old)old.remove();const d=document.createElement('div');d.id='prDlg';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');
+  d.innerHTML=`<div class="pd-box"><h3>This project holds several sports</h3><p>A project now holds one sport. Pick the sport to keep in this project; each other sport's options are saved as a separate project file (downloaded), with a new project number.</p><div class="seg stack">`
+    +sports.map(k=>`<button data-k="${k}">${esc(SPORTS[k].name)} (${esc(SPORTS[k].org)}): ${opts.filter(o=>o.P.sport===k).length} option${opts.filter(o=>o.P.sport===k).length===1?'':'s'}</button>`).join('')+`</div><div class="pd-btns"><button data-k="">Cancel</button></div></div>`;
+  document.body.appendChild(d);d.addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(b){d.remove();res(b.dataset.k||null);}});d.querySelector('[data-k]').focus();});}
+// ---------- the guided setup ----------
+const SU={step:'start',info:null,sport:'ncaafb',cap:30000,tiers:'auto'};
+const tierIcon=n=>{const W=150,H=90,g=6,b=H-8;let d=`M${g} ${b}H${W-g}`;
+  const st=[[20,b,70,b-26],[58,b-34,108,b-58],[96,b-66,144,b-84]].slice(0,n);   /* each tier: a leg wall, then stepped treads and risers rising away from the field */
+  st.forEach(([x0,y0,x1,y1],i)=>{const k=7;let q=`M${x0} ${i?y0+10:y0}V${y0}`;for(let j=0;j<k;j++)q+=`H${(x0+(x1-x0)*(j+1)/k).toFixed(1)}V${(y0+(y1-y0)*(j+1)/k).toFixed(1)}`;d+=q;});
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="miter"/></svg>`;};
+function openSetup(step){SU.step=step||'start';if(!SU.info)SU.info={name:'',country:PROJ.country||'US',region:'',city:'',number:newNumber(PROJ.country||'US')};
+  if(step==='info')SU.info.number=newNumber(SU.info.country);SU.sport=projSport()&&FIELD_SPORTS.includes(projSport())?projSport():'ncaafb';SU.cap=P.capTarget||30000;renderSetup();}
+function closeSetup(){const d=$('setupDlg');if(d)d.remove();}
+function renderSetup(){let d=$('setupDlg');if(!d){d=document.createElement('div');d.id='setupDlg';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label','Guided setup');document.body.appendChild(d);
+    d.addEventListener('click',setupClick);d.addEventListener('keydown',e=>{if(e.key==='Escape'&&SU.step==='start')closeSetup();});}
+  const st=SU.step,idx={info:1,sport:2,tiers:3}[st],I=SU.info,Sp=SPORTS[SU.sport],[lo,hi,typ]=capLim(SU.sport);let b='';
+  const head=`<div class="su-head"><span>Guided setup${idx?` · Step ${idx} of 3`:''}</span>${idx?`<span class="su-dots">${[1,2,3].map(i=>`<i class="${i<=idx?'on':''}"></i>`).join('')}</span>`:''}</div>`;
+  if(st==='start'){const had=HAD_STATE;b=`<h2>Where would you like to start?</h2><div class="su-cards">`
+      +(had?`<button class="su-card" data-su="continue"><b>Continue where I left off</b><span>${esc(PROJ.name)} · ${esc(SPORTS[projSport()].name)} · ${OPTS.length} option${OPTS.length===1?'':'s'}</span></button>`:'')
+      +`<button class="su-card" data-su="open"><b>Open project</b><span>A saved .json project file, on this computer or in Google Drive</span></button>`
+      +`<button class="su-card" data-su="new"><b>New project</b><span>Project information, sport and capacity, tiers; the bowl is sized for you</span></button></div>`
+      +`<label class="su-off"><input type="checkbox" id="suOff"${(()=>{try{return localStorage.getItem('sl-setup-off')==='1'?' checked':'';}catch(e){return '';}})()}> Don't show this at start (reopen it with Setup in the header)</label>`;}
+  else if(st==='info'){b=`<h2>New project</h2><div class="su-form">`
+      +`<label for="suName">Project name</label><input id="suName" maxlength="80" placeholder="e.g., New Stadium Renovation" value="${esc(I.name)}">`
+      +`<div class="su-2"><div><label for="suCountry">Country</label><select id="suCountry" class="sel">${COUNTRIES.map(([c,n])=>`<option value="${c}"${I.country===c?' selected':''}>${n} (${c})</option>`).join('')}</select></div>`
+      +`<div><label for="suRegion">State / region</label><input id="suRegion" maxlength="40" placeholder="e.g., TX" value="${esc(I.region)}"></div></div>`
+      +`<label for="suCity">City</label><input id="suCity" maxlength="60" placeholder="e.g., Dallas" value="${esc(I.city)}">`
+      +`<label for="suNum">Project number <em>auto-generated, editable, max 14 characters</em></label><div class="su-num"><input id="suNum" maxlength="14" value="${esc(I.number)}"><button data-su="regen" aria-label="New project number" title="New number from the current date and time">↻</button></div>`
+      +`<p class="su-hint">Format CC-YYMMDD-hhmm (country code, year, month, day, hour, minute). The file is named after the sport and this number, e.g. ${esc(projFileBase(SU.sport,I.number))}.json; you choose where to save it at the end.</p></div>`;}
+  else if(st==='sport'){b=`<h2>Sport and seating capacity</h2><div class="su-form"><label for="suSport">Sport</label><select id="suSport" class="sel">`
+      +[['america','American sports (IBC)'],['world','International sports (Green Guide)']].map(([r,l])=>`<optgroup label="${l}">`+FIELD_SPORTS.filter(k=>SPORTS[k].region===r).map(k=>`<option value="${k}"${SU.sport===k?' selected':''}>${SPORTS[k].name} (${SPORTS[k].org})</option>`).join('')+'</optgroup>').join('')
+      +`</select><label for="suCap">Target seats <em>${fmt(lo)} to ${fmt(hi)}</em></label><div class="su-cap"><input id="suCapR" type="range" min="${lo}" max="${hi}" step="1000" value="${SU.cap}" aria-label="Target seats slider"><input id="suCap" inputmode="numeric" value="${fmt(SU.cap)}"></div>`
+      +`<p class="su-hint">Typical: ${esc(typ)}.</p><p class="su-hint">${Sp.region==='world'?'Green Guide sports: metric units, Guide to Safety at Sports Grounds.':'IBC sports: imperial units, International Building Code.'} The code always follows the sport.</p></div>`;}
+  else if(st==='tiers'){b=`<h2>Number of seating tiers</h2><div class="su-tiers">`
+      +[['auto','Recommend for me','I\'m feeling lucky tries 1, 2 and 3 tiers and keeps the shortest viewing distance'],[1,'1 tier',''],[2,'2 tiers',''],[3,'3 tiers','']].map(([v,n,h])=>`<button class="su-tier${String(SU.tiers)===String(v)?' on':''}" data-tier="${v}" aria-pressed="${String(SU.tiers)===String(v)}">${v==='auto'?`<svg viewBox="0 0 150 84" width="150" height="84" aria-hidden="true"><text x="75" y="52" text-anchor="middle" font-size="34" font-weight="700" fill="currentColor">1·2·3</text></svg>`:tierIcon(v)}<b>${n}</b>${h?`<span>${h}</span>`:''}</button>`).join('')
+      +`</div><p class="su-hint">Then the rows are sized to ${fmt(SU.cap)} seats and the editor opens. Bowl shape and configuration stay as they are for now (later setup steps).</p>`;}
+  const nav=st==='start'?'':`<div class="su-nav"><button data-su="back">Back</button><span></span>${st!=='info'?'<button data-su="skip">Skip and use defaults</button>':''}<button class="primary" data-su="${st==='tiers'?'finish':'next'}">${st==='tiers'?'Create and size the bowl':'Next'}</button></div>`;
+  d.innerHTML=`<div class="su-box">${head}<div class="su-body">${b}</div>${nav}</div>`;
+  const f=d.querySelector('input:not([type=checkbox]),select,.su-card,.su-tier.on');if(f)f.focus();
+  const cap=$('suCap'),capR=$('suCapR');if(cap){const sync=v=>{SU.cap=Math.max(lo,Math.min(hi,Math.round((+String(v).replace(/[^0-9]/g,'')||lo)/1000)*1000));cap.value=fmt(SU.cap);capR.value=SU.cap;};capR.oninput=()=>sync(capR.value);cap.onchange=()=>sync(cap.value);}
+  const sp=$('suSport');if(sp)sp.onchange=()=>{SU.sport=sp.value;const [l2,h2]=capLim(SU.sport);SU.cap=Math.max(l2,Math.min(h2,SU.cap));renderSetup();};
+  const off=$('suOff');if(off)off.onchange=()=>{try{localStorage.setItem('sl-setup-off',off.checked?'1':'0');}catch(e){}};}
+function readInfo(){const I=SU.info;if(!$('suName'))return;I.name=$('suName').value.trim();I.country=$('suCountry').value;I.region=$('suRegion').value.trim();I.city=$('suCity').value.trim();I.number=($('suNum').value.trim().toUpperCase()||newNumber(I.country)).slice(0,14);}
+async function setupClick(e){const t=e.target.closest('[data-su],[data-tier]');if(!t)return;const a=t.dataset.su;
+  if(t.dataset.tier){SU.tiers=t.dataset.tier==='auto'?'auto':+t.dataset.tier;renderSetup();return;}
+  if(SU.step==='info')readInfo();
+  if(a==='continue'){closeSetup();return;}
+  if(a==='open'){closeSetup();$('prOpen').click();return;}
+  if(a==='new'){if(!(await keepChanges('A new project starts with no saved options.')))return;SU.info=null;openSetup('info');return;}
+  if(a==='regen'){SU.info.number=newNumber($('suCountry').value);$('suNum').value=SU.info.number;return;}
+  if(a==='back'){SU.step={info:'start',sport:'info',tiers:'sport'}[SU.step]||'start';renderSetup();return;}
+  if(a==='next'){if(SU.step==='info'&&!SU.info.name){$('suName').focus();toast('Enter a project name.');return;}SU.step={info:'sport',sport:'tiers'}[SU.step];renderSetup();return;}
+  if(a==='skip'||a==='finish'){await setupFinish();}}
+async function setupFinish(){const I=SU.info||{name:PROJ.name,country:PROJ.country,region:PROJ.region,city:PROJ.city,number:newNumber(PROJ.country)};closeSetup();
+  Object.assign(PROJ,{name:(I.name||'Untitled project').slice(0,80),country:I.country||'US',region:I.region||'',city:I.city||'',number:I.number||newNumber(I.country),fileName:'',handle:null,saved:'',snap:null,sport:SU.sport});
+  OPTS=[];CUR=null;if(P.sport!==SU.sport)applySport(SU.sport);P.capTarget=SU.cap;clampCap(P);if(SU.tiers!=='auto')P.tierCount=SU.tiers;
+  renderControls();update();renderOpts();renderProjInfo();persist();
+  if(FSA){try{await saveProject(true);}catch(e){}}   /* the Save window opens while the click still counts (Chrome, Edge) */
+  const btn=$(SU.tiers==='auto'?'luckyCalc':'quickCalc');if(!btn)return;btn.click();
+  for(let i=0;i<600&&(await new Promise(r=>setTimeout(r,250)),btn.disabled||($(btn.id)&&$(btn.id).disabled));i++);
+  if(PROJ.handle)await saveProject(false);}
+{const sb=document.createElement('button');sb.id='setupBtn';sb.textContent='Setup';sb.title='Guided setup: open or create a project, sport, capacity and tiers';const a=document.querySelector('header .actions');if(a)a.insertBefore(sb,a.firstChild);sb.onclick=()=>openSetup('start');}
+try{if(localStorage.getItem('sl-setup-off')!=='1')openSetup('start');}catch(e){openSetup('start');}
 $('ver').textContent='Sightline Schematic '+VERSION+'. Everything runs in your browser; nothing is uploaded. The open project stays in this browser; Save project writes it to a file you can keep in Google Drive and open on another computer.';
 </script>
 </body>
