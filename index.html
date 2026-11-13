@@ -1524,8 +1524,10 @@ function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti,Q){const OV=(Q&&Q.secN)
     const n=Math.min(A.smaxMid,fit,prevN[zi]??Infinity);if(n<1){sides.miss=1;return;}SECN[zi]=n;
     let rt=[],lt=[];for(let m=0;m<(k+1)/2;m++){const o=k%2?P(n)*(m+0.5):P(n)*m;if(!o&&k%2===0){rt.push(sc);continue;}rt.push(sc+o);lt.push(sc-o);}if(k%2===0&&!lt.length)lt.push(sc);
     // section editor: seats per row set by hand for some middle sections; the rest of the middle group shares what is left (Spread), so the group keeps its length
-    const ns=Array.from({length:k},(_,m)=>OV[ti+'.'+z.k+'.'+m]),pin=PIN[zi]||{},pA=pin.eL,pB=pin.eR,ovr=ns.some(v=>v!=null)||pA!=null||pB!=null;
-    if(ovr){const free=ns.filter(v=>v==null).length,both=pA!=null&&pB!=null&&free,tot=both?Math.floor((pB-pA-k*(2*gp+wA))/sw+1e-9):k*n,rem=tot-ns.reduce((a,v)=>a+(v||0),0),base=free?Math.max(1,Math.floor(rem/free)):0;let ex=free?Math.max(0,rem-base*free):0;
+    const ns=Array.from({length:k},(_,m)=>OV[ti+'.'+z.k+'.'+m]),pin=PIN[zi]||{},pA=pin.eL,pB=pin.eR;
+    {const pm=prevN.__mid&&prevN.__mid[zi];if(ti>0&&pm&&pm.length===k&&pm.some(v=>v!==n)&&ns.every(v=>v==null)&&pA==null&&pB==null&&pm.reduce((a,v)=>a+P(v),0)<=2*half+1e-6)pm.forEach((v,m)=>ns[m]=v);}   /* Tier 1 middle sections set by hand: the upper tiers take the same sizes, so the aisles stay in line */
+    const ovr=ns.some(v=>v!=null)||pA!=null||pB!=null;
+    if(ovr){const free=ns.filter(v=>v==null).length,both=pA!=null&&pB!=null&&free,tot=both?Math.floor((pB-pA-k*(2*gp+wA))/sw+1e-9):k*n,rem=tot-ns.reduce((a,v)=>a+(v||0),0),base=free?Math.max(1,Math.min(A.smaxMid,Math.floor(rem/free))):0;let ex=free&&base<A.smaxMid?Math.max(0,rem-base*free):0;   /* the sections left free never pass the middle-section maximum: pins that ask for more are met as far as they can be, the group centred between them */
       [...Array(k).keys()].sort((a,b)=>Math.abs(a-(k-1)/2)-Math.abs(b-(k-1)/2)).forEach(m=>{if(ns[m]==null){ns[m]=base+(ex>0?1:0);if(ex>0)ex--;}});
       const W=ns.reduce((a,v)=>a+P(Math.max(1,v)),0),x0=both?pA+Math.max(0,(pB-pA-W)/2):pA!=null&&pB!=null?(pA+pB)/2-W/2:pA!=null?pA:pB!=null?pB-W:sc-W/2,bd=[x0];ns.forEach(v=>bd.push(bd[bd.length-1]+P(Math.max(1,v))));
       rt=bd.filter(v=>v>=sc-1e-9);lt=bd.filter(v=>v<sc-1e-9).reverse();if(!lt.length)lt.push(rt[0]);if(!rt.length)rt.push(lt[0]);}
@@ -1616,7 +1618,7 @@ function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;co
       fixed.forEach(x=>{if(x.a.cl){const cs=cornerSet(R,x.zi,x.a.i,dBk,gp0);if(!cs||!cs.C.cl)delete x.a.cl;}});}   // a section line carried up stays one only where this tier's rows fit
     else RG.seg.forEach(q=>{if(segDiag(q.g)||q.g.t==='ARC'&&!q.g.side){const a={i:q.i,f:0.5,corner:true},cs=segDiag(q.g)?cornerSet(R,q.zi,q.i,dBk,gp0):null;
       [...(cs?[cs.L]:[]),...cornerMids(posOf,q.zi,q.i,ti,cs,segDiag(q.g)),...(cs?[cs.R]:[])].forEach(b=>fixed.push({s:posOf(q.zi,b),zi:q.zi,a:b}));}});   // corner aisles by tier (decision 146)
-    let sect=null;{const b0=ti>0&&out[0].__ring,al=b0&&R.every((z,zi)=>sameChain(b0[zi].ch,z.ch))?b0.list.map(x=>posOf(x.zi,x.a)):[];sect=sectAisles(R,RG,runs,posOf,toA,secParams(A),al,ti>0&&out[0].__secN||{},ti,Q);if(sect){fixed=sect;Object.defineProperty(T,'__secN',{enumerable:false,value:sect.secN,configurable:true});}}
+    let sect=null;{const b0=ti>0&&out[0].__ring,al=b0&&R.every((z,zi)=>sameChain(b0[zi].ch,z.ch))?b0.list.map(x=>posOf(x.zi,x.a)):[];sect=sectAisles(R,RG,runs,posOf,toA,secParams(A),al,ti>0&&out[0].__secN||{},ti,Q);if(sect){fixed=sect;if(ti===0&&sect.mid){const pm={};sect.mid.forEach(g=>pm[g.zi]=g.n.slice());Object.defineProperty(sect.secN,'__mid',{enumerable:false,value:pm,configurable:true});}Object.defineProperty(T,'__secN',{enumerable:false,value:sect.secN,configurable:true});}}
     fixed.sort((x,y)=>x.s-y.s);
     const added=[],place=(A0,B0)=>{const S=B0-A0;if(S<=Math.min(capAt(A0+1e-6),capAt(B0-1e-6))+1e-9)return;
       const run=runs.map(r=>({a:Math.max(r.a,A0),b:Math.min(r.b,B0),len:Math.min(r.b,B0)-Math.max(r.a,A0)}))
@@ -2058,7 +2060,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.12.03';
+const VERSION='2026.11.12.05';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -4008,7 +4010,12 @@ function zoneTable(){
    middle of the screen (a view frame, its heading or a results block) is put back where it was, so a click in the 3D view or the plan stays put */
 function viewAnchor(){const mid=innerHeight/2;let best=null,bd=1e9;document.querySelectorAll('main .panel, main .planhead, main .g24, main .group').forEach(e=>{if(e.offsetParent===null)return;const r=e.getBoundingClientRect();if(r.height<1)return;const d=r.top<=mid&&r.bottom>=mid?0:Math.min(Math.abs(r.top-mid),Math.abs(r.bottom-mid));if(d<bd){bd=d;best=e;}});return best;}
 function keepView(fn){const a=scrollY>0?viewAnchor():null,t0=a?a.getBoundingClientRect().top:0;try{fn();}finally{if(a){const fix=()=>{if(!a.isConnected)return;const d=a.getBoundingClientRect().top-t0;if(Math.abs(d)>0.5)window.scrollBy(0,d);};fix();requestAnimationFrame(()=>{fix();requestAnimationFrame(fix);});setTimeout(fix,120);}}}
-function update(){keepView(update0);}
+/* hand-set section sizes and moved aisles belong to one bowl shape (decision 252): changing the corners (chamfered / round) or a stand between curved and straight clears them */
+const shapeSig=()=>P.zt.map(t=>t.corners).join('/')+'|'+(P.bulge&&P.bulge.S>0?'cS':'sS')+(P.bulge&&P.bulge.E>0?'cE':'sE');
+function shapeCheck(){const sg=shapeSig();if(P.secShape==null){P.secShape=sg;return;}if(P.secShape===sg)return;P.secShape=sg;
+  const n=Object.keys(P.secN||{}).length,a=Object.keys(P.aisEd||{}).length;if(!n&&!a)return;P.secN={};P.aisEd={};
+  setTimeout(()=>toast(`The bowl shape changed: ${[n?`${n} hand-set section size${n>1?'s':''}`:'',a?'moved aisles':''].filter(Boolean).join(' and ')} cleared, so every tier is laid out again from Tier 1.`),0);}
+function update(){shapeCheck();keepView(update0);}
 function update0(){
   LEG2=RD().leg;wcClean();persist();if(typeof pdfBgUI==='function')pdfBgUI();if(typeof pdfGridUI==='function')pdfGridUI();ZR=solveAll(P);if(!zoned(P))P.sec='T';if(!ZR[P.sec].length)P.sec=zoneKeys(P).find(k=>ZR[k].length)||'T';
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);
