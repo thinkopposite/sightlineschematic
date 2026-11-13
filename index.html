@@ -2058,7 +2058,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.12.02';
+const VERSION='2026.11.12.03';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2125,7 +2125,8 @@ document.fonts&&document.fonts.ready.then(()=>gridAlign());document.addEventList
 const KEY='sightline-v2';
 let P, OPTS=[], CUR=null, ROWS=[], M=null, DL=null;
 const PROJ={name:'Untitled project',fileName:'',handle:null,saved:'',snap:null,number:'',country:'US',region:'',city:'',sport:null};   /* + project information and the project's one sport (guided setup, decision 250) */   /* the open project (decision 242): name, its file, and what was last saved to it */
-let HAD_STATE=false;try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){HAD_STATE=true;P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];if(s.proj)PROJ.name=s.proj;if(s.projInfo)Object.assign(PROJ,{number:s.projInfo.number||'',country:s.projInfo.country||'US',region:s.projInfo.region||'',city:s.projInfo.city||'',sport:s.projInfo.sport||null});PROJ.fileName=s.projFile||'';PROJ.saved=s.projSaved||'';PROJ.snap=s.projSnap||null;}}catch(e){}
+let HAD_STATE=false,SNAP_CLEAN=false;   /* SNAP_CLEAN: the stored project matched its saved file when the page was last left */
+try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){HAD_STATE=true;P=fixP(Object.assign(defaults(),migrate(s.P)));if(!s.P.ais)P.ais=aisDefaults(regionOf(P.sport));OPTS=s.OPTS||[];if(s.proj)PROJ.name=s.proj;if(s.projInfo)Object.assign(PROJ,{number:s.projInfo.number||'',country:s.projInfo.country||'US',region:s.projInfo.region||'',city:s.projInfo.city||'',sport:s.projInfo.sport||null});PROJ.fileName=s.projFile||'';PROJ.saved=s.projSaved||'';PROJ.snap=s.projSnap||null;{const i=s.projInfo||{};SNAP_CLEAN=!!s.projSnap&&s.projSnap===JSON.stringify([s.proj,i.number||'',i.country||'US',i.region||'',i.city||'',s.P,s.OPTS]);}}}catch(e){}
 // When the defaults change (DREV goes up), each browser starts once from the new default bowl; saved options are kept.
 const DREV=9;let NEWDEF=false;
 try{if((+localStorage.getItem('sightline-defaults-rev')||0)<DREV){NEWDEF=!!P;P=null;localStorage.setItem('sightline-defaults-rev',String(DREV));localStorage.setItem('sightline-units',JSON.stringify({sys:'imperial',metric:'mm-m',imperial:'arch'}));}}catch(e){}
@@ -5124,6 +5125,7 @@ const FSA=!!(window.showSaveFilePicker&&window.showOpenFilePicker);
 const safeName=t=>String(t).replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,'_').replace(/^[._-]+|[._-]+$/g,'').slice(0,100);
 const projJSON=()=>JSON.stringify({app:'Sightline Schematic',kind:'project',version:VERSION,project:PROJ.name,info:{number:PROJ.number,country:PROJ.country,region:PROJ.region,city:PROJ.city},sport:projSport(),saved:new Date().toISOString(),P,OPTS},null,1);
 const projKey=()=>JSON.stringify([PROJ.name,PROJ.number,PROJ.country,PROJ.region,PROJ.city,P,OPTS]);
+if(SNAP_CLEAN)PROJ.snap=projKey();   /* reopening the browser's project tidies the stored bowl (rounding, newer settings); it is still the saved file */
 function projDirty(){return PROJ.snap==null?OPTS.length>0:PROJ.snap!==projKey();}
 function prStatus(){const el=$('prStatus');if(!el)return;const d=projDirty();el.classList.toggle('dirty',d&&!!PROJ.fileName);
   el.textContent=(PROJ.fileName?`File: ${PROJ.fileName}${PROJ.saved?', saved '+new Date(PROJ.saved).toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):''}.`:'Not saved to a file yet.')
