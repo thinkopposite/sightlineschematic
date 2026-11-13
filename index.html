@@ -447,6 +447,27 @@ html,body{overflow-anchor:none}   /* the page keeps its own view on redraws (dec
 .su-tier svg{width:100%;height:auto;max-width:150px}.su-tier b{font-size:16px}.su-tier span{font-size:14px;font-weight:400;color:var(--muted)}.su-tier.on{outline:3px solid #E10600;outline-offset:-3px}
 .su-nav{display:flex;gap:8px;align-items:center;padding:14px 24px 20px;border-top:1.5px solid var(--sw-ink,#111)}.su-nav span{flex:1}
 @media (max-width:640px){.su-tiers{grid-template-columns:1fr 1fr}.su-2{grid-template-columns:1fr}.su-cap{grid-template-columns:1fr}}
+/* decision 254: the title bar and the project block on the 24 px grid. Title bar 72 px (three cells), its buttons 25 px from line to line;
+   project block in whole cells: labels 7 cells, fields 15 cells + 1 px, one cell between the two columns, rows 25 px with a cell of air */
+@media (min-width:1280px){header{height:72px;box-sizing:border-box;padding-top:0!important;padding-bottom:0!important;flex-wrap:nowrap;border-bottom-width:3px}
+  header .actions{flex-wrap:nowrap;gap:0 23px!important}
+  header .actions button{height:25px!important;min-height:25px!important;padding-top:0!important;padding-bottom:0!important;line-height:23px!important;box-sizing:border-box}}
+.projgrid{display:grid;grid-template-columns:168px 361px 23px 96px 361px;grid-auto-rows:25px;row-gap:23px;align-items:center;margin:0}
+.projgrid .projrow,.projgrid .projinfo{display:contents}
+.projgrid .lab{margin:0!important;line-height:24px}
+.projgrid .projname{grid-column:2/6;width:100%;max-width:none;min-width:0;height:25px;padding:0 8px;box-sizing:border-box}
+.projgrid .projinfo>:nth-child(4n+1){grid-column:1}.projgrid .projinfo>:nth-child(4n+2){grid-column:2}.projgrid .projinfo>:nth-child(4n+3){grid-column:4}.projgrid .projinfo>:nth-child(4n+4){grid-column:5}
+.projgrid .projinfo>.pi-sport{grid-column:2/6;line-height:24px}
+.projgrid .projinfo :is(input,select){width:100%;height:25px;box-sizing:border-box}
+.projgrid .pi-num{display:grid;grid-template-columns:289px 23px 49px;gap:0;height:25px}.projgrid .pi-num button{grid-column:3;width:49px;height:25px;min-height:25px;padding:0!important;line-height:23px}
+@media (max-width:700px){.projgrid{grid-template-columns:120px minmax(0,1fr)!important}.projgrid .pi-num{grid-template-columns:minmax(0,1fr) 23px 49px}}
+@media (max-width:1460px){.projgrid{grid-template-columns:168px 361px}.projgrid .projname,.projgrid .projinfo>.pi-sport{grid-column:2}
+  .projgrid .projinfo>:nth-child(odd){grid-column:1!important}.projgrid .projinfo>:nth-child(even){grid-column:2!important}}
+#prStatus.g24{line-height:24px}
+#opts.g24 .opt{row-gap:0!important;align-items:start}#opts.g24 .opt .oname,#opts.g24 .opt>.x{height:24px;min-height:24px!important;line-height:24px}#opts.g24 .opt :is(.ren,.x){height:24px!important;min-height:24px!important;box-sizing:border-box;line-height:24px;padding-top:0;padding-bottom:0}
+@media (min-width:1280px){header .actions{align-self:flex-start;margin-top:23px}}
+main .g24 .tablewrap table:is(.refs,.wrap) :is(td,th),main table:is(.refs,.wrap) :is(td,th){line-height:24px!important;padding-top:0!important;padding-bottom:0!important}   /* wrapped rows: every line one cell (decision 254) */
+#opts.g24{grid-template-columns:repeat(auto-fill,289px)!important;column-gap:23px!important;row-gap:23px!important}
 </style>
 </head>
 <body>
@@ -553,10 +574,10 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
     <details><summary id="schedHead">Row schedule</summary><div class="tablewrap"><table id="table"></table></div></details>
 
     <p class="group">Project and saved options</p>
-    <div class="projrow"><label for="projName" class="lab" style="margin:0">Project name</label><input id="projName" class="projname" maxlength="80" spellcheck="false" autocomplete="off"></div>
-    <div class="projinfo" id="projInfo"></div>
+    <div class="projgrid"><div class="projrow"><label for="projName" class="lab" style="margin:0">Project name</label><input id="projName" class="projname" maxlength="80" spellcheck="false" autocomplete="off"></div>
+    <div class="projinfo" id="projInfo"></div></div>
     <div class="seg" style="margin:8px 0 0"><button id="prNew">New project</button><button id="prOpen">Open project</button><button id="prSaveAs">Save as</button><button id="prSave" class="primary">Save project</button><input type="file" id="prFile" accept=".json,application/json" hidden></div>
-    <p class="hint" id="prStatus" style="margin:6px 0 12px"></p>
+    <p class="hint" id="prStatus"></p>
     <div class="opts" id="opts"></div>
     <p class="group">Seats</p>
     <div class="cap" id="cap2" aria-label="Estimated seats (repeated at the bottom of the page)"></div>
@@ -2060,7 +2081,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.12.07';
+const VERSION='2026.11.12.08';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2080,7 +2101,15 @@ function mainGrid(){   // decision 178: the main column's content edges on grid 
   const L=r.left+scrollX+pl,R=r.right+scrollX-pr;let dl=((23-L)%24+24)%24;if(dl>12&&pl+dl-24>=8)dl-=24;let dr=((R%24)+24)%24;if(dr>12&&pr+dr-24>=8)dr-=24;   /* nearest line, never under 8 px of padding */
   m.style.paddingLeft=(pl+dl)+'px';m.style.paddingRight=(pr+dr)+'px';}
 mainGrid();
-function gridAlign(){   // decisions 167, 168, 176, 177: headings centred in a cell; grid blocks with their corner on a grid line (lines at 24n-1); worked down the page in order
+function hdrGrid(){const a=document.querySelector('header .actions'),h=document.querySelector('header');if(!a)return;a.style.marginRight='';h.style.minHeight='';a.querySelectorAll('button').forEach(b=>{b.style.width='';b.style.flex='';});if(innerWidth<1280){if(innerWidth>=901)h.style.minHeight=(Math.ceil(h.getBoundingClientRect().height/24)*24)+'px';return;}   /* narrower windows: the title bar wraps, its height still whole cells */   /* decision 254: title-bar buttons 24n+1 px wide, the group ending on a grid line */
+  a.querySelectorAll('button').forEach(b=>{if(b.offsetParent===null)return;const w=b.getBoundingClientRect().width;b.style.boxSizing='border-box';b.style.flex='none';b.style.width=(Math.ceil((w-1)/24-1e-6)*24+1)+'px';});
+  const R=a.getBoundingClientRect().right+scrollX-1,d=((R+1)%24+24)%24;if(d)a.style.marginRight=(parseFloat(getComputedStyle(a).marginRight)+d)+'px';}
+addEventListener('resize',()=>requestAnimationFrame(hdrGrid));
+function planSegGrid(){document.querySelectorAll('main .planhead>div:last-child').forEach(c=>{c.style.paddingRight='';c.style.columnGap='';c.querySelectorAll('.seg>*').forEach(b=>{b.style.width='';b.style.flex='';});
+  if(c.offsetParent===null||!c.querySelector('.seg'))return;c.style.columnGap='23px';   /* decision 254: view buttons 24n+1 px wide, one cell between groups, each line ending on a grid line */
+  c.querySelectorAll('.seg>*').forEach(b=>{if(b.offsetParent===null||b.type==='file')return;const w=b.getBoundingClientRect().width;b.style.boxSizing='border-box';b.style.flex='none';b.style.width=(Math.ceil((w-1)/24-1e-6)*24+1)+'px';});
+  const R=c.getBoundingClientRect().right+scrollX-parseFloat(getComputedStyle(c).paddingRight||0)-1,d=((R+1)%24+24)%24;if(d)c.style.paddingRight=d+'px';});}
+function gridAlign(){hdrGrid();planSegGrid();   // decisions 167, 168, 176, 177: headings centred in a cell; grid blocks with their corner on a grid line (lines at 24n-1); worked down the page in order
   mainGrid();
   const sel='main .planhead, main .group, main .panel, main .g24, main .vomgrid, main .g24 :is(table,.tablewrap,.seg,p,.vgrid,.vg-h,summary+div,summary+table)';
   const els=[...document.querySelectorAll(sel)].filter(e=>e.offsetParent!==null&&!e.closest('[hidden]'));
@@ -2120,7 +2149,7 @@ function gridAlign(){   // decisions 167, 168, 176, 177: headings centred in a c
       if(d)k.style.marginLeft=(m0+d)+'px';const R=k.getBoundingClientRect();prevR=R.right+scrollX;prevB=bd;});});
   document.querySelectorAll('main .tablewrap').forEach(w=>{if(w.offsetParent===null)return;w.style.height='';{const mh=parseFloat(w.style.maxHeight);if(mh&&Math.abs((mh-1)/24-Math.round((mh-1)/24))>0.01)w.style.maxHeight=(Math.ceil((mh-1)/24)*24+1)+'px';}const h=w.getBoundingClientRect().height;if(Math.abs((h-1)/24-Math.round((h-1)/24))>0.01)w.style.height=(Math.ceil((h-1)/24)*24+1)+'px';});}
 // the blocks on the page grid (decision 177)
-function markG24(){['#cap','#cap2','#verdict','#stats','#zones','#comply','#ctlHint','#planNote','#opts'].forEach(q=>{const e=document.querySelector(q);if(e)e.classList.add('g24');});
+function markG24(){['#cap','#cap2','#verdict','#stats','#zones','#comply','#ctlHint','#planNote','#opts','.projgrid','#prStatus'].forEach(q=>{const e=document.querySelector(q);if(e)e.classList.add('g24');});
   document.querySelectorAll('main > details, main > .legend, main > .seg').forEach(e=>e.classList.add('g24'));}
 markG24();
 document.fonts&&document.fonts.ready.then(()=>gridAlign());document.addEventListener('toggle',()=>requestAnimationFrame(gridAlign),true);
@@ -4085,7 +4114,7 @@ function update0(){
    renderEnl();$('enlTitle').textContent=ok?enlargedTitle():'Enlarged plan: typical section';
    $('enlTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlt="${i}" class="${!ENL.pick&&Math.min(ENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
      +[westKey(),eastKey(),GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='S')||'R'].map(k=>`<button data-enls="${k}" class="${!ENL.pick&&enlSide()===k?'on':''}">${zoneName(P,k)}</button>`).join('')
-     +`<select id="enlPick" aria-label="Any section" title="Show any section" style="margin-left:8px"><option value="">Any section…</option>${Array.from({length:P.tierCount},(_,ti)=>`<optgroup label="Tier ${ti+1}">${sectionList(ti).filter(q=>!((P.secs||{})[q.no]||{}).off).sort((a,b)=>a.no-b.no).map(q=>`<option value="${q.no}"${ENL.pick===q.no?' selected':''}>${q.no}, ${zoneName(P,q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a).Lz.k)}</option>`).join('')}</optgroup>`).join('')}</select>`:'';
+     +`<select id="enlPick" aria-label="Any section" title="Show any section" style="margin-left:23px"><option value="">Any section…</option>${Array.from({length:P.tierCount},(_,ti)=>`<optgroup label="Tier ${ti+1}">${sectionList(ti).filter(q=>!((P.secs||{})[q.no]||{}).off).sort((a,b)=>a.no-b.no).map(q=>`<option value="${q.no}"${ENL.pick===q.no?' selected':''}>${q.no}, ${zoneName(P,q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a).Lz.k)}</option>`).join('')}</optgroup>`).join('')}</select>`:'';
    /* the typical-corner frame is off the web page (decision 158); corner sections still get their own enlarged sheets in the PDF set and can be picked in the section list */
    if(0)$('enlcTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlct="${i}" class="${Math.min(CENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
      +Object.keys(CORNERS).map(c=>`<button data-enlc="${c}" class="${enlCorner()===c?'on':''}" title="${CORNERS[c]} corner">${c}</button>`).join(''):'';}
