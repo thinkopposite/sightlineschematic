@@ -463,7 +463,11 @@ html,body{overflow-anchor:none}   /* the page keeps its own view on redraws (dec
 @media (max-width:700px){.projgrid{grid-template-columns:120px minmax(0,1fr)!important}.projgrid .pi-num{grid-template-columns:minmax(0,1fr) 23px 49px}}
 @media (max-width:1460px){.projgrid{grid-template-columns:168px 361px}.projgrid .projname,.projgrid .projinfo>.pi-sport{grid-column:2}
   .projgrid .projinfo>:nth-child(odd){grid-column:1!important}.projgrid .projinfo>:nth-child(even){grid-column:2!important}}
-#prStatus.g24{line-height:24px}
+#prStatus.g24,#ver.g24{line-height:24px}
+main .planhead>div:last-child .seg{justify-content:flex-end}
+@media (max-width:1399px){main #junction table.jinfo td{line-height:24px!important}}   /* wrapped values: every line one cell */
+main .planhead .bub{align-self:start!important;height:24px;line-height:24px}main .planhead h3{align-self:start}
+#stats.g24 b{height:48px!important;line-height:24px!important;padding-top:24px!important;box-sizing:border-box}   /* decision 255: the figure in the middle of a cell, not on a line */
 #opts.g24 .opt{row-gap:0!important;align-items:start}#opts.g24 .opt .oname,#opts.g24 .opt>.x{height:24px;min-height:24px!important;line-height:24px}#opts.g24 .opt :is(.ren,.x){height:24px!important;min-height:24px!important;box-sizing:border-box;line-height:24px;padding-top:0;padding-bottom:0}
 @media (min-width:1280px){header .actions{align-self:flex-start;margin-top:23px}}
 main .g24 .tablewrap table:is(.refs,.wrap) :is(td,th),main table:is(.refs,.wrap) :is(td,th){line-height:24px!important;padding-top:0!important;padding-bottom:0!important}   /* wrapped rows: every line one cell (decision 254) */
@@ -581,7 +585,7 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
     <div class="opts" id="opts"></div>
     <p class="group">Seats</p>
     <div class="cap" id="cap2" aria-label="Estimated seats (repeated at the bottom of the page)"></div>
-    <p class="hint" id="ver" style="padding:24px 0 0"></p>
+    <p class="hint" id="ver"></p>
   </main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -2081,7 +2085,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.12.08';
+const VERSION='2026.11.12.09';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2105,8 +2109,8 @@ function hdrGrid(){const a=document.querySelector('header .actions'),h=document.
   a.querySelectorAll('button').forEach(b=>{if(b.offsetParent===null)return;const w=b.getBoundingClientRect().width;b.style.boxSizing='border-box';b.style.flex='none';b.style.width=(Math.ceil((w-1)/24-1e-6)*24+1)+'px';});
   const R=a.getBoundingClientRect().right+scrollX-1,d=((R+1)%24+24)%24;if(d)a.style.marginRight=(parseFloat(getComputedStyle(a).marginRight)+d)+'px';}
 addEventListener('resize',()=>requestAnimationFrame(hdrGrid));
-function planSegGrid(){document.querySelectorAll('main .planhead>div:last-child').forEach(c=>{c.style.paddingRight='';c.style.columnGap='';c.querySelectorAll('.seg>*').forEach(b=>{b.style.width='';b.style.flex='';});
-  if(c.offsetParent===null||!c.querySelector('.seg'))return;c.style.columnGap='23px';   /* decision 254: view buttons 24n+1 px wide, one cell between groups, each line ending on a grid line */
+function planSegGrid(){document.querySelectorAll('main .planhead>div:last-child').forEach(c=>{c.style.paddingRight='';c.style.columnGap='';c.style.rowGap='';c.querySelectorAll('.seg>*').forEach(b=>{b.style.width='';b.style.flex='';});
+  if(c.offsetParent===null||!c.querySelector('.seg'))return;c.style.columnGap='23px';c.style.rowGap='24px';   /* decision 254: view buttons 24n+1 px wide, one cell between groups, each line ending on a grid line */
   c.querySelectorAll('.seg>*').forEach(b=>{if(b.offsetParent===null||b.type==='file')return;const w=b.getBoundingClientRect().width;b.style.boxSizing='border-box';b.style.flex='none';b.style.width=(Math.ceil((w-1)/24-1e-6)*24+1)+'px';});
   const R=c.getBoundingClientRect().right+scrollX-parseFloat(getComputedStyle(c).paddingRight||0)-1,d=((R+1)%24+24)%24;if(d)c.style.paddingRight=d+'px';});}
 function gridAlign(){hdrGrid();planSegGrid();   // decisions 167, 168, 176, 177: headings centred in a cell; grid blocks with their corner on a grid line (lines at 24n-1); worked down the page in order
@@ -2132,10 +2136,10 @@ function gridAlign(){hdrGrid();planSegGrid();   // decisions 167, 168, 176, 177:
     if(e.classList.contains('g24')||e.classList.contains('vomgrid')){const r=e.getBoundingClientRect(),top=r.top+scrollY;let d=((23-top)%24+24)%24;if(d<6&&e.classList.contains('g24'))d+=24;e.style.marginTop=(d+mbPrev(e))+'px';   // at least a little air above each block
       if(e.classList.contains('vomgrid')){const left=e.getBoundingClientRect().left+scrollX;e.style.paddingLeft=(((23-left)%24+24)%24)+'px';}continue;}
     if(e.classList.contains('group')){const top=e.getBoundingClientRect().top+scrollY;let d=((0-top)%24+24)%24;if(d>12&&(+e.dataset.mt0)+d-24>=0)d-=24;e.style.marginTop=((+e.dataset.mt0)+d)+'px';continue;}   /* group headings: the text in one cell, the rule on the grid line (decision 217) */
-    const t=e.classList.contains('group')?e:(e.querySelector('h3')||e),r=t.getBoundingClientRect(),cy=r.top+(e.classList.contains('group')?(r.height-parseFloat(getComputedStyle(e).paddingBottom||0))/2:r.height/2)+scrollY;
+    const t=e.classList.contains('group')?e:(e.querySelector('h3')||e),r=t.getBoundingClientRect(),cy=r.top+(e.classList.contains('group')?(r.height-parseFloat(getComputedStyle(e).paddingBottom||0))/2:Math.min(r.height,24)/2)+scrollY;   /* a title on two lines: each line in its own cell (decision 255) */
     let d=((11-cy)%24+24)%24;if(d>12&&(+e.dataset.mt0)+d-24>=0)d-=24;e.style.marginTop=((+e.dataset.mt0)+d)+'px';
     const c=e.querySelector(':scope > .capt');if(c){const rc=c.getBoundingClientRect(),c0=rc.top+12+scrollY;c.style.marginTop=(((11-c0)%24+24)%24)+'px';}
-    const sg=e.querySelector('.seg');if(sg&&sg.offsetParent!==null){let cn=sg;while(cn.parentElement&&cn.parentElement!==e)cn=cn.parentElement;cn.style.alignSelf='start';cn.style.marginTop='0px';const tp=sg.getBoundingClientRect().top+scrollY,h3=e.querySelector('h3'),hc=h3?h3.getBoundingClientRect().top+h3.getBoundingClientRect().height/2+scrollY:tp+12;let d=((23-tp)%24+24)%24;const want=hc-12.5-tp;d=d+24*Math.round((want-d)/24);if(d<0)d+=24;cn.style.marginTop=d+'px';}}   /* the view tabs from one grid line to the next (decision 217) */
+    const sg=e.querySelector('.seg');if(sg&&sg.offsetParent!==null){let cn=sg;while(cn.parentElement&&cn.parentElement!==e)cn=cn.parentElement;cn.style.alignSelf='start';cn.style.marginTop='0px';const tp=sg.getBoundingClientRect().top+scrollY,h3=e.querySelector('h3'),hc=h3?h3.getBoundingClientRect().top+Math.min(h3.getBoundingClientRect().height,24)/2+scrollY:tp+12;let d=((23-tp)%24+24)%24;const want=hc-12.5-tp;d=d+24*Math.round((want-d)/24);if(d<0)d+=24;cn.style.marginTop=d+'px';}}   /* the view tabs from one grid line to the next (decision 217) */
   {const st=document.getElementById('stats');if(st&&st.offsetParent!==null){const ks=[...st.children].filter(c=>c.offsetParent!==null),n=ks.length;st.style.gridTemplateColumns='';   /* stat boxes: every edge on a grid line, one cell between boxes (decision 220) */
     const W=st.getBoundingClientRect().width,C=Math.floor((W-1)/24);let per=n;while(per>1&&Math.floor((C-(per-1))/per)<7)per--;const cells=C-(per-1),k=Math.floor(cells/per),ex=cells-k*per;
     if(n&&k>0)st.style.gridTemplateColumns=Array.from({length:per},(_,i)=>(24*(k+(i<ex?1:0))+1)+'px').join(' ');
@@ -2149,7 +2153,7 @@ function gridAlign(){hdrGrid();planSegGrid();   // decisions 167, 168, 176, 177:
       if(d)k.style.marginLeft=(m0+d)+'px';const R=k.getBoundingClientRect();prevR=R.right+scrollX;prevB=bd;});});
   document.querySelectorAll('main .tablewrap').forEach(w=>{if(w.offsetParent===null)return;w.style.height='';{const mh=parseFloat(w.style.maxHeight);if(mh&&Math.abs((mh-1)/24-Math.round((mh-1)/24))>0.01)w.style.maxHeight=(Math.ceil((mh-1)/24)*24+1)+'px';}const h=w.getBoundingClientRect().height;if(Math.abs((h-1)/24-Math.round((h-1)/24))>0.01)w.style.height=(Math.ceil((h-1)/24)*24+1)+'px';});}
 // the blocks on the page grid (decision 177)
-function markG24(){['#cap','#cap2','#verdict','#stats','#zones','#comply','#ctlHint','#planNote','#opts','.projgrid','#prStatus'].forEach(q=>{const e=document.querySelector(q);if(e)e.classList.add('g24');});
+function markG24(){['#cap','#cap2','#verdict','#stats','#zones','#comply','#ctlHint','#planNote','#opts','.projgrid','#prStatus','#ver'].forEach(q=>{const e=document.querySelector(q);if(e)e.classList.add('g24');});
   document.querySelectorAll('main > details, main > .legend, main > .seg').forEach(e=>e.classList.add('g24'));}
 markG24();
 document.fonts&&document.fonts.ready.then(()=>gridAlign());document.addEventListener('toggle',()=>requestAnimationFrame(gridAlign),true);
