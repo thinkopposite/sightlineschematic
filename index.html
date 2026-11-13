@@ -416,7 +416,7 @@ html,body{overflow-anchor:none}   /* the page keeps its own view on redraws (dec
 .opt .oname{display:flex;align-items:center;gap:6px;min-width:0}.opt .oname strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .opt .ren{border:0;padding:0 4px;color:var(--muted);font-size:14px;line-height:1;background:none;min-height:0}.opt .ren:hover{color:var(--sw-ink,#111);background:none}
 .opt input.oedit{font:inherit;font-weight:700;font-size:14px;width:100%;padding:2px 6px;border:1px solid var(--sw-ink,#111);background:var(--panel);color:var(--sw-ink,#111)}
-#prDlg{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding:96px 16px}#prDlg .pd-box{background:var(--sw-paper,#F6F5F2);color:var(--sw-ink,#111);border:1px solid var(--sw-ink,#111);width:100%;max-width:520px;padding:16px 20px 20px}
+#prDlg{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding:96px 16px}#prDlg .pd-box{background:var(--sw-paper,#F6F5F2);color:var(--sw-ink,#111);border:1px solid var(--sw-ink,#111);width:100%;max-width:520px;padding:16px 20px 20px}
 #prDlg h3{margin:0 0 8px;font-size:16px}#prDlg p{margin:0 0 12px;font-size:14px}#prDlg input{width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--sw-ink,#111);background:var(--panel);color:var(--sw-ink,#111);margin:0 0 6px}#prDlg .pd-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
 /* wider scroll bars (decision 243): 24 px (one grid cell), a 20 px handle at least 72 px long, square, a solid thumb that is easy to grab; Chrome, Edge and Safari */
 ::-webkit-scrollbar{width:24px;height:24px}
@@ -2058,7 +2058,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.12.01';
+const VERSION='2026.11.12.02';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -5152,18 +5152,10 @@ async function saveProject(asNew){
     offer(fn,new Blob([projJSON()],{type:'application/json'}));markSaved(fn,null);toast(`Saved ${fn}`);return true;
   }catch(e){if(e&&e.name==='AbortError')return false;toast('Could not save the project: '+(e&&e.message||e));return false;}}
 async function loadProject(j,fileName,handle){if(!j||!Array.isArray(j.OPTS))throw new Error('not a project');
-  let opts=j.OPTS.filter(o=>o&&o.P&&o.m).map(o=>Object.assign({},o,{P:migrate(o.P)}));
-  const sports=[...new Set(opts.map(o=>o.P.sport).filter(k=>SPORTS[k]))];let keep=j.sport&&SPORTS[j.sport]?j.sport:(sports[0]||(j.P&&j.P.sport));
-  if(sports.length>1){keep=await splitDialog(sports,opts);if(!keep)return false;   /* one sport per project (decision 250): older mixed files are split, one file per sport */
-    const others=sports.filter(k=>k!==keep);let mi=1;for(const k of others){const num=newNumber(j.info&&j.info.country||PROJ.country||'US',mi++),
-      body=JSON.stringify({app:'Sightline Schematic',kind:'project',version:VERSION,project:j.project||'Untitled project',info:Object.assign({},j.info||{},{number:num}),sport:k,saved:new Date().toISOString(),P:Object.assign({},opts.find(o=>o.P.sport===k).P),OPTS:opts.filter(o=>o.P.sport===k)},null,1);
-      await offer(projFileBase(k,num)+'.json',new Blob([body],{type:'application/json'}));}
-    opts=opts.filter(o=>o.P.sport===keep);toast(`Kept the ${SPORTS[keep].name} options; the other sports were saved as ${others.length} separate project file${others.length>1?'s':''}.`);}
-  OPTS=opts;
+  const r=await oneSport({project:j.project,info:j.info,P:j.P,OPTS:j.OPTS,sport:j.sport});if(!r)return false;const keep=r.sport,sports=r.sports;OPTS=r.OPTS;if(r.P)j.P=r.P;
   if(j.P){P=fixP(Object.assign(defaults(),migrate(j.P)));if(!j.P.ais)P.ais=aisDefaults(regionOf(P.sport));}
   PROJ.name=(j.project||String(fileName||'').replace(/\.json$/i,'').replace(/_/g,' ')||'Untitled project').slice(0,80);
   {const i=j.info||{};Object.assign(PROJ,{number:i.number||newNumber(i.country||'US'),country:i.country||'US',region:i.region||'',city:i.city||'',sport:keep||P.sport});}
-  if(keep&&P.sport!==keep){const o=OPTS[0];if(o)P=fixP(Object.assign(defaults(),migrate(JSON.parse(JSON.stringify(o.P)))));}
   CUR=null;EDIT={tier:0,g:0};renderControls();update();renderOpts();markSaved(fileName,handle);if(sports.length<=1)toast(`Opened ${fileName}: ${OPTS.length} option${OPTS.length===1?'':'s'}`);return true;}
 $('prSave').onclick=()=>saveProject(false);
 $('prSaveAs').onclick=()=>saveProject(true);
@@ -5218,6 +5210,24 @@ async function sportChange(k){if(k===projSport()){return;}
   {const old=PROJ.number;let n=newNumber(PROJ.country),i=1;while(numNoCC(n)===numNoCC(old)&&i<60)n=newNumber(PROJ.country,i++);Object.assign(PROJ,{number:n,fileName:'',handle:null,saved:'',snap:null,sport:k});}   /* a new time stamp, never the old number */OPTS=[];CUR=null;applySport(k);persist();renderOpts();renderProjInfo();
   toast(`New ${SPORTS[k].name} project, ${PROJ.number}. Save it to create ${projFileBase()}.json.`);}
 // older files with several sports: choose one to keep
+function optRecord(Pobj,name){const keep=P;P=fixP(Object.assign(defaults(),migrate(JSON.parse(JSON.stringify(Pobj)))));update();   /* score a bowl that is not on screen */
+  const rec={name,P:JSON.parse(JSON.stringify(P)),m:{cap:M.cap,tiers:P.tierCount,c:M.worst?Math.round(M.worst.C):0,rake:M.steep?M.steep.rake.toFixed(1):0,h:M.height.toFixed(1),vd:M.vd.toFixed(0)}};P=keep;update();return rec;}
+/* one sport per project (decision 250): returns {sport,sports,OPTS,P} or null on cancel; other sports are downloaded as their own project files */
+async function oneSport(st){let opts=(st.OPTS||[]).filter(o=>o&&o.P&&o.m).map(o=>Object.assign({},o,{P:migrate(o.P)}));
+  const bowl=st.P&&SPORTS[st.P.sport]?st.P.sport:null;let sports=[...new Set(opts.map(o=>o.P.sport).filter(k=>SPORTS[k]))];
+  if(bowl&&opts.length&&!sports.includes(bowl)){let n='Current bowl';while(opts.some(o=>o.name===n))n+=' (2)';opts.push(optRecord(st.P,n));sports.push(bowl);}   /* the bowl on screen is kept as an option of its own sport */
+  let keep=st.sport&&SPORTS[st.sport]&&(sports.includes(st.sport)||!sports.length)?st.sport:(bowl&&(sports.includes(bowl)||!sports.length)?bowl:sports[0]||bowl);
+  if(sports.length>1){keep=await splitDialog(sports,opts);if(!keep)return null;
+    const others=sports.filter(k=>k!==keep),cc=st.info&&st.info.country||PROJ.country||'US';let mi=1;
+    for(const k of others){const num=newNumber(cc,mi++),mine=opts.filter(o=>o.P.sport===k),
+      body=JSON.stringify({app:'Sightline Schematic',kind:'project',version:VERSION,project:st.project||'Untitled project',info:Object.assign({},st.info||{},{number:num}),sport:k,saved:new Date().toISOString(),P:bowl===k?st.P:mine[0].P,OPTS:mine},null,1);
+      await offer(projFileBase(k,num)+'.json',new Blob([body],{type:'application/json'}));}
+    opts=opts.filter(o=>o.P.sport===keep);toast(`Kept the ${SPORTS[keep].name} options; ${others.map(k=>SPORTS[k].name).join(', ')} ${others.length>1?'were':'was'} saved as separate project file${others.length>1?'s':''}.`);}
+  const P2=bowl!==keep&&opts.length?opts[0].P:null;return {sport:keep,sports,OPTS:opts,P:P2};}
+/* the browser's own project (saved before decision 250) may still mix sports */
+async function oneSportHere(){const r=await oneSport({project:PROJ.name,info:{number:PROJ.number,country:PROJ.country,region:PROJ.region,city:PROJ.city},P,OPTS,sport:PROJ.sport});if(!r)return false;
+  if(r.sports.length<=1&&!r.P&&r.sport===projSport())return true;
+  OPTS=r.OPTS;if(r.P){P=fixP(Object.assign(defaults(),migrate(JSON.parse(JSON.stringify(r.P)))));}PROJ.sport=r.sport;CUR=null;renderControls();update();renderOpts();renderProjInfo();persist();return true;}
 function splitDialog(sports,opts){return new Promise(res=>{const old=$('prDlg');if(old)old.remove();const d=document.createElement('div');d.id='prDlg';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');
   d.innerHTML=`<div class="pd-box"><h3>This project holds several sports</h3><p>A project now holds one sport. Pick the sport to keep in this project; each other sport's options are saved as a separate project file (downloaded), with a new project number.</p><div class="seg stack">`
     +sports.map(k=>`<button data-k="${k}">${esc(SPORTS[k].name)} (${esc(SPORTS[k].org)}): ${opts.filter(o=>o.P.sport===k).length} option${opts.filter(o=>o.P.sport===k).length===1?'':'s'}</button>`).join('')+`</div><div class="pd-btns"><button data-k="">Cancel</button></div></div>`;
@@ -5264,7 +5274,7 @@ function readInfo(){const I=SU.info;if(!$('suName'))return;I.name=$('suName').va
 async function setupClick(e){const t=e.target.closest('[data-su],[data-tier]');if(!t)return;const a=t.dataset.su;
   if(t.dataset.tier){SU.tiers=t.dataset.tier==='auto'?'auto':+t.dataset.tier;renderSetup();return;}
   if(SU.step==='info')readInfo();
-  if(a==='continue'){closeSetup();return;}
+  if(a==='continue'){closeSetup();await oneSportHere();return;}
   if(a==='open'){closeSetup();$('prOpen').click();return;}
   if(a==='new'){if(!(await keepChanges('A new project starts with no saved options.')))return;SU.info=null;openSetup('info');return;}
   if(a==='regen'){SU.info.number=newNumber($('suCountry').value);$('suNum').value=SU.info.number;return;}
@@ -5280,7 +5290,7 @@ async function setupFinish(){const I=SU.info||{name:PROJ.name,country:PROJ.count
   for(let i=0;i<600&&(await new Promise(r=>setTimeout(r,250)),btn.disabled||($(btn.id)&&$(btn.id).disabled));i++);
   if(PROJ.handle)await saveProject(false);}
 {const sb=document.createElement('button');sb.id='setupBtn';sb.textContent='Setup';sb.title='Guided setup: open or create a project, sport, capacity and tiers';const a=document.querySelector('header .actions');if(a)a.insertBefore(sb,a.firstChild);sb.onclick=()=>openSetup('start');}
-try{if(localStorage.getItem('sl-setup-off')!=='1')openSetup('start');}catch(e){openSetup('start');}
+try{if(localStorage.getItem('sl-setup-off')!=='1')openSetup('start');else if(HAD_STATE)setTimeout(oneSportHere,300);}catch(e){openSetup('start');}
 $('ver').textContent='Sightline Schematic '+VERSION+'. Everything runs in your browser; nothing is uploaded. The open project stays in this browser; Save project writes it to a file you can keep in Google Drive and open on another computer.';
 </script>
 </body>
