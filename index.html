@@ -555,7 +555,7 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
     <p class="group">Project and saved options</p>
     <div class="projrow"><label for="projName" class="lab" style="margin:0">Project name</label><input id="projName" class="projname" maxlength="80" spellcheck="false" autocomplete="off"></div>
     <div class="projinfo" id="projInfo"></div>
-    <div class="seg" style="margin:8px 0 0"><button id="prNew">New project</button><button id="prOpen">Open project</button><button id="prSave" class="primary">Save project</button><button id="prSaveAs">Save as</button><button id="rsOpt" title="Add the options from another project or backup file to this project">Import options</button><input type="file" id="rsFile" accept=".json,application/json" hidden><input type="file" id="prFile" accept=".json,application/json" hidden></div>
+    <div class="seg" style="margin:8px 0 0"><button id="prNew">New project</button><button id="prOpen">Open project</button><button id="prSaveAs">Save as</button><button id="prSave" class="primary">Save project</button><input type="file" id="prFile" accept=".json,application/json" hidden></div>
     <p class="hint" id="prStatus" style="margin:6px 0 12px"></p>
     <div class="opts" id="opts"></div>
     <p class="group">Seats</p>
@@ -2060,7 +2060,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.12.05';
+const VERSION='2026.11.12.07';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -5178,8 +5178,8 @@ $('projName').addEventListener('change',e=>{const n=e.target.value.trim().replac
 $('projName').addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
 addEventListener('beforeunload',e=>{if(PROJ.fileName&&projDirty()){e.preventDefault();e.returnValue='';}});
 prStatus();
-$('rsOpt').onclick=()=>$('rsFile').click();
-$('rsFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+/* Import options removed from the panel (decision 253): Open project covers it */
+if($('rsFile'))$('rsFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   try{const j=JSON.parse(await f.text());if(!Array.isArray(j.OPTS))throw 0;
     const used=new Set(OPTS.map(o=>o.name));let added=0;
     const sp=projSport();let other=0;for(const o of j.OPTS){if(!o||!o.P||!o.m)continue;if(o.P.sport&&o.P.sport!==sp){other++;continue;}let name=o.name||'Option';while(used.has(name))name+=' (restored)';used.add(name);OPTS.push(Object.assign({},o,{name,P:migrate(o.P)}));added++;}
