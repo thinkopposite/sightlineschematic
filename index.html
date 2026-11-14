@@ -2105,7 +2105,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.14.07';
+const VERSION='2026.11.14.09';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -5335,13 +5335,15 @@ function bowlIcon(shape,cfg,sport){const Sp=SPORTS[sport||SU.sport||P.sport]||SP
     else if(Sp===SPORTS.rugbyu){[10,32,60,88,110].forEach(v=>fl.push(y(v)));}
     else if(Sp===SPORTS.fih){[22.9,L/2,L-22.9].forEach(v=>fl.push(y(v)));}
     else fl.push(0);}
+  const soc=Sp===SPORTS.fifa||Sp===SPORTS.mls,ln='fill="none" stroke="#FFFFFF" stroke-width="1" vector-effect="non-scaling-stroke"';   /* soccer: centre circle (9.15 m), penalty areas (16.5 x 40.32 m) and goal areas (5.5 x 18.32 m), Laws of the Game 1 (decision 266) */
+  const pitch=soc?`<circle cx="0" cy="0" r="${f(9.15)}" ${ln}/>`+[-1,1].map(e=>`<rect x="${f(-20.16)}" y="${f(e<0?-fy:fy-16.5)}" width="${f(40.32)}" height="${f(16.5)}" ${ln}/><rect x="${f(-9.16)}" y="${f(e<0?-fy:fy-5.5)}" width="${f(18.32)}" height="${f(5.5)}" ${ln}/>`).join(''):'';
   const join=arr=>{const o=[];arr.forEach(q=>q.g().forEach((p,i)=>{if(i===0&&o.length)return;o.push(p);}));return o;},pl=pts=>pts.map((p,i)=>(i?'L':'M')+f(p[0])+' '+f(p[1])).join('');
   const solid='fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round" vector-effect="non-scaling-stroke"',
     dash='fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round" stroke-dasharray="2 2.5" vector-effect="non-scaling-stroke"';
   let svg='';if(pieces.every(q=>!q.open))svg=`<path d="${pl(join(pieces))}Z" ${solid}/>`;
   else{const s0=pieces.findIndex((q,i)=>q.open!==pieces[(i+11)%12].open),runs=[];for(let n=0;n<12;n++){const q=pieces[(s0+n)%12];if(!runs.length||runs[runs.length-1].open!==q.open)runs.push({open:q.open,ps:[]});runs[runs.length-1].ps.push(q);}
     runs.sort((a,b)=>a.open===b.open?0:a.open?-1:1).forEach(R=>{svg+=`<path d="${pl(join(R.ps))}" ${R.open?dash:solid}/>`;});}   /* dashed first, so the solid ends sit on top */
-  return `<svg class="bowlico" viewBox="-50 -50 100 100" width="144" height="144" aria-hidden="true"><rect x="-50" y="-50" width="100" height="100" fill="${shape==='curved'?'#111111':'#E10600'}"/><rect x="${f(-fx)}" y="${f(-fy)}" width="${f(2*fx)}" height="${f(2*fy)}" fill="none" stroke="#FFFFFF" stroke-width="1" vector-effect="non-scaling-stroke"/>${fl.map(v=>`<line x1="${f(-fx)}" x2="${f(fx)}" y1="${f(v)}" y2="${f(v)}" stroke="#FFFFFF" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join('')}${svg}</svg>`;}   /* the field: the sport's own playing area, 1 px */
+  return `<svg class="bowlico" viewBox="-50 -50 100 100" width="144" height="144" aria-hidden="true"><rect x="-50" y="-50" width="100" height="100" fill="${shape==='curved'?'#111111':'#E10600'}"/><rect x="${f(-fx)}" y="${f(-fy)}" width="${f(2*fx)}" height="${f(2*fy)}" fill="none" stroke="#FFFFFF" stroke-width="1" vector-effect="non-scaling-stroke"/>${fl.map(v=>`<line x1="${f(-fx)}" x2="${f(fx)}" y1="${f(v)}" y2="${f(v)}" stroke="#FFFFFF" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join('')}${pitch}${svg}</svg>`;}   /* the field: the sport's own playing area, 1 px */
 const tierIcon=n=>{const W=150,H=90,g=6,b=H-8;let d=`M${g} ${b}H${W-g}`;
   const st=[[20,b,70,b-26],[58,b-34,108,b-58],[96,b-66,144,b-84]].slice(0,n);   /* each tier: a leg wall, then stepped treads and risers rising away from the field */
   st.forEach(([x0,y0,x1,y1],i)=>{const k=7;let q=`M${x0} ${i?y0+10:y0}V${y0}`;for(let j=0;j<k;j++)q+=`H${(x0+(x1-x0)*(j+1)/k).toFixed(1)}V${(y0+(y1-y0)*(j+1)/k).toFixed(1)}`;d+=q;});
@@ -5360,9 +5362,7 @@ function renderSetup(){let d=$('setupDlg');if(!d){d=document.createElement('div'
       +`<label class="su-off"><input type="checkbox" id="suOff"${(()=>{try{return localStorage.getItem('sl-setup-off')==='1'?' checked':'';}catch(e){return '';}})()}> Don't show this at start (reopen it with Setup in the header)</label>`;}
   else if(st==='info'){b=`<h2>New project</h2><div class="su-form">`
       +`<label for="suName">Project name</label><input id="suName" maxlength="80" placeholder="e.g., New Stadium Renovation" value="${esc(I.name)}">`
-      +`<div class="su-2"><div><label for="suCountry">Country</label><select id="suCountry" class="sel">${COUNTRIES.map(([c,n])=>`<option value="${c}"${I.country===c?' selected':''}>${n} (${c})</option>`).join('')}</select></div>`
-      +`<div><label for="suRegion">State / region</label><input id="suRegion" maxlength="40" placeholder="e.g., TX" value="${esc(I.region)}"></div></div>`
-      +`<label for="suCity">City</label><input id="suCity" maxlength="60" placeholder="e.g., Dallas" value="${esc(I.city)}">`
+      /* country, state / region and city left out of the setup (decision 265); they stay in Project and Saved Options */
       +`<label for="suNum">Project number <em>auto-generated, editable, max 14 characters</em></label><div class="su-num"><input id="suNum" maxlength="14" value="${esc(I.number)}"><button data-su="regen" aria-label="New project number" title="New number from the current date and time">↻</button></div>`
       +`<p class="su-hint">Format CC-YYMMDD-hhmm (country code, year, month, day, hour, minute). The file is named after the sport and this number, e.g. ${esc(projFileBase(SU.sport,I.number))}.json; you choose where to save it at the end.</p></div>`;}
   else if(st==='sport'){b=`<h2>Sport and seating capacity</h2><div class="su-form"><label for="suSport">Sport</label><select id="suSport" class="sel">`
@@ -5384,7 +5384,7 @@ function renderSetup(){let d=$('setupDlg');if(!d){d=document.createElement('div'
   const cap=$('suCap'),capR=$('suCapR');if(cap){const sync=v=>{SU.cap=Math.max(lo,Math.min(hi,Math.round((+String(v).replace(/[^0-9]/g,'')||lo)/1000)*1000));cap.value=fmt(SU.cap);capR.value=SU.cap;};capR.oninput=()=>sync(capR.value);cap.onchange=()=>sync(cap.value);}
   const sp=$('suSport');if(sp)sp.onchange=()=>{SU.sport=sp.value;const [l2,h2]=capLim(SU.sport);SU.cap=Math.max(l2,Math.min(h2,SU.cap));renderSetup();};
   const off=$('suOff');if(off)off.onchange=()=>{try{localStorage.setItem('sl-setup-off',off.checked?'1':'0');}catch(e){}};}
-function readInfo(){const I=SU.info;if(!$('suName'))return;I.name=$('suName').value.trim();I.country=$('suCountry').value;I.region=$('suRegion').value.trim();I.city=$('suCity').value.trim();I.number=($('suNum').value.trim().toUpperCase()||newNumber(I.country)).slice(0,14);}
+function readInfo(){const I=SU.info;if(!$('suName'))return;I.name=$('suName').value.trim();I.number=($('suNum').value.trim().toUpperCase()||newNumber(I.country)).slice(0,14);}
 async function setupClick(e){const t=e.target.closest('[data-su],[data-tier],[data-shape],[data-cfg]');if(!t)return;const a=t.dataset.su;
   if(t.dataset.tier){SU.tiers=t.dataset.tier==='auto'?'auto':+t.dataset.tier;renderSetup();return;}
   if(t.dataset.shape){SU.shape=t.dataset.shape;renderSetup();return;}
@@ -5393,7 +5393,7 @@ async function setupClick(e){const t=e.target.closest('[data-su],[data-tier],[da
   if(a==='continue'){closeSetup();await oneSportHere();return;}
   if(a==='open'){closeSetup();$('prOpen').click();return;}
   if(a==='new'){if(!(await keepChanges('A new project starts with no saved options.')))return;SU.info=null;openSetup('info');return;}
-  if(a==='regen'){SU.info.number=newNumber($('suCountry').value);$('suNum').value=SU.info.number;return;}
+  if(a==='regen'){SU.info.number=newNumber(SU.info.country||'US');$('suNum').value=SU.info.number;return;}
   if(a==='back'){SU.step={info:'start',sport:'info',tiers:'sport',shape:'tiers',config:'shape'}[SU.step]||'start';renderSetup();return;}
   if(a==='next'){if(SU.step==='info'&&!SU.info.name){$('suName').focus();toast('Enter a project name.');return;}SU.step={info:'sport',sport:'tiers',tiers:'shape',shape:'config'}[SU.step];renderSetup();return;}
   if(a==='skip'||a==='finish'){await setupFinish();}}
