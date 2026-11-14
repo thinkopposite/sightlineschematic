@@ -464,6 +464,7 @@ html,body{overflow-anchor:none}   /* the page keeps its own view on redraws (dec
 @media (max-width:1460px){.projgrid{grid-template-columns:168px 361px}.projgrid .projname,.projgrid .projinfo>.pi-sport{grid-column:2}
   .projgrid .projinfo>:nth-child(odd){grid-column:1!important}.projgrid .projinfo>:nth-child(even){grid-column:2!important}}
 #prStatus.g24,#ver.g24{line-height:24px}
+.cornrow{display:grid;grid-template-columns:72px auto;align-items:center;margin:0 0 8px}.cornrow span{font-size:14px}.cornrow .seg button{min-width:48px}
 main .planhead>div:last-child .seg{justify-content:flex-end}
 @media (max-width:1399px){main #junction table.jinfo td{line-height:24px!important}}   /* wrapped values: every line one cell */
 main .planhead .bub{align-self:start!important;height:24px;line-height:24px}main .planhead h3{align-self:start}
@@ -1477,8 +1478,9 @@ function cornerSet(R,zi,i,dBk,gp){const ch=R[zi].ch,g=ch[i],pw=ch[i-1],nw=ch[i+1
   return {L:{i:i-1,from:1,e,miter:true,corner:true,ray:true},R:{i:i+1,from:0,e,miter:true,corner:true,ray:true},C:Object.assign({i,f:0.5,corner:true},fits?{cl:true}:{})};}
 // interior corner aisles (decisions 146, 148): Tier 1, and Tier 2 on a chamfered corner, one aisle on the corner's middle (two equal sections); Tier 2 on a round corner and Tier 3 two aisles (three
 // equal sections), equal along the corner between its outer aisles (or its ends, a round corner) at the reference depth
-function cornerMids(posOf,zi,i,ti,cs,sq){const pA=posOf(zi,{i,f:0}),pB=posOf(zi,{i,f:1}),pC=(pA+pB)/2,span=pB-pA;if(Math.abs(span)<1e-9)return [{i,f:0.5,corner:true}];
-  const lo=cs?posOf(zi,cs.L)-pC:-span/2,hi=cs?posOf(zi,cs.R)-pC:span/2,n=ti===0||(ti===1&&cs)?2:3,out=[];   /* Tier 2 chamfered corners: one aisle (decision 148) */
+const CORN_DEF=[1,2,2];const cornCount=(Q,ti)=>{if(!ti)return 1;   /* Tier 1: one aisle on the centreline, over the player tunnel */const v=((Q||P).cornAis||[])[ti];return [1,2,3].includes(v)?v:CORN_DEF[ti]??2;};   /* round corners: aisles per corner, per tier (decision 256) */
+function cornerMids(posOf,zi,i,ti,cs,sq,Q){const pA=posOf(zi,{i,f:0}),pB=posOf(zi,{i,f:1}),pC=(pA+pB)/2,span=pB-pA;if(Math.abs(span)<1e-9)return [{i,f:0.5,corner:true}];
+  const lo=cs?posOf(zi,cs.L)-pC:-span/2,hi=cs?posOf(zi,cs.R)-pC:span/2,n=!cs&&!sq?cornCount(Q,ti)+1:ti===0||(ti===1&&cs)?2:3,out=[];   /* Tier 2 chamfered corners: one aisle (decision 148) */
   for(let k=1;k<n;k++){const t=lo+(hi-lo)*k/n,f=Math.max(0.02,Math.min(0.98,0.5+t/span));out.push(Object.assign(sq&&Math.abs(t)>1e-6?{i,t:Math.round(t*1e6)/1e6,corner:true}:{i,f:Math.round(f*1e6)/1e6,corner:true},n>2?{mid:k}:{}));}return out;}   /* sq: a straight chamfer, aisles at a fixed offset from its middle, so square to the rows at every depth (decision 188) */
 // fill between fixed aisles and stand ends at offset d so no section exceeds cap (a stand end takes a half section)
 function fillAisles(ch,fixed,d,cap,dF,cw){const L=chainLen(ch,d),bd=[{s:0,end:true},...fixed.map(a=>({s:chainS(ch,a,d),a})).sort((x,y)=>x.s-y.s),{s:L,end:true}],out=fixed.map(a=>({s:chainS(ch,a,d),a}));
@@ -1572,7 +1574,7 @@ function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti,Q){const OV=(Q&&Q.secN)
     // the corner: a chamfer takes an aisle along each outer edge of its wedge and a section line (or, on long rows, an aisle) on its centreline;
     // a round corner one aisle on its centreline
     if(cs){const pc=posOf(c.zi,c.a),dl=posOf(c.zi,cs.L)-pc,dr=posOf(c.zi,cs.R)-pc;extra.push({s:C0+dl,zi:c.zi,a:cs.L},...cornerMids(posOf,c.zi,c.a.i,ti,cs,true).map(m=>({s:C0+posOf(c.zi,m)-pc,zi:c.zi,a:m})),{s:C0+dr,zi:c.zi,a:cs.R});hl=Math.max(-dl,dr);}
-    else{const pc=posOf(c.zi,c.a);cornerMids(posOf,c.zi,c.a.i,ti,null,!!(sg&&segDiag(sg.g))).forEach(m=>extra.push({s:C0+posOf(c.zi,m)-pc,zi:c.zi,a:m}));if(bends)extra.push({s:C0-hl,zi:c.zi,a:{i:c.a.i,f:0,miter:true,corner:true}},{s:C0+hl,zi:c.zi,a:{i:c.a.i,f:1,miter:true,corner:true}});}
+    else{const pc=posOf(c.zi,c.a);cornerMids(posOf,c.zi,c.a.i,ti,null,!!(sg&&segDiag(sg.g)),Q).forEach(m=>extra.push({s:C0+posOf(c.zi,m)-pc,zi:c.zi,a:m}));if(bends)extra.push({s:C0-hl,zi:c.zi,a:{i:c.a.i,f:0,miter:true,corner:true}},{s:C0+hl,zi:c.zi,a:{i:c.a.i,f:1,miter:true,corner:true}});}
     // each side of the corner aisle(s): an aisle at the end of the straight run if the corner section is still too long
     [[S.rt,Ea,1,0,C0-hl],[N.lt,Eb,-1,wrap,C0+hl]].forEach(([list,E,dir,off,C])=>{const last=list[list.length-1]+off;if(seats(Math.abs(C-last),sw)<=A.smax)return;
       if(Math.abs(E-last)<1e-3){if(seats(Math.abs(C-E),sw)>A.smax)flags.push(1);return;}
@@ -1642,7 +1644,7 @@ function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;co
     if(false&&!imperial()&&below&&R.every((z,zi)=>sameChain(below[zi].ch,z.ch))){   /* metric upper tiers now build their own corners (decision 146) */fixed=below.list.map(x=>({s:posOf(x.zi,x.a),zi:x.zi,a:Object.assign({},x.a)}));
       fixed.forEach(x=>{if(x.a.cl){const cs=cornerSet(R,x.zi,x.a.i,dBk,gp0);if(!cs||!cs.C.cl)delete x.a.cl;}});}   // a section line carried up stays one only where this tier's rows fit
     else RG.seg.forEach(q=>{if(segDiag(q.g)||q.g.t==='ARC'&&!q.g.side){const a={i:q.i,f:0.5,corner:true},cs=segDiag(q.g)?cornerSet(R,q.zi,q.i,dBk,gp0):null;
-      [...(cs?[cs.L]:[]),...cornerMids(posOf,q.zi,q.i,ti,cs,segDiag(q.g)),...(cs?[cs.R]:[])].forEach(b=>fixed.push({s:posOf(q.zi,b),zi:q.zi,a:b}));}});   // corner aisles by tier (decision 146)
+      [...(cs?[cs.L]:[]),...cornerMids(posOf,q.zi,q.i,ti,cs,segDiag(q.g),Q),...(cs?[cs.R]:[])].forEach(b=>fixed.push({s:posOf(q.zi,b),zi:q.zi,a:b}));}});   // corner aisles by tier (decision 146)
     let sect=null;{const b0=ti>0&&out[0].__ring,al=b0&&R.every((z,zi)=>sameChain(b0[zi].ch,z.ch))?b0.list.map(x=>posOf(x.zi,x.a)):[];sect=sectAisles(R,RG,runs,posOf,toA,secParams(A),al,ti>0&&out[0].__secN||{},ti,Q);if(sect){fixed=sect;if(ti===0&&sect.mid){const pm={};sect.mid.forEach(g=>pm[g.zi]=g.n.slice());Object.defineProperty(sect.secN,'__mid',{enumerable:false,value:pm,configurable:true});}Object.defineProperty(T,'__secN',{enumerable:false,value:sect.secN,configurable:true});}}
     fixed.sort((x,y)=>x.s-y.s);
     const added=[],place=(A0,B0)=>{const S=B0-A0;if(S<=Math.min(capAt(A0+1e-6),capAt(B0-1e-6))+1e-9)return;
@@ -2085,7 +2087,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.12.09';
+const VERSION='2026.11.13.01';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2344,7 +2346,9 @@ function renderControls(){
   h+=`<div class="lab">Precast thickness: <b style="color:var(--ink)">${L(slabT())}</b></div><p class="hint" style="margin:2px 0 0">Standard for every precast bowl unit (treads and risers), vomitory wall and header wall.</p>`;
   if(zoned(P)){
     h+='<div class="lab">Side profiles: <b style="color:var(--ink)">All four sides match</b></div>';
-    h+='<div class="lab">Corners</div><div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>';
+    h+='<div class="lab">Corners</div><div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>'
+      +(P.zt[0].corners==='round'?'<div class="lab">Corner aisles, each corner (equally spaced)</div>'+Array.from({length:P.tierCount-1},(_,i)=>i+1).map(ti=>`<div class="cornrow"><span>Tier ${ti+1}</span><div class="seg">${[1,2,3].map(v=>`<button data-cornais="${ti}:${v}" class="${cornCount(P,ti)===v?'on':''}" aria-pressed="${cornCount(P,ti)===v}">${v}</button>`).join('')}</div></div>`).join('')
+        +`<p class="hint">Tier 1: one aisle on the corner centreline, over the player tunnel.${P.tierCount>1?` Upper tiers: 1, 2 or 3 aisles make 2, 3 or 4 equal sections; default 2.${P.tierCount>2?' With the same count, the Tier 3 corner aisles line up with Tier 2.':''}`:''}</p>`:'');
     {const im=imperial(),st=im?0.3048:0.25,mx=im?30*0.3048:9;   /* curved stands (decision 82) */
       h+='<div class="lab">Curved stands</div>'+(im?slider('bulgeFt.S',`Sidelines: set back at ${P.sport==='nfl'||P.sport==='ncaafb'?'the 50-yard line':'halfway'} (1 foot; 0' to 25')`,0,25,1,"'")+slider('bulgeFt.E',`End stands: set back at the centre line (1 foot; 0' to 20')`,0,20,1,"'")
         :slider('bulge.S','Sidelines: set back at halfway',0,7.5,st,'m')+slider('bulge.E','End stands: set back at the centre line',0,6,st,'m'))
@@ -2444,6 +2448,9 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.eg){EDIT.g=+b.dataset.eg;renderControls();return;}
   else if(b.dataset.link){relink(EDIT.tier,b.dataset.link);}
   else if(b.dataset.corner){P.zt.forEach(t=>t.corners=b.dataset.corner);}
+  else if(b.dataset.cornais){const [ti,v]=b.dataset.cornais.split(':').map(Number);if(cornCount(P,ti)===v)return;const A=P.cornAis||(P.cornAis=CORN_DEF.slice());A[ti]=v;
+    const N=P.secN||{};let n=0;Object.keys(N).forEach(k=>{if(k.startsWith(ti+'.C.')){delete N[k];n++;}});if(P.aisEd)delete P.aisEd[ti];   /* the corner sections change: hand-set corner sizes on that tier no longer fit */
+    toast(`Tier ${ti+1}: ${v} aisle${v>1?'s':''} in each corner, ${v+1} equal sections${n?'; hand-set corner sizes cleared':''}.`);}
   else if(b.dataset.meet){const [rt,m]=b.dataset.meet.split(':');meetAllC(m,rt);return;}
   else if(b.dataset.fitmove!=null){P.fitMove=b.dataset.fitmove==='1';persist();renderControls();return;}
   else if(b.id==='luckyCalc'){toast('Trying 1, 2 and 3 tiers and every row split…');b.disabled=true;setTimeout(()=>{try{luckyCalc();}finally{b.disabled=false;}},40);return;}
