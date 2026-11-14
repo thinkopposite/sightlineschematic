@@ -2105,7 +2105,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.14.04';
+const VERSION='2026.11.14.05';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -5332,15 +5332,15 @@ function bowlIcon(shape,cfg,sport){const Sp=SPORTS[sport||SU.sport||P.sport]||SP
   const pieces=[['N',0,()=>sideF('N')],['N',1,()=>cn('NE',false)],['E',1,()=>cn('NE',true)],['E',0,()=>sideF('E')],['E',1,()=>cn('SE',false)],['S',1,()=>cn('SE',true)],
     ['S',0,()=>sideF('S')],['S',1,()=>cn('SW',false)],['W',1,()=>cn('SW',true)],['W',0,()=>sideF('W')],['W',1,()=>cn('NW',false)],['N',1,()=>cn('NW',true)]]
     .map(([k,c,g])=>({k,corner:!!c,g,open:off==='corners'?!!c:Array.isArray(off)&&off.includes(k)}));
-  /* scale: the bowl's height takes 56% of the square, proportions kept (decision 260) */
-  const H=2*(fy+d+bE),Wd=2*(fx+d+bS),sc=56/Math.max(H,Wd),f=v=>+(v*sc).toFixed(2);
+  /* scale: the bowl's height takes 70% of the square (56% + 25%), proportions kept (decisions 260, 262) */
+  const H=2*(fy+d+bE),Wd=2*(fx+d+bS),sc=70/Math.max(H,Wd),f=v=>+(v*sc).toFixed(2);
   const join=arr=>{const o=[];arr.forEach(q=>q.g().forEach((p,i)=>{if(i===0&&o.length)return;o.push(p);}));return o;},pl=pts=>pts.map((p,i)=>(i?'L':'M')+f(p[0])+' '+f(p[1])).join('');
   const solid='fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round" vector-effect="non-scaling-stroke"',
     dash='fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round" stroke-dasharray="2 2.5" vector-effect="non-scaling-stroke"';
   let svg='';if(pieces.every(q=>!q.open))svg=`<path d="${pl(join(pieces))}Z" ${solid}/>`;
   else{const s0=pieces.findIndex((q,i)=>q.open!==pieces[(i+11)%12].open),runs=[];for(let n=0;n<12;n++){const q=pieces[(s0+n)%12];if(!runs.length||runs[runs.length-1].open!==q.open)runs.push({open:q.open,ps:[]});runs[runs.length-1].ps.push(q);}
     runs.sort((a,b)=>a.open===b.open?0:a.open?-1:1).forEach(R=>{svg+=`<path d="${pl(join(R.ps))}" ${R.open?dash:solid}/>`;});}   /* dashed first, so the solid ends sit on top */
-  return `<svg class="bowlico" viewBox="-50 -50 100 100" width="144" height="144" aria-hidden="true"><rect x="-50" y="-50" width="100" height="100" fill="${shape==='curved'?'#111111':'#E10600'}"/>${svg}</svg>`;}
+  return `<svg class="bowlico" viewBox="-50 -50 100 100" width="144" height="144" aria-hidden="true"><rect x="-50" y="-50" width="100" height="100" fill="${shape==='curved'?'#111111':'#E10600'}"/><rect x="${f(-fx)}" y="${f(-fy)}" width="${f(2*fx)}" height="${f(2*fy)}" fill="none" stroke="#FFFFFF" stroke-width="1" vector-effect="non-scaling-stroke"/>${svg}</svg>`;}   /* the field: the sport's own playing area, 1 px */
 const tierIcon=n=>{const W=150,H=90,g=6,b=H-8;let d=`M${g} ${b}H${W-g}`;
   const st=[[20,b,70,b-26],[58,b-34,108,b-58],[96,b-66,144,b-84]].slice(0,n);   /* each tier: a leg wall, then stepped treads and risers rising away from the field */
   st.forEach(([x0,y0,x1,y1],i)=>{const k=7;let q=`M${x0} ${i?y0+10:y0}V${y0}`;for(let j=0;j<k;j++)q+=`H${(x0+(x1-x0)*(j+1)/k).toFixed(1)}V${(y0+(y1-y0)*(j+1)/k).toFixed(1)}`;d+=q;});
