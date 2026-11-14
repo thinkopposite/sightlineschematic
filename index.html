@@ -464,6 +464,7 @@ html,body{overflow-anchor:none}   /* the page keeps its own view on redraws (dec
 @media (max-width:1460px){.projgrid{grid-template-columns:168px 361px}.projgrid .projname,.projgrid .projinfo>.pi-sport{grid-column:2}
   .projgrid .projinfo>:nth-child(odd){grid-column:1!important}.projgrid .projinfo>:nth-child(even){grid-column:2!important}}
 #prStatus.g24,#ver.g24{line-height:24px}
+.su-3{grid-template-columns:repeat(3,1fr)!important}.su-cfg{grid-template-columns:repeat(3,1fr)!important}.su-tier svg[viewBox='0 0 120 144']{max-width:120px}
 .cornrow{display:grid;grid-template-columns:72px auto;align-items:center;margin:0 0 8px}.cornrow span{font-size:14px}.cornrow .seg button{min-width:48px}
 main .planhead>div:last-child .seg{justify-content:flex-end}
 @media (max-width:1399px){main #junction table.jinfo td{line-height:24px!important}}   /* wrapped values: every line one cell */
@@ -1861,9 +1862,26 @@ function aisleSvg(){const AL=M.AL;if(!AL||PLAN!=='bowl')return '';const A=AIS(),
 function egressHTML(){const r=egressRows();if(!r)return '<tbody><tr><td>Percentage allowance: '+P.loss+'% off every row. Choose the computed layout under Aisles to check the sections and egress.</td></tr></tbody>';
   return '<tbody>'+r.map(([k,v,ok])=>`<tr><td>${k}</td><td class="${ok===false?'fail':ok?'pass':''}">${v}${ok===false?' — short':ok?' — meets':''}</td></tr>`).join('')+'</tbody>';}
 const lossTxt=()=>M.AL?'computed aisles':P.loss+'%';
+/* bowl configuration presets (decision 257): sections switched off by where they sit, worked out again on every change so the open stands
+   follow the layout; a section on two stands stays on unless both are open (corners split on their centreline); clicking a preset section turns the preset into Custom */
+const CFGS={closed:[],openN:['N'],openS:['S'],openNS:['N','S'],onlyN:['S','E','W'],onlyS:['N','E','W'],onlyW:['N','S','E'],onlyE:['N','S','W'],corners:'corners'};
+const endWord=k=>['nfl','ncaafb'].includes(k)?'end zone':'end';   /* soccer, rugby and hockey: "end" */
+const CFG_LIST=k=>[['closed','Closed bowl'],['openN',`Open ${endWord(k)}, North`],['openS',`Open ${endWord(k)}, South`],['openNS','Both ends open'],['corners','Open corners'],
+  ['onlyN',`North ${endWord(k)} only`],['onlyS',`South ${endWord(k)} only`],['onlyW','West stand only'],['onlyE','East stand only']];
+function cfgOffSet(P,AL,ti){const c=CFGS[P.cfg];if(!c||!c.length&&c!=='corners')return [];const T=AL[ti];if(!T)return [];const comp=compassOf(P),out=[];
+  let xc=Infinity,yc=Infinity;if(c==='corners'){GEO.forEach(k=>{const z=T[k];if(!z)return;const gi=midIdx(z.ch);if(gi<0)return;let lo=gi,hi=gi;while(lo>0&&segStraight(z.ch[lo-1])&&!segWedge(z.ch[lo-1]))lo--;while(hi<z.ch.length-1&&segStraight(z.ch[hi+1])&&!segWedge(z.ch[hi+1]))hi++;
+    const d=z.tr[0].x/1000,a=segPt(z.ch[lo],0,d),b=segPt(z.ch[hi],1,d);if(Math.abs(a[0]-b[0])>Math.abs(a[1]-b[1]))xc=Math.min(xc,Math.max(Math.abs(a[0]),Math.abs(b[0])));else yc=Math.min(yc,Math.max(Math.abs(a[1]),Math.abs(b[1])));});}
+  sectionList(ti,AL).forEach(q=>{const ps=q.mid.pieces.filter(x=>x.b-x.a>1e-6);if(!ps.length)return;
+    if(c==='corners'){if(Math.abs(q.mpt[0])>xc+0.3&&Math.abs(q.mpt[1])>yc+0.3)out.push(q.no);return;}
+    if(ps.every(x=>c.includes(comp[x.Lz.k])))out.push(q.no);});
+  return out;}
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='cfgSel'){P.cfg=e.target.value;update();renderControls();toast(`Configuration: ${e.target.selectedOptions[0].textContent}. Run Quick calculation to size the remaining stands to the target.`);}});
+function applyCfg(P,AL){const S=P.secs||(P.secs={});Object.keys(S).forEach(k=>{if(S[k].cfg){delete S[k].off;delete S[k].cfg;if(!Object.keys(S[k]).length)delete S[k];}});
+  if(!P.cfg||P.cfg==='closed'||P.cfg==='custom'||!zoned(P))return;
+  AL.forEach((T,ti)=>cfgOffSet(P,AL,ti).forEach(no=>{const e=S[no]||(S[no]={});if(e.off)return;e.off=true;e.cfg=true;delete e.wc;}));}
 function metrics(P,ZR,CH){
   const rows=Object.values(ZR).flat();let cap=0;const tierSeats=[],zoneSeats=[];
-  const AL=aisleLayout(P,ZR,CH);if(AL)applyVoms(P,AL);rows.forEach(r=>{r.gross=Math.floor(seatLen(P,CH,r)*1000/r.seatW+1e-9);const Lz=AL&&AL[r.tier]&&AL[r.tier][r.zone];if(Lz){const S=rowSections(Lz,Lz.tr.indexOf(r));r.net=S.seats;r._raw=S.raws;}else{r.net=null;r._raw=null;}});
+  const AL=aisleLayout(P,ZR,CH);if(AL){applyVoms(P,AL);applyCfg(P,AL);}rows.forEach(r=>{r.gross=Math.floor(seatLen(P,CH,r)*1000/r.seatW+1e-9);const Lz=AL&&AL[r.tier]&&AL[r.tier][r.zone];if(Lz){const S=rowSections(Lz,Lz.tr.indexOf(r));r.net=S.seats;r._raw=S.raws;}else{r.net=null;r._raw=null;}});
   if(AL)AL.forEach(T=>{const zs=GEO.map(k=>T[k]);if(!zs.every(z=>z&&z.ring))return;   // a row runs on round the corner: its two end pieces are one section
     zs.forEach((Lz,i)=>{const Nz=zs[(i+1)%4];Lz.tr.forEach((ra,j)=>{const rb=Nz.tr[j];if(!rb||!ra._raw||!rb._raw)return;const a=Math.max(0,ra._raw[ra._raw.length-1]),b=Math.max(0,rb._raw[0]);
       const dd=Math.floor((a+b)*1000/Math.min(ra.seatW,rb.seatW)+1e-9)-Math.floor(a*1000/ra.seatW+1e-9)-Math.floor(b*1000/rb.seatW+1e-9);if(dd>0)rb.net+=dd;});});});
@@ -2087,7 +2105,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.13.01';
+const VERSION='2026.11.13.02';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2346,6 +2364,7 @@ function renderControls(){
   h+=`<div class="lab">Precast thickness: <b style="color:var(--ink)">${L(slabT())}</b></div><p class="hint" style="margin:2px 0 0">Standard for every precast bowl unit (treads and risers), vomitory wall and header wall.</p>`;
   if(zoned(P)){
     h+='<div class="lab">Side profiles: <b style="color:var(--ink)">All four sides match</b></div>';
+    h+='<div class="lab">Configuration</div><select id="cfgSel" class="sel">'+CFG_LIST(P.sport).concat(P.cfg==='custom'?[['custom','Custom (sections switched by hand)']]:[]).map(([v,n])=>`<option value="${v}"${(P.cfg||'closed')===v?' selected':''}>${n}</option>`).join('')+'</select>';
     h+='<div class="lab">Corners</div><div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>'
       +(P.zt[0].corners==='round'?'<div class="lab">Corner aisles, each corner (equally spaced)</div>'+Array.from({length:P.tierCount-1},(_,i)=>i+1).map(ti=>`<div class="cornrow"><span>Tier ${ti+1}</span><div class="seg">${[1,2,3].map(v=>`<button data-cornais="${ti}:${v}" class="${cornCount(P,ti)===v?'on':''}" aria-pressed="${cornCount(P,ti)===v}">${v}</button>`).join('')}</div></div>`).join('')
         +`<p class="hint">Tier 1: one aisle on the corner centreline, over the player tunnel.${P.tierCount>1?` Upper tiers: 1, 2 or 3 aisles make 2, 3 or 4 equal sections; default 2.${P.tierCount>2?' With the same count, the Tier 3 corner aisles line up with Tier 2.':''}`:''}</p>`:'');
@@ -3542,7 +3561,7 @@ function wcHitSvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},R
       o+=`<path class="wchit" data-wcsec="${q.no}" d="${g.poly}"><title>Section ${q.no}: click to ${e.wc?'remove the':'add a'} wheelchair platform</title></path>`;});});
   return o?`<g>${o}</g>`:'';}
 // switch a section off (open space) or back on, from the bowl plan or the 3D view (decision 86); the Sections panel buttons do the same
-function secOnOff(no){const S=SECS(),x=S[no]||(S[no]={});if(x.off){delete x.off;}else{x.off=true;}secTidy(no);update();toast(`Section ${no} ${S[no]&&S[no].off?'switched off':'switched back on'}.`);}
+function secOnOff(no){const S=SECS();if(P.cfg&&P.cfg!=='closed'&&P.cfg!=='custom'){Object.values(S).forEach(e=>delete e.cfg);P.cfg='custom';}const x=S[no]||(S[no]={});if(x.off){delete x.off;}else{x.off=true;}secTidy(no);update();toast(`Section ${no} ${S[no]&&S[no].off?'switched off':'switched back on'}.`);}
 function secOverlaySvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),gone=goneAisles(M.AL),keep=id=>!gone.has(+id);let off='',wc='';
   M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));
     sectionList(ti).forEach(q=>{const e=S[q.no];if(!e)return;if(e.off)off+=secGeom(ti,q.key,0,nr-1,RS,keep).poly;else if(e.wc&&nr>=4)wc+=secGeom(ti,q.key,nr-3,nr-2,RS,true,WC_SETBACK/1000).poly;});});
@@ -5282,18 +5301,29 @@ function splitDialog(sports,opts){return new Promise(res=>{const old=$('prDlg');
     +sports.map(k=>`<button data-k="${k}">${esc(SPORTS[k].name)} (${esc(SPORTS[k].org)}): ${opts.filter(o=>o.P.sport===k).length} option${opts.filter(o=>o.P.sport===k).length===1?'':'s'}</button>`).join('')+`</div><div class="pd-btns"><button data-k="">Cancel</button></div></div>`;
   document.body.appendChild(d);d.addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(b){d.remove();res(b.dataset.k||null);}});d.querySelector('[data-k]').focus();});}
 // ---------- the guided setup ----------
-const SU={step:'start',info:null,sport:'ncaafb',cap:30000,tiers:'auto'};
+const SU={step:'start',info:null,sport:'ncaafb',cap:30000,tiers:'auto',shape:'curved',cfg:'closed'};
+/* plan-view line icons (decision 257): the bowl as a thick line round the field, in eight pieces (four stands, eight corner halves) */
+function bowlIcon(shape,cfg){const hx=40,hy=56,r=shape==='chamfer'?16:20,bS=shape==='curved'?7:0,bE=shape==='curved'?4:0,cx=60,cy=72,X=v=>(cx+v).toFixed(1),Y=v=>(cy+v).toFixed(1);
+  const off=CFGS[cfg]||[],P2=(x,y)=>`${X(x)} ${Y(y)}`,pieces=[];
+  const stand=(k,a,b,c)=>pieces.push({k,corner:false,d:`M${P2(...a)}Q${P2(...c)} ${P2(...b)}`});
+  stand('N',[-hx+r,-hy],[hx-r,-hy],[0,-hy-2*bE]);stand('S',[-hx+r,hy],[hx-r,hy],[0,hy+2*bE]);stand('W',[-hx,-hy+r],[-hx,hy-r],[-hx-2*bS,0]);stand('E',[hx,-hy+r],[hx,hy-r],[hx+2*bS,0]);
+  [['N','E',1,-1],['N','W',-1,-1],['S','E',1,1],['S','W',-1,1]].forEach(([ns,ew,sx,sy])=>{const ox=sx*(hx-r),oy=sy*(hy-r),pa=[sx*(hx-r),sy*hy],pb=[sx*hx,sy*(hy-r)];
+    if(shape==='chamfer'){const m=[(pa[0]+pb[0])/2,(pa[1]+pb[1])/2];pieces.push({k:ns,corner:true,d:`M${P2(...pa)}L${P2(...m)}`},{k:ew,corner:true,d:`M${P2(...m)}L${P2(...pb)}`});}
+    else{const m=[ox+sx*r*Math.SQRT1_2,oy+sy*r*Math.SQRT1_2],sw=sx*sy>0?1:0;pieces.push({k:ns,corner:true,d:`M${P2(...pa)}A${r} ${r} 0 0 ${sw} ${P2(...m)}`},{k:ew,corner:true,d:`M${P2(...m)}A${r} ${r} 0 0 ${sw} ${P2(...pb)}`});}});
+  const gone=q=>off==='corners'?q.corner:Array.isArray(off)&&off.includes(q.k);
+  return `<svg viewBox="0 0 120 144" width="120" height="144" aria-hidden="true"><rect x="${X(-22)}" y="${Y(-38)}" width="44" height="76" fill="none" stroke="currentColor" stroke-width="1.5"/>`
+    +pieces.map(q=>`<path d="${q.d}" fill="none" stroke="currentColor" stroke-width="${gone(q)?1:9}" stroke-dasharray="${gone(q)?'3 3':'none'}" stroke-linecap="butt" opacity="${gone(q)?.45:1}"/>`).join('')+'</svg>';}
 const tierIcon=n=>{const W=150,H=90,g=6,b=H-8;let d=`M${g} ${b}H${W-g}`;
   const st=[[20,b,70,b-26],[58,b-34,108,b-58],[96,b-66,144,b-84]].slice(0,n);   /* each tier: a leg wall, then stepped treads and risers rising away from the field */
   st.forEach(([x0,y0,x1,y1],i)=>{const k=7;let q=`M${x0} ${i?y0+10:y0}V${y0}`;for(let j=0;j<k;j++)q+=`H${(x0+(x1-x0)*(j+1)/k).toFixed(1)}V${(y0+(y1-y0)*(j+1)/k).toFixed(1)}`;d+=q;});
   return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="miter"/></svg>`;};
 function openSetup(step){SU.step=step||'start';if(!SU.info)SU.info={name:'',country:PROJ.country||'US',region:'',city:'',number:newNumber(PROJ.country||'US')};
-  if(step==='info')SU.info.number=newNumber(SU.info.country);SU.sport=projSport()&&FIELD_SPORTS.includes(projSport())?projSport():'ncaafb';SU.cap=P.capTarget||30000;renderSetup();}
+  if(step==='info'){SU.info.number=newNumber(SU.info.country);SU.shape='curved';SU.cfg='closed';SU.tiers='auto';}SU.sport=projSport()&&FIELD_SPORTS.includes(projSport())?projSport():'ncaafb';SU.cap=P.capTarget||30000;renderSetup();}
 function closeSetup(){const d=$('setupDlg');if(d)d.remove();}
 function renderSetup(){let d=$('setupDlg');if(!d){d=document.createElement('div');d.id='setupDlg';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label','Guided setup');document.body.appendChild(d);
     d.addEventListener('click',setupClick);d.addEventListener('keydown',e=>{if(e.key==='Escape'&&SU.step==='start')closeSetup();});}
-  const st=SU.step,idx={info:1,sport:2,tiers:3}[st],I=SU.info,Sp=SPORTS[SU.sport],[lo,hi,typ]=capLim(SU.sport);let b='';
-  const head=`<div class="su-head"><span>Guided setup${idx?` · Step ${idx} of 3`:''}</span>${idx?`<span class="su-dots">${[1,2,3].map(i=>`<i class="${i<=idx?'on':''}"></i>`).join('')}</span>`:''}</div>`;
+  const st=SU.step,idx={info:1,sport:2,tiers:3,shape:4,config:5}[st],I=SU.info,Sp=SPORTS[SU.sport],[lo,hi,typ]=capLim(SU.sport);let b='';
+  const head=`<div class="su-head"><span>Guided setup${idx?` · Step ${idx} of 5`:''}</span>${idx?`<span class="su-dots">${[1,2,3,4,5].map(i=>`<i class="${i<=idx?'on':''}"></i>`).join('')}</span>`:''}</div>`;
   if(st==='start'){const had=HAD_STATE;b=`<h2>Where would you like to start?</h2><div class="su-cards">`
       +(had?`<button class="su-card" data-su="continue"><b>Continue where I left off</b><span>${esc(PROJ.name)} · ${esc(SPORTS[projSport()].name)} · ${OPTS.length} option${OPTS.length===1?'':'s'}</span></button>`:'')
       +`<button class="su-card" data-su="open"><b>Open project</b><span>A saved .json project file, on this computer or in Google Drive</span></button>`
@@ -5312,27 +5342,37 @@ function renderSetup(){let d=$('setupDlg');if(!d){d=document.createElement('div'
       +`<p class="su-hint">Typical: ${esc(typ)}.</p><p class="su-hint">${Sp.region==='world'?'Green Guide sports: metric units, Guide to Safety at Sports Grounds.':'IBC sports: imperial units, International Building Code.'} The code always follows the sport.</p></div>`;}
   else if(st==='tiers'){b=`<h2>Number of seating tiers</h2><div class="su-tiers">`
       +[['auto','Recommend for me','I\'m feeling lucky tries 1, 2 and 3 tiers and keeps the shortest viewing distance'],[1,'1 tier',''],[2,'2 tiers',''],[3,'3 tiers','']].map(([v,n,h])=>`<button class="su-tier${String(SU.tiers)===String(v)?' on':''}" data-tier="${v}" aria-pressed="${String(SU.tiers)===String(v)}">${v==='auto'?`<svg viewBox="0 0 150 84" width="150" height="84" aria-hidden="true"><text x="75" y="52" text-anchor="middle" font-size="34" font-weight="700" fill="currentColor">1·2·3</text></svg>`:tierIcon(v)}<b>${n}</b>${h?`<span>${h}</span>`:''}</button>`).join('')
-      +`</div><p class="su-hint">Then the rows are sized to ${fmt(SU.cap)} seats and the editor opens. Bowl shape and configuration stay as they are for now (later setup steps).</p>`;}
-  const nav=st==='start'?'':`<div class="su-nav"><button data-su="back">Back</button><span></span>${st!=='info'?'<button data-su="skip">Skip and use defaults</button>':''}<button class="primary" data-su="${st==='tiers'?'finish':'next'}">${st==='tiers'?'Create and size the bowl':'Next'}</button></div>`;
+      +`</div><p class="su-hint">Next: the bowl shape and configuration.</p>`;}
+  else if(st==='shape'){const w=SPORTS[SU.sport].region==='world';b=`<h2>Bowl shape</h2><div class="su-tiers su-3">`
+      +[['chamfer','Straight, chamfered corners'],['round','Straight, round corners'],['curved','Curved, round corners']].map(([v,n])=>`<button class="su-tier${SU.shape===v?' on':''}" data-shape="${v}" aria-pressed="${SU.shape===v}">${bowlIcon(v,'closed')}<b>${n}</b>${v==='curved'?'<span>Default</span>':''}</button>`).join('')
+      +`</div><p class="su-hint">Curved stands are set back ${w?'6 m at the halfway line and 3 m at the centre of each end':`20'-0" at the 50-yard line and 10'-0" at the centre of each end`}; change them later under Bowl, Curved stands. Round corners: one aisle in each Tier 1 corner, two in the upper tiers (Bowl, Corner aisles).</p>`;}
+  else if(st==='config'){b=`<h2>Bowl configuration</h2><div class="su-tiers su-cfg">`
+      +CFG_LIST(SU.sport).map(([v,n])=>`<button class="su-tier${SU.cfg===v?' on':''}" data-cfg="${v}" aria-pressed="${SU.cfg===v}">${bowlIcon(SU.shape,v)}<b>${n}</b>${v==='closed'?'<span>Default</span>':''}</button>`).join('')
+      +`</div><p class="su-hint">Open stands are sections switched off (whole sections, cut on a corner aisle); the rows are then sized so the stands that remain hold ${fmt(SU.cap)} seats. Change it later under Bowl, Configuration.</p>`;}
+  const nav=st==='start'?'':`<div class="su-nav"><button data-su="back">Back</button><span></span>${st!=='info'?'<button data-su="skip">Skip and use defaults</button>':''}<button class="primary" data-su="${st==='config'?'finish':'next'}">${st==='config'?'Create and size the bowl':'Next'}</button></div>`;
   d.innerHTML=`<div class="su-box">${head}<div class="su-body">${b}</div>${nav}</div>`;
   const f=d.querySelector('input:not([type=checkbox]),select,.su-card,.su-tier.on');if(f)f.focus();
   const cap=$('suCap'),capR=$('suCapR');if(cap){const sync=v=>{SU.cap=Math.max(lo,Math.min(hi,Math.round((+String(v).replace(/[^0-9]/g,'')||lo)/1000)*1000));cap.value=fmt(SU.cap);capR.value=SU.cap;};capR.oninput=()=>sync(capR.value);cap.onchange=()=>sync(cap.value);}
   const sp=$('suSport');if(sp)sp.onchange=()=>{SU.sport=sp.value;const [l2,h2]=capLim(SU.sport);SU.cap=Math.max(l2,Math.min(h2,SU.cap));renderSetup();};
   const off=$('suOff');if(off)off.onchange=()=>{try{localStorage.setItem('sl-setup-off',off.checked?'1':'0');}catch(e){}};}
 function readInfo(){const I=SU.info;if(!$('suName'))return;I.name=$('suName').value.trim();I.country=$('suCountry').value;I.region=$('suRegion').value.trim();I.city=$('suCity').value.trim();I.number=($('suNum').value.trim().toUpperCase()||newNumber(I.country)).slice(0,14);}
-async function setupClick(e){const t=e.target.closest('[data-su],[data-tier]');if(!t)return;const a=t.dataset.su;
+async function setupClick(e){const t=e.target.closest('[data-su],[data-tier],[data-shape],[data-cfg]');if(!t)return;const a=t.dataset.su;
   if(t.dataset.tier){SU.tiers=t.dataset.tier==='auto'?'auto':+t.dataset.tier;renderSetup();return;}
+  if(t.dataset.shape){SU.shape=t.dataset.shape;renderSetup();return;}
+  if(t.dataset.cfg){SU.cfg=t.dataset.cfg;renderSetup();return;}
   if(SU.step==='info')readInfo();
   if(a==='continue'){closeSetup();await oneSportHere();return;}
   if(a==='open'){closeSetup();$('prOpen').click();return;}
   if(a==='new'){if(!(await keepChanges('A new project starts with no saved options.')))return;SU.info=null;openSetup('info');return;}
   if(a==='regen'){SU.info.number=newNumber($('suCountry').value);$('suNum').value=SU.info.number;return;}
-  if(a==='back'){SU.step={info:'start',sport:'info',tiers:'sport'}[SU.step]||'start';renderSetup();return;}
-  if(a==='next'){if(SU.step==='info'&&!SU.info.name){$('suName').focus();toast('Enter a project name.');return;}SU.step={info:'sport',sport:'tiers'}[SU.step];renderSetup();return;}
+  if(a==='back'){SU.step={info:'start',sport:'info',tiers:'sport',shape:'tiers',config:'shape'}[SU.step]||'start';renderSetup();return;}
+  if(a==='next'){if(SU.step==='info'&&!SU.info.name){$('suName').focus();toast('Enter a project name.');return;}SU.step={info:'sport',sport:'tiers',tiers:'shape',shape:'config'}[SU.step];renderSetup();return;}
   if(a==='skip'||a==='finish'){await setupFinish();}}
 async function setupFinish(){const I=SU.info||{name:PROJ.name,country:PROJ.country,region:PROJ.region,city:PROJ.city,number:newNumber(PROJ.country)};closeSetup();
   Object.assign(PROJ,{name:(I.name||'Untitled project').slice(0,80),country:I.country||'US',region:I.region||'',city:I.city||'',number:I.number||newNumber(I.country),fileName:'',handle:null,saved:'',snap:null,sport:SU.sport});
   OPTS=[];CUR=null;if(P.sport!==SU.sport)applySport(SU.sport);P.capTarget=SU.cap;clampCap(P);if(SU.tiers!=='auto')P.tierCount=SU.tiers;
+  {const w=SPORTS[SU.sport].region==='world',cv=SU.shape==='curved';P.zt.forEach(t=>t.corners=SU.shape==='chamfer'?'chamfer':'round');P.bulge=Object.assign({},P.bulge,{S:cv?(w?6:20*0.3048):0,E:cv?(w?3:10*0.3048):0});
+    P.cfg=SU.cfg;P.secN={};P.aisEd={};P.secs={};P.cornAis=CORN_DEF.slice();}   /* steps 4 and 5 (decision 257) */
   renderControls();update();renderOpts();renderProjInfo();persist();
   if(FSA){try{await saveProject(true);}catch(e){}}   /* the Save window opens while the click still counts (Chrome, Edge) */
   const btn=$(SU.tiers==='auto'?'luckyCalc':'quickCalc');if(!btn)return;btn.click();
