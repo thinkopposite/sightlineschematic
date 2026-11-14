@@ -2105,7 +2105,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.14.09';
+const VERSION='2026.11.14.10';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -5304,7 +5304,7 @@ function splitDialog(sports,opts){return new Promise(res=>{const old=$('prDlg');
 const SU={step:'start',info:null,sport:'ncaafb',cap:30000,tiers:'auto',shape:'curved',cfg:'closed'};
 /* plan-view bowl icons (decisions 257, 259, 260): a square, red for straight stands (chamfered or round corners), black for curved stands, the bowl outline in white at the sport's own field proportions, centred; included sections a solid 4 px line,
    omitted sections a dashed 2 px line on the same path, so the four sides and corners stay one continuous outline. No text. */
-function bowlIcon(shape,cfg,sport){const Sp=SPORTS[sport||SU.sport||P.sport]||SPORTS.ncaafb,fx=Sp.W/2,fy=Sp.L/2,cv=shape==='curved',d=Math.max(Sp.Dmin??6,6)+(cv?24:15),   /* the line runs through the seating: 15 m behind the front row, 24 m on curved bowls (deeper, as on Joseph's reference plan) */
+function bowlIcon(shape,cfg,sport){const Sp=SPORTS[sport||SU.sport||P.sport]||SPORTS.ncaafb,fx=Sp.W/2,fy=Sp.L/2,cv=shape==='curved',d=Math.max(Sp.Dmin??6,6)+(cv?11:15),   /* curved: 11 m, so with its bowed sides (8 m / 6 m) it reads the same size as the straight bowls (decision 267) */   /* the line runs through the seating: 15 m behind the front row, 24 m on curved bowls (deeper, as on Joseph's reference plan) */
     bS=cv?8:0,bE=cv?6:0,   /* curved bowls after Joseph's reference plan (decision 263): sidelines bowed about 8 m, ends 6 m, corners radius 32 m */
     off=CFGS[cfg]||[];
   /* curved stands are circular arcs through the stand ends with the setback at the middle; each corner is an arc of radius d tangent to both stands, so the outline has no kinks */
