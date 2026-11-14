@@ -2105,7 +2105,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.14.05';
+const VERSION='2026.11.14.06';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -5304,13 +5304,13 @@ function splitDialog(sports,opts){return new Promise(res=>{const old=$('prDlg');
 const SU={step:'start',info:null,sport:'ncaafb',cap:30000,tiers:'auto',shape:'curved',cfg:'closed'};
 /* plan-view bowl icons (decisions 257, 259, 260): a square, red for straight stands (chamfered or round corners), black for curved stands, the bowl outline in white at the sport's own field proportions, centred; included sections a solid 4 px line,
    omitted sections a dashed 2 px line on the same path, so the four sides and corners stay one continuous outline. No text. */
-function bowlIcon(shape,cfg,sport){const Sp=SPORTS[sport||SU.sport||P.sport]||SPORTS.ncaafb,fx=Sp.W/2,fy=Sp.L/2,d=Math.max(Sp.Dmin??6,6)+15,   /* the line runs through the middle of the seating, about 15 m behind the front row */
-    bS=shape==='curved'?3*(Sp.region==='world'?6:20*0.3048):0,bE=shape==='curved'?3*(Sp.region==='world'?3:10*0.3048):0,   /* the setbacks drawn three times over, so a curved bowl reads at a glance (decision 261) */
+function bowlIcon(shape,cfg,sport){const Sp=SPORTS[sport||SU.sport||P.sport]||SPORTS.ncaafb,fx=Sp.W/2,fy=Sp.L/2,cv=shape==='curved',d=Math.max(Sp.Dmin??6,6)+(cv?24:15),   /* the line runs through the seating: 15 m behind the front row, 24 m on curved bowls (deeper, as on Joseph's reference plan) */
+    bS=cv?8:0,bE=cv?6:0,   /* curved bowls after Joseph's reference plan (decision 263): sidelines bowed about 8 m, ends 6 m, corners radius 32 m */
     off=CFGS[cfg]||[];
   /* curved stands are circular arcs through the stand ends with the setback at the middle; each corner is an arc of radius d tangent to both stands, so the outline has no kinks */
   const arcC=(half,b,off)=>{const R=(half*half+b*b)/(2*b);return {R,c:off+b-R};};   /* circle through (±half, off) bowed out by b: centre on the axis */
-  const E=bS>0?arcC(fy,bS,fx+d):null,N=bE>0?arcC(fx,bE,fy+d):null,rc=E&&N?Math.min(d,0.4*Math.min(E.R,N.R)):d;   /* a tighter corner where the stands curve strongly */
-  const fil=(sx,sy)=>{if(!E||!N)return {F:[sx*fx,sy*fy],TE:[sx*(fx+d),sy*fy],TN:[sx*fx,sy*(fy+d)]};
+  const E=bS>0?arcC(fy+d,bS,fx+d):null,N=bE>0?arcC(fx+d,bE,fy+d):null,rc=E&&N?32:d,ch=0.45*d;   /* curved: each stand an arc through the offset rectangle's corners; straight: chamfer legs 45% of the offset (decision 263) */
+  const fil=(sx,sy)=>{if(!E||!N)return shape==='chamfer'?{F:[sx*fx,sy*fy],TE:[sx*(fx+d),sy*(fy+d-ch)],TN:[sx*(fx+d-ch),sy*(fy+d)]}:{F:[sx*fx,sy*fy],TE:[sx*(fx+d),sy*fy],TN:[sx*fx,sy*(fy+d)]};
     const cE=[sx*E.c,0],cN=[0,sy*N.c],r1=E.R-rc,r2=N.R-rc,dx=cN[0]-cE[0],dy=cN[1]-cE[1],L=Math.hypot(dx,dy),a=(r1*r1-r2*r2+L*L)/(2*L),h=Math.sqrt(Math.max(0,r1*r1-a*a)),
       mx=cE[0]+a*dx/L,my=cE[1]+a*dy/L,c1=[mx+h*dy/L,my-h*dx/L],c2=[mx-h*dy/L,my+h*dx/L],F=(c1[0]*sx>0&&c1[1]*sy>0)?c1:c2,
       u=(p,c,R)=>{const l=Math.hypot(p[0]-c[0],p[1]-c[1]);return [c[0]+(p[0]-c[0])*R/l,c[1]+(p[1]-c[1])*R/l];};
@@ -5323,17 +5323,13 @@ function bowlIcon(shape,cfg,sport){const Sp=SPORTS[sport||SU.sport||P.sport]||SP
     if(shape==='chamfer'){const M=[(first[0]+last[0])/2,(first[1]+last[1])/2];return second?[M,last]:[first,M];}
     const pts=arcPts(g.F,first,last,16);return second?pts.slice(8):pts.slice(0,9);};
   let cn=(c,h)=>corner(c,h),sideF=side;
-  if(shape==='curved'){   /* curved stands: one smooth rounded oval (superellipse, exponent 2.2) through the stand middles, split into stands and corner halves by angle (decision 261) */
-    const A=fx+d+bS/3,B=fy+d+bE/3,e=2/2.2,se=(t0,t1)=>{const o=[];for(let i=0;i<=12;i++){const t=(t0+(t1-t0)*i/12)*Math.PI/180,c=Math.cos(t),s_=Math.sin(t);o.push([A*Math.sign(c)*Math.abs(c)**e,B*Math.sign(s_)*Math.abs(s_)**e]);}return o;};
-    const g=Math.atan2(fy,fx)*180/Math.PI,h=Math.atan2(fx,fy)*180/Math.PI,ga=g*0.55,ha=h*0.55;   /* stands span most of their side; corners the rest */
-    const sp={N:[-90-ha,-90+ha],E:[-ga,ga],S:[90-ha,90+ha],W:[180-ga,180+ga]},cr={NE:[-90+ha,-ga],SE:[ga,90-ha],SW:[90+ha,180-ga],NW:[180+ga,270-ha]};
-    sideF=k=>se(...sp[k]);cn=(c,second)=>{const [a0,a1]=cr[c],m=(a0+a1)/2;return second?se(m,a1):se(a0,m);};}
+  /* curved: the stand arcs and tangent corner arcs above (decision 263) */
   /* twelve pieces clockwise from the North stand; each corner half belongs to the stand beside it */
   const pieces=[['N',0,()=>sideF('N')],['N',1,()=>cn('NE',false)],['E',1,()=>cn('NE',true)],['E',0,()=>sideF('E')],['E',1,()=>cn('SE',false)],['S',1,()=>cn('SE',true)],
     ['S',0,()=>sideF('S')],['S',1,()=>cn('SW',false)],['W',1,()=>cn('SW',true)],['W',0,()=>sideF('W')],['W',1,()=>cn('NW',false)],['N',1,()=>cn('NW',true)]]
     .map(([k,c,g])=>({k,corner:!!c,g,open:off==='corners'?!!c:Array.isArray(off)&&off.includes(k)}));
-  /* scale: the bowl's height takes 70% of the square (56% + 25%), proportions kept (decisions 260, 262) */
-  const H=2*(fy+d+bE),Wd=2*(fx+d+bS),sc=70/Math.max(H,Wd),f=v=>+(v*sc).toFixed(2);
+  /* scale: the bowl's height takes 80.5% of the square (56% + 25%, + 15%), proportions kept (decisions 260, 262) */
+  const H=2*(fy+d+bE),Wd=2*(fx+d+bS),sc=80.5/Math.max(H,Wd),f=v=>+(v*sc).toFixed(2);
   const join=arr=>{const o=[];arr.forEach(q=>q.g().forEach((p,i)=>{if(i===0&&o.length)return;o.push(p);}));return o;},pl=pts=>pts.map((p,i)=>(i?'L':'M')+f(p[0])+' '+f(p[1])).join('');
   const solid='fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round" vector-effect="non-scaling-stroke"',
     dash='fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round" stroke-dasharray="2 2.5" vector-effect="non-scaling-stroke"';
