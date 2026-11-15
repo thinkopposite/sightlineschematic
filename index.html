@@ -1128,12 +1128,12 @@ const seatSpec=(kind,sport)=>SEATW[regionOf(sport||P.sport)][kind==='bench'?'ben
 // ---------- seating capacity limits by sport (target seats slider) ----------
 // [min, max, typical venues, outliers left out of the limits]. Published venue capacities; verify against current figures.
 const CAP_LIM={
-  nfl:[50000,90000,'Soldier Field 61,500 to MetLife Stadium 82,500; most venues 65,000-75,000','AT&T Stadium about 80,000, near 100,000 with standing room (expansion, not seats); Dignity Health Sports Park 27,000 (temporary, 2017-19)'],
-  ncaafb:[15000,110000,'FBS 30,000-80,000; Michigan Stadium 107,601, Beaver Stadium 106,572, Ohio Stadium 102,780; FCS often 10,000-25,000','None excluded: the 100,000-plus Big Ten and SEC stadiums are real design targets, so the maximum sits above them'],
-  mls:[15000,80000,'Soccer-specific stadiums 18,000-30,000 (PayPal Park 18,000, BMO Field 30,000)','Shared NFL stadiums: Mercedes-Benz Stadium 42,500 standard, about 71,000 expanded; Lumen Field 37,722, about 68,000 expanded. The maximum allows these configurations'],
-  fifa:[10000,110000,'Club grounds 10,000-60,000; World Cup venues 40,000 and up, final about 80,000','Spotify Camp Nou about 105,000 after renovation sits inside the maximum; Rungrado 1st of May Stadium (114,000, multi-use) is excluded'],
-  fih:[2000,30000,'Hockey stadiums 3,000-15,000; Kalinga Stadium 15,000, Birsa Munda Stadium about 21,000','National Hockey Stadium, Lahore (about 45,000, multi-use history) is excluded'],
-  rugbyu:[10000,90000,'Club grounds 10,000-30,000; test venues 50,000-82,000 (Allianz Stadium Twickenham 82,000, Stade de France 80,000, Principality Stadium 74,500)','FNB Stadium about 94,700 and Wembley 90,000 are football grounds used occasionally: excluded'],};
+  nfl:[60000,85000,'Soldier Field 61,500 to MetLife Stadium 82,500; most venues 65,000-75,000; AT&T Stadium about 80,000','Range 60,000 to 85,000 (Joseph, decision 269). Left out: AT&T Stadium near 100,000 with standing room (expansion, not seats); Dignity Health Sports Park 27,000 (temporary, 2017-19)'],
+  ncaafb:[20000,120000,'FBS 30,000-80,000; Michigan Stadium 107,601, Beaver Stadium 106,572, Ohio Stadium 102,780','Range 20,000 to 120,000 (Joseph, decision 269): the 100,000-plus Big Ten and SEC stadiums sit inside it; FCS venues under 20,000 fall below it'],
+  mls:[15000,40000,'Soccer-specific stadiums 18,000-30,000 (PayPal Park 18,000, BMO Field 30,000)','Shared NFL stadiums in their soccer configuration: Lumen Field 37,722 is within the range; Mercedes-Benz Stadium (42,500 standard, about 71,000 expanded) is above it. Range 15,000 to 40,000 (Joseph, decision 268)'],
+  fifa:[20000,120000,'Club grounds 20,000-60,000; World Cup venues 40,000 and up, final about 80,000; Spotify Camp Nou about 105,000','Range 20,000 to 120,000 (Joseph, decision 269): Rungrado 1st of May Stadium (114,000, multi-use) now sits inside it; small club grounds under 20,000 fall below it'],
+  fih:[10000,50000,'Hockey stadiums 10,000-21,000 (Kalinga Stadium 15,000, Birsa Munda Stadium about 21,000); National Hockey Stadium, Lahore about 45,000','Range 10,000 to 50,000 (Joseph, decision 269): most hockey venues of 3,000-10,000 fall below it'],
+  rugbyu:[30000,100000,'Test venues 50,000-82,000 (Allianz Stadium Twickenham 82,000, Stade de France 80,000, Principality Stadium 74,500); Wembley 90,000 and FNB Stadium about 94,700 for occasional tests','Range 30,000 to 100,000 (Joseph, decision 269): club grounds of 10,000-30,000 fall below it'],};
 const capLim=k=>CAP_LIM[k]||[5000,120000,'',''];
 function clampCap(P){const [lo,hi]=capLim(P.sport);P.capTarget=Math.min(hi,Math.max(lo,Math.round((P.capTarget||30000)/1000)*1000));}
 // ---------- zones: four sides per tier on rectangular fields ----------
@@ -2105,7 +2105,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.14.10';
+const VERSION='2026.11.14.12';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
