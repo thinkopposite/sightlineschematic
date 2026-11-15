@@ -2129,7 +2129,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.15.01';
+const VERSION='2026.11.15.02';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -4824,6 +4824,10 @@ function swPdfFrame(doc,title,big){const pw=doc.internal.pageSize.getWidth(),ph=
   T(`PLATE ${no} — ${title.toUpperCase()}`,L,fy,{pt:6,ls:.1});T(`SIGHTLINE SCHEMATIC ${VERSION} · ${optName().toUpperCase()} · ${new Date().toLocaleDateString()}`,(L+R)/2,fy,{pt:6,ls:.1,a:'center'});T(`SHEET ${no} OF ${tot}`,R,fy,{pt:6,ls:.1,a:'right'});
   doc.setTextColor(0);doc.setDrawColor(0);return 7*u;}   // first content row (the header one row lower, decision 129)
 const swBig=t=>{const w=t.replace(/^Sightline Schematic:\s*/,'').replace(/\(.*?\)/g,'').split(/[ ,]+/).filter(Boolean);const q=(t.match(/\(([^)]*)\)/)||[])[1];return [w[0],w[1]||(q?q.split(' ').pop():'Sheet')];};   // two words: black, then red
+/* PDFs that print in Bluebeam as well as Acrobat (decision 272): every embedded face gets its own PostScript name (jsPDF gave regular and bold the same name,
+   which print drivers that match fonts by name mix up); the file declares PDF 1.4, as its transparency needs (jsPDF writes 1.3); streams compressed (38 MB → a few MB) */
+function pdfPrint(d){try{d.__private__.setPdfVersion('1.4');}catch(e){}
+  const nm={DVS:'SLHeros',ARC:'SLHerosSheet'};['DVS','ARC'].forEach(fam=>['normal','bold'].forEach(st=>{try{const f=d.getFont(fam,st);if(f&&f.fontName===fam)f.fontName=nm[fam]+(st==='bold'?'-Bold':'-Regular');}catch(e){}}));}
 async function exportPdfSet(kind){
   const btn=$(kind==='archE'?'dlArch':'dlTab');btn.disabled=true;toast('Building the project set…');PDF_ON=true;
   try{
@@ -4846,9 +4850,9 @@ async function exportPdfSet(kind){
       const out=set.flatMap(f=>{f();const r=plotEnlarged(big,sc);return Array.isArray(r)?r:[r];});ENL=e;CENL=ce;return out.filter(Boolean);})():[]),plotIso(big,'SW'),plotIso(big,'SE')];SHOWSEATS=ss;   /* one enlarged view per 11 x 17 page */
     if(draws.some(p=>!p))throw new Error('A drawing does not fit its sheet at any standard scale.');
     const port={pw:small.h,ph:small.w,m:0.5};                                             // 11 x 17 (A3) portrait pages
-    const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'p',unit:'in',format:[port.pw,port.ph]});   /* page 1: the cover */
+    const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'p',unit:'in',format:[port.pw,port.ph],compress:true});   /* page 1: the cover */
     const fonts=d=>{d.addFileToVFS('DVS.ttf',reg);d.addFont('DVS.ttf','DVS','normal');d.addFileToVFS('DVSB.ttf',bold);d.addFont('DVSB.ttf','DVS','bold');
-      if(arc){d.addFileToVFS('ARC.ttf',arc[0]);d.addFont('ARC.ttf','ARC','normal');d.addFileToVFS('ARCB.ttf',arc[1]);d.addFont('ARCB.ttf','ARC','bold');}};fonts(doc);
+      if(arc){d.addFileToVFS('ARC.ttf',arc[0]);d.addFont('ARC.ttf','ARC','normal');d.addFileToVFS('ARCB.ttf',arc[1]);d.addFont('ARCB.ttf','ARC','bold');}pdfPrint(d);};fonts(doc);
     SWFONT=arc?'ARC':'DVS';SWLOG=[];SWN=0;SWOFF=0;const dry=new jsPDF({orientation:'p',unit:'in',format:[port.pw,port.ph]});fonts(dry);pdfTitleCase(dry);pdfProjectInfo(dry,port);pdfReferences(dry,port);pdfRowSchedule(dry,port,'T');pdfTables(dry,{...port,fit:true});
     const texts=SWLOG;SWLOG=null;const nText=dry.getNumberOfPages()-1,NT=2+draws.length+nText;SWN=NT;   /* sheet n of N across the whole set: cover, drawings, text pages */
     const host=document.createElement('div');host.style.cssText='position:fixed;left:-99999px;top:0;width:10px;height:10px;overflow:hidden';document.body.appendChild(host);
@@ -5089,9 +5093,9 @@ $('cntPrint').onclick=async()=>{const btn=$('cntPrint');btn.disabled=true;toast(
   try{await loadJS('vendor/jspdf.umd.min.js');
     const [reg,bold]=await Promise.all([loadB64('vendor/fonts/TeXGyreHeros-400.ttf'),loadB64('vendor/fonts/TeXGyreHeros-700.ttf')]);
     const arc=await Promise.all([loadB64('vendor/fonts/TeXGyreHeros-400.ttf'),loadB64('vendor/fonts/TeXGyreHeros-700.ttf')]).catch(()=>null);   // the sheet frame face; DejaVu if missing
-    const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'p',unit:'in',format:imperial()?[11,17]:[297/25.4,420/25.4]});
+    const {jsPDF}=window.jspdf,doc=new jsPDF({orientation:'p',unit:'in',format:imperial()?[11,17]:[297/25.4,420/25.4],compress:true});
     const fonts=d=>{d.addFileToVFS('DVS.ttf',reg);d.addFont('DVS.ttf','DVS','normal');d.addFileToVFS('DVSB.ttf',bold);d.addFont('DVSB.ttf','DVS','bold');
-      if(arc){d.addFileToVFS('ARC.ttf',arc[0]);d.addFont('ARC.ttf','ARC','normal');d.addFileToVFS('ARCB.ttf',arc[1]);d.addFont('ARCB.ttf','ARC','bold');}};fonts(doc);
+      if(arc){d.addFileToVFS('ARC.ttf',arc[0]);d.addFont('ARC.ttf','ARC','normal');d.addFileToVFS('ARCB.ttf',arc[1]);d.addFont('ARCB.ttf','ARC','bold');}pdfPrint(d);};fonts(doc);
     await swLoadFaces();SWFONT=arc?'ARC':'DVS';SWN=P.tierCount;SWOFF=1;pdfTitleCase(doc);pdfTables(doc,{m:0.5,fit:true});SWOFF=0;SWN=0;doc.deletePage(1);                       // one page per tier, fitted to the width
     offer('C-Value_'+slug()+'.pdf',doc.output('blob'));toast('Seat count PDF saved.');
   }catch(e){toast('The seat count PDF could not be built: '+e.message);}finally{btn.disabled=false;PDF_ON=false;}};
