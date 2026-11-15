@@ -474,6 +474,20 @@ main .planhead .bub{align-self:start!important;height:24px;line-height:24px}main
 @media (min-width:1280px){header .actions{align-self:flex-start;margin-top:23px}}
 main .g24 .tablewrap table:is(.refs,.wrap) :is(td,th),main table:is(.refs,.wrap) :is(td,th){line-height:24px!important;padding-top:0!important;padding-bottom:0!important}   /* wrapped rows: every line one cell (decision 254) */
 #opts.g24{grid-template-columns:repeat(auto-fill,289px)!important;column-gap:23px!important;row-gap:23px!important}
+/* project bar (decision 271): the project, undo and redo, keep as option and save, always in view under the title bar */
+#projBar{display:flex;align-items:center;gap:0 12px;height:48px;box-sizing:border-box;padding:0 24px;background:var(--sw-paper,#F6F5F2);border-bottom:1px solid var(--sw-ink,#111);position:relative}
+@media (min-width:901px){#projBar{position:sticky;top:var(--hdrH0,72px);z-index:39}}
+#projBar button{height:25px!important;min-height:25px!important;padding:0 12px!important;line-height:23px!important;white-space:nowrap}
+#pbProj{max-width:420px;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+#pbUndo+#pbRedo{margin-left:-13px}
+.pb-status{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.pb-status.dirty{color:var(--sw-red,#E10600)}
+.pb-gap{flex:1}
+#projPop{position:absolute;left:24px;top:47px;width:min(912px,calc(100vw - 48px));max-height:calc(100vh - var(--hdrH,120px) - 24px);overflow:auto;background:var(--sw-paper,#F6F5F2);border:1px solid var(--sw-ink,#111);border-top:4px solid var(--sw-ink,#111);box-shadow:0 6px 0 rgba(0,0,0,.08);padding:24px;z-index:45}
+#projPop[hidden]{display:none}
+#projPop .pp-h{font-size:14px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin:0 0 12px}#projPop .pp-h .muted{letter-spacing:0;text-transform:none;font-size:14px;margin-left:8px}
+#projPop .seg{margin:24px 0 0!important}#projPop #prStatus{margin:12px 0 0}#projPop .projgrid{grid-template-columns:168px minmax(0,1fr) 23px 96px minmax(0,1fr)}
+#projPop .projgrid .pi-num{grid-template-columns:minmax(0,1fr) 23px 49px}
+@media (max-width:900px){#projBar{height:auto;flex-wrap:wrap;gap:8px 12px;padding:8px 16px}.pb-status{display:none}#projPop{left:8px;width:calc(100vw - 16px)}#projPop .projgrid{grid-template-columns:120px minmax(0,1fr)!important}}
 </style>
 </head>
 <body>
@@ -484,10 +498,19 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
   <div class="brand"><h1><svg class="logo" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#E10600"/><path d="M8.85 94.1 V72.79 H30.16 V51.48 H51.48 V30.16 H72.79 V8.85 H94.1" fill="none" stroke="#fff" stroke-width="5.9" stroke-linejoin="miter" stroke-linecap="butt"/></svg><span>Sightline Schematic</span></h1><p id="verTop"></p></div>
   <div class="actions">
     <div class="seg" id="themeSeg" role="group" aria-label="Page background"><button data-thm="lg" title="Light mode with the background grid">Light + Grid</button><button data-thm="l" title="Light mode, no background grid">Light</button><button data-thm="dg" title="Dark mode with the background grid">Dark + Grid</button><button data-thm="d" title="Dark mode, no background grid">Dark</button></div>
-    <button id="saveOpt">Save as option</button>
+    <button id="saveOpt" hidden>Save as option</button>
   </div>
 </header>
-<script>(()=>{const h=document.querySelector('header'),set=()=>document.documentElement.style.setProperty('--hdrH',h.offsetHeight+'px');set();try{new ResizeObserver(set).observe(h);}catch(e){addEventListener('resize',set);}})();</script>
+<div id="projBar" role="region" aria-label="Project">
+  <button id="pbProj" aria-expanded="false" aria-controls="projPop" title="Project information, saved options, new and open"><span id="pbName">Untitled project</span><span aria-hidden="true"> ▾</span></button>
+  <span id="pbStatus" class="pb-status"></span>
+  <span class="pb-gap"></span>
+  <button id="pbUndo" title="Undo the last change (Ctrl+Z)" disabled>Undo</button><button id="pbRedo" title="Redo (Ctrl+Y)" disabled>Redo</button>
+  <button id="pbKeep" title="Keep the bowl on screen as an option in this project">Keep as option</button>
+  <button id="pbSave" class="primary" title="Save the project to its file">Save project</button>
+  <div id="projPop" hidden></div>
+</div>
+<script>(()=>{const h=document.querySelector('header'),b=document.getElementById('projBar'),set=()=>{const r=document.documentElement.style;r.setProperty('--hdrH0',h.offsetHeight+'px');r.setProperty('--hdrH',(h.offsetHeight+b.offsetHeight)+'px');};set();try{const ro=new ResizeObserver(set);ro.observe(h);ro.observe(b);}catch(e){addEventListener('resize',set);}})();</script>
 <div class="layout">
   <aside><div id="controls"></div>
     <section class="step deliver"><div class="step-h"><span class="bub">7</span><h2>Deliver</h2><p>Drawings, schedules and models for the team.</p></div>
@@ -579,12 +602,13 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
     <details id="engBox"><summary>Engineering quantities (preliminary)</summary><div class="tablewrap" style="max-height:none"><table id="engTable"></table></div><p class="hint">Seating slab only (treads, risers, Tier 1 leg wall) at 150 pcf; guard rail at row 1 of each tier. Rakers, columns, beams and foundations are not included.</p></details>
     <details><summary id="schedHead">Row schedule</summary><div class="tablewrap"><table id="table"></table></div></details>
 
-    <p class="group">Project and saved options</p>
+    <div id="projHome"><p class="pp-h">Project</p>
     <div class="projgrid"><div class="projrow"><label for="projName" class="lab" style="margin:0">Project name</label><input id="projName" class="projname" maxlength="80" spellcheck="false" autocomplete="off"></div>
     <div class="projinfo" id="projInfo"></div></div>
     <div class="seg" style="margin:8px 0 0"><button id="prNew">New project</button><button id="prOpen">Open project</button><button id="prSaveAs">Save as</button><button id="prSave" class="primary">Save project</button><input type="file" id="prFile" accept=".json,application/json" hidden></div>
     <p class="hint" id="prStatus"></p>
-    <div class="opts" id="opts"></div>
+    <p class="pp-h" style="margin-top:24px">Saved options <span class="muted">click one to show it</span></p>
+    <div class="opts" id="opts"></div></div>
     <p class="group">Seats</p>
     <div class="cap" id="cap2" aria-label="Estimated seats (repeated at the bottom of the page)"></div>
     <p class="hint" id="ver"></p>
@@ -1875,7 +1899,7 @@ function cfgOffSet(P,AL,ti){const c=CFGS[P.cfg];if(!c||!c.length&&c!=='corners')
     if(c==='corners'){if(Math.abs(q.mpt[0])>xc+0.3&&Math.abs(q.mpt[1])>yc+0.3)out.push(q.no);return;}
     if(ps.every(x=>c.includes(comp[x.Lz.k])))out.push(q.no);});
   return out;}
-document.addEventListener('change',e=>{if(e.target&&e.target.id==='cfgSel'){P.cfg=e.target.value;update();renderControls();toast(`Configuration: ${e.target.selectedOptions[0].textContent}. Run Quick calculation to size the remaining stands to the target.`);}});
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='cfgSel'){P.cfg=e.target.value;update();renderControls();toast(`Configuration: ${e.target.selectedOptions[0].textContent}. Press Size the bowl to size the remaining stands to the target.`);}});
 function applyCfg(P,AL){const S=P.secs||(P.secs={});Object.keys(S).forEach(k=>{if(S[k].cfg){delete S[k].off;delete S[k].cfg;if(!Object.keys(S[k]).length)delete S[k];}});
   if(!P.cfg||P.cfg==='closed'||P.cfg==='custom'||!zoned(P))return;
   AL.forEach((T,ti)=>cfgOffSet(P,AL,ti).forEach(no=>{const e=S[no]||(S[no]={});if(e.off)return;e.off=true;e.cfg=true;delete e.wc;}));}
@@ -2105,7 +2129,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.14.18';
+const VERSION='2026.11.15.01';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2354,8 +2378,8 @@ function renderControls(){
     +[['American sports (IBC)',['nfl','ncaafb','mls']],['International sports (Green Guide)',['fifa','rugbyu','fih']]].map(([gn,ks])=>`<p class="lab" style="margin:12px 0 0"><b style="color:var(--ink)">${gn}</b></p>`+ks.filter(k=>CAP_LIM[k]).map(k=>[k,CAP_LIM[k]]).map(([k,[a,b,t,o]])=>`<p class="hint" style="margin:8px 0"><b style="color:var(--ink)">${SPORTS[k]?SPORTS[k].name+' ('+SPORTS[k].org+')':k}: ${fmt(a)} to ${fmt(b)}</b><br>Typical: ${t}.<br>Outliers: ${o}.</p>`).join('')).join('')+'</details>';})()
     +'<div class="lab">Sport</div><select id="sportSel" class="sel" aria-label="Sport and governing body">'+grp('america','American sports')+grp('world','International sports')+'</select>'
     +'<div class="lab">Tiers</div><div class="seg">'+[1,2,3].map(n=>`<button data-tc="${n}" class="${P.tierCount===n?'on':''}">${n} tier${n>1?'s':''}</button>`).join('')+'</div>'
-    +'<div class="lab">Initial configuration</div><div class="seg stack"><button id="quickCalc" class="primary" title="Rows for each tier from the sport, the tier count and the target">Quick calculation</button><button id="luckyCalc" title="Tries 1, 2 and 3 tiers, both upper tier positions and every row split; picks the shortest farthest viewing distance that meets the target, the C-values and the code checks">I\'m feeling lucky</button></div>'
-    +'<p class="hint">Then shape the bowl below (sections, curves, depths, tier heights) and finish with Final calculation under Capacity.</p></section>';   /* decision 231: requirements, then an initial configuration */   /* target seats first (decision 190) */
+    +'<div class="lab">Size the bowl</div><div class="seg stack"><button id="quickCalc" class="primary" title="Sets the rows of each tier so the bowl holds the target seats, from the sport and the tier count">Size the bowl</button><button id="luckyCalc" title="Tries 1, 2 and 3 tiers, both upper tier positions and every row split; picks the shortest farthest viewing distance that meets the target, the C-values and the code checks">Try 1, 2 and 3 tiers for me</button></div>'
+    +'<p class="hint">Size the bowl first. Then shape it below (sections, curves, depths, tier heights), and finish with Compare options under Capacity.</p></section>';   /* decision 231: requirements, then an initial configuration */   /* target seats first (decision 190) */
   h+=step(1,'Field','Governing rules, units and orientation (sport set above).');
   h+=`<div class="lab">Units: <b style="color:var(--ink)">${imperial()?'Imperial':'Metric'}</b></div><p class="hint">${imperial()?'American sports use imperial: inches to 2 decimals below 10\'-0", feet and inches at or above.':'International sports use metric: millimetres below 10 m, metres to 3 decimals at or above (1000 mm = 1 m).'}</p>`;
   if(zoned(P))h+=`<div class="sl"><div class="sl-top"><label for="northSel">Field orientation</label></div><select id="northSel" class="sel">${[['v','Vertical football field, north up'],['h','Landscape football field, north left']].map(([k,n])=>`<option value="${k}"${P.planOri===k?' selected':''}>${n}</option>`).join('')}</select></div>`;
@@ -2397,8 +2421,8 @@ function renderControls(){
     +'<p class="hint">Re-sizes the risers on every tier and side in ½" steps so each row meets its minimum C-value for seated spectators. Constant risers stop at the maximum riser.</p></section>';
   h+=step(5,'Aisles','Aisle spacing to code and the egress check.')+aisEditor()+'</section>';
   h+=step(6,'Capacity','Rows are sized to reach the target seats, within the row limits.')+Array.from({length:P.tierCount},(_,i)=>slider(`rowMax.${i}`,`Maximum rows, Tier ${i+1}`,3,80,1,'rows')).join('')+'<p class="hint">Sizing stays within these limits, for reasons other than the C-value (structure, vomitories, egress, the site). If the target can\'t be reached within them, the shortfall is reported.</p>'
-    +(P.tierCount>1?`<div class="lab" style="margin-top:8px">Upper tiers in Quick calculation</div><div class="seg"><button data-fitmove="0" class="${P.fitMove?'':'on'}" aria-pressed="${!P.fitMove}" title="Second riser over the top riser below, 10'-0&quot; (3.0 m) above it; row 1 shortfalls are reported">Default position</button><button data-fitmove="1" class="${P.fitMove?'on':''}" aria-pressed="${!!P.fitMove}" title="Move each upper tier back and up until its row 1 meets the minimum C-value">Move back and up for row 1</button></div>`:'')
-    +'<button id="fit" class="primary" style="margin-top:10px;width:100%" title="Up to eight configurations that meet the target from your design">Final calculation</button><p class="hint">Keeps your sections, curves and platforms; varies rows per tier, Sideline Depth 1 and tier-to-tier heights. Pick one, or keep your design.</p></section>';
+    +(P.tierCount>1?`<div class="lab" style="margin-top:8px">Upper tiers when sizing the bowl</div><div class="seg"><button data-fitmove="0" class="${P.fitMove?'':'on'}" aria-pressed="${!P.fitMove}" title="Second riser over the top riser below, 10'-0&quot; (3.0 m) above it; row 1 shortfalls are reported">Default position</button><button data-fitmove="1" class="${P.fitMove?'on':''}" aria-pressed="${!!P.fitMove}" title="Move each upper tier back and up until its row 1 meets the minimum C-value">Move back and up for row 1</button></div>`:'')
+    +'<button id="fit" class="primary" style="margin-top:10px;width:100%" title="Up to eight configurations that meet the target from your design">Compare options</button><p class="hint">Keeps your sections, curves and platforms; varies rows per tier, Sideline Depth 1 and tier-to-tier heights. Pick one, or keep your design.</p></section>';
   const fixed=[...(P.sport==='nfl'||P.sport==='ncaafb'?[['Football field length',L(360*304.8)],['Football field width',L(160*304.8)]]:[]),
     ['Round risers up to',L(P.step)],['Maximum riser',L(P.maxRiser)],['Rows per riser bank','1'],['Guard rail at row 1 of each tier',`${inchText(P.railH)} high, ${inchText(2*25.4)} thick, on the riser face (inside face on the riser line), ${inchText(8*25.4)} below the tread`],['Minimum Tier-1 top tread to Tier-2 bottom tread',L(RD().riseMin*1000)],['Minimum clear height below the Tier-2 front riser leg',L(P.minHead)],['Upper-tier leg wall',`${L(LEG2)} below the bottom tread`]];
   h+='<details><summary>Advanced</summary>'+(P.sport==='nfl'||P.sport==='ncaafb'?'':fieldSliders())
@@ -4074,7 +4098,17 @@ const shapeSig=()=>P.zt.map(t=>t.corners).join('/')+'|'+(P.bulge&&P.bulge.S>0?'c
 function shapeCheck(){const sg=shapeSig();if(P.secShape==null){P.secShape=sg;return;}if(P.secShape===sg)return;P.secShape=sg;
   const n=Object.keys(P.secN||{}).length,a=Object.keys(P.aisEd||{}).length;if(!n&&!a)return;P.secN={};P.aisEd={};
   setTimeout(()=>toast(`The bowl shape changed: ${[n?`${n} hand-set section size${n>1?'s':''}`:'',a?'moved aisles':''].filter(Boolean).join(' and ')} cleared, so every tier is laid out again from Tier 1.`),0);}
-function update(){shapeCheck();keepView(update0);}
+/* undo and redo (decision 271): the bowl after each change, up to 50 steps; a run of quick changes (a slider drag) counts as one step; a new sport or project starts the history again */
+const HIST={st:[],redo:[],t:0,busy:false,key:''};
+function histPush(){if(HIST.busy||typeof PROJ==='undefined')return;const j=JSON.stringify(P),k=P.sport+'|'+(PROJ.number||''),now=Date.now(),S=HIST.st;
+  if(k!==HIST.key){HIST.key=k;HIST.st=[j];HIST.redo=[];HIST.t=now;histUI();return;}
+  if(S.length&&S[S.length-1]===j)return;
+  if(S.length>1&&now-HIST.t<600){S[S.length-1]=j;if(S[S.length-2]===j)S.pop();}else{S.push(j);if(S.length>51)S.shift();}
+  HIST.t=now;HIST.redo=[];histUI();}
+function histGo(dir){const S=HIST.st,R=HIST.redo;let j;if(dir<0){if(S.length<2)return;R.push(S.pop());j=S[S.length-1];}else{if(!R.length)return;j=R.pop();S.push(j);}
+  HIST.busy=true;try{P=fixP(Object.assign(defaults(),JSON.parse(j)));CUR=null;renderControls();P.secShape=shapeSig();keepView(update0);renderOpts();}finally{HIST.busy=false;HIST.t=0;}histUI();toast(dir<0?'Undone.':'Redone.');}
+function histUI(){const u=document.getElementById('pbUndo'),r=document.getElementById('pbRedo');if(u)u.disabled=HIST.st.length<2;if(r)r.disabled=!HIST.redo.length;}
+function update(){shapeCheck();keepView(update0);histPush();}
 function update0(){
   LEG2=RD().leg;wcClean();persist();if(typeof pdfBgUI==='function')pdfBgUI();if(typeof pdfGridUI==='function')pdfGridUI();ZR=solveAll(P);if(!zoned(P))P.sec='T';if(!ZR[P.sec].length)P.sec=zoneKeys(P).find(k=>ZR[k].length)||'T';
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);
@@ -4193,7 +4227,7 @@ function luckyCalc(){const S0=JSON.stringify(P),col=[];
   if(!best){toast('No tier count reaches the target within the row limits. Raise a limit under Capacity.');return;}
   fitPut(P,best);if(best.tiers>1)P.fitMove=!!best.mv;placeDefaultPlatforms();const addW=topUpPlatforms();CUR=null;renderControls();update();
   const k=k0Of(P),rows=P.zt.slice(0,P.tierCount).map(t=>t.z[k].rows);
-  toast(`I'm feeling lucky: ${P.tierCount} tier${P.tierCount>1?'s':''}, ${rows.join(' / ')} rows${P.tierCount>1?(best.mv?', upper tiers moved back and up for row 1':', upper tiers in the default position'):''}, ${fmt(M.cap)} seats; farthest viewing distance ${L(M.vd*1000)} (shortest of ${col.filter(c=>c.cap>=tgt).length} configurations that reach the target)${okAll.length?'; every seat meets the minimum C-value':'; no configuration meets every C-value, the closest shown'}${addW?`; ${addW} more wheelchair platform${addW>1?'s':''} added beyond the default sections to meet the wheelchair space count`:''}${M.ADA&&M.ADA.wc<M.ADA.req?`; ${fmt(M.ADA.wc)} of ${fmt(M.ADA.req)} wheelchair spaces, add platforms`:''}.`);}
+  toast(`Tried 1, 2 and 3 tiers: ${P.tierCount} tier${P.tierCount>1?'s':''}, ${rows.join(' / ')} rows${P.tierCount>1?(best.mv?', upper tiers moved back and up for row 1':', upper tiers in the default position'):''}, ${fmt(M.cap)} seats; farthest viewing distance ${L(M.vd*1000)} (shortest of ${col.filter(c=>c.cap>=tgt).length} configurations that reach the target)${okAll.length?'; every seat meets the minimum C-value':'; no configuration meets every C-value, the closest shown'}${addW?`; ${addW} more wheelchair platform${addW>1?'s':''} added beyond the default sections to meet the wheelchair space count`:''}${M.ADA&&M.ADA.wc<M.ADA.req?`; ${fmt(M.ADA.wc)} of ${fmt(M.ADA.req)} wheelchair spaces, add platforms`:''}.`);}
 function finalCandidates(){const Sorig=JSON.stringify(P);const addW=topUpPlatforms();const S0=JSON.stringify(P);P=fixP(JSON.parse(Sorig));const base=JSON.parse(S0),nT=base.tierCount,u=imperial()?0.3048:0.3,k0=k0Of(base),r0=JSON.parse(Sorig).zt.slice(0,nT).map(t=>t.z[k0].rows),Dmin=(SPORTS[base.sport].Dmin??0),riseMin=RD().rise;
   const vars=[[0,0],[1,0],[-1,0],[2,0],[-2,0]];if(nT>1)vars.push([0,1],[0,-1],[1,1],[-1,-1]);const out=[];
   for(const [dd,dr] of vars){P=fixP(JSON.parse(S0));let ok=true;
@@ -4213,8 +4247,8 @@ function showFinal(c){const old=document.getElementById('finalDlg');if(old)old.r
   const chg=x=>{const a=[];x.rowsT.forEach((v,i)=>{if(v!==r0[i])a.push(`Tier ${i+1} ${v>r0[i]?'+':'−'}${Math.abs(v-r0[i])} row${Math.abs(v-r0[i])>1?'s':''}`);});if(x.dd)a.push(`Sideline Depth 1 ${sg(x.dd*u,ftS)}`);if(x.dr)a.push(`tier-to-tier heights ${sg(x.dr*u,ftS)}`);return a.length?a.join('; '):'Rows only, as drawn';};
   const row=(i,x)=>{const D=x?D0+x.dd*u:D0,rs=x?rise0.map(v=>v+x.dr*u):rise0,rows=x?x.rowsT:r0,cap=x?x.cap:M.cap,vd=x?x.vd:M.vd;
     return `<tr><td><input type="radio" name="fo" value="${i}" id="fo${i}"${i===(c.length?0:-1)?' checked':''}></td><td><label for="fo${i}">${x?'Option '+(i+1):'No change'}</label></td><td>${rows.join(' / ')}</td><td>${ft(D)}</td><td>${nT>1?rs.map(ft).join(' / '):'—'}</td><td>${fmt(cap)}${!x&&cap<P.capTarget?' <span style="color:var(--fail)">(short '+fmt(P.capTarget-cap)+')</span>':''}</td><td>${ft(vd)}</td><td>${x?chg(x)+(x.wcOK?'':`; <span style="color:var(--fail)">${fmt(x.wc)} of ${fmt(x.req)} wheelchair spaces</span>`):'Your design as it is'}</td></tr>`;};
-  const d=document.createElement('div');d.id='finalDlg';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label','Final calculation');
-  d.innerHTML=`<div class="fd-box"><p class="group">Final calculation</p><p class="hint">Target ${fmt(P.capTarget)} seats. ${c.length?`${c.length} configuration${c.length>1?'s':''} from your design, closest first. Each meets the target, every row's absolute minimum C-value (the first row of each tier excepted), every wheelchair platform's sightline over standing spectators in front, and the wheelchair space count.${c.addW?` ${c.addW} wheelchair platform${c.addW>1?'s are':' is'} added, most central sections first, to reach the count.`:''}`:'No configuration within ±2\' of your Sideline Depth 1 and ±1\' of your tier heights meets the target, the C-values and the wheelchair sightlines within the row limits. Keep your design, or change it and try again.'}</p>
+  const d=document.createElement('div');d.id='finalDlg';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label','Compare options');
+  d.innerHTML=`<div class="fd-box"><p class="group">Compare options</p><p class="hint">Target ${fmt(P.capTarget)} seats. ${c.length?`${c.length} configuration${c.length>1?'s':''} from your design, closest first. Each meets the target, every row's absolute minimum C-value (the first row of each tier excepted), every wheelchair platform's sightline over standing spectators in front, and the wheelchair space count.${c.addW?` ${c.addW} wheelchair platform${c.addW>1?'s are':' is'} added, most central sections first, to reach the count.`:''}`:'No configuration within ±2\' of your Sideline Depth 1 and ±1\' of your tier heights meets the target, the C-values and the wheelchair sightlines within the row limits. Keep your design, or change it and try again.'}</p>
     <div class="tablewrap" style="max-height:none"><table class="fixed"><thead><tr><th></th><th>Option</th><th>Rows by tier</th><th>Sideline Depth 1</th><th>Tier-to-tier heights</th><th>Seats</th><th>Farthest view</th><th>Change from your design</th></tr></thead><tbody>${c.map((x,i)=>row(i,x)).join('')}${row(-1,null)}</tbody></table></div>
     <div class="seg" style="margin-top:24px"><button id="fdApply" class="primary">Apply</button><button id="fdCancel">Cancel</button></div><p class="hint">Apply saves the chosen configuration under Saved options as Sport_Seats_Tiers_Rows per tier.</p></div>`;
   document.body.appendChild(d);
@@ -5196,6 +5230,7 @@ function projDirty(){return PROJ.snap==null?OPTS.length>0:PROJ.snap!==projKey();
 function prStatus(){const el=$('prStatus');if(!el)return;const d=projDirty();el.classList.toggle('dirty',d&&!!PROJ.fileName);
   el.textContent=(PROJ.fileName?`File: ${PROJ.fileName}${PROJ.saved?', saved '+new Date(PROJ.saved).toLocaleString([], {dateStyle:'medium',timeStyle:'short'}):''}.`:'Not saved to a file yet.')
     +(PROJ.fileName&&d?' Unsaved changes.':'')+` ${OPTS.length} option${OPTS.length===1?'':'s'}.`;
+  {const a=$('pbName'),b=$('pbStatus');if(a)a.textContent=PROJ.name;if(b){b.textContent=(PROJ.fileName?(d?'Unsaved changes':'Saved'):'Not saved to a file yet')+` · ${OPTS.length} option${OPTS.length===1?'':'s'}`;b.classList.toggle('dirty',d&&!!PROJ.fileName);}}
   const n=$('projName');if(n&&document.activeElement!==n)n.value=PROJ.name;document.title=`${PROJ.name} · Sightline Schematic`;}
 function prDialog({title,text,input,ok='OK',cancel='Cancel',alt}){return new Promise(res=>{const old=$('prDlg');if(old)old.remove();
   const d=document.createElement('div');d.id='prDlg';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label',title);
@@ -5269,6 +5304,19 @@ function renderProjInfo(){const el=$('projInfo');if(!el)return;
   ['piNum','piCountry','piRegion','piCity'].forEach(id=>$(id).addEventListener('change',()=>{upd();if(id==='piCountry')$('piNum').value=PROJ.number=PROJ.number.replace(/^[A-Z]{2}-/,PROJ.country+'-');}));
   $('piRegen').onclick=()=>{PROJ.number=newNumber(PROJ.country);$('piNum').value=PROJ.number;persist();};}
 renderProjInfo();
+/* project bar wiring (decision 271) */
+{const pop=$('projPop'),home=$('projHome'),btn=$('pbProj');if(pop&&home)pop.appendChild(home);
+  const show=v=>{pop.hidden=!v;btn.setAttribute('aria-expanded',String(v));if(v){const n=$('projName');if(n)n.focus();}};
+  btn.onclick=()=>show(pop.hidden);
+  document.addEventListener('click',e=>{if(pop.hidden)return;if(e.target.closest('#projPop,#pbProj,#prDlg,#setupDlg'))return;if(!document.body.contains(e.target))return;show(false);});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!pop.hidden){show(false);btn.focus();}});
+  $('pbSave').onclick=()=>$('prSave').click();$('pbKeep').onclick=()=>$('saveOpt').click();
+  $('pbUndo').onclick=()=>histGo(-1);$('pbRedo').onclick=()=>histGo(1);
+  document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||e.altKey)return;const t=e.target,typing=t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)&&t.type!=='range'||t.isContentEditable);if(typing)return;
+    const k=e.key.toLowerCase();if(k==='z'&&!e.shiftKey){e.preventDefault();histGo(-1);}else if(k==='y'||k==='z'&&e.shiftKey){e.preventDefault();histGo(1);}});
+  ['prNew','prOpen'].forEach(id=>$(id).addEventListener('click',()=>show(false)));
+  $('opts').addEventListener('click',e=>{if(e.target.closest('.opt')&&!e.target.closest('.ren,.x,input'))show(false);});
+  histPush();}
 // changing the sport starts a new project (one sport per project)
 async function sportChange(k){if(k===projSport()){return;}
   if(!OPTS.length&&!PROJ.fileName){PROJ.sport=k;applySport(k);persist();renderProjInfo();return;}   /* nothing saved yet: the project simply takes the new sport */
@@ -5374,7 +5422,7 @@ function renderSetup(){let d=$('setupDlg');if(!d){d=document.createElement('div'
       +`</select><label for="suCap">Target seats <em>${fmt(lo)} to ${fmt(hi)}</em></label><div class="su-cap"><input id="suCapR" type="range" min="${lo}" max="${hi}" step="1000" value="${SU.cap}" aria-label="Target seats slider"><input id="suCap" inputmode="numeric" value="${fmt(SU.cap)}"></div>`
       +`<p class="su-hint">Typical: ${esc(typ)}.</p><p class="su-hint">${Sp.region==='world'?'Green Guide sports: metric units, Guide to Safety at Sports Grounds.':'IBC sports: imperial units, International Building Code.'} The code always follows the sport.</p></div>`;}
   else if(st==='tiers'){b=`<h2>Number of seating tiers</h2><div class="su-tiers">`
-      +[['auto','Recommend for me','I\'m feeling lucky tries 1, 2 and 3 tiers and keeps the shortest viewing distance'],[1,'1 tier',''],[2,'2 tiers',''],[3,'3 tiers','']].map(([v,n,h])=>`<button class="su-tier${String(SU.tiers)===String(v)?' on':''}" data-tier="${v}" aria-pressed="${String(SU.tiers)===String(v)}">${v==='auto'?`<svg class="bowlico" viewBox="0 0 100 100" width="144" height="144" aria-hidden="true"><rect width="100" height="100" fill="#111111"/><text x="50" y="58" text-anchor="middle" font-size="22" font-weight="700" fill="#FFFFFF" font-family="inherit">1·2·3</text></svg>`:tierIcon(v)}<b>${n}</b>${h?`<span>${h}</span>`:''}</button>`).join('')
+      +[['auto','Recommend for me','Tries 1, 2 and 3 tiers and keeps the shortest viewing distance'],[1,'1 tier',''],[2,'2 tiers',''],[3,'3 tiers','']].map(([v,n,h])=>`<button class="su-tier${String(SU.tiers)===String(v)?' on':''}" data-tier="${v}" aria-pressed="${String(SU.tiers)===String(v)}">${v==='auto'?`<svg class="bowlico" viewBox="0 0 100 100" width="144" height="144" aria-hidden="true"><rect width="100" height="100" fill="#111111"/><text x="50" y="58" text-anchor="middle" font-size="22" font-weight="700" fill="#FFFFFF" font-family="inherit">1·2·3</text></svg>`:tierIcon(v)}<b>${n}</b>${h?`<span>${h}</span>`:''}</button>`).join('')
       +`</div><p class="su-hint">Next: the bowl shape and configuration.</p>`;}
   else if(st==='shape'){const w=SPORTS[SU.sport].region==='world';b=`<h2>Bowl shape</h2><div class="su-tiers su-3">`
       +[['chamfer','Straight, chamfered corners'],['round','Straight, round corners'],['curved','Curved, round corners']].map(([v,n])=>`<button class="su-tier${SU.shape===v?' on':''}" data-shape="${v}" aria-pressed="${SU.shape===v}">${bowlIcon(v,'closed',SU.sport)}<b>${n}</b>${v==='curved'?'<span>Default</span>':''}</button>`).join('')
