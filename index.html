@@ -520,6 +520,11 @@ header .brand{flex:none}header .actions{flex:none}
 @media (max-width:1560px){#hdrSeats .hs-n{font-size:30px}#hdrSeats{gap:10px;margin-right:16px}#hdrSeats .hs-r i{width:8px}#hdrSeats .hs-w{display:none}#hdrSeats .hs-s{display:inline}}
 @media (min-width:1280px) and (max-width:1400px){header h1{font-size:26px!important}header .actions{gap:0 11px!important}}
 @media (max-width:1279px){#hdrSeats{order:3;margin:0;flex-basis:100%}}
+/* stands by tier grid (decision 275) */
+.stgrid{display:grid;gap:4px;align-items:center;margin:0 0 4px}.stgrid .st-h{font-size:14px;font-weight:700;text-align:center}.stgrid .st-t{font-size:14px}
+.stgrid .st-c{min-height:28px!important;height:28px;padding:0!important;border:1px solid var(--sw-ink,#111)!important;background:transparent!important}
+.stgrid .st-c.on{background:var(--sw-ink,#111)!important}.stgrid .st-c:hover{outline:2px solid var(--sw-red,#E10600);outline-offset:-2px}
+.stgrid .st-c:not(.on){border-style:dashed!important}
 </style>
 </head>
 <body>
@@ -1924,14 +1929,21 @@ const CFGS={closed:[],openN:['N'],openS:['S'],openNS:['N','S'],onlyN:['S','E','W
 const endWord=k=>['nfl','ncaafb'].includes(k)?'end zone':'end';   /* soccer, rugby and hockey: "end" */
 const CFG_LIST=k=>[['closed','Closed bowl'],['openN',`Open ${endWord(k)}, North`],['openS',`Open ${endWord(k)}, South`],['openNS','Both ends open'],['corners','Open corners'],
   ['onlyN',`North ${endWord(k)} only`],['onlyS',`South ${endWord(k)} only`],['onlyW','West stand only'],['onlyE','East stand only']];
-function cfgOffSet(P,AL,ti){const c=CFGS[P.cfg];if(!c||!c.length&&c!=='corners')return [];const T=AL[ti];if(!T)return [];const comp=compassOf(P),out=[];
+/* stands by tier (decision 275): each stand runs from Tier 1 up to its own top tier; P.standT {N,S,E,W: tiers kept, null = every tier}, used when P.cfg is 'stands' */
+const STAND_KEYS=['W','E','N','S'];
+function standH(Q){Q=Q||P;const n=Q.tierCount,c=CFGS[Q.cfg],o={};STAND_KEYS.forEach(k=>{o[k]=Q.cfg==='stands'?Math.min(n,(Q.standT||{})[k]??n):Array.isArray(c)&&c.includes(k)?0:n;});return o;}
+function standSet(k,ti){const n=P.tierCount,H=standH();H[k]=H[k]===ti+1?ti:ti+1;if(STAND_KEYS.every(x=>!H[x])){toast('Keep at least one stand.');return false;}
+  const pre=Object.keys(CFGS).find(c=>Array.isArray(CFGS[c])&&STAND_KEYS.every(x=>H[x]===(CFGS[c].includes(x)?0:n)));
+  if(pre){P.cfg=pre;delete P.standT;}else{P.cfg='stands';P.standT={};STAND_KEYS.forEach(x=>P.standT[x]=H[x]>=n?null:H[x]);}
+  return true;}
+function cfgOffSet(P,AL,ti){const c=P.cfg==='stands'?STAND_KEYS.filter(k=>standH(P)[k]<=ti):CFGS[P.cfg];if(!c||!c.length&&c!=='corners')return [];const T=AL[ti];if(!T)return [];const comp=compassOf(P),out=[];
   let xc=Infinity,yc=Infinity;if(c==='corners'){GEO.forEach(k=>{const z=T[k];if(!z)return;const gi=midIdx(z.ch);if(gi<0)return;let lo=gi,hi=gi;while(lo>0&&segStraight(z.ch[lo-1])&&!segWedge(z.ch[lo-1]))lo--;while(hi<z.ch.length-1&&segStraight(z.ch[hi+1])&&!segWedge(z.ch[hi+1]))hi++;
     const d=z.tr[0].x/1000,a=segPt(z.ch[lo],0,d),b=segPt(z.ch[hi],1,d);if(Math.abs(a[0]-b[0])>Math.abs(a[1]-b[1]))xc=Math.min(xc,Math.max(Math.abs(a[0]),Math.abs(b[0])));else yc=Math.min(yc,Math.max(Math.abs(a[1]),Math.abs(b[1])));});}
   sectionList(ti,AL).forEach(q=>{const ps=q.mid.pieces.filter(x=>x.b-x.a>1e-6);if(!ps.length)return;
     if(c==='corners'){if(Math.abs(q.mpt[0])>xc+0.3&&Math.abs(q.mpt[1])>yc+0.3)out.push(q.no);return;}
     if(ps.every(x=>c.includes(comp[x.Lz.k])))out.push(q.no);});
   return out;}
-document.addEventListener('change',e=>{if(e.target&&e.target.id==='cfgSel'){P.cfg=e.target.value;update();renderControls();toast(`Configuration: ${e.target.selectedOptions[0].textContent}. Press Size the bowl to size the remaining stands to the target.`);}});
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='cfgSel'){P.cfg=e.target.value;if(P.cfg!=='stands')delete P.standT;update();renderControls();toast(`Configuration: ${e.target.selectedOptions[0].textContent}. Press Size the bowl to size the remaining stands to the target.`);}});
 function applyCfg(P,AL){const S=P.secs||(P.secs={});Object.keys(S).forEach(k=>{if(S[k].cfg){delete S[k].off;delete S[k].cfg;if(!Object.keys(S[k]).length)delete S[k];}});
   if(!P.cfg||P.cfg==='closed'||P.cfg==='custom'||!zoned(P))return;
   AL.forEach((T,ti)=>cfgOffSet(P,AL,ti).forEach(no=>{const e=S[no]||(S[no]={});if(e.off)return;e.off=true;e.cfg=true;delete e.wc;}));}
@@ -2161,7 +2173,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.15.04';
+const VERSION='2026.11.15.05';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2420,7 +2432,12 @@ function renderControls(){
   h+=`<div class="lab">Precast thickness: <b style="color:var(--ink)">${L(slabT())}</b></div><p class="hint" style="margin:2px 0 0">Standard for every precast bowl unit (treads and risers), vomitory wall and header wall.</p>`;
   if(zoned(P)){
     h+='<div class="lab">Side profiles: <b style="color:var(--ink)">All four sides match</b></div>';
-    h+='<div class="lab">Configuration</div><select id="cfgSel" class="sel">'+CFG_LIST(P.sport).concat(P.cfg==='custom'?[['custom','Custom (sections switched by hand)']]:[]).map(([v,n])=>`<option value="${v}"${(P.cfg||'closed')===v?' selected':''}>${n}</option>`).join('')+'</select>';
+    h+='<div class="lab">Configuration</div><select id="cfgSel" class="sel">'+CFG_LIST(P.sport).concat(P.cfg==='custom'?[['custom','Custom (sections switched by hand)']]:P.cfg==='stands'?[['stands','Custom, stands by tier']]:[]).map(([v,n])=>`<option value="${v}"${(P.cfg||'closed')===v?' selected':''}>${n}</option>`).join('')+'</select>';
+    {const H=standH(),n=P.tierCount,ew=endWord(P.sport)==='end zone',nm={W:'West',E:'East',N:ew?'NEZ':'North',S:ew?'SEZ':'South'},full={W:'West stand',E:'East stand',N:`North ${endWord(P.sport)}`,S:`South ${endWord(P.sport)}`};
+      h+='<div class="lab">Stands by tier</div><div class="stgrid" role="group" aria-label="Stands by tier" style="grid-template-columns:64px repeat(4,1fr)"><span></span>'+STAND_KEYS.map(k=>`<span class="st-h">${nm[k]}</span>`).join('')
+        +Array.from({length:n},(_,r)=>n-1-r).map(ti=>`<span class="st-t">Tier ${ti+1}</span>`+STAND_KEYS.map(k=>`<button class="st-c${H[k]>ti?' on':''}" data-st="${k}:${ti}" aria-pressed="${H[k]>ti}" aria-label="${full[k]}, Tier ${ti+1}: ${H[k]>ti?'included':'omitted'}" title="${full[k]}: ${H[k]===ti+1?`remove Tier ${ti+1}`:`Tiers 1 to ${ti+1}`.replace('Tiers 1 to 1','Tier 1 only')}"></button>`).join('')).join('')+'</div>'
+        +'<button data-resize="1" style="width:100%;margin:8px 0 0" title="Sizes the rows of the stands that remain so the bowl holds the target seats">Size the bowl to the target</button>'
+        +'<p class="hint">Click a cell to set how high a stand goes; click its top cell again to lower it. Each half corner follows the stand beside it.</p>';}
     h+='<div class="lab">Corners</div><div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>'
       +(P.zt[0].corners==='round'?'<div class="lab">Corner aisles, each corner (equally spaced)</div>'+Array.from({length:P.tierCount-1},(_,i)=>i+1).map(ti=>`<div class="cornrow"><span>Tier ${ti+1}</span><div class="seg">${[1,2,3].map(v=>`<button data-cornais="${ti}:${v}" class="${cornCount(P,ti)===v?'on':''}" aria-pressed="${cornCount(P,ti)===v}">${v}</button>`).join('')}</div></div>`).join('')
         +`<p class="hint">Tier 1: one aisle on the corner centreline, over the player tunnel.${P.tierCount>1?` Upper tiers: 1, 2 or 3 aisles make 2, 3 or 4 equal sections; default 2.${P.tierCount>2?' With the same count, the Tier 3 corner aisles line up with Tier 2.':''}`:''}</p>`:'');
@@ -2523,6 +2540,8 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.eg){EDIT.g=+b.dataset.eg;renderControls();return;}
   else if(b.dataset.link){relink(EDIT.tier,b.dataset.link);}
   else if(b.dataset.corner){P.zt.forEach(t=>t.corners=b.dataset.corner);}
+  else if(b.dataset.resize){const q=$('quickCalc');if(q)q.click();return;}
+  else if(b.dataset.st){const [k,t]=b.dataset.st.split(':');if(!standSet(k,+t))return;}
   else if(b.dataset.cornais){const [ti,v]=b.dataset.cornais.split(':').map(Number);if(cornCount(P,ti)===v)return;const A=P.cornAis||(P.cornAis=CORN_DEF.slice());A[ti]=v;
     const N=P.secN||{};let n=0;Object.keys(N).forEach(k=>{if(k.startsWith(ti+'.C.')){delete N[k];n++;}});if(P.aisEd)delete P.aisEd[ti];   /* the corner sections change: hand-set corner sizes on that tier no longer fit */
     toast(`Tier ${ti+1}: ${v} aisle${v>1?'s':''} in each corner, ${v+1} equal sections${n?'; hand-set corner sizes cleared':''}.`);}
@@ -5349,7 +5368,7 @@ function panelSteps(){return [...document.querySelectorAll('aside section.step')
 function panelSum(i){try{const Sp=SPORTS[P.sport],n=P.tierCount,k0=GEO.find(k=>P.zt[0].z[k]),A=AIS();
   return [()=>`${Sp.name} (${Sp.org}) · ${fmt(P.capTarget)} seats · ${n} tier${n>1?'s':''}`,
     ()=>`${imperial()?'Imperial':'Metric'} · ${(($('northSel')||{}).selectedOptions||[{}])[0].textContent||''}`,
-    ()=>`${P.zt[0].corners==='round'?'Round':'Chamfered'} corners · ${(P.bulge.S>0||P.bulge.E>0)?'curved':'straight'} stands · ${(CFG_LIST(P.sport).find(c=>c[0]===(P.cfg||'closed'))||[0,'Custom'])[1]}`,
+    ()=>`${P.zt[0].corners==='round'?'Round':'Chamfered'} corners · ${(P.bulge.S>0||P.bulge.E>0)?'curved':'straight'} stands · ${P.cfg==='stands'?STAND_KEYS.map(k=>k+standH()[k]).join(' '):(CFG_LIST(P.sport).find(c=>c[0]===(P.cfg||'closed'))||[0,'Custom'])[1]}`,
     ()=>`Rows ${Array.from({length:n},(_,t)=>P.zt[t].z[k0].rows).join(' / ')}`,
     ()=>`C-value ${L(P.zt[0].z[k0].target)} · ${P.eyeMode==='stand'?'standing':'seated'}`,
     ()=>`${A.nSL||5} + ${A.nEZ||3} middle sections · aisles ${L(A.w)}`,
