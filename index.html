@@ -525,6 +525,7 @@ header .brand{flex:none}header .actions{flex:none}
 .stgrid .st-c{min-height:28px!important;height:28px;padding:0!important;border:1px solid var(--sw-ink,#111)!important;background:transparent!important}
 .stgrid .st-c.on{background:var(--sw-ink,#111)!important}.stgrid .st-c:hover{outline:2px solid var(--sw-red,#E10600);outline-offset:-2px}
 .stgrid .st-c:not(.on){border-style:dashed!important}
+.stgrid .st-c.on.part{background:repeating-linear-gradient(135deg,var(--sw-ink,#111) 0 4px,transparent 4px 8px)!important}   /* some of this stand's sections on this tier are switched off by hand */
 </style>
 </head>
 <body>
@@ -1931,8 +1932,15 @@ const CFG_LIST=k=>[['closed','Closed bowl'],['openN',`Open ${endWord(k)}, North`
   ['onlyN',`North ${endWord(k)} only`],['onlyS',`South ${endWord(k)} only`],['onlyW','West stand only'],['onlyE','East stand only']];
 /* stands by tier (decision 275): each stand runs from Tier 1 up to its own top tier; P.standT {N,S,E,W: tiers kept, null = every tier}, used when P.cfg is 'stands' */
 const STAND_KEYS=['W','E','N','S'];
-function standH(Q){Q=Q||P;const n=Q.tierCount,c=CFGS[Q.cfg],o={};STAND_KEYS.forEach(k=>{o[k]=Q.cfg==='stands'?Math.min(n,(Q.standT||{})[k]??n):Array.isArray(c)&&c.includes(k)?0:n;});return o;}
+/* the sections that lie wholly in each stand, tier by tier (as drawn) */
+function standSecs(ti,AL){AL=AL||(M&&M.AL);const comp=compassOf(P),o={W:[],E:[],N:[],S:[],touch:{W:[],E:[],N:[],S:[]}};if(!AL||!AL[ti])return o;
+  sectionList(ti,AL).forEach(q=>{const ps=q.mid.pieces.filter(x=>x.b-x.a>1e-6),ks=[...new Set(ps.map(x=>comp[x.Lz.k]))];ks.forEach(k=>o.touch[k]&&o.touch[k].push(q.no));if(ks.length===1&&o[ks[0]])o[ks[0]].push(q.no);});return o;}
+function standH(Q){Q=Q||P;const n=Q.tierCount,c=CFGS[Q.cfg],o={};
+  if(Q.cfg==='custom'&&Q===P&&M&&M.AL){   /* sections switched by hand: the grid shows the bowl as it is, a stand counted up to its highest tier with seats, from Tier 1 with no gap */
+    const S=P.secs||{};STAND_KEYS.forEach(k=>{let h=0;for(let ti=0;ti<n;ti++){const nos=standSecs(ti)[k];if(nos.length&&nos.every(no=>S[no]&&S[no].off))break;h=ti+1;}o[k]=h;});return o;}
+  STAND_KEYS.forEach(k=>{o[k]=Q.cfg==='stands'?Math.min(n,(Q.standT||{})[k]??n):Array.isArray(c)&&c.includes(k)?0:n;});return o;}
 function standSet(k,ti){const n=P.tierCount,H=standH();H[k]=H[k]===ti+1?ti:ti+1;if(STAND_KEYS.every(x=>!H[x])){toast('Keep at least one stand.');return false;}
+  {const S=P.secs||{};for(let t=0;t<n;t++)standSecs(t).touch[k].forEach(no=>{const e=S[no];if(e&&e.off&&!e.cfg){delete e.off;if(!Object.keys(e).length)delete S[no];}});}   /* the grid governs its stand: sections of this stand switched off by hand come back on, then the grid's own cuts apply */
   const pre=Object.keys(CFGS).find(c=>Array.isArray(CFGS[c])&&STAND_KEYS.every(x=>H[x]===(CFGS[c].includes(x)?0:n)));
   if(pre){P.cfg=pre;delete P.standT;}else{P.cfg='stands';P.standT={};STAND_KEYS.forEach(x=>P.standT[x]=H[x]>=n?null:H[x]);}
   return true;}
@@ -2173,7 +2181,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.15.05';
+const VERSION='2026.11.15.06';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2435,9 +2443,9 @@ function renderControls(){
     h+='<div class="lab">Configuration</div><select id="cfgSel" class="sel">'+CFG_LIST(P.sport).concat(P.cfg==='custom'?[['custom','Custom (sections switched by hand)']]:P.cfg==='stands'?[['stands','Custom, stands by tier']]:[]).map(([v,n])=>`<option value="${v}"${(P.cfg||'closed')===v?' selected':''}>${n}</option>`).join('')+'</select>';
     {const H=standH(),n=P.tierCount,ew=endWord(P.sport)==='end zone',nm={W:'West',E:'East',N:ew?'NEZ':'North',S:ew?'SEZ':'South'},full={W:'West stand',E:'East stand',N:`North ${endWord(P.sport)}`,S:`South ${endWord(P.sport)}`};
       h+='<div class="lab">Stands by tier</div><div class="stgrid" role="group" aria-label="Stands by tier" style="grid-template-columns:64px repeat(4,1fr)"><span></span>'+STAND_KEYS.map(k=>`<span class="st-h">${nm[k]}</span>`).join('')
-        +Array.from({length:n},(_,r)=>n-1-r).map(ti=>`<span class="st-t">Tier ${ti+1}</span>`+STAND_KEYS.map(k=>`<button class="st-c${H[k]>ti?' on':''}" data-st="${k}:${ti}" aria-pressed="${H[k]>ti}" aria-label="${full[k]}, Tier ${ti+1}: ${H[k]>ti?'included':'omitted'}" title="${full[k]}: ${H[k]===ti+1?`remove Tier ${ti+1}`:`Tiers 1 to ${ti+1}`.replace('Tiers 1 to 1','Tier 1 only')}"></button>`).join('')).join('')+'</div>'
+        +Array.from({length:n},(_,r)=>n-1-r).map(ti=>`<span class="st-t">Tier ${ti+1}</span>`+STAND_KEYS.map(k=>`<button class="st-c${H[k]>ti?' on':''}${H[k]>ti&&(()=>{const S=P.secs||{};return standSecs(ti)[k].some(no=>S[no]&&S[no].off);})()?' part':''}" data-st="${k}:${ti}" aria-pressed="${H[k]>ti}" aria-label="${full[k]}, Tier ${ti+1}: ${H[k]>ti?'included':'omitted'}" title="${full[k]}: ${H[k]===ti+1?`remove Tier ${ti+1}`:`Tiers 1 to ${ti+1}`.replace('Tiers 1 to 1','Tier 1 only')}"></button>`).join('')).join('')+'</div>'
         +'<button data-resize="1" style="width:100%;margin:8px 0 0" title="Sizes the rows of the stands that remain so the bowl holds the target seats">Size the bowl to the target</button>'
-        +'<p class="hint">Click a cell to set how high a stand goes; click its top cell again to lower it. Each half corner follows the stand beside it.</p>';}
+        +'<p class="hint">Click a cell to set how high a stand goes; click its top cell again to lower it. Each half corner follows the stand beside it. A hatched cell has some sections switched off on the plan; clicking it puts the whole stand back under the grid.</p>';}
     h+='<div class="lab">Corners</div><div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>'
       +(P.zt[0].corners==='round'?'<div class="lab">Corner aisles, each corner (equally spaced)</div>'+Array.from({length:P.tierCount-1},(_,i)=>i+1).map(ti=>`<div class="cornrow"><span>Tier ${ti+1}</span><div class="seg">${[1,2,3].map(v=>`<button data-cornais="${ti}:${v}" class="${cornCount(P,ti)===v?'on':''}" aria-pressed="${cornCount(P,ti)===v}">${v}</button>`).join('')}</div></div>`).join('')
         +`<p class="hint">Tier 1: one aisle on the corner centreline, over the player tunnel.${P.tierCount>1?` Upper tiers: 1, 2 or 3 aisles make 2, 3 or 4 equal sections; default 2.${P.tierCount>2?' With the same count, the Tier 3 corner aisles line up with Tier 2.':''}`:''}</p>`:'');
