@@ -2203,7 +2203,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.17.08';
+const VERSION='2026.11.17.09';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3861,7 +3861,8 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
    .dim([0,lo2],[span,lo2],{lab:'Aisle centre to aisle centre',val:L(span),ea:[0,lo],eb:[span,lo]});
   // row depth, chair and clear width at a typical row (row 2), on the right
   // row detail at 4x: two typical rows, seat down (solid), seat raised (dashed), back behind the riser, clear width
-  let det='',DB=null;{const r2=tr[Math.min(1,tr.length-1)],T=r2.T,{cb,cdn,cf,cd}=seatGeo(r2.seat,r2.T),sw2=r2.seatW,ox=span+side+fs*8,oy=V1-fs*3.4-(3*T+cb+3*25.4)*MI,Xd=u=>(ox-U0+u*MI).toFixed(1),Yd=v=>(V1-oy-v*MI).toFixed(1),K2=SecDim(Xd,Yd,fs*.9,[W,H]);
+  let det='',DB=null;{const fs=o.det?8*o.upt/0.54:fs0,G=o.det?o.grid:0;   /* PDF sheet (decision 288): dimension values 8 pt (decision 202), labels about 6.7 pt */
+    const r2=tr[Math.min(1,tr.length-1)],T=r2.T,{cb,cdn,cf,cd}=seatGeo(r2.seat,r2.T),sw2=r2.seatW,ox=span+side+fs*8,oy=V1-fs*3.4-(3*T+cb+3*25.4)*MI,Xd=u=>(ox-U0+u*MI).toFixed(1),Yd=v=>(V1-oy-v*MI).toFixed(1),K2=SecDim(Xd,Yd,fs*.9,[W,H]);
     // seat 1 in three rows, complete: the middle row, the row behind (above) and the row ahead (below), beside the aisle
     const xa=sw2+gp,AWp=Math.min(wA,18*25.4),xe=xa+AWp,vb=T+cb-cdn-3*25.4,vt=3*T+cb+3*25.4,ln=(x1,y1,x2,y2,st)=>`<line x1="${Xd(x1)}" y1="${Yd(y1)}" x2="${Xd(x2)}" y2="${Yd(y2)}" ${st} vector-effect="non-scaling-stroke"/>`;
     det+=`<rect x="${Xd(xa)}" y="${Yd(vt)}" width="${f(AWp*MI)}" height="${f((vt-vb)*MI)}" fill="#FFFFFF" stroke="none"/>`
@@ -3881,16 +3882,16 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
       +`<text x="${Xd(sw2/2)}" y="${f(+Yd(T+cb-cdn*.82))}" font-size="${f(PX(8,fs*.5))}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Row ahead</text>`
       +`<text x="${f((+Xd(xa)+ +Xd(xe))/2)}" y="${f(+Yd(3*T-T*.3))}" font-size="${f(PX(8,fs*.5))}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Aisle ${stepNote(ast.n,ast.rh)}</text>`
       +`<text x="${f((+Xd(xa)+ +Xd(xe))/2)}" y="${f(+Yd(3*T-T*.3)+fs*.7)}" font-size="${f(PX(8,fs*.45))}" fill="var(--muted)" text-anchor="middle" dominant-baseline="middle">Rise ${L(ast.R)}, treads ${L(ast.td)}</text>`
-      +`<text x="${Xd(0)}" y="${f(+Yd(vt)-fs*1.2)}" font-size="${f(PX(10,fs*.95))}" font-weight="700" fill="var(--ink)">Seat 1 beside the aisle, enlarged ×${MI}</text>`;
+      +`<text x="${Xd(0)}" y="${f(+Yd(vt)-fs*1.2)}" font-size="${f(o.det?8*o.upt:PX(10,fs*.95))}" font-weight="700" fill="var(--ink)">Seat 1 beside the aisle, enlarged ×${MI}</text>`;
     const ux=xe+fs*0.9/MI*1.6;
     K2.avoid(0,T,xe,T).avoid(0,2*T,xe,2*T).avoid(0,3*T,xe,3*T)
       ;const c0=G0.bench?T:T+cb,c1=G0.bench?2*T-BENCH.d:2*T-cf,mA=12*25.4,ux2=ux+fs*3/MI;   /* clear width = the 12 in minimum aisle accessway + the width beyond it (decision 282) */
       const sideLab=(t,v)=>{det+=`<text x="${f(+Xd(ux)-fs*1.3)}" y="${f(+Yd(v))}" font-size="${f(PX(8,fs*.45))}" text-anchor="end" dominant-baseline="middle" fill="var(--ink)" paint-order="stroke" stroke="#FFFFFF" stroke-width="${f(PX(8,fs*.45)*.25)}">${t}</text>`;};   /* names of the short pieces, level, beside the string (decision 285) */
-      if(!G0.bench){K2.dim([ux,T],[ux,c0],{val:L(cb),ea:[xe,T],eb:[sw2,c0]});sideLab('Backrest',T+cb/2);}   /* the row ahead's backrest, 2 in behind its riser */
-      if(c1-c0>mA+1){K2.dim([ux,c0],[ux,c1-mA],{val:L(c1-c0-mA),ref:'rowseats',ea:G0.bench?[xe,c0]:undefined});sideLab('Net aisle access width',(c0+c1-mA)/2);}
-      if(c1-c0>mA+1)K2.dim([ux,c1-mA],[ux,c1],{lab:'Minimum',val:L(mA),ref:'rowseats'});
+      if(!G0.bench){K2.dim([ux,T],[ux,c0],{val:o.det?'':L(cb),ea:[xe,T],eb:[sw2,c0]});sideLab(o.det?`Backrest ${L(cb)}`:'Backrest',T+cb/2);}   /* PDF sheet: the 2 in value with its name, too short to sit on the string */   /* the row ahead's backrest, 2 in behind its riser */
+      if(c1-c0>mA+1){K2.dim([ux,c0],[ux,c1-mA],{val:L(c1-c0-mA),ref:o.det?undefined:'rowseats',ea:G0.bench?[xe,c0]:undefined});sideLab('Net aisle access width',(c0+c1-mA)/2);}
+      if(c1-c0>mA+1)K2.dim([ux,c1-mA],[ux,c1],{lab:o.det?undefined:'Minimum',val:L(mA),ref:'rowseats'});if(c1-c0>mA+1&&o.det)sideLab('Minimum',c1-mA/2);
       else K2.dim([ux,c0],[ux,c1],{lab:'Clear width',val:L(c1-c0),ref:'tread',ea:[xe,c0]});
-      K2.dim([ux,c1],[ux,2*T],{lab:G0.bench?'Bench':'Raised seat depth',val:L(2*T-c1),eb:[xe,2*T]});   /* chair: the raised seat in front of the riser (14 in default) */
+      K2.dim([ux,c1],[ux,2*T],{lab:o.det?undefined:G0.bench?'Bench':'Raised seat depth',val:L(2*T-c1),eb:[xe,2*T]});if(o.det)sideLab(G0.bench?'Bench':'Raised seat depth',(c1+2*T)/2);   /* PDF sheet: names level beside the string (decision 288) */   /* chair: the raised seat in front of the riser (14 in default) */
       if(c1-c0>mA+1)K2.dim([ux2,c0],[ux2,c1],{lab:'Clear width',val:L(c1-c0),ref:'tread',ea:[ux,c0],eb:[ux,c1]});
       if(c1-c0>=mA){const xl=-fs*1.6/MI;   /* the 12 in minimum clear aisle accessway in front of the seat: its two edges across the view, and its name (decision 284) */
         det+=ln(xl,c1,ux,c1,'stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="5 3"')+ln(xl,c1-mA,ux,c1-mA,'stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="5 3"')
@@ -3903,17 +3904,18 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
       K2.dim([xo,y[0]],[xo,y[5]],{lab:'Three rows of seats',val:L(y[5]-y[0])});}
     K2
       .dim([0,vb-fs*1.8/MI],[sw2,vb-fs*1.8/MI],{lab:'Seat width',val:L(sw2),ea:[0,vb],eb:[sw2,vb]})   // the selected seat width
-      .dim([sw2,vb-fs*1.8/MI],[xa,vb-fs*1.8/MI],{lab:'End space',val:L(gp),eb:[xa,vb]});
+      .dim([sw2,vb-fs*1.8/MI],[xa,vb-fs*1.8/MI],{lab:o.det?undefined:'End space',val:L(gp),eb:[xa,vb]});
+    if(o.det)det+=`<text x="${f(+Xd(xa)+fs*.5)}" y="${f(+Yd(vb-fs*1.8/MI))}" font-size="${f(fs*.45)}" dominant-baseline="middle" fill="var(--ink)">End space</text>`;
     det+=K2.out();
-    {const cnt=counts.filter(n=>n>0),cl=rowCalcLines({seat:r2.seat,seatW:r2.seatW,tread:r2.T},Math.min(...cnt),Math.max(...cnt)),fz=o.det?fs*.95:PX(9,fs*.6),lh=fz*1.5,y0=o.det?+Yd(vt)+fz:+Yd(vb)+fs*3.6,cx0=o.det?+Xd(ux2)+fs*7:+Xd(-fs*4.2/MI);   /* PDF sheet (decision 287): the calculation beside the drawing */   /* the seats-per-row calculation and its reference (decision 282) */
-      cl.forEach((t,i)=>{det+=`<text x="${f(cx0)}" y="${f(y0+i*lh)}" class="rcalc" font-size="${f(fz)}" font-weight="${i?400:700}" fill="var(--ink)">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</text>`;});
+    {const cnt=counts.filter(n=>n>0),cl=rowCalcLines({seat:r2.seat,seatW:r2.seatW,tread:r2.T},Math.min(...cnt),Math.max(...cnt)),dx0=+Xd(-fs*4.2/MI)-fs*2.6,dy0=+Yd(vt)-fs*2.6,fz=o.det?8*o.upt:PX(9,fs*.6),lh=o.det?G:fz*1.5,y0=o.det?dy0+0.5*G:+Yd(vb)+fs*3.6,cx0=o.det?dx0+Math.ceil((+Xd(ux2)+fs*4-dx0)/G)*G:+Xd(-fs*4.2/MI);   /* PDF sheet: rows of the 1/4 in grid, text centred in each (decision 288) */   /* PDF sheet (decision 287): the calculation beside the drawing */   /* the seats-per-row calculation and its reference (decision 282) */
+      cl.forEach((t,i)=>{det+=`<text x="${f(cx0)}" y="${f(y0+i*lh)}" class="rcalc"${o.det?' dominant-baseline="middle"':''} font-size="${f(fz)}" font-weight="${i?400:700}" fill="var(--ink)">${t.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</text>`;});
       let yy=y0+cl.length*lh;
       if(cl.length){const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;'),b=egBasis(),tb=b==='open'||b==='smoke',x0t=cx0,
         T_=(x,y,t,o={})=>`<text class="rcalc" x="${f(x)}" y="${f(y)}" font-size="${f(o.sz||fz)}" font-weight="${o.b?700:400}" text-anchor="${o.a||'start'}" dominant-baseline="middle" fill="${o.c||'var(--ink)'}">${esc(t)}</text>`,
         Ln=(x1,y1,x2,y2,w)=>`<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="var(--ink)" stroke-width="${w}" vector-effect="non-scaling-stroke"/>`;
         if(tb){   /* the 'Open-air stadium: seats per row' table (IBC 2024 Table 1030.13.2.1), the stadium's band highlighted (decision 283) */
-          const rh=fz*1.6,cw=[fz*12,fz*6.5,fz*6.5,fz*6.5,fz*6.5],cx=cw.reduce((a,w,i)=>(a.push(a[i]+w),a),[x0t]),tw=cx[5]-x0t,cap=P.capTarget||0,cur=IBC_ROW_T.findIndex(t=>cap<t[0]),Rr=ibcRow({seat:r2.seat,seatW:r2.seatW,tread:r2.T});
-          yy+=lh*.6;det+=T_(x0t,yy,'Open-air stadium: seats per row (IBC 2024 Table 1030.13.2.1)',{b:1});yy+=lh*.9;
+          const rh=o.det?G:fz*1.6,cw=o.det?[7*G,3*G,3*G,3*G,3*G]:[fz*12,fz*6.5,fz*6.5,fz*6.5,fz*6.5],cx=cw.reduce((a,w,i)=>(a.push(a[i]+w),a),[x0t]),tw=cx[5]-x0t,cap=P.capTarget||0,cur=IBC_ROW_T.findIndex(t=>cap<t[0]),Rr=ibcRow({seat:r2.seat,seatW:r2.seatW,tread:r2.T});
+          yy+=o.det?G:lh*.6;det+=T_(x0t,yy,'Open-air stadium: seats per row (IBC 2024 Table 1030.13.2.1)',{b:1});yy+=o.det?G/2:lh*.9;
           const top=yy;det+=`<rect x="${f(x0t)}" y="${f(top+2*rh+cur*rh)}" width="${f(tw)}" height="${f(rh)}" fill="${tierFill(ti)}" fill-opacity=".45"/>`;
           det+=T_(x0t+fz*.4,top+rh,'Total seating capacity',{b:1})+T_((cx[1]+cx[3])/2,top+rh*.5,'With backrests',{b:1,a:'middle'})+T_((cx[3]+cx[5])/2,top+rh*.5,'Without backrests',{b:1,a:'middle'});
           ['Both ends','One end','Both ends','One end'].forEach((t,i)=>{det+=T_((cx[i+1]+cx[i+2])/2,top+rh*1.5,t,{a:'middle'});});
@@ -3923,14 +3925,14 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
           det+=Ln(x0t,top,cx[5],top,1)+Ln(x0t,top+2*rh,cx[5],top+2*rh,0.8)+Ln(x0t,bot,cx[5],bot,1)+Ln(cx[1],top+rh,cx[5],top+rh,0.5);
           for(let i=0;i<IBC_ROW_T.length-1;i++)det+=Ln(x0t,top+3*rh+i*rh,cx[5],top+3*rh+i*rh,0.3);
           [x0t,cx[1],cx[3],cx[5]].forEach(x=>{det+=Ln(x,top,x,bot,x===cx[1]||x===cx[3]?0.8:1);});[cx[2],cx[4]].forEach(x=>{det+=Ln(x,top+rh,x,bot,0.4);});
-          yy=bot+lh*.9;[`Seats per row at 12" clear. Add one seat per full 0.3" beyond 12" with an aisle at both ends,`,`or per full 0.6" with an aisle at one end only; 100 seats per row at most.`].forEach(t=>{det+=T_(x0t,yy,t,{c:'var(--muted)'});yy+=lh;});}
-        const refs=['References (IBC 2024):','§1030.13.1  Aisle accessways: 12" minimum clear width between rows;','      self-rising seats measured in the raised position.',
+          yy=bot+(o.det?G/2:lh*.9);[`Seats per row at 12" clear. Add one seat per full 0.3" beyond 12" with an aisle at both ends,`,`or per full 0.6" with an aisle at one end only; 100 seats per row at most.`].forEach(t=>{det+=T_(x0t,yy,t,{c:'var(--muted)'});yy+=lh;});}
+        const refs=['References (IBC 2024):',...(o.det?['§1030.13.1  Aisle accessways: 12" minimum clear width; self-rising seats measured raised.']:['§1030.13.1  Aisle accessways: 12" minimum clear width between rows;','      self-rising seats measured in the raised position.']),
           '§1030.13.2.1  Dual access: an aisle at both ends of the row.','§1030.13.2.2  Single access: an aisle at one end of the row only.',
           tb?'Table 1030.13.2.1  Smoke-protected or open-air assembly seating: seats per row by capacity.':'Table 1030.13.2.1  Smoke-protected or open-air seating only (not used for this indoor basis).',
           `§1030.8  Common path of egress travel: ${tb?'50 ft for smoke-protected or open-air seating':'30 ft'}.`,'§1004.6  Fixed seating: benches counted at 18" per person.',
           'Method: project doc "Open-air stadium: seats per row" (decision 279).','Verify against the adopted code edition and local amendments.'];
-        yy+=lh*.4;refs.forEach((t,i)=>{const ind=/^\s/.test(t);det+=T_(x0t+(ind?fz*1.2:0),yy,t.trim(),{b:i===0,c:i>=refs.length-2?'var(--muted)':undefined});yy+=lh;});}
-      if(cl.length)H=Math.max(H,yy+fs);DB=[+Xd(-fs*4.2/MI)-fs*2.6,+Yd(vt)-fs*2.6,o.det?cx0+fz*50:W,o.det?Math.max(+Yd(vb)+fs*3.5,yy+fz):H];}}
+        yy+=o.det?G:lh*.4;refs.forEach((t,i)=>{const ind=/^\s/.test(t);det+=T_(x0t+(ind?fz*1.2:0),yy,t.trim(),{b:i===0,c:i>=refs.length-2?'var(--muted)':undefined});yy+=lh;});}
+      if(cl.length)H=Math.max(H,yy+fs);DB=[dx0,dy0,o.det?cx0+fz*50:W,o.det?Math.max(+Yd(vb)+fs*3.5,yy-G/2):H];}}
   const lo3=Math.min(...counts),hi3=Math.max(...counts);
   const fC=Math.max(fs,(span+2*side)/62),cap=`<text x="${X(span/2)}" y="${Y(depth)-fC*1.4}" font-size="${f(PX(10,fC*1.15))}" font-weight="700" text-anchor="middle" fill="#1E5BD8">${lo3===hi3?lo3:lo3+'–'+hi3} seats per row, ${tr.length} rows: ${fmt(counts.reduce((a,b)=>a+b,0))} seats</text>`;
   if(o.det)return DB?`<svg viewBox="${f(DB[0])} ${f(DB[1])} ${f(DB[2]-DB[0])} ${f(DB[3]-DB[1])}" role="img" aria-label="Enlarged seating rows">`+det+'</svg>':'';   /* the x8 seat detail alone, for its PDF sheet (decision 287) */
@@ -3954,12 +3956,12 @@ function seatsSvg(){if(!SHOWSEATS||!M.AL||PLAN!=='bowl')return '';const A=AIS(),
    at a standard detail scale (the plan is drawn at 8 times that ratio), the largest that fits the sheet. */
 function plotSeatDetail(sh){const A=swArea(sh),e=ENL;ENL={tier:0,side:westKey()};let fit=null;
   try{const cands=imperial()?[[4,'3" = 1\'-0"'],[8,'1-1/2" = 1\'-0"'],[12,'1" = 1\'-0"'],[16,'3/4" = 1\'-0"'],[24,'1/2" = 1\'-0"'],[32,'3/8" = 1\'-0"'],[48,'1/4" = 1\'-0"']]:[[5,'1:5'],[10,'1:10'],[20,'1:20'],[25,'1:25'],[50,'1:50']];
-    for(const [r,lab] of cands){const R=r*8,svg=drawEnlarged({fs:sh.txt*25.4*R,det:true}),m=svg.match(/viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/);if(!m)continue;
+    for(const [r,lab] of cands){const R=r*8,svg=drawEnlarged({fs:sh.txt*25.4*R,det:true,upt:25.4*R/72,grid:A.u*25.4*R}),m=svg.match(/viewBox="([-\d.]+) ([-\d.]+) ([\d.]+) ([\d.]+)"/);if(!m)continue;
       const w=+m[3]/R/25.4,h=+m[4]/R/25.4;if(w<=A.aw&&h<=A.ah){fit={svg,w,h,u:25.4*R,sc:{ratio:r,label:lab},k:1/r/25.4};break;}}
     if(!fit)return null;
     const E=enlargedData(0,westKey()),q=E?sectionList(0).find(x=>x.key===E.L0.a.id+'_'+E.R0.a.id):null,title=`Enlarged seating rows: typical section${q?' '+q.no:''}, Tier 1 ${zoneName(P,westKey())}, seats per row`,
       sc=swScale(sh,fit.sc.label,null),base=swDraw(trueStrokes(fit.svg,fit.u));   /* no scale bar: feet divisions do not fit a detail scale */
-    return {svg:swissSheet(sh,{title,big:['Seating','Rows'],draws:[{svg:base,w:fit.w,h:fit.h,x:A.x0+(A.aw-fit.w)/2,y:A.y0+(A.ah-fit.h)/2}],scale:sc}),scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'enlarged',title,fits:true};}
+    return {svg:swissSheet(sh,{title,big:['Seating','Rows'],draws:[{svg:base,w:fit.w,h:fit.h,x:A.x0+Math.round((A.aw-fit.w)/2/A.u)*A.u,y:A.y0+Math.round((A.ah-fit.h)/2/A.u)*A.u}],scale:sc}),scale:fit.sc.label,sc:fit.sc,sheet:sh,what:'enlarged',title,fits:true};}
   finally{ENL=e;}}
 function plotEnlarged(sh,force,test){const A=swArea(sh),aw=A.aw-13*A.u,ah=A.ah;   /* beside the key plan column, full height (decision 113) */   /* beside the key plan, below the section label (decision 111) */let fit=null;   /* the drawing area beside the key plan */   // force: the common scale of the set's enlarged plans
   const ti=Math.min(ENL.one?ENL.one.ti:(enlSide()==='corner'?CENL:ENL).tier,P.tierCount-1),sw=P.zt[ti].z.T.seatW,r=sw/(A.u*25.4);   // one seat = one grid square (decision 93)
