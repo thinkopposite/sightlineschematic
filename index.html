@@ -2202,7 +2202,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.17.04';
+const VERSION='2026.11.17.05';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3888,9 +3888,12 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
       else K2.dim([ux,c0],[ux,c1],{lab:'Clear width',val:L(c1-c0),ref:'tread',ea:[xe,c0]});
       K2.dim([ux,c1],[ux,2*T],{lab:G0.bench?'Bench':'Seat raised',val:L(2*T-c1),eb:[xe,2*T]});
       if(!G0.bench)K2.dim([ux2,T],[ux2,c0],{lab:'Back of row ahead',val:L(cb),ea:[xe,T]});
-      if(c1-c0>mA+1)K2.dim([ux2,c0],[ux2,c1],{lab:'Clear width',val:L(c1-c0),ref:'tread'});K2
+      if(c1-c0>mA+1)K2.dim([ux2,c0],[ux2,c1],{lab:'Clear width',val:L(c1-c0),ref:'tread'});
+      if(c1-c0>=mA){const xl=-fs*1.6/MI;   /* the 12 in minimum clear aisle accessway in front of the seat: its two edges across the view, and its name (decision 284) */
+        det+=ln(xl,c1,ux,c1,'stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="5 3"')+ln(xl,c1-mA,ux,c1-mA,'stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="5 3"')
+          +[['12" min. clear',-.6],['aisle access',.6]].map(([t,d])=>`<text x="${Xd(sw2/2)}" y="${f(+Yd(c1-mA/2)+d*PX(10,fs*.62)*1.1)}" font-size="${f(PX(10,fs*.62))}" font-weight="700" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)" stroke="#FFFFFF" stroke-width="${f(PX(10,fs*.62)*.25)}" paint-order="stroke">${t}</text>`).join('');}K2
       .dim([ux2+fs*3/MI,T],[ux2+fs*3/MI,2*T],{lab:'Row depth',val:L(T)})
-      ;for(let k=0;k<ast.n;k++)K2.dim([xa+AWp*.62,T+k*T/ast.n],[xa+AWp*.62,T+(k+1)*T/ast.n],{lab:k?'':'Aisle tread',val:L(T/ast.n)});   // the aisle treads of the middle row
+      ;   /* aisle tread dimensions removed (decision 284): the aisle note gives the treads */
     K2
       ;{const xc=-fs*1.6/MI,xo=-fs*4.2/MI,y=[T+cb-cdn,T+cb,2*T+cb-cdn,2*T+cb,3*T+cb-cdn,3*T+cb];   // chain on the left: seat, space, seat, space, seat; and overall
       for(let i=0;i<5;i++)K2.dim([xc,y[i]],[xc,y[i+1]],{lab:i%2?'':(G0.bench?'Bench':'Seat down'),val:L(y[i+1]-y[i]),ea:[0,y[i]],eb:[0,y[i+1]]});
