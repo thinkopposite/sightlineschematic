@@ -1242,7 +1242,7 @@ function defaults(){const S=SPORTS.ncaafb,f={};
   zt:[tierDef(20,'all',f),tierDef(20,'all',f),tierDef(20,'all',f)].map(t=>{t.corners='chamfer';                 // chairback on every side
     ['T','B'].forEach(k=>Object.assign(t.z[k],{seat:'standard',seatW:22*25.4}));['L','R'].forEach(k=>Object.assign(t.z[k],{seat:'standard',seatW:22*25.4}));return t;}),   /* 22 in chairback on every side */
   eye:eyeDefaults(),eyeRev:EYE_REV,tierColors:['#CCCCCC','#999999','#707070'],eyeMode:'sit',slabT:5*25.4,step:12.7,maxRiser:24*25.4,bank:1,maxRake:35,loss:12,vd:700*0.3048,capTarget:30000,rowMax:[80,80,80],fitMove:false,railH:26*25.4,minHead:7*304.8,suiteH:4.27,ais:aisDefaults('america'),bulge:{S:0,E:0}};}
-function defaultsPinned(){const d=Object.assign(defaults(),{riseRev:1,riseRev2:1,seatRev:1,seatRev3:1});   /* fresh bowls skip the one-time migrations */d.zt.forEach(t=>GEO.forEach(k=>t.z[k].target=cvDefault(d.sport)));d.cvRev=2;alignUpperTiers(d);return d;}
+function defaultsPinned(){const d=Object.assign(defaults(),{riseRev:1,riseRev2:1,seatRev:1,seatRev3:1,chairRev:1});   /* fresh bowls skip the one-time migrations */d.zt.forEach(t=>GEO.forEach(k=>t.z[k].target=cvDefault(d.sport)));d.cvRev=2;alignUpperTiers(d);return d;}
 // Saved bowls from before zones: one profile for the whole bowl becomes the same profile on every side.
 function migrate(o){if(!o||o.zt)return o;const d=defaults();
   d.zt.forEach((t,i)=>{const lt=(o.tiers||[])[i]||{};GEO.forEach(k=>Object.assign(t.z[k],{rows:lt.rows??t.z[k].rows,gap:lt.gap??t.z[k].gap,rise:lt.rise??t.z[k].rise,
@@ -1344,6 +1344,7 @@ function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGAC
   {const im=regionOf(P.sport)!=='world',lo=im?10*0.3048:3.0,hi=im?30*0.3048:9.0;P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>{const z=t.z[k];if(z)z.rise=Math.min(hi,Math.max(lo,z.rise));});});}   // tier gap 10'-0" to 30'-0" (3.0 to 9.0 m); the sizing's inch steps are kept (decision 139)
   if(P.seatRev!==1){P.zt.forEach(t=>GEO.forEach(k=>{const z=t.z[k];if(z&&regionOf(P.sport)==='world')z.seatW=seatSpec(z.seat,P.sport).def;}));P.seatRev=1;}
   if(P.seatRev3!==1){if(regionOf(P.sport)!=='world')P.zt.forEach(t=>GEO.forEach(k=>{const z=t.z[k];if(z)Object.assign(z,{seat:'standard',seatW:22*25.4});}));P.seatRev3=1;}   // American sports: 22 in chairback on every side, once
+  if(P.chairRev!==1){const A=P.ais;if(A&&A.chairD!=null&&Math.abs(A.chairD-((A.backD??2*25.4)+12*25.4))<0.5)A.chairD=(A.backD??2*25.4)+14*25.4;P.chairRev=1;}   // decision 286: bowls saved at the old 12 in raised-seat default move to the 14 in default, once
   if(P.riseRev2!==1){const old=regionOf(P.sport)==='world'?4.0:13*0.3048,nu=REGION_DEF[regionOf(P.sport)].rise;P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>{const z=t.z[k];if(z&&Math.abs(z.rise-old)<1e-6)z.rise=nu;});});P.riseRev2=1;}   // old 13 ft / 4.0 m default moves to the new 10 ft / 3.0 m default, once
   clampCap(P);pinUpperTiers(P);return P;}
 // rake limit (decision 135). American sports: the IBC sets no maximum rake; its stepped-aisle rules (risers 4-8 in, treads at least 11 in,
@@ -1779,7 +1780,7 @@ function aisEditor(){const A=AIS(),imp=imperial(),lay=A.mode==='layout';
     const seen={},lines=[];zs.forEach(([ti,k,z])=>{const r=ibcRow(z),key=[z.seat,z.tread,z.seatW].join('|');if(seen[key])return;seen[key]=1;
       lines.push(`${r.back?'Chairback (with backrest)':'Bench (no backrest)'} ${L(z.seatW)} wide, ${L(z.tread)} row: ${L(r.C)} clear (row less ${r.back?'the chair with its seat raised':'the bench'}, ${L(r.dep)}) → <b>${r.n<1?'clear width under 12" — not allowed':r.n+' seats'}</b> between two aisles`);});
     const b=rowBase(true),tb=egBasis()==='open'||egBasis()==='smoke';
-    h+=slider('chairRaised','Self-rising chair depth, seat raised (12" low limit, 14" conservative)',12*25.4,14*25.4,3.175,'mm')+slider('chairBackrest','Backrest depth',0,4*25.4,3.175,'mm')+slider('ais.chairBack','Seat back behind the riser (1/8 inch)',0,6*25.4,3.175,'mm')+slider('ais.chairDown','Chair depth, seat down (1/2 inch; drawing only)',14*25.4,32*25.4,12.7,'mm')
+    h+=slider('chairRaised','Raised seat depth, self-rising chair (14" default, 12" low limit)',12*25.4,14*25.4,3.175,'mm')+slider('chairBackrest','Backrest depth',0,4*25.4,3.175,'mm')+slider('ais.chairBack','Seat back behind the riser (1/8 inch)',0,6*25.4,3.175,'mm')+slider('ais.chairDown','Chair depth, seat down (1/2 inch; drawing only)',14*25.4,32*25.4,12.7,'mm')
       +`<p class="hint" style="margin-top:2px">Self-rising seats are measured raised (IBC 1030.13.2). Clear width = row depth less the raised chair depth and the backrest depth: 34" − 14" − 2" = 18" by default (41 seats at 22,000 and over, open-air); with a 12" chair, 20" (47 seats). ${tb?`Open-air or smoke-protected, ${fmt(P.capTarget)} seats: Table 1030.13.2.1 allows ${b} seats at 12" clear`:'IBC 1030.13.2.1: 14 seats at 12" clear'}, plus one seat per 0.3" more (0.6" with an aisle at one end only); open-air rows do not rely on the 22" provision. Benches count at 18" per person (IBC 1004.6).<br>${lines.join('<br>')}</p>`
       +slider('ais.nSL','Equal middle sections, West and East sidelines (1 section)',1,9,1,'sections')
       +slider('ais.nEZ','Equal middle sections, North and South end zones (1 section)',1,9,1,'sections')
@@ -2202,7 +2203,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.17.06';
+const VERSION='2026.11.17.07';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3889,7 +3890,7 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
       if(c1-c0>mA+1){K2.dim([ux,c0],[ux,c1-mA],{val:L(c1-c0-mA),ref:'rowseats',ea:G0.bench?[xe,c0]:undefined});sideLab('Net aisle access width',(c0+c1-mA)/2);}
       if(c1-c0>mA+1)K2.dim([ux,c1-mA],[ux,c1],{lab:'Minimum',val:L(mA),ref:'rowseats'});
       else K2.dim([ux,c0],[ux,c1],{lab:'Clear width',val:L(c1-c0),ref:'tread',ea:[xe,c0]});
-      K2.dim([ux,c1],[ux,2*T],{lab:G0.bench?'Bench':'Seat raised',val:L(2*T-c1),eb:[xe,2*T]});   /* chair: the raised seat in front of the riser (14 in default) */
+      K2.dim([ux,c1],[ux,2*T],{lab:G0.bench?'Bench':'Raised seat depth',val:L(2*T-c1),eb:[xe,2*T]});   /* chair: the raised seat in front of the riser (14 in default) */
       if(c1-c0>mA+1)K2.dim([ux2,c0],[ux2,c1],{lab:'Clear width',val:L(c1-c0),ref:'tread',ea:[ux,c0],eb:[ux,c1]});
       if(c1-c0>=mA){const xl=-fs*1.6/MI;   /* the 12 in minimum clear aisle accessway in front of the seat: its two edges across the view, and its name (decision 284) */
         det+=ln(xl,c1,ux,c1,'stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="5 3"')+ln(xl,c1-mA,ux,c1-mA,'stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="5 3"')
