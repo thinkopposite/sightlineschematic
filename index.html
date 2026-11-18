@@ -1507,7 +1507,7 @@ const IBC_SMOKE=[[5000,.2,.15],[10000,.13,.1],[15000,.096,.07],[20000,.076,.056]
 const INDOOR={nba:1,ncaabb:1,ncaawbb:1,fiba:1,nhl:1};
 const GG_FLOW={step:66,level:82,min:8};                                // Green Guide rates of passage (persons per metre per minute) and egress time (minutes)
 const aisDefaults=r=>r==='world'?{mode:'layout',nmax:28,w:1200,vomW:2400,vomEvery:2,vomH:2000,basis:'gg',vom:[0,0],vomRow:[11,11],prem:21000,gap:100}
-  :{mode:'layout',nmax:28,w:48*25.4,vomW:8*304.8,vomEvery:2,vomH:90*25.4,basis:'auto',vom:[0,0],vomRow:[11,11],prem:60*304.8,gap:4*25.4,chairD:14*25.4,chairBack:2*25.4,chairDown:24*25.4,smid:40,styp:40,smin:36,smax:44,nSL:5,nEZ:3,smaxMid:38,ctolp:50};
+  :{mode:'layout',nmax:28,w:48*25.4,vomW:8*304.8,vomEvery:2,vomH:90*25.4,basis:'auto',vom:[0,0],vomRow:[11,11],prem:60*304.8,gap:4*25.4,chairD:16*25.4,chairBack:2*25.4,chairDown:24*25.4,smid:40,styp:40,smin:36,smax:44,nSL:5,nEZ:3,smaxMid:38,ctolp:50};
 const vomWall=()=>imperial()?6*25.4:150;   // vom side walls and header walls 6 in, as the precast units (decision 124)
 function AIS(Q){Q=Q||P;if(!Q.ais)Q.ais=aisDefaults(regionOf(Q.sport));const A=Q.ais;if(A.gap==null)A.gap=regionOf(Q.sport)==='world'?100:4*25.4;if(A.chairD==null)A.chairD=15*25.4;if(A.smid==null)Object.assign(A,{smid:40,styp:40,smin:36,smax:44,chairD:15*25.4});if(A.styp==null)Object.assign(A,{smid:40,styp:40});if(A.ctolp==null)A.ctolp=50;if(A.chairBack==null)Object.assign(A,{chairD:14*25.4,chairBack:2*25.4,chairDown:24*25.4});if(A.nSL==null)Object.assign(A,{nSL:5,nEZ:3,smaxMid:38});if(!VOM_ON)A.vom=[0,0];if(!A.vom)A.vom=[1,1];if(!A.vomRow)A.vomRow=[11,11];return A;}
 function segLen(g,d){return g.t==='LINE'?Math.hypot(g.q[0]-g.p[0],g.q[1]-g.p[1]):g.t==='CHAM'?Math.hypot(g.b[0]+g.nb[0]*d-g.a[0]-g.na[0]*d,g.b[1]+g.nb[1]*d-g.a[1]-g.na[1]*d):Math.max(0,g.r+d)*g.sw*Math.PI/180;}
@@ -1568,7 +1568,7 @@ const BENCH_D=12*25.4;
 // top 18" above that tread (the tread in front of the riser). set: gap between the bench back and the riser face (0)
 const BENCH={w:18*25.4,d:BENCH_D,t:2*25.4,h:18*25.4,set:0};
 // seat geometry in plan, mm, from the tread's back riser: cb back behind that riser face (negative: in front), cdn depth as used (seat down), cd depth tip to back (seat raised), cf front edge in front of the riser
-function seatGeo(seat,T){if(seat==='bench'){const cb=-BENCH.set;return {bench:true,cb,cdn:BENCH.d,cd:BENCH.d,cf:BENCH.d-cb};}const A=AIS(),cb=A.chairBack??2*25.4,cd=A.chairD||14*25.4;return {bench:false,cb,cdn:A.chairDown||24*25.4,cd,cf:cd-cb};}
+function seatGeo(seat,T){if(seat==='bench'){const cb=-BENCH.set;return {bench:true,cb,cdn:BENCH.d,cd:BENCH.d,cf:BENCH.d-cb};}const A=AIS(),cb=A.chairBack??2*25.4,cd=A.chairD||16*25.4;return {bench:false,cb,cdn:A.chairDown||24*25.4,cd,cf:cd-cb};}
 // benches in a section: the 2" seat board 16-18" above each tread, its back against the riser behind, on a support at its middle
 function benchSvg(rows,X,Y,skip){let o='';(rows||[]).forEach(r=>{if(r.seat!=='bench'||(skip&&skip.has(r)))return;const xb=r.x+r.T-BENCH.set,xf=xb-BENCH.d,zt=r.z+BENCH.h,zb=zt-BENCH.t,xm=(xf+xb)/2;
   o+=`<line x1="${X(xm)}" y1="${Y(zb)}" x2="${X(xm)}" y2="${Y(r.z)}" stroke="var(--ink)" stroke-width="1" vector-effect="non-scaling-stroke"/>`
@@ -1583,7 +1583,7 @@ function ibcRow1(z){const R=ibcRow(z),b=egBasis(),tb=b==='open'||b==='smoke',r=I
     path=Math.floor((tb?50:30)*304.8/z.seatW+1e-9),n=C<12?0:Math.min(path,tb?base+Math.floor((C-12)/0.6+1e-9):C>=22?path:base+Math.floor((C-12)/0.6+1e-9));return {n,base,path};}   /* open-air: table value + one seat per full 0.6 in beyond 12 in, no 22 in step; within the 50 ft common path */
 /* open-air and smoke-protected seating, Joseph's method (decision 279): the table value at 12 in clear, plus one seat for each full 0.3 in of clear width beyond 12 in,
    with no 22 in step to 100 seats; 100 seats per row at most. Indoor seating keeps §1030.13.2.1 as written for now (to review). */
-function ibcRow(z){const A=AIS(),back=z.seat!=='bench',dep=back?(A.chairD||14*25.4):BENCH_D,C=(z.tread-dep)/25.4,base=rowBase(back),tb=egBasis()==='open'||egBasis()==='smoke';
+function ibcRow(z){const A=AIS(),back=z.seat!=='bench',dep=back?(A.chairD||16*25.4):BENCH_D,C=(z.tread-dep)/25.4,base=rowBase(back),tb=egBasis()==='open'||egBasis()==='smoke';
   const n=C<12?0:tb?Math.min(100,base+Math.floor((C-12)/0.3+1e-9)):C>=22?100:Math.min(100,base+Math.floor((C-12)/0.3+1e-9));return {C:C*25.4,n,back,dep,base};}
 /* core framework (decision 249): the same section layout for all six sports; only the code's row limit differs by group.
    IBC (American): Table 1030.13.2.1 seats per row, capped at the 44-seat design maximum. Green Guide (international): 28 seats between gangways. */
@@ -1780,7 +1780,7 @@ function aisEditor(){const A=AIS(),imp=imperial(),lay=A.mode==='layout';
       lines.push(`${r.back?'Chairback (with backrest)':'Bench (no backrest)'} ${L(z.seatW)} wide, ${L(z.tread)} row: ${L(r.C)} clear (row less ${r.back?'the chair with its seat raised':'the bench'}, ${L(r.dep)}) → <b>${r.n<1?'clear width under 12" — not allowed':r.n+' seats'}</b> between two aisles`);});
     const b=rowBase(true),tb=egBasis()==='open'||egBasis()==='smoke';
     h+=slider('chairRaised','Self-rising chair depth, seat raised (12" low limit, 14" conservative)',12*25.4,14*25.4,3.175,'mm')+slider('chairBackrest','Backrest depth',0,4*25.4,3.175,'mm')+slider('ais.chairBack','Seat back behind the riser (1/8 inch)',0,6*25.4,3.175,'mm')+slider('ais.chairDown','Chair depth, seat down (1/2 inch; drawing only)',14*25.4,32*25.4,12.7,'mm')
-      +`<p class="hint" style="margin-top:2px">Self-rising seats are measured raised (IBC 1030.13.2). Clear width = row depth less the raised chair depth and the backrest depth: 34" − 12" − 2" = 20" by default (47 seats at 22,000 and over, open-air); with a 14" chair, 18" (41 seats). ${tb?`Open-air or smoke-protected, ${fmt(P.capTarget)} seats: Table 1030.13.2.1 allows ${b} seats at 12" clear`:'IBC 1030.13.2.1: 14 seats at 12" clear'}, plus one seat per 0.3" more (0.6" with an aisle at one end only); open-air rows do not rely on the 22" provision. Benches count at 18" per person (IBC 1004.6).<br>${lines.join('<br>')}</p>`
+      +`<p class="hint" style="margin-top:2px">Self-rising seats are measured raised (IBC 1030.13.2). Clear width = row depth less the raised chair depth and the backrest depth: 34" − 14" − 2" = 18" by default (41 seats at 22,000 and over, open-air); with a 12" chair, 20" (47 seats). ${tb?`Open-air or smoke-protected, ${fmt(P.capTarget)} seats: Table 1030.13.2.1 allows ${b} seats at 12" clear`:'IBC 1030.13.2.1: 14 seats at 12" clear'}, plus one seat per 0.3" more (0.6" with an aisle at one end only); open-air rows do not rely on the 22" provision. Benches count at 18" per person (IBC 1004.6).<br>${lines.join('<br>')}</p>`
       +slider('ais.nSL','Equal middle sections, West and East sidelines (1 section)',1,9,1,'sections')
       +slider('ais.nEZ','Equal middle sections, North and South end zones (1 section)',1,9,1,'sections')
       +slider('ais.smaxMid','Most seats in a middle section (1 seat)',20,44,1,'seats')+slider('ais.ctolp','Top rows where corner seats over the limit are left out (5 %)',0,50,5,'%')+slider('ais.smax','Most seats in a section (1 seat; code limit above)',20,100,1,'seats');}
@@ -2202,7 +2202,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.17.05';
+const VERSION='2026.11.17.06';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2397,14 +2397,14 @@ const DSTEP1=()=>imperial()?0.3048:0.3,DSTEPN=z=>((z&&z.tread)||34*25.4)/2000;  
 function tierFronts(k){const rs=solveZone(P,k),f=[];rs.forEach(r=>{if(f[r.tier]==null)f[r.tier]=r.x/1000;});return f;}   // each tier's front riser from the point of focus, m
 function lowerTop(ti,k){const lo=solveZone(Object.assign({},P,{tierCount:Math.max(P.tierCount,ti+1)}),k).filter(r=>r.tier===ti-1);return lo[lo.length-1];}
 const BULGE_MAX={S:25,E:20};   // set-back limits in feet: sidelines 25', end stands 20' (decision 145)
-function get(path){if(path==='chairRaised'){const A=AIS();return (A.chairD||14*25.4)-(A.backD??2*25.4);}if(path==='chairBackrest')return AIS().backD??2*25.4;   /* decision 278: the chair depth used for clear width = raised chair depth + backrest depth */
+function get(path){if(path==='chairRaised'){const A=AIS();return (A.chairD||16*25.4)-(A.backD??2*25.4);}if(path==='chairBackrest')return AIS().backD??2*25.4;   /* decision 278: the chair depth used for clear width = raised chair depth + backrest depth */
   if(path==='cvAll.target'){const z=P.zt[0].z[GEO.find(k=>P.zt[0].z[k])];return z.target;}if(path.startsWith('bulgeFt.'))return Math.round((P.bulge[path.slice(8)]||0)/0.3048);   // set-backs in whole feet (decisions 143, 144)
   if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.'),z=P.zt[+ti].z[ks[0]];
     if(p==='Zabs'){const t=lowerTop(+ti,ks[0]);return Math.round(((t?t.z:0)/1000+z.rise)*1e4)/1e4;}
     if(p==='X'&&z.X==null){const t=lowerTop(+ti,ks[0]);return t?Math.round(t.x/1000*1e4)/1e4:0;}
     if(p==='Xrel'){const f=tierFronts(ks[0]);return f[+ti]!=null&&f[+ti-1]!=null?Math.round((f[+ti]-f[+ti-1])*1e4)/1e4:0;}
     return z[p];}return path.split('.').reduce((o,k)=>o[k],P);}
-function set(path,v){if(path==='chairRaised'){const A=AIS(),bd=A.backD??2*25.4;A.backD=bd;A.chairD=Math.max(12*25.4,Math.min(14*25.4,+v))+bd;return;}if(path==='chairBackrest'){const A=AIS(),bd0=A.backD??2*25.4,r=(A.chairD||14*25.4)-bd0,bd=Math.max(0,Math.min(4*25.4,+v));A.backD=bd;A.chairD=r+bd;return;}
+function set(path,v){if(path==='chairRaised'){const A=AIS(),bd=A.backD??2*25.4;A.backD=bd;A.chairD=Math.max(12*25.4,Math.min(14*25.4,+v))+bd;return;}if(path==='chairBackrest'){const A=AIS(),bd0=A.backD??2*25.4,r=(A.chairD||16*25.4)-bd0,bd=Math.max(0,Math.min(4*25.4,+v));A.backD=bd;A.chairD=r+bd;return;}
   if(path==='cvAll.target'){for(let ti=0;ti<3;ti++)GEO.forEach(k=>{const z=P.zt[ti]&&P.zt[ti].z[k];if(z)z.target=v;});return;}if(path.startsWith('bulgeFt.')){const k=path.slice(8);P.bulge[k]=Math.max(0,Math.min(BULGE_MAX[k],Math.round(+v||0)))*0.3048;const e=document.getElementById('bulgeRad');if(e)e.textContent=bulgeRadTxt();return;}
   if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.');
     if(p==='Zabs'){for(const k of ks){const t=lowerTop(+ti,k);P.zt[+ti].z[k].rise=Math.max(RD().rise,v-(t?t.z:0)/1000);}return;}   // never under 10'-0" (3.0 m) above the tier below (decision 132)
@@ -3830,7 +3830,7 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
   if(!E)return '<p class="empty" style="padding:16px">Choose the computed aisle layout to see a typical section.</p>';
   const {Lz,L0,R0}=E,A=AIS(),tr=Lz.tr,x0=tr[0].x,d=1,sa=chainS(Lz.ch,L0.a,d),sb=chainS(Lz.ch,R0.a,d),span=(sb-sa)*1000,wA=A.w,gp=A.gap||0,G0=seatGeo(tr[0].seat,tr[0].T),cd=G0.cd,cb=G0.cb,cdn=G0.cdn,cf=G0.cf;   /* cf: raised seat tip (bench: front edge) in front of the riser; cb: back behind it (bench: negative, 4" in front) */
   const sw=tr[0].seatW,lastR=tr[tr.length-1],depth=lastR.x+lastR.T-x0,side=wA/2+2*sw;      // two neighbouring seats each side, light
-  const fs0=o.fs||(span+2*side)/62,MI=8,cd0=AIS().chairD||14*25.4,U0=-side-1200,U1=o.own?span+side+fs0*4:span+side+fs0*8+2*tr[0].seatW*MI+fs0*17,   /* PDF: the x8 seat detail goes on its own sheet (decision 113) */V0=-fs0*7.5,fs=fs0,V1=depth+(o.own?fs*2:Math.max(fs*6,(span+2*side)/62*3)),W=U1-U0;let H=V1-V0+(o.own?fs*3:fs*9);   /* PDF: no caption above, tight below */
+  const fs0=o.fs||(span+2*side)/62,MI=8,cd0=AIS().chairD||16*25.4,U0=-side-1200,U1=o.own?span+side+fs0*4:span+side+fs0*8+2*tr[0].seatW*MI+fs0*17,   /* PDF: the x8 seat detail goes on its own sheet (decision 113) */V0=-fs0*7.5,fs=fs0,V1=depth+(o.own?fs*2:Math.max(fs*6,(span+2*side)/62*3)),W=U1-U0;let H=V1-V0+(o.own?fs*3:fs*9);   /* PDF: no caption above, tight below */
   const X=u=>(u-U0).toFixed(1),Y=v=>(V1-v).toFixed(1),K=SecDim(X,Y,fs*.9,[W,H]),f=v=>(+v).toFixed(1);
   let g='',seats='',nb='';
   // treads and risers, aisle strips
@@ -3884,15 +3884,17 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
     const ux=xe+fs*0.9/MI*1.6;
     K2.avoid(0,T,xe,T).avoid(0,2*T,xe,2*T).avoid(0,3*T,xe,3*T)
       ;const c0=G0.bench?T:T+cb,c1=G0.bench?2*T-BENCH.d:2*T-cf,mA=12*25.4,ux2=ux+fs*3/MI;   /* clear width = the 12 in minimum aisle accessway + the width beyond it (decision 282) */
-      if(c1-c0>mA+1)K2.dim([ux,c0],[ux,c1-mA],{lab:'Beyond',val:L(c1-c0-mA),ref:'rowseats',ea:[xe,c0]}).dim([ux,c1-mA],[ux,c1],{lab:'Minimum',val:L(mA),ref:'rowseats'});
+      const sideLab=(t,v)=>{det+=`<text x="${f(+Xd(ux)-fs*1.3)}" y="${f(+Yd(v))}" font-size="${f(PX(8,fs*.45))}" text-anchor="end" dominant-baseline="middle" fill="var(--ink)" stroke="#FFFFFF" stroke-width="${f(PX(8,fs*.45)*.25)}" paint-order="stroke">${t}</text>`;};   /* names of the short pieces, level, beside the string (decision 285) */
+      if(!G0.bench){K2.dim([ux,T],[ux,c0],{val:L(cb),ea:[xe,T],eb:[sw2,c0]});sideLab('Backrest',T+cb/2);}   /* the row ahead's backrest, 2 in behind its riser */
+      if(c1-c0>mA+1){K2.dim([ux,c0],[ux,c1-mA],{val:L(c1-c0-mA),ref:'rowseats',ea:G0.bench?[xe,c0]:undefined});sideLab('Net aisle access width',(c0+c1-mA)/2);}
+      if(c1-c0>mA+1)K2.dim([ux,c1-mA],[ux,c1],{lab:'Minimum',val:L(mA),ref:'rowseats'});
       else K2.dim([ux,c0],[ux,c1],{lab:'Clear width',val:L(c1-c0),ref:'tread',ea:[xe,c0]});
-      K2.dim([ux,c1],[ux,2*T],{lab:G0.bench?'Bench':'Seat raised',val:L(2*T-c1),eb:[xe,2*T]});
-      if(!G0.bench)K2.dim([ux2,T],[ux2,c0],{lab:'Back of row ahead',val:L(cb),ea:[xe,T]});
-      if(c1-c0>mA+1)K2.dim([ux2,c0],[ux2,c1],{lab:'Clear width',val:L(c1-c0),ref:'tread'});
+      K2.dim([ux,c1],[ux,2*T],{lab:G0.bench?'Bench':'Seat raised',val:L(2*T-c1),eb:[xe,2*T]});   /* chair: the raised seat in front of the riser (14 in default) */
+      if(c1-c0>mA+1)K2.dim([ux2,c0],[ux2,c1],{lab:'Clear width',val:L(c1-c0),ref:'tread',ea:[ux,c0],eb:[ux,c1]});
       if(c1-c0>=mA){const xl=-fs*1.6/MI;   /* the 12 in minimum clear aisle accessway in front of the seat: its two edges across the view, and its name (decision 284) */
         det+=ln(xl,c1,ux,c1,'stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="5 3"')+ln(xl,c1-mA,ux,c1-mA,'stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="5 3"')
           +[['12" min. clear',-.6],['aisle access',.6]].map(([t,d])=>`<text x="${Xd(sw2/2)}" y="${f(+Yd(c1-mA/2)+d*PX(10,fs*.62)*1.1)}" font-size="${f(PX(10,fs*.62))}" font-weight="700" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)" stroke="#FFFFFF" stroke-width="${f(PX(10,fs*.62)*.25)}" paint-order="stroke">${t}</text>`).join('');}K2
-      .dim([ux2+fs*3/MI,T],[ux2+fs*3/MI,2*T],{lab:'Row depth',val:L(T)})
+      .dim([ux2+fs*3/MI,T],[ux2+fs*3/MI,2*T],{lab:'Row depth',val:L(T),ea:[ux,T],eb:[ux,2*T]})
       ;   /* aisle tread dimensions removed (decision 284): the aisle note gives the treads */
     K2
       ;{const xc=-fs*1.6/MI,xo=-fs*4.2/MI,y=[T+cb-cdn,T+cb,2*T+cb-cdn,2*T+cb,3*T+cb-cdn,3*T+cb];   // chain on the left: seat, space, seat, space, seat; and overall
@@ -4004,7 +4006,7 @@ function cornerData(ti,cn){cn=cn||enlCorner();const T=M.AL&&M.AL[ti];if(!T||!zon
 function findAisle(T,id){for(const Lz of Object.values(T)){const a=Lz.ais.find(x=>x.id===id);if(a)return {Lz,a};}return null;}
 function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CENL.tier),P.tierCount-1),C=o.only?oneSecData(o.only):cornerData(ti);
   if(!C)return '<p class="empty" style="padding:16px">Choose the computed aisle layout with a corner aisle to see a corner section.</p>';
-  const {T,Lz,ca,cid,ids,di}=C,only=o.only?o.only.key:null,inC=id=>ids.includes(id),A=AIS(),wA=A.w/1000,gp=(A.gap||0)/1000,cb=(A.chairBack??2*25.4)/1000,cdn=(A.chairDown||24*25.4)/1000,cf=((A.chairD||14*25.4)-(A.chairBack??2*25.4))/1000;
+  const {T,Lz,ca,cid,ids,di}=C,only=o.only?o.only.key:null,inC=id=>ids.includes(id),A=AIS(),wA=A.w/1000,gp=(A.gap||0)/1000,cb=(A.chairBack??2*25.4)/1000,cdn=(A.chairDown||24*25.4)/1000,cf=((A.chairD||16*25.4)-(A.chairBack??2*25.4))/1000;
   const zs=GEO.map(k=>T[k]).filter(Boolean),nr=Math.max(...zs.map(z=>z.tr.length)),cap=Math.min(...zs.map(z=>nmaxZone(P.zt[ti].z[z.k]))),ibc=imperial()?Math.min(...zs.map(z=>ibcRow(P.zt[ti].z[z.k]).n)):cap;
   // frame: origin on the corner aisle at the front row, v outward along the aisle, u across it
   const g=Lz.ch[di],dF=Lz.tr[0].x/1000,dB=(Lz.tr[Lz.tr.length-1].x+Lz.tr[Lz.tr.length-1].T)/1000,O=C.O||segPt(g,0.5,dF),O2=C.O2||segPt(g,0.5,dB);   // frame on the corner's centreline (one section: on its middle, field at the bottom)
