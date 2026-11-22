@@ -526,6 +526,26 @@ header .brand{flex:none}header .actions{flex:none}
 .stgrid .st-c.on{background:var(--sw-ink,#111)!important}.stgrid .st-c:hover{outline:2px solid var(--sw-red,#E10600);outline-offset:-2px}
 .stgrid .st-c:not(.on){border-style:dashed!important}
 .stgrid .st-c.on.part{background:repeating-linear-gradient(135deg,var(--sw-ink,#111) 0 4px,transparent 4px 8px)!important}   /* some of this stand's sections on this tier are switched off by hand */
+/* pop-out step window for laptops and desktops (decision 290): the step itself lifts out of the panel, enlarged; phones and tablets keep the + / − panel */
+aside .step-h{grid-template-columns:auto 1fr auto auto!important}aside .step-h .sum{grid-column:1/5!important}
+aside .step-h .popout{display:none;width:32px;height:32px;min-height:32px!important;padding:0!important;margin:0 6px 0 0;border:1px solid var(--sw-ink,#111)!important;background:transparent!important;color:var(--sw-ink,#111);cursor:pointer;place-items:center}
+aside .step-h .popout svg{width:18px;height:18px;display:block}
+aside .step-h .popout:hover,aside .step-h .popout:focus-visible{background:var(--sw-ink,#111)!important;color:var(--panel,#fff);outline:none}
+@media (hover:hover) and (pointer:fine) and (min-width:1025px){aside .step-h .popout{display:grid}}
+aside .step-h .popclose{display:none}
+#popBack{position:fixed;inset:0;background:rgba(20,20,19,.45);z-index:1990}
+html.popopen aside{z-index:5000!important}
+aside section.step.popped{position:fixed!important;z-index:2000;left:50%;top:50%;transform:translate(-50%,-50%);width:min(1000px,92vw);max-height:90vh;overflow:auto;background:var(--panel,#fff);border:3px solid var(--sw-ink,#111)!important;padding:0 32px 32px!important;box-shadow:0 12px 48px rgba(0,0,0,.35)}
+aside section.step.popped>.step-h{position:sticky;top:0;z-index:2;background:var(--panel,#fff);padding:20px 0 16px;margin-bottom:12px!important;border-bottom:1px solid var(--sw-rule,#9A9A96);cursor:default}
+aside section.step.popped>.step-h h2{font-size:26px!important}aside section.step.popped>.step-h .bub{font-size:26px!important}
+aside section.step.popped>.step-h .chev,aside section.step.popped>.step-h .popout,aside section.step.popped>.step-h .sum{display:none!important}
+aside section.step.popped>.step-h:hover h2{color:inherit}
+aside section.step.popped>.step-h .popclose{display:inline-flex;align-items:center;gap:10px;font-size:18px!important;font-weight:700;padding:10px 18px!important;min-height:48px;background:var(--sw-ink,#111)!important;color:#fff!important;border:0!important;cursor:pointer;text-transform:uppercase;letter-spacing:.04em}
+aside section.step.popped>.step-h .popclose:hover,aside section.step.popped>.step-h .popclose:focus-visible{background:var(--sw-red,#E10600)!important;outline:none}
+aside section.step.popped>:not(.step-h){zoom:1.4}
+aside .pop-ph{padding:12px 0;border-bottom:1px solid var(--sw-rule,#9A9A96);font-size:14px;color:var(--muted)}
+aside .pop-ph b{color:var(--sw-ink,#111)}
+aside .pop-ph button{margin-top:8px}
 </style>
 </head>
 <body>
@@ -2203,7 +2223,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.22.01';
+const VERSION='2026.11.22.02';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -5344,7 +5364,7 @@ function titleCase(str){
       if(UNITS.has(lo))return p;                                       // keep units lowercase
       if(k===0&&!first&&!last&&SMALL.has(lo))return p;
       return p[0].toUpperCase()+p.slice(1);}).join('-');});}
-const SENTENCE='.rcalc,.note-t,#pbRes,.hs-l,#pbStatus,.oname,#prStatus,#prDlg p,#setupDlg .su-hint,#setupDlg .su-card span,#setupDlg .su-tier span,#setupDlg .su-off,#setupDlg .su-form label em,.pi-sport,#secEd .se-n,#aisEd .se-n,#aisEd .se-h span,.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#secPanel table.wrap td+td,#v33dm,#v3Glb,#v3Ifc,#v3Html';
+const SENTENCE='.pop-ph,.rcalc,.note-t,#pbRes,.hs-l,#pbStatus,.oname,#prStatus,#prDlg p,#setupDlg .su-hint,#setupDlg .su-card span,#setupDlg .su-tier span,#setupDlg .su-off,#setupDlg .su-form label em,.pi-sport,#secEd .se-n,#aisEd .se-n,#aisEd .se-h span,.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#secPanel table.wrap td+td,#v33dm,#v3Glb,#v3Ifc,#v3Html';
 function titleize(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
   while((n=w.nextNode())){const el=n.parentElement;if(!el||el.closest(SENTENCE))continue;const t=titleCase(n.data);if(t!==n.data)n.data=t;}}
 new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData'){const el=m.target.parentElement;if(el&&!el.closest(SENTENCE)){const t=titleCase(m.target.data);if(t!==m.target.data)m.target.data=t;}}
@@ -5441,7 +5461,7 @@ function renderProjInfo(){const el=$('projInfo');if(!el)return;
   $('piRegen').onclick=()=>{PROJ.number=newNumber(PROJ.country);$('piNum').value=PROJ.number;persist();};}
 /* ---------- control panel as a numbered workflow (decision 273): eight steps, one open at a time, each closed step showing its current values; explanations behind Notes;
    a Next button at the foot of each step; the results readout in the project bar ---------- */
-const PANEL={open:0,notes:new Set()};
+const PANEL={open:0,notes:new Set(),pop:-1};
 function panelSteps(){return [...document.querySelectorAll('aside section.step')];}
 function panelSum(i){try{const Sp=SPORTS[P.sport],n=P.tierCount,k0=GEO.find(k=>P.zt[0].z[k]),A=AIS();
   return [()=>`${Sp.name} (${Sp.org}) · ${fmt(P.capTarget)} seats · ${n} tier${n>1?'s':''}`,
@@ -5460,15 +5480,29 @@ const PANEL_T=['Program','Field','Bowl','Tiers','Sightlines','Aisles','Capacity'
 function panelTidy(){const secs=panelSteps();
   secs.forEach((sec,i)=>{let h=sec.querySelector(':scope > .step-h');if(!h){h=document.createElement('div');h.className='step-h';sec.insertBefore(h,sec.firstChild);}
     const t=PANEL_T[i]||(h.querySelector('h2')||{}).textContent||'';
-    h.innerHTML=`<span class="bub">${i+1}</span><h2>${t}</h2><span class="chev" aria-hidden="true"></span><span class="sum"></span>`;h.setAttribute('role','button');h.tabIndex=0;h.dataset.step=i;
+    h.innerHTML=`<span class="bub">${i+1}</span><h2>${t}</h2><button type="button" class="popout" title="Open ${t} in a larger window" aria-label="Open ${t} in a larger window"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg></button><button type="button" class="popclose" aria-label="Close the larger window">Close <span aria-hidden="true">✕</span></button><span class="chev" aria-hidden="true"></span><span class="sum"></span>`;h.setAttribute('role','button');h.tabIndex=0;h.dataset.step=i;
     /* explanations go behind Notes; a note that states a requirement stays in view */
     let k=0;sec.querySelectorAll('p.hint').forEach(pe=>{if(pe.id||pe.classList.contains('keep')||pe.closest('details'))return;const key=i+':'+(k++),d=document.createElement('details');d.className='note';d.dataset.note=key;if(PANEL.notes.has(key))d.open=true;
       d.innerHTML='<summary>Notes</summary>';pe.parentNode.insertBefore(d,pe);pe.classList.remove('hint');pe.classList.add('note-t');d.appendChild(pe);});
     if(i<secs.length-1&&!sec.querySelector(':scope > .step-next')){const b=document.createElement('button');b.className='step-next';b.dataset.next=i+1;b.textContent=`Next: ${PANEL_T[i+1]}`;sec.appendChild(b);}});
-  panelSums();panelApply();}
-{const rc0=renderControls;renderControls=function(){rc0.apply(this,arguments);panelTidy();};
+  panelSums();panelApply();popApply();}
+/* pop-out window (decision 290): the step's own controls, enlarged, so every edit runs through the panel's code and both views stay one */
+function popApply(){const secs=panelSteps(),i=PANEL.pop,as=document.querySelector('aside');as.querySelectorAll('.pop-ph').forEach(e=>e.remove());
+  secs.forEach((sec,j)=>{sec.classList.toggle('popped',j===i);if(j===i){sec.setAttribute('role','dialog');sec.setAttribute('aria-modal','true');sec.setAttribute('aria-label',PANEL_T[j]);}else{sec.removeAttribute('role');sec.removeAttribute('aria-modal');sec.removeAttribute('aria-label');}});
+  let bk=document.getElementById('popBack');
+  if(i>=0&&secs[i]){if(!bk){bk=document.createElement('div');bk.id='popBack';bk.addEventListener('click',()=>popClose());as.appendChild(bk);}
+    const ph=document.createElement('div');ph.className='pop-ph';ph.innerHTML=`<b>${i+1}. ${PANEL_T[i]}</b> is open in the larger window.<br><button type="button" class="popclose-ph">Back to the panel</button>`;secs[i].parentNode.insertBefore(ph,secs[i]);
+    document.documentElement.style.overflow='hidden';document.documentElement.classList.add('popopen');}
+  else{if(bk)bk.remove();document.documentElement.style.overflow='';document.documentElement.classList.remove('popopen');}}
+function popOpen(i){PANEL.pop=i;PANEL.open=i;panelApply();popApply();const sec=panelSteps()[i];if(sec){sec.scrollTop=0;const c=sec.querySelector('.popclose');if(c)c.focus();}}
+function popClose(){const i=PANEL.pop;if(i<0)return;PANEL.pop=-1;popApply();const sec=panelSteps()[i];const b=sec&&sec.querySelector('.popout');if(sec)panelOpen(i,true);if(b)b.focus();}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&PANEL.pop>=0&&!document.querySelector('#prDlg:not([hidden]),#setupDlg[open],dialog[open]')){e.preventDefault();popClose();}});
+{const rc0=renderControls;renderControls=function(){const q=document.querySelector('aside section.step.popped'),st=q?q.scrollTop:0;rc0.apply(this,arguments);panelTidy();if(st){const n=document.querySelector('aside section.step.popped');if(n)n.scrollTop=st;}};   /* the pop-out window keeps its place when the panel is rebuilt */
   const as=document.querySelector('aside');
-  as.addEventListener('click',e=>{const nx=e.target.closest('[data-next]');if(nx){panelOpen(+nx.dataset.next,true);return;}
+  as.addEventListener('click',e=>{if(e.target.closest('.popout')){e.stopPropagation();popOpen(+e.target.closest('.step-h').dataset.step);return;}
+    if(e.target.closest('.popclose,.popclose-ph')){e.stopPropagation();popClose();return;}
+    const nx=e.target.closest('[data-next]');if(nx){if(PANEL.pop>=0){popOpen(+nx.dataset.next);return;}panelOpen(+nx.dataset.next,true);return;}
+    if(PANEL.pop>=0&&e.target.closest('.popped>.step-h'))return;
     const h=e.target.closest('.step-h');if(h){const i=+h.dataset.step;panelOpen(PANEL.open===i?-1:i,PANEL.open!==i);}});
   as.addEventListener('keydown',e=>{const h=e.target.closest&&e.target.closest('.step-h');if(h&&e.target===h&&(e.key==='Enter'||e.key===' ')){e.preventDefault();h.click();}});
   as.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('note')){if(d.open)PANEL.notes.add(d.dataset.note);else PANEL.notes.delete(d.dataset.note);}},true);
