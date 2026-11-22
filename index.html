@@ -2223,7 +2223,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.22.03';
+const VERSION='2026.11.22.04';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2476,10 +2476,7 @@ function renderControls(){
     +'<div class="lab">Tiers</div><div class="seg">'+[1,2,3].map(n=>`<button data-tc="${n}" class="${P.tierCount===n?'on':''}">${n} tier${n>1?'s':''}</button>`).join('')+'</div>'
     +'<div class="seg stack" style="margin-top:16px"><button id="quickCalc" class="primary" title="Sets the rows of each tier so the bowl holds the target seats, from the sport and the tier count">Size the bowl</button><button id="luckyCalc" title="Tries 1, 2 and 3 tiers, both upper tier positions and every row split; picks the shortest farthest viewing distance that meets the target, the C-values and the code checks">Try 1, 2 and 3 tiers for me</button></div>'
     +'</section>';   /* decision 231: requirements, then an initial configuration */   /* target seats first (decision 190) */
-  h+=step(1,'Field','Governing rules and units (sport set above). The field is always shown north up.');
-  h+=`<div class="lab">Units: <b style="color:var(--ink)">${imperial()?'Imperial':'Metric'}</b></div><p class="hint">${imperial()?'American sports use imperial: inches to 2 decimals below 10\'-0", feet and inches at or above.':'International sports use metric: millimetres below 10 m, metres to 3 decimals at or above (1000 mm = 1 m).'}</p>`;
-  /* Field orientation removed (decision 291): the web app always shows the field north up; the PDF set keeps its own landscape and vertical plan sheets */
-  h+='</section>';
+  /* step Field removed (decision 292): units follow the sport and the field is always north up, so it had nothing to set */
   h+=step(2,'Bowl','Slab and corners for the whole bowl (tiers set above).');
   h+=`<div class="lab">Precast thickness: <b style="color:var(--ink)">${L(slabT())}</b></div><p class="hint" style="margin:2px 0 0">Standard for every precast bowl unit (treads and risers), vomitory wall and header wall.</p>`;
   if(zoned(P)){
@@ -5464,7 +5461,6 @@ const PANEL={open:0,notes:new Set(),pop:-1};
 function panelSteps(){return [...document.querySelectorAll('aside section.step')];}
 function panelSum(i){try{const Sp=SPORTS[P.sport],n=P.tierCount,k0=GEO.find(k=>P.zt[0].z[k]),A=AIS();
   return [()=>`${Sp.name} (${Sp.org}) · ${fmt(P.capTarget)} seats · ${n} tier${n>1?'s':''}`,
-    ()=>`${imperial()?'Imperial':'Metric'} · ${zoned(P)?'football field north up':'field north up'}`,
     ()=>`${P.zt[0].corners==='round'?'Round':'Chamfered'} corners · ${(P.bulge.S>0||P.bulge.E>0)?'curved':'straight'} stands · ${P.cfg==='stands'?STAND_KEYS.map(k=>k+standH()[k]).join(' '):(CFG_LIST(P.sport).find(c=>c[0]===(P.cfg||'closed'))||[0,'Custom'])[1]}`,
     ()=>`Rows ${Array.from({length:n},(_,t)=>P.zt[t].z[k0].rows).join(' / ')}`,
     ()=>`C-value ${L(P.zt[0].z[k0].target)} · ${P.eyeMode==='stand'?'standing':'seated'}`,
@@ -5475,7 +5471,7 @@ function panelSums(){panelSteps().forEach((sec,i)=>{const e=sec.querySelector('.
 function panelApply(){panelSteps().forEach((sec,i)=>{const on=i===PANEL.open;sec.classList.toggle('shut',!on);const h=sec.querySelector('.step-h');if(h)h.setAttribute('aria-expanded',String(on));});}
 function panelOpen(i,scroll){PANEL.open=i;panelApply();if(scroll&&i>=0){const sec=panelSteps()[i],a=document.querySelector('aside');if(sec&&a&&getComputedStyle(a).overflowY!=='visible')a.scrollTo({top:Math.max(0,sec.offsetTop-4)});else if(sec)sec.scrollIntoView({block:'start'});}}
 function panelOpenEl(sec){const i=panelSteps().indexOf(sec);if(i>=0&&i!==PANEL.open)panelOpen(i,false);}
-const PANEL_T=['Program','Field','Bowl','Tiers','Sightlines','Aisles','Capacity','Export'];
+const PANEL_T=['Program','Bowl','Tiers','Sightlines','Aisles','Capacity','Export'];
 function panelTidy(){const secs=panelSteps();
   secs.forEach((sec,i)=>{let h=sec.querySelector(':scope > .step-h');if(!h){h=document.createElement('div');h.className='step-h';sec.insertBefore(h,sec.firstChild);}
     const t=PANEL_T[i]||(h.querySelector('h2')||{}).textContent||'';
