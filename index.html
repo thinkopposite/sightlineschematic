@@ -546,6 +546,13 @@ aside section.step.popped>:not(.step-h){zoom:1.4}
 aside .pop-ph{padding:12px 0;border-bottom:1px solid var(--sw-rule,#9A9A96);font-size:14px;color:var(--muted)}
 aside .pop-ph b{color:var(--sw-ink,#111)}
 aside .pop-ph button{margin-top:8px}
+/* hide / show the control panel (decision 294): the drawings take the full width; the panel and every value stay as they are, only out of view */
+#projBar #pbPanel{display:inline-flex;align-items:center;gap:6px;font-weight:700}
+#pbPanel svg{width:16px;height:16px;flex:none}#pbPanel .pbp-r{display:none}
+html.nopanel #pbPanel .pbp-l{display:none}html.nopanel #pbPanel .pbp-r{display:inline}
+html.nopanel #pbPanel{background:var(--sw-ink,#111)!important;color:var(--panel,#fff)!important;border-color:var(--sw-ink,#111)!important}
+html.nopanel .layout{grid-template-columns:minmax(0,1fr)!important}
+html.nopanel aside{display:none!important}
 </style>
 </head>
 <body>
@@ -561,6 +568,7 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
   </div>
 </header>
 <div id="projBar" role="region" aria-label="Project">
+  <button id="pbPanel" type="button" aria-controls="ctlPanel" aria-expanded="true" title="Hide the control panel to give the drawings the full width"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16"/><path d="M9 4v16"/><path class="pbp-l" d="M15.5 9.5 13 12l2.5 2.5"/><path class="pbp-r" d="M13 9.5 15.5 12 13 14.5"/></svg><span id="pbPanelT">Hide panel</span></button>
   <button id="pbProj" aria-expanded="false" aria-controls="projPop" title="Project information, saved options, new and open"><span id="pbName">Untitled project</span><span aria-hidden="true"> ▾</span></button>
   <span id="pbStatus" class="pb-status"></span>
   <span class="pb-gap"></span>
@@ -572,7 +580,7 @@ try{applyTheme(localStorage.getItem('sl-theme'));}catch(e){applyTheme('lg');}</s
 </div>
 <script>(()=>{const h=document.querySelector('header'),b=document.getElementById('projBar'),set=()=>{const r=document.documentElement.style;r.setProperty('--hdrH0',h.offsetHeight+'px');r.setProperty('--hdrH',(h.offsetHeight+b.offsetHeight)+'px');};set();try{const ro=new ResizeObserver(set);ro.observe(h);ro.observe(b);}catch(e){addEventListener('resize',set);}})();</script>
 <div class="layout">
-  <aside><div id="controls"></div>
+  <aside id="ctlPanel"><div id="controls"></div>
     <section class="step deliver"><div class="step-h"><span class="bub">7</span><h2>Export</h2><p>Drawings, schedules and models for the team.</p></div>
       <div class="lab" style="margin-top:0">PDF page background</div><div class="seg" id="pdfBg" style="margin-bottom:8px"></div>
       <div class="lab">PDF sheet grid</div><div class="seg" id="pdfGrid" style="margin-bottom:8px"></div>
@@ -1999,7 +2007,7 @@ function applyCfg(P,AL){const S=P.secs||(P.secs={});Object.keys(S).forEach(k=>{i
   AL.forEach((T,ti)=>cfgOffSet(P,AL,ti).forEach(no=>{const e=S[no]||(S[no]={});if(e.off)return;e.off=true;e.cfg=true;delete e.wc;}));}
 function metrics(P,ZR,CH){
   const rows=Object.values(ZR).flat();let cap=0;const tierSeats=[],zoneSeats=[];
-  const AL=aisleLayout(P,ZR,CH);if(AL){applyVoms(P,AL);applyCfg(P,AL);}rows.forEach(r=>{r.gross=Math.floor(seatLen(P,CH,r)*1000/r.seatW+1e-9);const Lz=AL&&AL[r.tier]&&AL[r.tier][r.zone];if(Lz){const S=rowSections(Lz,Lz.tr.indexOf(r));r.net=S.seats;r._raw=S.raws;}else{r.net=null;r._raw=null;}});
+  const AL=aisleLayout(P,ZR,CH);if(AL){applyCfg(P,AL);applyVoms(P,AL);}   /* the configuration's open stands first, so their voms go on the same redraw (decision 293) */rows.forEach(r=>{r.gross=Math.floor(seatLen(P,CH,r)*1000/r.seatW+1e-9);const Lz=AL&&AL[r.tier]&&AL[r.tier][r.zone];if(Lz){const S=rowSections(Lz,Lz.tr.indexOf(r));r.net=S.seats;r._raw=S.raws;}else{r.net=null;r._raw=null;}});
   if(AL)AL.forEach(T=>{const zs=GEO.map(k=>T[k]);if(!zs.every(z=>z&&z.ring))return;   // a row runs on round the corner: its two end pieces are one section
     zs.forEach((Lz,i)=>{const Nz=zs[(i+1)%4];Lz.tr.forEach((ra,j)=>{const rb=Nz.tr[j];if(!rb||!ra._raw||!rb._raw)return;const a=Math.max(0,ra._raw[ra._raw.length-1]),b=Math.max(0,rb._raw[0]);
       const dd=Math.floor((a+b)*1000/Math.min(ra.seatW,rb.seatW)+1e-9)-Math.floor(a*1000/ra.seatW+1e-9)-Math.floor(b*1000/rb.seatW+1e-9);if(dd>0)rb.net+=dd;});});});
@@ -2223,7 +2231,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.22.04';
+const VERSION='2026.11.22.06';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3355,7 +3363,7 @@ function applyVoms(P,AL){if(!AL)return;if(!P.vomRev2){P.vomOn=null;P.vomRev2=1;}
   AL.forEach((T,ti)=>{if(P.vomTi[ti])return;const cs=vomCands(AL,ti);if(!cs.length)return;cs.forEach(c=>P.vomOn[c.key]=true);P.vomTi[ti]=1;});
   {const seen=P.vomSeen||(P.vomSeen={});AL.forEach((T,ti)=>vomCands(AL,ti).forEach(c=>{if(!seen[c.key]){seen[c.key]=1;P.vomOn[c.key]=true;}}));}   // a vomitory that appears later (a corner type or tier change) starts on (decision 148)
   const on=P.vomOn;AL.forEach((T,ti)=>{const zs=Object.values(T);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<5)return;
-    const gone=goneAisles(AL),cs=vomCands(AL,ti).filter(c=>on[c.key]&&!gone.has(c.id));if(!cs.length)return;   /* no vom where its aisle has open space on both sides */const {c:cr}=vomRowsOf(ti,nr),tk=Math.max(1,Math.min(nr-2,Math.round(P.vomK||6)));let cross=false;
+    const gone=vomHidden(AL),cs=vomCands(AL,ti).filter(c=>on[c.key]&&!gone.has(c.id));if(!cs.length)return;   /* no vom where its aisle has open space on both sides */const {c:cr}=vomRowsOf(ti,nr),tk=Math.max(1,Math.min(nr-2,Math.round(P.vomK||6)));let cross=false;
     cs.forEach(c=>zs.forEach(Lz=>Lz.ais.forEach((a,i)=>{if(a.id!==c.id)return;Lz.vom[i]=true;a.vomC=c.kind==='corner'?VTUN():AIS().vomW;a.vomKey=c.key;a.vomLabel=c.label;a.vomTi=ti;Lz.vr=Lz.vr||{};
       if(c.kind==='corner')a.vr={rows:[...Array(tk).keys()],s:0,k:tk,floor:0,field:true};   // player tunnel: field level, through the front rows
       else{const cc=Math.min(cr,Lz.tr.length-4),v=vomCutRows(Lz.tr,cc);a.vr={rows:[...Array(v.k).keys()].map(j=>j+v.s),s:v.s,k:v.k,floor:Lz.tr[cc].z,cross:cc,head:v.head};cross=true;}})));
@@ -3364,7 +3372,7 @@ const vomAt=(Lz,i,j)=>{const a=Lz&&Lz.vom&&Lz.vom[i]&&Lz.ais[i];return !!(a&&a.v
 // egress through a tier's voms: its lower rows (up to the equal-travel split, half the tier) leave by the voms (level route), the rest walk up
 function vomNeed(ti=0){if(!M||!M.AL||!M.AL[ti])return null;const zs=Object.values(M.AL[ti]);if(!zs.length)return null;const nr=Math.max(...zs.map(z=>z.tr.length)),rc=vomRowsOf(ti,nr),split=rc.c+Math.ceil((nr-1-rc.c)/2);
   let occ=0;zs.forEach(Lz=>Lz.tr.forEach((r,j)=>{if(j<split)occ+=r.net??0;}));const f=egFactor(true,M.cap),need=occ*f,W=AIS().vomW,n=Math.max(1,Math.ceil(need/W-1e-9));
-  const on=P.vomOn||{},cs=vomCands(M.AL,ti),act=cs.filter(c=>on[c.key]&&c.kind!=='corner');const cut=zs[0].tr.length>rc.c+2?vomCutRows(zs[0].tr,rc.c):null;return {ti,nr,split,occ:Math.round(occ),f,need,n,W,act,cs,per:act.length?need/act.length:null,...rc,cut};}
+  const on=P.vomOn||{},cs=vomCands(M.AL,ti),act=(()=>{const g=vomHidden(M.AL);return cs.filter(c=>on[c.key]&&c.kind!=='corner'&&!g.has(c.id));})();const cut=zs[0].tr.length>rc.c+2?vomCutRows(zs[0].tr,rc.c):null;return {ti,nr,split,occ:Math.round(occ),f,need,n,W,act,cs,per:act.length?need/act.length:null,...rc,cut};}
 function vomAuto(ti=0){const v=vomNeed(ti);if(!v)return;const on=P.vomOn||(P.vomOn={}),list=v.cs.filter(c=>c.kind!=='corner');list.forEach(c=>delete on[c.key]);
   const n=Math.min(list.length,v.n),step=list.length/n;for(let i=0;i<n;i++)on[list[Math.floor(i*step+step/2)%list.length].key]=true;update();}
 // 3D: walls (tops 26 in above the nosings), header, front wall (a vom above the bottom tread) and floor of each active vom, as prisms along the chain
@@ -3672,6 +3680,7 @@ function secGeom(ti,key,j0,j1,RS,inset,fOff){fOff=fOff||0;const ins=typeof inset
 function offPolys(){const S=P.secs||{},out=[];if(!M||!M.AL)return out;const RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),gone=goneAisles(M.AL),keep=id=>!gone.has(+id);
   M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));
     sectionList(ti).forEach(q=>{const e=S[q.no];if(e&&e.off)out.push(...secGeom(ti,q.key,0,nr-1,RS,keep).polys.map(pts=>({ti,pts})));});});return out;}
+function vomHidden(AL){const SS=P.secs||{},h=goneAisles(AL);(AL||[]).forEach((T,ti)=>sectionList(ti,AL).forEach(q=>{const e=SS[q.no];if(e&&e.off&&e.cfg)q.key.split('_').forEach(id=>h.add(+id));}));return h;}   /* decision 293: a vom on an aisle beside a stand the configuration opens is hidden with it */
 function goneAisles(AL){const SS=P.secs||{},gone=new Set();(AL||[]).forEach((T,ti)=>{const c={};sectionList(ti,AL).forEach(q=>{if(!(SS[q.no]&&SS[q.no].off))return;q.key.split('_').forEach(id=>c[id]=(c[id]||0)+1);});Object.keys(c).forEach(id=>{if(c[id]>=2)gone.add(+id);});});return gone;}
 const inPoly=(p,q)=>{let c=false;for(let i=0,j=q.length-1;i<q.length;j=i++){const a=q[i],b=q[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;};
 // plan: the back rows of each section (the platform rows and the top row) as a click target that adds or removes its wheelchair platform
@@ -5513,6 +5522,11 @@ renderProjInfo();
   btn.onclick=()=>show(pop.hidden);
   document.addEventListener('click',e=>{if(pop.hidden)return;if(e.target.closest('#projPop,#pbProj,#prDlg,#setupDlg'))return;if(!document.body.contains(e.target))return;show(false);});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!pop.hidden){show(false);btn.focus();}});
+  {const pb=$('pbPanel'),setP=(hide,quiet)=>{document.documentElement.classList.toggle('nopanel',hide);pb.setAttribute('aria-expanded',String(!hide));$('pbPanelT').textContent=hide?'Show panel':'Hide panel';
+      pb.title=hide?'Show the control panel again':'Hide the control panel to give the drawings the full width';try{localStorage.setItem('sightline-panel',hide?'hidden':'shown');}catch(e){}
+      if(!quiet){dispatchEvent(new Event('resize'));requestAnimationFrame(()=>{try{keepView(update0);}catch(e){}});}};   /* the drawings re-fit the new width; values are untouched */
+    let h0=false;try{h0=localStorage.getItem('sightline-panel')==='hidden';}catch(e){}if(h0)setP(true,true);
+    pb.onclick=()=>setP(!document.documentElement.classList.contains('nopanel'));}
   $('pbSave').onclick=()=>$('prSave').click();$('pbKeep').onclick=()=>$('saveOpt').click();
   $('pbUndo').onclick=()=>histGo(-1);$('pbRedo').onclick=()=>histGo(1);
   document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||e.altKey)return;const t=e.target,typing=t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)&&t.type!=='range'||t.isContentEditable);if(typing)return;
