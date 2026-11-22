@@ -1346,7 +1346,7 @@ function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGAC
   if(!P.eyeWc3){if([47.5,48].some(v=>Math.abs(P.eye.wcH-v*25.4)<0.01))P.eye.wcH=47.45*25.4;P.eyeWc3=1;}if(!(P.eye.wcH>0))P.eye.wcH=(P.eye.platH>0?P.eye.platH:47.45*25.4);delete P.eye.platH;   /* one wheelchair eye: 47.45 in, A117.1 table basis */
   for(const k of['fl','cf','bs','L','W','lanes','railH','minHead','suiteH','maxRiser','step','slabT'])if(!(P[k]>0))P[k]=d[k];
   if(!P.rakeRev){if(P.maxRake===34)P.maxRake=35;P.rakeRev=1;}   /* Green Guide 12.10: 35 deg seated (decision 135) */
-  P.north='L';if(P.planOri!=='h')P.planOri='v';
+  P.north='L';P.planOri='v';   /* north up on the web app, always (decision 291) */
   if(!Array.isArray(P.tierColors))P.tierColors=TIER_COL.slice();
   if(['#999999','#BFBFBF'].includes((P.tierColors[0]||'').toUpperCase()))P.tierColors[0]='#CCCCCC';if(['#666666','#808080'].includes((P.tierColors[1]||'').toUpperCase()))P.tierColors[1]='#999999';   // earlier default greys move to the current ones
   P.tierColors=TIER_COL.map((c,i)=>/^#[0-9a-f]{6}$/i.test(P.tierColors[i]||'')?P.tierColors[i].toUpperCase():c);
@@ -2223,7 +2223,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.22.02';
+const VERSION='2026.11.22.03';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2476,9 +2476,9 @@ function renderControls(){
     +'<div class="lab">Tiers</div><div class="seg">'+[1,2,3].map(n=>`<button data-tc="${n}" class="${P.tierCount===n?'on':''}">${n} tier${n>1?'s':''}</button>`).join('')+'</div>'
     +'<div class="seg stack" style="margin-top:16px"><button id="quickCalc" class="primary" title="Sets the rows of each tier so the bowl holds the target seats, from the sport and the tier count">Size the bowl</button><button id="luckyCalc" title="Tries 1, 2 and 3 tiers, both upper tier positions and every row split; picks the shortest farthest viewing distance that meets the target, the C-values and the code checks">Try 1, 2 and 3 tiers for me</button></div>'
     +'</section>';   /* decision 231: requirements, then an initial configuration */   /* target seats first (decision 190) */
-  h+=step(1,'Field','Governing rules, units and orientation (sport set above).');
+  h+=step(1,'Field','Governing rules and units (sport set above). The field is always shown north up.');
   h+=`<div class="lab">Units: <b style="color:var(--ink)">${imperial()?'Imperial':'Metric'}</b></div><p class="hint">${imperial()?'American sports use imperial: inches to 2 decimals below 10\'-0", feet and inches at or above.':'International sports use metric: millimetres below 10 m, metres to 3 decimals at or above (1000 mm = 1 m).'}</p>`;
-  if(zoned(P))h+=`<div class="sl"><div class="sl-top"><label for="northSel">Field orientation</label></div><select id="northSel" class="sel">${[['v','Vertical football field, north up'],['h','Landscape football field, north left']].map(([k,n])=>`<option value="${k}"${P.planOri===k?' selected':''}>${n}</option>`).join('')}</select></div>`;
+  /* Field orientation removed (decision 291): the web app always shows the field north up; the PDF set keeps its own landscape and vertical plan sheets */
   h+='</section>';
   h+=step(2,'Bowl','Slab and corners for the whole bowl (tiers set above).');
   h+=`<div class="lab">Precast thickness: <b style="color:var(--ink)">${L(slabT())}</b></div><p class="hint" style="margin:2px 0 0">Standard for every precast bowl unit (treads and risers), vomitory wall and header wall.</p>`;
@@ -2548,7 +2548,6 @@ $('controls').addEventListener('input',e=>{
 // length boxes commit on Enter or leaving the field, so half-typed 12'-6 isn't read early
 $('controls').addEventListener('change',e=>{
   if(e.target.id==='sportSel'){sportChange(e.target.value);return;}
-  if(e.target.id==='northSel'){P.planOri=e.target.value;CUR=null;renderControls();update();return;}
   {const el=e.target,p=el.dataset.p,mt=p&&META[p];if(mt&&el.type==='number'){let v=parseFloat(el.value);if(!isFinite(v))v=get(p);const c=Math.min(mt.max,Math.max(mt.min,mt.step>=1?Math.round(v/mt.step)*mt.step:v));   /* whole steps (1,000 seats) */
     if(c!==v)toast(`Set to ${fmt(c)} (${fmt(mt.min)} to ${fmt(mt.max)}, in steps of ${fmt(mt.step)})`);el.value=c;commit(p,c,el);return;}}   // number boxes: clamp to the slider range
   const el=e.target,p=el.dataset.p;if(!p||!el.classList.contains('len'))return;
@@ -5465,7 +5464,7 @@ const PANEL={open:0,notes:new Set(),pop:-1};
 function panelSteps(){return [...document.querySelectorAll('aside section.step')];}
 function panelSum(i){try{const Sp=SPORTS[P.sport],n=P.tierCount,k0=GEO.find(k=>P.zt[0].z[k]),A=AIS();
   return [()=>`${Sp.name} (${Sp.org}) · ${fmt(P.capTarget)} seats · ${n} tier${n>1?'s':''}`,
-    ()=>`${imperial()?'Imperial':'Metric'} · ${(($('northSel')||{}).selectedOptions||[{}])[0].textContent||''}`,
+    ()=>`${imperial()?'Imperial':'Metric'} · ${zoned(P)?'football field north up':'field north up'}`,
     ()=>`${P.zt[0].corners==='round'?'Round':'Chamfered'} corners · ${(P.bulge.S>0||P.bulge.E>0)?'curved':'straight'} stands · ${P.cfg==='stands'?STAND_KEYS.map(k=>k+standH()[k]).join(' '):(CFG_LIST(P.sport).find(c=>c[0]===(P.cfg||'closed'))||[0,'Custom'])[1]}`,
     ()=>`Rows ${Array.from({length:n},(_,t)=>P.zt[t].z[k0].rows).join(' / ')}`,
     ()=>`C-value ${L(P.zt[0].z[k0].target)} · ${P.eyeMode==='stand'?'standing':'seated'}`,
@@ -5495,7 +5494,7 @@ function popApply(){const secs=panelSteps(),i=PANEL.pop,as=document.querySelecto
     document.documentElement.style.overflow='hidden';document.documentElement.classList.add('popopen');}
   else{if(bk)bk.remove();document.documentElement.style.overflow='';document.documentElement.classList.remove('popopen');}}
 function popOpen(i){PANEL.pop=i;PANEL.open=i;panelApply();popApply();const sec=panelSteps()[i];if(sec){sec.scrollTop=0;const c=sec.querySelector('.popclose');if(c)c.focus();}}
-function popClose(){const i=PANEL.pop;if(i<0)return;PANEL.pop=-1;popApply();const sec=panelSteps()[i];const b=sec&&sec.querySelector('.popout');if(sec)panelOpen(i,true);if(b)b.focus();}
+function popClose(){const i=PANEL.pop;if(i<0)return;PANEL.pop=-1;PANEL.open=-1;popApply();panelApply();const sec=panelSteps()[i];const b=sec&&sec.querySelector('.popout');if(sec)sec.scrollIntoView({block:'nearest'});if(b)b.focus({preventScroll:true});}   /* the step goes back to its one-line summary (decision 291) */
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&PANEL.pop>=0&&!document.querySelector('#prDlg:not([hidden]),#setupDlg[open],dialog[open]')){e.preventDefault();popClose();}});
 {const rc0=renderControls;renderControls=function(){const q=document.querySelector('aside section.step.popped'),st=q?q.scrollTop:0;rc0.apply(this,arguments);panelTidy();if(st){const n=document.querySelector('aside section.step.popped');if(n)n.scrollTop=st;}};   /* the pop-out window keeps its place when the panel is rebuilt */
   const as=document.querySelector('aside');
