@@ -140,7 +140,7 @@ body{font-size:16px;line-height:1.5;background:var(--bg)}
 header{background:var(--panel);border-bottom:1px solid var(--line);padding:12px 24px;gap:10px 24px}
 h1{font-size:26px;font-stretch:100%;font-weight:700;letter-spacing:0}
 .brand p{font-size:14px}
-.layout{grid-template-columns:372px minmax(0,1fr)}
+.layout{grid-template-columns:480px minmax(0,1fr)}   /* 20 grid cells (decision 289) */
 aside{background:var(--panel);border-right:1px solid var(--line);padding:6px 20px 28px}
 main{padding:20px 28px 40px}
 /* buttons: one shape, one height, everywhere */
@@ -2203,7 +2203,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.17.09';
+const VERSION='2026.11.22.01';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
