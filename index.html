@@ -553,6 +553,17 @@ html.nopanel #pbPanel .pbp-l{display:none}html.nopanel #pbPanel .pbp-r{display:i
 html.nopanel #pbPanel{background:var(--sw-ink,#111)!important;color:var(--panel,#fff)!important;border-color:var(--sw-ink,#111)!important}
 html.nopanel .layout{grid-template-columns:minmax(0,1fr)!important}
 html.nopanel aside{display:none!important}
+/* decision 296: the control panel is transparent, so the page colour and grid show through as on the right */
+aside{background:transparent!important}
+/* progress window for the long calculations (decision 295) */
+#busyDlg{position:fixed;inset:0;z-index:6000;background:rgba(20,20,19,.45);display:grid;place-items:center}
+#busyDlg .bz-box{width:min(560px,90vw);background:var(--panel,#fff);border:3px solid var(--sw-ink,#111);padding:24px 32px;box-sizing:border-box}
+#busyDlg .bz-t{font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;margin:0 0 12px}
+#busyDlg .bz-s{font-size:16px;margin:0 0 12px;min-height:48px}
+#busyDlg .bz-bar{height:12px;border:1px solid var(--sw-ink,#111);background:transparent}#busyDlg .bz-bar i{display:block;height:100%;background:var(--sw-red,#E10600);transition:width .2s}
+#busyDlg .bz-n{font-size:14px;color:var(--muted);margin:8px 0 16px}
+#busyDlg #bzCancel{font-size:16px;font-weight:700;padding:8px 20px;min-height:40px}
+html.busy{overflow:hidden}
 </style>
 </head>
 <body>
@@ -2005,7 +2016,7 @@ document.addEventListener('change',e=>{if(e.target&&e.target.id==='cfgSel'){P.cf
 function applyCfg(P,AL){const S=P.secs||(P.secs={});Object.keys(S).forEach(k=>{if(S[k].cfg){delete S[k].off;delete S[k].cfg;if(!Object.keys(S[k]).length)delete S[k];}});
   if(!P.cfg||P.cfg==='closed'||P.cfg==='custom'||!zoned(P))return;
   AL.forEach((T,ti)=>cfgOffSet(P,AL,ti).forEach(no=>{const e=S[no]||(S[no]={});if(e.off)return;e.off=true;e.cfg=true;delete e.wc;}));}
-function metrics(P,ZR,CH){
+function metrics(P,ZR,CH){SLC=null;
   const rows=Object.values(ZR).flat();let cap=0;const tierSeats=[],zoneSeats=[];
   const AL=aisleLayout(P,ZR,CH);if(AL){applyCfg(P,AL);applyVoms(P,AL);}   /* the configuration's open stands first, so their voms go on the same redraw (decision 293) */rows.forEach(r=>{r.gross=Math.floor(seatLen(P,CH,r)*1000/r.seatW+1e-9);const Lz=AL&&AL[r.tier]&&AL[r.tier][r.zone];if(Lz){const S=rowSections(Lz,Lz.tr.indexOf(r));r.net=S.seats;r._raw=S.raws;}else{r.net=null;r._raw=null;}});
   if(AL)AL.forEach(T=>{const zs=GEO.map(k=>T[k]);if(!zs.every(z=>z&&z.ring))return;   // a row runs on round the corner: its two end pieces are one section
@@ -2231,7 +2242,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.22.06';
+const VERSION='2026.11.23.01';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2545,13 +2556,16 @@ function renderControls(){
 function syncField(p,el){const mt=META[p],v=get(p);
   document.querySelectorAll(`[data-p="${p}"]`).forEach(x=>{if(x===el)return;
     x.value=x.classList.contains('len')?fieldText(v*(mt.kind==='m'?1000:1),mt.kind,mt.step):v;});}
-function commit(p,v,el){set(p,v);syncField(p,el);CUR=null;update();if(/\.(target|rise|Zabs)$/.test(p))renderControls();}   // C-value box shows 4 decimals
+function commit(p,v,el){set(p,v);syncField(p,el);CUR=null;
+  if(el&&el.type==='range'){DRAGGING=true;commit.p=commit.p||new Set();commit.p.add(p);if(!commit.raf)commit.raf=requestAnimationFrame(()=>{commit.raf=0;const ps=[...commit.p];commit.p.clear();update();if(ps.some(q=>/\.(target|rise|Zabs)$/.test(q)))renderControls();});return;}   /* a slider drag: one redraw per frame (decision 295) */
+  update();if(/\.(target|rise|Zabs)$/.test(p))renderControls();}   // C-value box shows 4 decimals
 $('controls').addEventListener('input',e=>{
   const el=e.target,p=el.dataset.p;if(!p||el.classList.contains('len'))return;
   const v=parseFloat(el.value),mt=META[p];if(!isFinite(v))return;if(mt&&el.type==='number'&&(v<mt.min||v>mt.max))return;commit(p,v,el);   /* out-of-range typing waits for the change event */
 });
 // length boxes commit on Enter or leaving the field, so half-typed 12'-6 isn't read early
 $('controls').addEventListener('change',e=>{
+  if(e.target.type==='range'&&DRAGGING){DRAGGING=false;gridAlign();}   /* slider released: align the page now */
   if(e.target.id==='sportSel'){sportChange(e.target.value);return;}
   {const el=e.target,p=el.dataset.p,mt=p&&META[p];if(mt&&el.type==='number'){let v=parseFloat(el.value);if(!isFinite(v))v=get(p);const c=Math.min(mt.max,Math.max(mt.min,mt.step>=1?Math.round(v/mt.step)*mt.step:v));   /* whole steps (1,000 seats) */
     if(c!==v)toast(`Set to ${fmt(c)} (${fmt(mt.min)} to ${fmt(mt.max)}, in steps of ${fmt(mt.step)})`);el.value=c;commit(p,c,el);return;}}   // number boxes: clamp to the slider range
@@ -2603,8 +2617,8 @@ $('controls').addEventListener('click',e=>{
     toast(`Tier ${ti+1}: ${v} aisle${v>1?'s':''} in each corner, ${v+1} equal sections${n?'; hand-set corner sizes cleared':''}.`);}
   else if(b.dataset.meet){const [rt,m]=b.dataset.meet.split(':');meetAllC(m,rt);return;}
   else if(b.dataset.fitmove!=null){P.fitMove=b.dataset.fitmove==='1';persist();renderControls();return;}
-  else if(b.id==='luckyCalc'){toast('Trying 1, 2 and 3 tiers and every row split…');b.disabled=true;setTimeout(()=>{try{luckyCalc();}finally{b.disabled=false;}},40);return;}
-  else if(b.id==='fit'){toast('Working out up to eight configurations from your design…');b.disabled=true;setTimeout(()=>{let c=[];try{c=finalCandidates();}finally{b.disabled=false;}showFinal(c);},40);return;}
+  else if(b.id==='luckyCalc'){b.disabled=true;luckyCalc().catch(e=>{console.error(e);toast('Something went wrong; the bowl is as it was.');}).finally(()=>{b.disabled=false;});return;}
+  else if(b.id==='fit'){b.disabled=true;finalCandidates().then(c=>{if(c)showFinal(c);}).catch(e=>{console.error(e);toast('Something went wrong; your design is unchanged.');}).finally(()=>{b.disabled=false;});return;}
   else if(b.id==='quickCalc'){toast('Sizing rows and tier positions…');b.disabled=true;setTimeout(()=>{const ok=fitCapacity(P),ft=v=>L(v*1000),ch=FITLINKS.filter(x=>x.dx>0.001||x.rise>REGION_DEF[regionOf(P.sport)].rise+0.001),bad=FITLINKS.filter(x=>!x.ok);
     const what=x=>{const z=P.zt[x.ti].z[x.k],off=x.dx-(z.tread0??z.tread)/1000;return `${x.dx<0.001?'second riser over the top riser below':Math.abs(off)<0.001?'first riser over the top riser below':`first riser ${ft(Math.abs(off))} ${off>0?'behind':'in front of'} the top riser below`}, ${ft(x.rise)} above the top tread below`;},byT={};ch.forEach(x=>(byT[x.ti]=byT[x.ti]||[]).push(x));
     const lines=Object.entries(byT).map(([ti,xs])=>{const same=xs.length===zoneKeys(P).length&&xs.every(x=>what(x)===what(xs[0]));return same?`Tier ${+ti+1}${zoned(P)?' (every side)':''}: ${what(xs[0])}`:xs.map(x=>`Tier ${+ti+1} ${zoneName(P,x.k,true)}: ${what(x)}`).join('; ');});
@@ -3362,8 +3376,8 @@ function applyVoms(P,AL){if(!AL)return;if(!P.vomRev2){P.vomOn=null;P.vomRev2=1;}
   if(!P.vomOn){P.vomOn={};P.vomTi={};}else if(!P.vomTi)P.vomTi={0:1,1:1};   // every vomitory on by default (decision 85: also each tier added later, the first time it appears)
   AL.forEach((T,ti)=>{if(P.vomTi[ti])return;const cs=vomCands(AL,ti);if(!cs.length)return;cs.forEach(c=>P.vomOn[c.key]=true);P.vomTi[ti]=1;});
   {const seen=P.vomSeen||(P.vomSeen={});AL.forEach((T,ti)=>vomCands(AL,ti).forEach(c=>{if(!seen[c.key]){seen[c.key]=1;P.vomOn[c.key]=true;}}));}   // a vomitory that appears later (a corner type or tier change) starts on (decision 148)
-  const on=P.vomOn;AL.forEach((T,ti)=>{const zs=Object.values(T);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<5)return;
-    const gone=vomHidden(AL),cs=vomCands(AL,ti).filter(c=>on[c.key]&&!gone.has(c.id));if(!cs.length)return;   /* no vom where its aisle has open space on both sides */const {c:cr}=vomRowsOf(ti,nr),tk=Math.max(1,Math.min(nr-2,Math.round(P.vomK||6)));let cross=false;
+  const on=P.vomOn,gone=vomHidden(AL);AL.forEach((T,ti)=>{const zs=Object.values(T);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<5)return;
+    const cs=vomCands(AL,ti).filter(c=>on[c.key]&&!gone.has(c.id));if(!cs.length)return;   /* no vom where its aisle has open space on both sides */const {c:cr}=vomRowsOf(ti,nr),tk=Math.max(1,Math.min(nr-2,Math.round(P.vomK||6)));let cross=false;
     cs.forEach(c=>zs.forEach(Lz=>Lz.ais.forEach((a,i)=>{if(a.id!==c.id)return;Lz.vom[i]=true;a.vomC=c.kind==='corner'?VTUN():AIS().vomW;a.vomKey=c.key;a.vomLabel=c.label;a.vomTi=ti;Lz.vr=Lz.vr||{};
       if(c.kind==='corner')a.vr={rows:[...Array(tk).keys()],s:0,k:tk,floor:0,field:true};   // player tunnel: field level, through the front rows
       else{const cc=Math.min(cr,Lz.tr.length-4),v=vomCutRows(Lz.tr,cc);a.vr={rows:[...Array(v.k).keys()].map(j=>j+v.s),s:v.s,k:v.k,floor:Lz.tr[cc].z,cross:cc,head:v.head};cross=true;}})));
@@ -3581,7 +3595,9 @@ function labMid(k,ti,px,py,rf){const Lz=M.AL&&M.AL[ti]&&M.AL[ti][k];if(!Lz||!zon
 // typical seats per row in each section, written in the middle of the section at the tier's middle row (a range where rows differ)
 // Sections of a tier, numbered clockwise in plan from the middle section of the north end zone: Tier 1 101, 102 ...; Tier 2 201 ...
 // Each: typical seats per row (a range where rows differ), the label point (middle row, a little off-centre) and the number.
-function sectionList(ti,AL){AL=AL||(M&&M.AL);const T=AL&&AL[ti];if(!T)return [];const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return [];
+var SLC=null;   /* decision 295: the section list of a finished calculation, reused until the next edit */
+function sectionList(ti,AL){AL=AL||(M&&M.AL);if(SLC&&SLC.AL===AL&&AL){const c=SLC.m[ti];if(c)return c;return SLC.m[ti]=sectionList0(ti,AL);}return sectionList0(ti,AL);}
+function sectionList0(ti,AL){const T=AL&&AL[ti];if(!T)return [];const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return [];
   const nr=Math.max(...zs.map(z=>z.tr.length)),jm=Math.floor((nr-1)/2),jw=Math.floor((nr-1)*0.78),st={},lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
   for(let j=0;j<nr;j++)ringSecs(ti,j,AL).forEach(sc=>{sc.n=Math.min(sc.n,lim);const k=sc.l+'_'+sc.r,q=st[k]||(st[k]={key:k,lo:Infinity,hi:0,mid:null});if(sc.n>0)q.lo=Math.min(q.lo,sc.n);q.hi=Math.max(q.hi,sc.n);if(j===jm)q.mid=sc;if(j===jw)q.wide=sc;});
   const out=Object.values(st).filter(q=>q.mid&&q.mid.pieces.length&&q.hi>0).map(q=>{const pc=q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a);
@@ -4263,9 +4279,22 @@ function histGo(dir){const S=HIST.st,R=HIST.redo;let j;if(dir<0){if(S.length<2)r
   HIST.busy=true;try{P=fixP(Object.assign(defaults(),JSON.parse(j)));CUR=null;renderControls();P.secShape=shapeSig();keepView(update0);renderOpts();}finally{HIST.busy=false;HIST.t=0;}histUI();toast(dir<0?'Undone.':'Redone.');}
 function histUI(){const u=document.getElementById('pbUndo'),r=document.getElementById('pbRedo');if(u)u.disabled=HIST.st.length<2;if(r)r.disabled=!HIST.redo.length;}
 function update(){shapeCheck();keepView(update0);histPush();}
-function update0(){
+/* decision 295: drawings far below the screen are redrawn when they come near it, not on every edit; the calculation and the results above stay immediate */
+const LAZY={els:{sect:['section','detail','junWrap'],plan:['plan'],enl:['enl']},fn:{},dirty:new Set(),vis:{},io:null,all:true};
+function lazyIO(){if(LAZY.io||typeof IntersectionObserver==='undefined')return;
+  LAZY.io=new IntersectionObserver(es=>{let ran=false;es.forEach(e=>{const g=e.target.dataset.lazy;if(!g)return;LAZY.vis[e.target.id]=e.isIntersecting;
+      if(e.isIntersecting&&LAZY.dirty.has(g)){LAZY.dirty.delete(g);try{LAZY.fn[g]();}catch(x){console.error(x);}ran=true;}});
+    if(ran)requestAnimationFrame(()=>{try{gridAlign();}catch(x){}});},{rootMargin:'150% 0px 150% 0px'});
+  Object.entries(LAZY.els).forEach(([g,ids])=>ids.forEach(id=>{const el=$(id);if(el){el.dataset.lazy=g;LAZY.io.observe(el);}}));}
+function lazyNear(g){return LAZY.els[g].some(id=>LAZY.vis[id]!==false);}   // unknown counts as near
+function lazyRun(g,fn){LAZY.fn[g]=fn;lazyIO();if(LAZY.all||!LAZY.io||lazyNear(g)){LAZY.dirty.delete(g);fn();}else LAZY.dirty.add(g);}
+function lazyFlush(){[...LAZY.dirty].forEach(g=>{LAZY.dirty.delete(g);LAZY.fn[g]();});}   // everything up to date (print, export, tests)
+addEventListener('load',()=>setTimeout(()=>{LAZY.all=false;},0));
+addEventListener('beforeprint',lazyFlush);
+function update0(){LAZY.inUpd=true;try{update00();}finally{LAZY.inUpd=false;}}
+function update00(){
   LEG2=RD().leg;wcClean();persist();if(typeof pdfBgUI==='function')pdfBgUI();if(typeof pdfGridUI==='function')pdfGridUI();ZR=solveAll(P);if(!zoned(P))P.sec='T';if(!ZR[P.sec].length)P.sec=zoneKeys(P).find(k=>ZR[k].length)||'T';
-  ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);
+  ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);SLC=M.AL?{AL:M.AL,m:{}}:null;
   const pct=Math.min(100,M.cap/P.capTarget*100),ok=M.cap>=P.capTarget;
   $('cap').innerHTML=`<div><div class="big">${fmt(M.cap)}</div><div class="lbl">Estimated seats</div></div><div><div class="bar"><i class="${ok?'ok':''}" style="width:${pct}%"></i></div><div class="lbl" style="margin-top:5px">${ok?'Meets':'Short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</div><div class="cap-side">${M.tierSeats.map((s,i)=>`Tier ${i+1}: ${fmt(s)}`).join('<br>')}</div></div>`;
   {const hs=$('hdrSeats');if(hs)hs.innerHTML=`<b class="hs-n${ok?'':' short'}">${fmt(M.cap)}</b><span class="hs-t"><span class="hs-l">Estimated seats<span class="hs-w"> · ${ok?'meets':'short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</span><span class="hs-s"> · ${ok?'meets target':'short by '+fmt(P.capTarget-M.cap)}</span></span><span class="hs-r">${M.tierSeats.map((s,i)=>`<span class="hs-w">Tier </span><span class="hs-s">T</span>${i+1} <b>${fmt(s)}</b>`).join('<i></i>')}</span></span>`;}   /* estimated seats and tier seats in the title bar, always in view (decision 274) */
@@ -4291,6 +4320,8 @@ function update0(){
   $('secTitle').textContent='Section: '+zoneName(P,P.sec)+(P.eyeMode==='stand'?', standing':', sitting');
   $('lgEye').innerHTML=P.eyeMode==='stand'?'<i style="background:var(--eye-stand);border-radius:50%;width:9px;height:9px;border:1px solid var(--eye-sit)"></i>Standing eye':'<i style="background:var(--eye-sit);border-radius:50%;width:9px;height:9px"></i>Seated eye';
   document.querySelectorAll('#modeTabs [data-mode]').forEach(b=>{const on=b.dataset.mode===P.eyeMode;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
+  {const two=P.tierCount>1&&ZR[P.sec].some(r=>r.tier===1),three=P.tierCount>2&&ZR[P.sec].some(r=>r.tier===2);$('det2Wrap').hidden=!two;$('det3Wrap').hidden=!three;$('junWrap').hidden=!two;['bubJ','bubPlan','bub3d','bubEnl','bubEnlC'].forEach((id,i)=>$(id).textContent='CDEFGHIJ'[i+(two?1:0)+(three?1:0)-(two?0:1)]);}   /* frames and reference letters at once; the drawings when in view */
+  lazyRun('sect',()=>{
   $('section').innerHTML=drawSection(ZR[P.sec]);{const v=$('section').querySelector('svg');if(v&&v.viewBox.baseVal.width){const k=v.getBoundingClientRect().width/v.viewBox.baseVal.width;if(k>0)$('section').innerHTML=drawSection(ZR[P.sec],{k});}}   /* 9 px text on screen (decision 167) */
   // screen text (decision 167): dimension values, grid scale marks and tread numbers at 9 px; each view's px per unit measured after a first draw
   const kOf=el=>{const v=el&&el.querySelector('svg');if(!v||!v.viewBox||!v.viewBox.baseVal.width)return 0;return v.getBoundingClientRect().width/v.viewBox.baseVal.width;};
@@ -4310,8 +4341,9 @@ function update0(){
        return drawJunction(ZR[P.sec],{tier:ti,zone:P.sec,fs:w/62,k:kJ,fillW:kJ&&jw?jw/kJ:0,padB:kJ?30/kJ:0,label:n2>1?`Tier ${ti}–${ti+1}`:''});};   /* the grid to the frame's edges, the name inside the drawing (decision 181) */
      const n=ZR[P.sec].some(r=>r.tier===2)&&P.tierCount>2?2:1;$('junction').innerHTML=Array.from({length:n},(_,i)=>`<div class="panel jfr" style="overflow:hidden">${jn(i+1).replace('<svg ','<svg style="display:block;width:100%;margin:0" ')}</div><div class="g24 jinfo-wrap">${junctionInfoHTML(ZR[P.sec],i+1)}</div>`).join('');   /* each junction in its own frame, its eye sight values under it (decision 203) */   /* the eye sight values under the frame, outside it (decision 180) */
      $('junTitle').textContent=`Tier junction${n>1?'s':''}: ${n>1?'Tiers 1–2 and 2–3':'Tier 1–2'}, ${zoneName(P,P.sec)}, through the wheelchair platform`;}}
+  if(!LAZY.inUpd)spectScale();});   /* sections, sightline details and tier junctions: drawn when near the screen (decision 295); scaled like a full redraw */
   $('detTitle').textContent=`Sightline detail: Tier 1, ${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'}`;
-  document.querySelectorAll('#detTabs [data-dm]').forEach(b=>{const on=b.dataset.dm===DETMODE;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});renderPlan();
+  document.querySelectorAll('#detTabs [data-dm]').forEach(b=>{const on=b.dataset.dm===DETMODE;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});lazyRun('plan',renderPlan);
   const Sp=SPORTS[P.sport];$('planTitle').textContent=`${Sp.org}: ${Sp.name}`;
   $('planNote').innerHTML=`<span style="display:inline-block;width:18px;height:3px;background:${FOCAL};vertical-align:middle;margin-right:6px"></span>Point-of-focus boundary, dimensioned. Drawn from ${Sp.rule}. Field ${fieldDesc(P)}. Check against the current edition before issuing drawings.`+(SHORT&&SHORT.rails.length?` <br><span style="display:inline-block;width:14px;height:9px;background:#EF9F27;opacity:.7;vertical-align:middle;margin-right:5px"></span>Front-row seats with the guard rail in the sightline (${fmt(SHORT.railSeats)})`:'')+(SHORT&&SHORT.rows.length?` <br><span style="display:inline-block;width:14px;height:9px;background:var(--sl-low);opacity:.55;vertical-align:middle;margin-right:5px"></span>Seats below the minimum C-value (${fmt(SHORT.seats)})`:'')+(M.AL?` <br><span style="display:inline-block;width:14px;height:9px;background:#FFFFFF;border:1px solid var(--ink);vertical-align:middle;margin-right:5px"></span>Aisles`+(imperial()?` <span style="display:inline-block;width:14px;height:9px;background:#FF8A8A;vertical-align:middle;margin:0 5px 0 10px"></span>Row over the IBC maximum of ${ibcRow(P.zt[0].z.T).n} seats per row (${L(ibcRow(P.zt[0].z.T).C)} clear, ${L(ibcRow(P.zt[0].z.T).dep)} ${ibcRow(P.zt[0].z.T).back?'chair':'bench'})`:''):'');
   const tc=mm=>plain(mm),tu=imperial()||!unitSuffix().trim()?'':` (${unitSuffix().trim()})`;
@@ -4328,10 +4360,10 @@ function update0(){
      +q.map(t=>`<tr><td>Tier ${t.ti+1}</td><td>${qVol(t.V)}</td><td>${qWt(t.W)}</td><td>${qLen(t.rail)}</td><td>${qArea(t.plan)}</td><td>${inchText(t.rMin)}–${inchText(t.rMax)}</td></tr>`).join('')
      +`<tr class="tot"><td>Total</td><td>${qVol(tot.V)}</td><td>${qWt(tot.W)}</td><td>${qLen(tot.rail)}</td><td>${qArea(tot.plan)}</td><td></td></tr></tbody>`;}
   $('lgSurf').textContent=surf();$('lgT1').style.background=tierFill(0);$('lgT2').style.background=tierFill(1);
-  spectScale();   /* the enlarged spectator frames are off the web page; their eye sight values are in the tier junctions (decision 179) */
+  if(!LAZY.dirty.has('sect'))spectScale();   /* (skipped while the junctions wait to be drawn, decision 295) the enlarged spectator frames are off the web page; their eye sight values are in the tier junctions (decision 179) */
   {const ok=!!M.AL&&zoned(P);ENL.one=null;if(ok&&ENL.pick){const ti=Math.floor(ENL.pick/100)-1,q=ti<P.tierCount?sectionList(ti).find(x=>x.no===ENL.pick):null;   // a section picked from the list (decision 153)
      if(q&&!((P.secs||{})[q.no]||{}).off){const g=uniqueSections().find(u=>u.nos.includes(q.no));ENL.one={ti,key:q.key,no:q.no,same:g?g.nos.filter(n=>n!==q.no):[],nos:g?g.nos:[q.no]};}else ENL.pick=null;}
-   renderEnl();$('enlTitle').textContent=ok?enlargedTitle():'Enlarged plan: typical section';
+   lazyRun('enl',renderEnl);$('enlTitle').textContent=ok?enlargedTitle():'Enlarged plan: typical section';
    $('enlTabs').innerHTML=ok?Array.from({length:P.tierCount},(_,i)=>`<button data-enlt="${i}" class="${!ENL.pick&&Math.min(ENL.tier,P.tierCount-1)===i?'on':''}">Tier ${i+1}</button>`).join('')
      +[westKey(),eastKey(),GEO.find(k=>!isSide(k)&&compassOf(P)[k]==='S')||'R'].map(k=>`<button data-enls="${k}" class="${!ENL.pick&&enlSide()===k?'on':''}">${zoneName(P,k)}</button>`).join('')
      +`<select id="enlPick" aria-label="Any section" title="Show any section" style="margin-left:23px"><option value="">Any section…</option>${Array.from({length:P.tierCount},(_,ti)=>`<optgroup label="Tier ${ti+1}">${sectionList(ti).filter(q=>!((P.secs||{})[q.no]||{}).off).sort((a,b)=>a.no-b.no).map(q=>`<option value="${q.no}"${ENL.pick===q.no?' selected':''}>${q.no}, ${zoneName(P,q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a).Lz.k)}</option>`).join('')}</optgroup>`).join('')}</select>`:'';
@@ -4376,20 +4408,37 @@ function topUpPlatforms(){if(!zoned(P))return 0;const S=P.secs||(P.secs={}),mx=(
     if(!pick)break;(S[pick.no]=S[pick.no]||{}).wc=true;added++;Mx=mx();}
   for(let g=0;g<40&&Mx.cap<P.capTarget;g++){let done=false;for(let ti=0;ti<P.tierCount&&!done;ti++){const z0=P.zt[ti].z[k0Of(P)];if(z0.rows<(P.rowMax[ti]||80)){GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)z.rows++;});done=true;}}if(!done)break;Mx=mx();}
   return added;}
-function luckyCalc(){const S0=JSON.stringify(P),col=[];
-  for(const tc of [1,2,3])for(const mv of (tc>1?[false,true]:[false])){P=fixP(JSON.parse(S0));P.tierCount=tc;P.fitMove=mv;const arr=[];fitCapacity(P,{collect:arr,noPlace:true});arr.forEach(c=>{c.mv=mv;col.push(c);});}   /* both upper tier positions: default, and moved back and up for row 1 (decision 232) */
+/* long calculations step by step behind a progress window with Cancel (decision 295): the page repaints between steps and the bowl is restored if cancelled */
+const BUSY={cancel:false};
+function busyOpen(title,n){BUSY.cancel=false;let d=$('busyDlg');if(d)d.remove();d=document.createElement('div');d.id='busyDlg';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label',title);
+  d.innerHTML=`<div class="bz-box"><p class="bz-t">${esc(title)}</p><p class="bz-s" id="bzStep">Starting…</p><div class="bz-bar"><i id="bzBar" style="width:0%"></i></div><p class="bz-n" id="bzN">0 of ${n}</p><button type="button" id="bzCancel">Cancel</button></div>`;
+  document.body.appendChild(d);document.documentElement.classList.add('busy');d.querySelector('#bzCancel').onclick=()=>{BUSY.cancel=true;d.querySelector('#bzCancel').disabled=true;$('bzStep').textContent='Cancelling after this step…';};d.querySelector('#bzCancel').focus();}
+async function busyStep(i,n,label){const d=$('busyDlg');if(d){$('bzStep').textContent=label;$('bzBar').style.width=(100*i/n).toFixed(0)+'%';$('bzN').textContent=`${i} of ${n} done`;}
+  await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));return !BUSY.cancel;}   // paint, then let a Cancel click through
+function busyClose(){const d=$('busyDlg');if(d)d.remove();document.documentElement.classList.remove('busy');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('busyDlg')){e.preventDefault();const c=$('bzCancel');if(c&&!c.disabled)c.click();}});
+async function luckyCalc(){const S0=JSON.stringify(P),col=[],combos=[];for(const tc of [1,2,3])for(const mv of (tc>1?[false,true]:[false]))combos.push([tc,mv]);
+  busyOpen('Trying 1, 2 and 3 tiers',combos.length);
+  try{for(let i=0;i<combos.length;i++){const [tc,mv]=combos[i];
+      if(!await busyStep(i,combos.length,`${tc} tier${tc>1?'s':''}${tc>1?(mv?', upper tiers moved back and up for row 1':', upper tiers in the default position'):''}: every row split`)){P=fixP(JSON.parse(S0));CUR=null;renderControls();update();toast('Cancelled. The bowl is as it was.');return;}
+      P=fixP(JSON.parse(S0));P.tierCount=tc;P.fitMove=mv;const arr=[];fitCapacity(P,{collect:arr,noPlace:true});arr.forEach(c=>{c.mv=mv;col.push(c);});}   /* both upper tier positions: default, and moved back and up for row 1 (decision 232) */
+  }catch(e){P=fixP(JSON.parse(S0));update();throw e;}finally{busyClose();}
   P=fixP(JSON.parse(S0));const tgt=P.capTarget,okAll=col.filter(c=>c.cap>=tgt&&c.pass>=c.all&&c.sight),pool=okAll.length?okAll:col.filter(c=>c.cap>=tgt);
   const best=pool.slice().sort((a,b)=>((a.wc>=a.req?0:1)-(b.wc>=b.req?0:1))||(a.vd-b.vd))[0];
   if(!best){toast('No tier count reaches the target within the row limits. Raise a limit under Capacity.');return;}
   fitPut(P,best);if(best.tiers>1)P.fitMove=!!best.mv;placeDefaultPlatforms();const addW=topUpPlatforms();CUR=null;renderControls();update();
   const k=k0Of(P),rows=P.zt.slice(0,P.tierCount).map(t=>t.z[k].rows);
   toast(`Tried 1, 2 and 3 tiers: ${P.tierCount} tier${P.tierCount>1?'s':''}, ${rows.join(' / ')} rows${P.tierCount>1?(best.mv?', upper tiers moved back and up for row 1':', upper tiers in the default position'):''}, ${fmt(M.cap)} seats; farthest viewing distance ${L(M.vd*1000)} (shortest of ${col.filter(c=>c.cap>=tgt).length} configurations that reach the target)${okAll.length?'; every seat meets the minimum C-value':'; no configuration meets every C-value, the closest shown'}${addW?`; ${addW} more wheelchair platform${addW>1?'s':''} added beyond the default sections to meet the wheelchair space count`:''}${M.ADA&&M.ADA.wc<M.ADA.req?`; ${fmt(M.ADA.wc)} of ${fmt(M.ADA.req)} wheelchair spaces, add platforms`:''}.`);}
-function finalCandidates(){const Sorig=JSON.stringify(P);const addW=topUpPlatforms();const S0=JSON.stringify(P);P=fixP(JSON.parse(Sorig));const base=JSON.parse(S0),nT=base.tierCount,u=imperial()?0.3048:0.3,k0=k0Of(base),r0=JSON.parse(Sorig).zt.slice(0,nT).map(t=>t.z[k0].rows),Dmin=(SPORTS[base.sport].Dmin??0),riseMin=RD().rise;
+async function finalCandidates(){const Sorig=JSON.stringify(P);const addW=topUpPlatforms();const S0=JSON.stringify(P);P=fixP(JSON.parse(Sorig));const base=JSON.parse(S0),nT=base.tierCount,u=imperial()?0.3048:0.3,k0=k0Of(base),r0=JSON.parse(Sorig).zt.slice(0,nT).map(t=>t.z[k0].rows),Dmin=(SPORTS[base.sport].Dmin??0),riseMin=RD().rise;
   const vars=[[0,0],[1,0],[-1,0],[2,0],[-2,0]];if(nT>1)vars.push([0,1],[0,-1],[1,1],[-1,-1]);const out=[];
-  for(const [dd,dr] of vars){P=fixP(JSON.parse(S0));let ok=true;
+  busyOpen('Comparing options',vars.length);let vi=0;
+  try{for(const [dd,dr] of vars){
+    if(!await busyStep(vi++,vars.length,`${dd?`Sideline Depth 1 ${dd>0?'+':'−'}${Math.abs(dd)} ${imperial()?'ft':'× 0.3 m'}`:'Sideline Depth 1 as drawn'}${nT>1?`, tier-to-tier heights ${dr?(dr>0?'+':'−')+Math.abs(dr)+(imperial()?' ft':' × 0.3 m'):'as drawn'}`:''}: every row split`)){P=fixP(JSON.parse(Sorig));update();toast('Cancelled. Your design is unchanged.');return null;}
+    P=fixP(JSON.parse(S0));let ok=true;
     GEO.forEach(k=>{const z=P.zt[0].z[k];if(!z)return;z.D=Math.round((z.D+dd*u)*1e6)/1e6;if(z.D<Dmin-1e-6)ok=false;});
     for(let ti=1;ti<nT;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(!z)return;z.rise=Math.round((z.rise+dr*u)*1e6)/1e6;if(z.rise<riseMin-1e-6)ok=false;});
     if(!ok)continue;const arr=[];fitCapacity(P,{keep:true,collect:arr});arr.forEach(c=>{c.dd=dd;c.dr=dr;out.push(c);});}
+  }catch(e){P=fixP(JSON.parse(Sorig));update();throw e;}finally{busyClose();}
   P=fixP(JSON.parse(Sorig));update();
   const seen=new Set(),res=[];
   out.forEach(c=>{c.rowsT=c.z.map(zz=>zz[k0].rows);c.close=c.rowsT.reduce((a,v,i)=>a+Math.abs(v-r0[i]),0)+2*Math.abs(c.dd)+2*Math.abs(c.dr)*(nT-1);c.valid=c.cap>=base.capTarget&&c.pass>=c.all&&c.sight;c.wcOK=c.wc>=c.req;});
@@ -5369,7 +5418,7 @@ function titleCase(str){
       if(UNITS.has(lo))return p;                                       // keep units lowercase
       if(k===0&&!first&&!last&&SMALL.has(lo))return p;
       return p[0].toUpperCase()+p.slice(1);}).join('-');});}
-const SENTENCE='.pop-ph,.rcalc,.note-t,#pbRes,.hs-l,#pbStatus,.oname,#prStatus,#prDlg p,#setupDlg .su-hint,#setupDlg .su-card span,#setupDlg .su-tier span,#setupDlg .su-off,#setupDlg .su-form label em,.pi-sport,#secEd .se-n,#aisEd .se-n,#aisEd .se-h span,.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#secPanel table.wrap td+td,#v33dm,#v3Glb,#v3Ifc,#v3Html';
+const SENTENCE='#busyDlg .bz-s,#busyDlg .bz-n,.pop-ph,.rcalc,.note-t,#pbRes,.hs-l,#pbStatus,.oname,#prStatus,#prDlg p,#setupDlg .su-hint,#setupDlg .su-card span,#setupDlg .su-tier span,#setupDlg .su-off,#setupDlg .su-form label em,.pi-sport,#secEd .se-n,#aisEd .se-n,#aisEd .se-h span,.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#secPanel table.wrap td+td,#v33dm,#v3Glb,#v3Ifc,#v3Html';
 function titleize(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
   while((n=w.nextNode())){const el=n.parentElement;if(!el||el.closest(SENTENCE))continue;const t=titleCase(n.data);if(t!==n.data)n.data=t;}}
 new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData'){const el=m.target.parentElement;if(el&&!el.closest(SENTENCE)){const t=titleCase(m.target.data);if(t!==m.target.data)m.target.data=t;}}
@@ -5679,6 +5728,9 @@ async function setupFinish(){const I=SU.info||{name:PROJ.name,country:PROJ.count
 {const sb=document.createElement('button');sb.id='setupBtn';sb.textContent='Setup';sb.title='Guided setup: open or create a project, sport, capacity and tiers';const a=document.querySelector('header .actions');if(a)a.insertBefore(sb,a.firstChild);sb.onclick=()=>openSetup('start');}
 try{if(localStorage.getItem('sl-setup-off')!=='1')openSetup('start');else if(HAD_STATE)setTimeout(oneSportHere,300);}catch(e){openSetup('start');}
 $('ver').textContent='Sightline Schematic '+VERSION+'. Everything runs in your browser; nothing is uploaded. The open project stays in this browser; Save project writes it to a file you can keep in Google Drive and open on another computer.';
+/* decision 295: the grid alignment pass runs once per frame, and waits while a slider is being dragged (it measures the whole page) */
+var DRAGGING=false;{const ga0=gridAlign;let raf=0,idle=0;gridAlign=function(){if(DRAGGING){clearTimeout(idle);idle=setTimeout(()=>{DRAGGING=false;gridAlign();},200);return;}
+  if(raf)return;raf=requestAnimationFrame(()=>{raf=0;try{ga0();}catch(e){console.error(e);}});};gridAlign.now=ga0;}
 </script>
 </body>
 </html>
