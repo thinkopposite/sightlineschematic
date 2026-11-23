@@ -1406,7 +1406,11 @@ function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGAC
   if(P.seatRev3!==1){if(regionOf(P.sport)!=='world')P.zt.forEach(t=>GEO.forEach(k=>{const z=t.z[k];if(z)Object.assign(z,{seat:'standard',seatW:22*25.4});}));P.seatRev3=1;}   // American sports: 22 in chairback on every side, once
   if(P.chairRev!==1){const A=P.ais;if(A&&A.chairD!=null&&Math.abs(A.chairD-((A.backD??2*25.4)+12*25.4))<0.5)A.chairD=(A.backD??2*25.4)+14*25.4;P.chairRev=1;}   // decision 286: bowls saved at the old 12 in raised-seat default move to the 14 in default, once
   if(P.riseRev2!==1){const old=regionOf(P.sport)==='world'?4.0:13*0.3048,nu=REGION_DEF[regionOf(P.sport)].rise;P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>{const z=t.z[k];if(z&&Math.abs(z.rise-old)<1e-6)z.rise=nu;});});P.riseRev2=1;}   // old 13 ft / 4.0 m default moves to the new 10 ft / 3.0 m default, once
+  if(!P.seatW||typeof P.seatW!=='object'){const zs=P.zt.flatMap(t=>GEO.map(k=>t.z[k]).filter(Boolean)),f=b=>zs.find(z=>(z.seat==='bench')===b);   /* decision 302: one width per seat type; saved bowls keep the width of their first chairback / bench side */
+    P.seatW={standard:(f(false)||{}).seatW||seatSpec('standard',P.sport).def,bench:(f(true)||{}).seatW||seatSpec('bench',P.sport).def};}
+  seatSync(P);
   clampCap(P);pinUpperTiers(P);return P;}
+function seatSync(Q){Q=Q||P;if(!Q.seatW)return;Q.zt.forEach(t=>GEO.forEach(k=>{const z=t.z[k];if(z)z.seatW=Q.seatW[z.seat==='bench'?'bench':'standard'];}));}   // every side takes its seat type's width
 // rake limit (decision 135). American sports: the IBC sets no maximum rake; its stepped-aisle rules (risers 4-8 in, treads at least 11 in,
 // IBC 1029.13.2 / 2021 1030.14.2) cap each row's rise at 8 in per 11 in of the tread it climbs from, so 24 in on a 34 in row (35.2 deg).
 // International and Commonwealth sports: the Guide to Safety at Sports Grounds (Green Guide 12.10), 35 deg for seated areas, adjustable.
@@ -1836,12 +1840,7 @@ function egress(){const AL=M.AL;if(!AL)return null;const imp=imperial(),fS=egFac
 function aisEditor(){const A=AIS(),imp=imperial(),lay=A.mode==='layout';
   let h='';   /* computed layout only; the percentage allowance is gone (decision 190) */
   if(!lay)return h+slider('loss','Seats lost to aisles (1 %)',0,30,1,'%')+'<p class="hint">A flat allowance off every row. Switch to the computed layout to draw the aisles on the plan and check them.</p>';
-  if(imp){const zs=[];for(let ti=0;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)zs.push([ti,k,z]);});
-    const seen={},lines=[];zs.forEach(([ti,k,z])=>{const r=ibcRow(z),key=[z.seat,z.tread,z.seatW].join('|');if(seen[key])return;seen[key]=1;
-      lines.push(`${r.back?'Chairback (with backrest)':'Bench (no backrest)'} ${L(z.seatW)} wide, ${L(z.tread)} row: ${L(r.C)} clear (row less ${r.back?'the chair with its seat raised':'the bench'}, ${L(r.dep)}) → <b>${r.n<1?'clear width under 12" — not allowed':r.n+' seats'}</b> between two aisles`);});
-    const b=rowBase(true),tb=egBasis()==='open'||egBasis()==='smoke';
-    h+=slider('chairRaised','Raised seat depth, self-rising chair (14" default, 12" low limit)',12*25.4,14*25.4,3.175,'mm')+slider('chairBackrest','Backrest depth',0,4*25.4,3.175,'mm')+slider('ais.chairBack','Seat back behind the riser (1/8 inch)',0,6*25.4,3.175,'mm')+slider('ais.chairDown','Chair depth, seat down (1/2 inch; drawing only)',14*25.4,32*25.4,12.7,'mm')
-      +`<p class="hint" style="margin-top:2px">Self-rising seats are measured raised (IBC 1030.13.2). Clear width = row depth less the raised chair depth and the backrest depth: 34" − 14" − 2" = 18" by default (41 seats at 22,000 and over, open-air); with a 12" chair, 20" (47 seats). ${tb?`Open-air or smoke-protected, ${fmt(P.capTarget)} seats: Table 1030.13.2.1 allows ${b} seats at 12" clear`:'IBC 1030.13.2.1: 14 seats at 12" clear'}, plus one seat per 0.3" more (0.6" with an aisle at one end only); open-air rows do not rely on the 22" provision. Benches count at 18" per person (IBC 1004.6).<br>${lines.join('<br>')}</p>`
+  if(imp){h+=''
       +slider('ais.nSL','Equal middle sections, West and East sidelines (1 section)',1,9,1,'sections')
       +slider('ais.nEZ','Equal middle sections, North and South end zones (1 section)',1,9,1,'sections')
       +slider('ais.smaxMid','Most seats in a middle section (1 seat)',20,44,1,'seats')+slider('ais.ctolp','Top rows where corner seats over the limit are left out (5 %)',0,50,5,'%')+slider('ais.smax','Most seats in a section (1 seat; code limit above)',20,100,1,'seats');}
@@ -2263,7 +2262,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.23.06';
+const VERSION='2026.11.23.07';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2450,7 +2449,7 @@ function fieldSliders(){const S=SPORTS[P.sport];
   if(S.law){const imp=imperial();return slider('L',`Touchline length (${imp?'1 yard':'0.5 m'}; Law 1 international ${imp?'110–120 yd':'100–110 m'})`,imp?110*YD:100,imp?120*YD:110,imp?YD:0.5,'m')
     +slider('W',`Goal line length (${imp?'1 yard':'0.5 m'}; Law 1 international ${imp?'70–80 yd':'64–75 m'})`,imp?70*YD:64,imp?80*YD:75,imp?YD:0.5,'m');}
   return slider('L','Field length',10,200,0.01,'m')+slider('W','Field width',5,130,0.01,'m');}
-function applySport(k){const x=SPORTS[k],g=gapsOf(P);sportUnits(k);renderUnits();{const R=REGION_DEF[regionOf(k)];if(regionOf(k)!==regionOf(P.sport)){P.zt.forEach((t,i)=>GEO.forEach(q=>{const z=t.z[q];if(!z)return;Object.assign(z,{tread:R.tread,tread0:R.tread0,treadN:R.tread,seatW:seatSpec(z.seat,k).def});if(i)z.rise=R.rise;}));P.eye=eyeFor(regionOf(k));P.slabT=slabDef(regionOf(k));P.ais=Object.assign(aisDefaults(regionOf(k)),{mode:AIS().mode});}AIS().prem=premDef(k);Object.assign(P,{step:R.step,maxRiser:R.maxRiser,minHead:R.minHead});LEG2=R.leg;}   /* a new sport brings its default units */Object.assign(P,{sport:k});clampCap(P);P.zt.forEach(t=>GEO.forEach(g=>Object.assign(t.z[g],{D:x.D,Z:x.Z,target:cvDefault(k)})));
+function applySport(k){const x=SPORTS[k],g=gapsOf(P);sportUnits(k);renderUnits();{const R=REGION_DEF[regionOf(k)];if(regionOf(k)!==regionOf(P.sport)){P.zt.forEach((t,i)=>GEO.forEach(q=>{const z=t.z[q];if(!z)return;Object.assign(z,{tread:R.tread,tread0:R.tread0,treadN:R.tread,seatW:seatSpec(z.seat,k).def});if(i)z.rise=R.rise;}));P.seatW={standard:seatSpec('standard',k).def,bench:seatSpec('bench',k).def};P.eye=eyeFor(regionOf(k));P.slabT=slabDef(regionOf(k));P.ais=Object.assign(aisDefaults(regionOf(k)),{mode:AIS().mode});}AIS().prem=premDef(k);Object.assign(P,{step:R.step,maxRiser:R.maxRiser,minHead:R.minHead});LEG2=R.leg;}   /* a new sport brings its default units */Object.assign(P,{sport:k});clampCap(P);P.zt.forEach(t=>GEO.forEach(g=>Object.assign(t.z[g],{D:x.D,Z:x.Z,target:cvDefault(k)})));
   if(x.shape==='fan')Object.assign(P,{fl:x.fl,cf:x.cf,bs:x.bs});else if(x.shape==='track')Object.assign(P,{lanes:x.lanes,L:x.L,W:x.W});else Object.assign(P,{L:x.L,W:x.W});keepGaps(P,g);CUR=null;renderControls();update();}
 // zt.<tier>.<keys>.<param> edits a group of zones together, so linked sides can never drift apart
 /* sideline depth inputs (decision 229): depth 1 from the point of focus to the Tier 1 front riser in 1'-0" steps; each further depth from the tier below's front riser to this tier's front riser in 34" steps */
@@ -2480,13 +2479,29 @@ function cvEditor(pre,z,ti){const set=cvSet(P.sport),p=pre+'.target';META[p]={mi
     +`<div class="hint" style="margin:2px 0 6px">${set.src}</div><div class="seg stack">`
     +set.opts.map(([n,mm])=>`<button data-cv="${mm}" data-g="${pre}" class="${Math.abs(z.target-mm)<0.01?'on':''}" title="${n}">${n}: ${lab(mm)}</button>`).join('')
     +`</div></div>`;}
+function seatDimEditor(){const imp=imperial(),u=w=>imp?Math.round(w/25.4)+'"':Math.round(w)+' mm';if(!P.seatW)P.seatW={standard:seatSpec('standard').def,bench:seatSpec('bench').def};let h='';   /* step 4 Seat dimensions (decision 302): one set of dimensions per seat type */
+  const used=new Set();for(let ti=0;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)used.add(z.seat==='bench'?'bench':'standard');});
+  const wB=k=>{const cur=P.seatW[k],o=seatSpec(k).opts,l=o.some(w=>Math.abs(cur-w)<0.1)?o:[...o,cur].sort((a,b)=>a-b);return '<div class="lab">Seat width</div><div class="seg">'+l.map(w=>`<button data-swk="${k}" data-swv="${w}" class="${Math.abs(cur-w)<0.1?'on':''}">${u(w)}</button>`).join('')+'</div>';};
+  const head=(t,k)=>`<p class="zhead" style="margin-top:16px">${t}${used.has(k)?'':' <span style="font-weight:400;color:var(--muted)">(not used in this bowl)</span>'}</p>`;
+  h+=head('Chairback seats, with backrest','standard')+wB('standard');
+  if(imp)h+=slider('chairRaised','Raised seat depth, self-rising chair (14" default, 12" low limit)',12*25.4,14*25.4,3.175,'mm')+slider('chairBackrest','Backrest depth',0,4*25.4,3.175,'mm')+slider('ais.chairBack','Seat back behind the riser (1/8 inch)',0,6*25.4,3.175,'mm')+slider('ais.chairDown','Chair depth, seat down (1/2 inch; drawing only)',14*25.4,32*25.4,12.7,'mm')
+      ;
+  h+=head('Bench seats, no backrest','bench')+wB('bench');
+  if(imp)h+=`<table class="fixed"><tr><td>Bench depth</td><td>${L(BENCH_D)} (fixed)</td></tr><tr><td>Bench thickness; top above the tread</td><td>${L(BENCH.t)}; ${L(BENCH.h)}</td></tr></table>`;
+  if(imp){const zs=[];for(let ti=0;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)zs.push([ti,k,z]);});
+    const seen={},lines=[];zs.forEach(([ti,k,z])=>{const r=ibcRow(z),key=[z.seat,z.tread,z.seatW].join('|');if(seen[key])return;seen[key]=1;
+      lines.push(`${r.back?'Chairback (with backrest)':'Bench (no backrest)'} ${L(z.seatW)} wide, ${L(z.tread)} row: ${L(r.C)} clear (row less ${r.back?'the chair with its seat raised':'the bench'}, ${L(r.dep)}) → <b>${r.n<1?'clear width under 12" — not allowed':r.n+' seats'}</b> between two aisles`);});
+const b=rowBase(true),tb=egBasis()==='open'||egBasis()==='smoke';
+
+    h+=`<div class="lab" style="margin-top:16px">Maximum seats per row</div><p class="hint" style="margin-top:2px">Self-rising seats are measured raised (IBC 1030.13.2). Clear width = row depth less the raised chair depth and the backrest depth: 34" − 14" − 2" = 18" by default (41 seats at 22,000 and over, open-air); with a 12" chair, 20" (47 seats). ${tb?`Open-air or smoke-protected, ${fmt(P.capTarget)} seats: Table 1030.13.2.1 allows ${b} seats at 12" clear`:'IBC 1030.13.2.1: 14 seats at 12" clear'}, plus one seat per 0.3" more (0.6" with an aisle at one end only); open-air rows do not rely on the 22" provision. Benches count at 18" per person (IBC 1004.6).</p><p class="hint keep" style="margin-top:6px">${lines.join('<br>')}</p>`;}
+  return h;}
 function setbackText(ti,k){const zr=solveZone(P,k),lo=zr.filter(r=>r.tier===ti-1),up=zr.find(r=>r.tier===ti);if(!lo.length||!up)return '';
   const sb=up.x-(lo[lo.length-1].x+lo[lo.length-1].T);return sb<0?`Overhangs the tier below by ${L(-sb)}.`:`${L(sb)} behind the top row of the tier below.`;}
 function zoneEditor(ti,g){
   const z=P.zt[ti].z[g[0]],pre=`zt.${ti}.${g.join('')}`;let h='';
   const seatBlock=(keys,title)=>{const zz=P.zt[ti].z[keys[0]],pp=`zt.${ti}.${keys.join('')}`;
     return (title?`<div class="lab">${title}</div>`:'')+'<div class="seg" style="margin:6px 0 0">'+Object.entries(SEATS).map(([k,s])=>`<button data-seat="${k}" data-g="${pp}" class="${zz.seat===k?'on':''}">${s.name}</button>`).join('')+'</div>'
-      +`<div class="lab">${(SEATS[zz.seat]||SEATS.standard).name} seat width</div><div class="seg">`+(o=>o.some(w=>Math.abs(zz.seatW-w)<0.1)?o:[...o,zz.seatW].sort((a,b)=>a-b))(seatSpec(zz.seat).opts).map(w=>`<button data-sw="${w}" data-g="${pp}" class="${Math.abs(zz.seatW-w)<0.1?'on':''}">${imperial()?Math.round(w/25.4)+'"':Math.round(w)+' mm'}</button>`).join('')+'</div>';};
+      ;};   /* seat widths: step 4 Seat dimensions (decision 302) */
   const all4=g.length===4;
   h+=all4?seatBlock(['T','B'],'East and West sidelines')+seatBlock(['L','R'],'North and South end zones'):seatBlock(g,'');
   h+='<div class="lab">Riser</div><div class="seg">'+[['parabolic','Parabolic riser'],['constant','Constant riser']].map(([k,n])=>`<button data-riser="${k}" data-g="${pre}" class="${(z.riser||'parabolic')===k?'on':''}">${n}</button>`).join('')+'</div>'
@@ -2548,7 +2563,9 @@ function renderControls(){
   const G=groups(P,ti);EDIT.g=Math.min(EDIT.g,G.length-1);
   if(G.length>1)h+='<div class="tabs sub" role="tablist">'+G.map((g,i)=>`<button role="tab" data-eg="${i}" class="${i===EDIT.g?'on':''}" aria-selected="${i===EDIT.g}">${groupName(P,ti,g).replace(/ \(.*\)/,'')}</button>`).join('')+'</div>';
   h+=`<p class="zhead">${groupName(P,ti,G[EDIT.g])}</p>`+zoneEditor(ti,G[EDIT.g])+'</div></section>';
-  h+=step(4,'Sightlines','Locked eye sight values, then solve every riser to the C-value.')+`<div class="eyes"><div class="lab" style="margin-top:0;color:var(--accent-deep)"><b>Eye sight values (do not change)</b></div><div class="seg"><button id="eyeLock" aria-pressed="${!EYELOCK}" class="${EYELOCK?'on':''}">${EYELOCK?'🔒 Locked':'🔓 Unlocked'}</button></div>`
+  h+=step(4,'Seat dimensions','Chairback and bench dimensions; the selected seat type sets the seats per row.')+seatDimEditor()+'</section>';
+  h+=step(5,'Aisles','Aisle spacing to code and the egress check.')+aisEditor()+'</section>';
+  h+=step(6,'Sightlines','Locked eye sight values, then solve every riser to the C-value.')+`<div class="eyes"><div class="lab" style="margin-top:0;color:var(--accent-deep)"><b>Eye sight values (do not change)</b></div><div class="seg"><button id="eyeLock" aria-pressed="${!EYELOCK}" class="${EYELOCK?'on':''}">${EYELOCK?'🔒 Locked':'🔓 Unlocked'}</button></div>`
     +slider('eye.sitH',`Sitting eye height (${imperial()?'1/2 inch':'5 mm'})`,imperial()?24*25.4:610,imperial()?84*25.4:2135,imperial()?12.7:5,'mm')+slider('eye.stH','Standing eye height, average 63.45" (1612 mm), '+EB_SHORT,imperial()?24*25.4:610,imperial()?84*25.4:2135,imperial()?1.27:1,'mm')+slider('eye.stHead','Standing head height, average 67.65" (1718 mm), '+EB_SHORT,imperial()?36*25.4:915,imperial()?90*25.4:2285,imperial()?1.27:1,'mm')+slider('eye.stSh','Standing shoulder height, average 55.65" (1414 mm), '+EB_SHORT,imperial()?30*25.4:760,imperial()?80*25.4:2030,imperial()?1.27:1,'mm')
     +slider('eye.wcH','Wheelchair eye height, average 47.45" (1205 mm), '+EB_SHORT,36*25.4,60*25.4,1.27,'mm')
     +`<p class="hint" style="margin-top:2px">Standing and wheelchair values are the average anthropometric dimensions of ${EB_FULL} (1) wheelchair eye height 47.45"; (2) eye of a wheelchair user to the edge of the tier the wheelchair rests on 30"; (3) standing head height 67.65"; (4) standing eye height 63.45"; (5) standing shoulder height 55.65". Averages, not code minimums; test lower values to check shorter users.</p>`
@@ -2560,9 +2577,10 @@ function renderControls(){
        :cvEditor('cvAll',P.zt[0].z[GEO.find(k=>P.zt[0].z[k])],0).replace('Absolute minimum C-value override','Every tier')+Array.from({length:P.tierCount},(_,ti)=>`<div class="lab">Tier ${ti+1}</div>`+cvEditor(`zt.${ti}.${GEO.filter(k=>P.zt[ti].z[k]).join('')}`,P.zt[ti].z[GEO.find(k=>P.zt[ti].z[k])],ti).replace('Absolute minimum C-value override',`Tier ${ti+1} override`)).join(''))+'</div>';}
   h+='<div class="lab" style="margin-top:16px"><b style="color:var(--ink)">All C-values meet minimum</b></div><div class="seg">'+[['parabolic','Parabolic risers'],['constant','Constant risers']].map(([k,n])=>`<button data-meet="${k}:sit" class="${meetNow()===k+':sit'?'on':''}" aria-pressed="${meetNow()===k+':sit'}">${n}</button>`).join('')+'</div>'
     +'<p class="hint">Re-sizes the risers on every tier and side in ½" steps so each row meets its minimum C-value for seated spectators. Constant risers stop at the maximum riser.</p></section>';
-  h+=step(5,'Aisles','Aisle spacing to code and the egress check.')+aisEditor()+'</section>';
-  h+=step(6,'Capacity','Rows are sized to reach the target seats, within the row limits.')+Array.from({length:P.tierCount},(_,i)=>slider(`rowMax.${i}`,`Maximum rows, Tier ${i+1}`,3,80,1,'rows')).join('')+'<p class="hint">Sizing stays within these limits, for reasons other than the C-value (structure, vomitories, egress, the site). If the target can\'t be reached within them, the shortfall is reported.</p>'
-    +(P.tierCount>1?`<div class="lab" style="margin-top:8px">Upper tiers when sizing the bowl</div><div class="seg"><button data-fitmove="0" class="${P.fitMove?'':'on'}" aria-pressed="${!P.fitMove}" title="Second riser over the top riser below, 10'-0&quot; (3.0 m) above it; row 1 shortfalls are reported">Default position</button><button data-fitmove="1" class="${P.fitMove?'on':''}" aria-pressed="${!!P.fitMove}" title="Move each upper tier back and up until its row 1 meets the minimum C-value">Move back and up for row 1</button></div>`:'')
+  h+=step(7,'Set limits','Limits used when the bowl is sized. Locked.')   /* decision 302: shown, not editable */
+    +'<table class="fixed">'+Array.from({length:P.tierCount},(_,i)=>`<tr><td>Maximum rows, Tier ${i+1}</td><td>${P.rowMax[i]||80} rows</td></tr>`).join('')
+    +(P.tierCount>1?`<tr><td>Upper tiers when sizing the bowl</td><td>${P.fitMove?'Moved back and up for row 1':'Default position: second riser over the top riser below, '+L(RD().rise*1000)+' above it'}</td></tr>`:'')+'</table>'
+    +'<p class="hint keep">🔒 Locked. Size the bowl, Try 1, 2 and 3 tiers and Compare options keep within these limits; a target out of reach is reported.</p>'
     +'<button id="fit" class="primary" style="margin-top:10px;width:100%" title="Up to eight configurations that meet the target from your design">Compare options</button><p class="hint">Keeps your sections, curves and platforms; varies rows per tier, Sideline Depth 1 and tier-to-tier heights. Pick one, or keep your design.</p></section>';
   const fixed=[...(P.sport==='nfl'||P.sport==='ncaafb'?[['Football field length',L(360*304.8)],['Football field width',L(160*304.8)]]:[]),
     ['Round risers up to',L(P.step)],['Maximum riser',L(P.maxRiser)],['Rows per riser bank','1'],['Guard rail at row 1 of each tier',`${inchText(P.railH)} high, ${inchText(2*25.4)} thick, on the riser face (inside face on the riser line), ${inchText(8*25.4)} below the tread`],['Minimum Tier-1 top tread to Tier-2 bottom tread',L(RD().riseMin*1000)],['Minimum clear height below the Tier-2 front riser leg',L(P.minHead)],['Upper-tier leg wall',`${L(LEG2)} below the bottom tread`]];
@@ -2610,7 +2628,8 @@ function relink(ti,link){const t=P.zt[ti];t.link=link;
 function resetAllDefaults(){const b=document.createElement('button');b.id='reset';b.hidden=true;$('controls').appendChild(b);b.click();b.remove();}
 $('controls').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
-  if(b.dataset.seat){const pre=b.dataset.g;set(pre+'.seat',b.dataset.seat);set(pre+'.seatW',seatSpec(b.dataset.seat).def);}
+  if(b.dataset.seat){const pre=b.dataset.g;set(pre+'.seat',b.dataset.seat);if(!P.seatW)P.seatW={standard:seatSpec('standard').def,bench:seatSpec('bench').def};set(pre+'.seatW',P.seatW[b.dataset.seat==='bench'?'bench':'standard']);}
+  else if(b.dataset.swk){if(!P.seatW)P.seatW={standard:seatSpec('standard').def,bench:seatSpec('bench').def};P.seatW[b.dataset.swk]=+b.dataset.swv;seatSync(P);}
   else if(b.dataset.sw){set(b.dataset.g+'.seatW',+b.dataset.sw);}
   else if(b.dataset.cv){set(b.dataset.g+'.target',+b.dataset.cv);}
   else if(b.dataset.cvreset){set(b.dataset.cvreset+'.target',cvDefault(P.sport));toast('C-value reset to the '+cvSet(P.sport).src.split(':')[0]+' absolute minimum.');}
@@ -4317,7 +4336,7 @@ function lazyFlush(){[...LAZY.dirty].forEach(g=>{LAZY.dirty.delete(g);LAZY.fn[g]
 addEventListener('load',()=>setTimeout(()=>{LAZY.all=false;},0));
 addEventListener('beforeprint',lazyFlush);
 function update0(){LAZY.inUpd=true;try{update00();}finally{LAZY.inUpd=false;}}
-function update00(){
+function update00(){seatSync(P);
   LEG2=RD().leg;wcClean();persist();if(typeof pdfBgUI==='function')pdfBgUI();if(typeof pdfGridUI==='function')pdfGridUI();ZR=solveAll(P);if(!zoned(P))P.sec='T';if(!ZR[P.sec].length)P.sec=zoneKeys(P).find(k=>ZR[k].length)||'T';
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);SLC=M.AL?{AL:M.AL,m:{}}:null;
   const pct=Math.min(100,M.cap/P.capTarget*100),ok=M.cap>=P.capTarget;
@@ -5546,15 +5565,16 @@ function panelSum(i){try{const Sp=SPORTS[P.sport],n=P.tierCount,k0=GEO.find(k=>P
   return [()=>`${Sp.name} (${Sp.org}) · ${fmt(P.capTarget)} seats · ${n} tier${n>1?'s':''}`,
     ()=>`${P.zt[0].corners==='round'?'Round':'Chamfered'} corners · ${(P.bulge.S>0||P.bulge.E>0)?'curved':'straight'} stands · ${P.cfg==='stands'?STAND_KEYS.map(k=>k+standH()[k]).join(' '):(CFG_LIST(P.sport).find(c=>c[0]===(P.cfg||'closed'))||[0,'Custom'])[1]}`,
     ()=>`Rows ${Array.from({length:n},(_,t)=>P.zt[t].z[k0].rows).join(' / ')}`,
-    ()=>`C-value ${L(P.zt[0].z[k0].target)} · ${P.eyeMode==='stand'?'standing':'seated'}`,
+    ()=>{const u=w=>imperial()?Math.round(w/25.4)+'"':Math.round(w)+' mm',W=P.seatW||{};return `Chairback ${u(W.standard||0)}${imperial()?' · '+L(get('chairRaised'))+' raised':''} · bench ${u(W.bench||0)}`;},
     ()=>`${A.nSL||5} + ${A.nEZ||3} middle sections · aisles ${L(A.w)}`,
-    ()=>`Maximum rows ${P.rowMax.slice(0,n).join(' / ')}`,
+    ()=>`C-value ${L(P.zt[0].z[k0].target)} · ${P.eyeMode==='stand'?'standing':'seated'}`,
+    ()=>`Locked · maximum rows ${P.rowMax.slice(0,n).join(' / ')}`,
     ()=>'PDF sets, schedules, 3D models'][i]();}catch(e){return '';}}
 function panelSums(){panelSteps().forEach((sec,i)=>{const e=sec.querySelector('.step-h .sum');if(e)e.textContent=panelSum(i);});}
 function panelApply(){panelSteps().forEach((sec,i)=>{const on=i===PANEL.open;sec.classList.toggle('shut',!on);const h=sec.querySelector('.step-h');if(h)h.setAttribute('aria-expanded',String(on));});}
 function panelOpen(i,scroll){PANEL.open=i;panelApply();if(scroll&&i>=0){const sec=panelSteps()[i],a=document.querySelector('aside');if(sec&&a&&getComputedStyle(a).overflowY!=='visible')a.scrollTo({top:Math.max(0,sec.offsetTop-4)});else if(sec)sec.scrollIntoView({block:'start'});}}
 function panelOpenEl(sec){const i=panelSteps().indexOf(sec);if(i>=0&&i!==PANEL.open)panelOpen(i,false);}
-const PANEL_T=['Program','Bowl','Tiers','Sightlines','Aisles','Capacity','Export'];
+const PANEL_T=['Program','Bowl','Tiers','Seat dimensions','Aisles','Sightlines','Set limits','Export'];
 function panelTidy(){const secs=panelSteps();
   secs.forEach((sec,i)=>{let h=sec.querySelector(':scope > .step-h');if(!h){h=document.createElement('div');h.className='step-h';sec.insertBefore(h,sec.firstChild);}
     const t=PANEL_T[i]||(h.querySelector('h2')||{}).textContent||'';
