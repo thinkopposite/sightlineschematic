@@ -572,6 +572,17 @@ html.busy{overflow:hidden}
 #setupDlg .su-tier span{display:none}
 #setupDlg .su-tier.on{outline:5px solid #E10600!important;outline-offset:-5px!important}
 #setupDlg .su-tier.on::after{content:'';position:absolute;top:8px;right:8px;width:18px;height:18px;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M3 9.5l4 4L15 4.5' fill='none' stroke='%23E10600' stroke-width='1.75' stroke-linecap='square'/%3E%3C/svg%3E")}
+/* configuration icons in the Bowl step's larger window (decision 299); the panel keeps the list only */
+aside .cfgcards{display:none}
+aside section.step.popped .cfgcards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 4px}
+aside .cfgcard{position:relative;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px 6px 10px!important;min-height:0!important;height:auto!important;border:1px solid var(--sw-ink,#111)!important;background:var(--panel,#fff)!important;color:var(--sw-ink,#111)!important}
+aside .cfgcard svg{width:72px!important;height:72px!important;max-width:none!important;flex:none}
+aside .cfgcard b{font-size:12px!important;font-weight:700;line-height:1.25;text-align:center}
+aside .cfgcard b.def{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px;text-decoration-skip-ink:none}
+aside .cfgcard:hover{outline:2px solid #E10600;outline-offset:-2px}
+aside .cfgcard.on{outline:4px solid #E10600!important;outline-offset:-4px!important}
+aside .cfgcard.on::after{content:'';position:absolute;top:6px;right:6px;width:14px;height:14px;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M3 9.5l4 4L15 4.5' fill='none' stroke='%23E10600' stroke-width='2' stroke-linecap='square'/%3E%3C/svg%3E")}
+html.popopen #toast{z-index:6100!important}   /* messages stay in front of the larger window */
 </style>
 </head>
 <body>
@@ -2250,7 +2261,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.23.03';
+const VERSION='2026.11.23.04';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2509,6 +2520,8 @@ function renderControls(){
   if(zoned(P)){
     h+='<div class="lab">Side profiles: <b style="color:var(--ink)">All four sides match</b></div>';
     h+='<div class="lab">Configuration</div><select id="cfgSel" class="sel">'+CFG_LIST(P.sport).concat(P.cfg==='custom'?[['custom','Custom (sections switched by hand)']]:P.cfg==='stands'?[['stands','Custom, stands by tier']]:[]).map(([v,n])=>`<option value="${v}"${(P.cfg||'closed')===v?' selected':''}>${n}</option>`).join('')+'</select>';
+    {const shp=(P.bulge.S>0||P.bulge.E>0)?'curved':(P.zt[0].corners==='round'?'round':'chamfer'),cur=P.cfg||'closed';   /* the larger window shows the configurations as icons as well (decision 299) */
+     h+='<div class="cfgcards" role="group" aria-label="Configuration">'+CFG_LIST(P.sport).map(([v,n])=>`<button type="button" class="cfgcard${cur===v?' on':''}" data-cfgpick="${v}" aria-pressed="${cur===v}" title="${n}">${bowlIcon(shp,v,P.sport)}<b${v==='closed'?' class="def"':''}>${n}</b></button>`).join('')+'</div>';}
     {const H=standH(),n=P.tierCount,ew=endWord(P.sport)==='end zone',nm={W:'West',E:'East',N:ew?'NEZ':'North',S:ew?'SEZ':'South'},full={W:'West stand',E:'East stand',N:`North ${endWord(P.sport)}`,S:`South ${endWord(P.sport)}`};
       h+='<div class="lab">Stands by tier</div><div class="stgrid" role="group" aria-label="Stands by tier" style="grid-template-columns:64px repeat(4,1fr)"><span></span>'+STAND_KEYS.map(k=>`<span class="st-h">${nm[k]}</span>`).join('')
         +Array.from({length:n},(_,r)=>n-1-r).map(ti=>`<span class="st-t">Tier ${ti+1}</span>`+STAND_KEYS.map(k=>`<button class="st-c${H[k]>ti?' on':''}${H[k]>ti&&(()=>{const S=P.secs||{};return standSecs(ti)[k].some(no=>S[no]&&S[no].off);})()?' part':''}" data-st="${k}:${ti}" aria-pressed="${H[k]>ti}" aria-label="${full[k]}, Tier ${ti+1}: ${H[k]>ti?'included':'omitted'}" title="${full[k]}: ${H[k]===ti+1?`remove Tier ${ti+1}`:`Tiers 1 to ${ti+1}`.replace('Tiers 1 to 1','Tier 1 only')}"></button>`).join('')).join('')+'</div>'
@@ -2619,6 +2632,7 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.link){relink(EDIT.tier,b.dataset.link);}
   else if(b.dataset.corner){P.zt.forEach(t=>t.corners=b.dataset.corner);}
   else if(b.dataset.resize){const q=$('quickCalc');if(q)q.click();return;}
+  else if(b.dataset.cfgpick){P.cfg=b.dataset.cfgpick;if(P.cfg!=='stands')delete P.standT;toast(`Configuration: ${b.title}. Press Size the bowl to size the remaining stands to the target.`);}
   else if(b.dataset.st){const [k,t]=b.dataset.st.split(':');if(!standSet(k,+t))return;}
   else if(b.dataset.cornais){const [ti,v]=b.dataset.cornais.split(':').map(Number);if(cornCount(P,ti)===v)return;const A=P.cornAis||(P.cornAis=CORN_DEF.slice());A[ti]=v;
     const N=P.secN||{};let n=0;Object.keys(N).forEach(k=>{if(k.startsWith(ti+'.C.')){delete N[k];n++;}});if(P.aisEd)delete P.aisEd[ti];   /* the corner sections change: hand-set corner sizes on that tier no longer fit */
