@@ -577,12 +577,14 @@ aside .cfgcards{display:none}
 aside section.step.popped .cfgcards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 4px}
 aside .cfgcard{position:relative;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px 6px 10px!important;min-height:0!important;height:auto!important;border:1px solid var(--sw-ink,#111)!important;background:var(--panel,#fff)!important;color:var(--sw-ink,#111)!important}
 aside .cfgcard svg{width:72px!important;height:72px!important;max-width:none!important;flex:none}
-aside .cfgcard b{font-size:12px!important;font-weight:700;line-height:1.25;text-align:center}
+aside .cfgcard b{font-size:10px!important;font-weight:700;line-height:1.25;text-align:center}
 aside .cfgcard b.def{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px;text-decoration-skip-ink:none}
 aside .cfgcard:hover{outline:2px solid #E10600;outline-offset:-2px}
 aside .cfgcard.on{outline:4px solid #E10600!important;outline-offset:-4px!important}
 aside .cfgcard.on::after{content:'';position:absolute;top:6px;right:6px;width:14px;height:14px;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M3 9.5l4 4L15 4.5' fill='none' stroke='%23E10600' stroke-width='2' stroke-linecap='square'/%3E%3C/svg%3E")}
 html.popopen #toast{z-index:6100!important}   /* messages stay in front of the larger window */
+aside .cfgcustom{display:none}aside section.step.popped .cfgcustom{display:block;font-size:14px;margin:4px 0 8px;color:var(--sw-ink,#111)}
+aside section.step.popped #cfgSel{display:none!important}   /* the cards replace the list in the larger window (decision 301); the panel keeps the list */
 </style>
 </head>
 <body>
@@ -2261,7 +2263,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.23.04';
+const VERSION='2026.11.23.06';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2521,7 +2523,8 @@ function renderControls(){
     h+='<div class="lab">Side profiles: <b style="color:var(--ink)">All four sides match</b></div>';
     h+='<div class="lab">Configuration</div><select id="cfgSel" class="sel">'+CFG_LIST(P.sport).concat(P.cfg==='custom'?[['custom','Custom (sections switched by hand)']]:P.cfg==='stands'?[['stands','Custom, stands by tier']]:[]).map(([v,n])=>`<option value="${v}"${(P.cfg||'closed')===v?' selected':''}>${n}</option>`).join('')+'</select>';
     {const shp=(P.bulge.S>0||P.bulge.E>0)?'curved':(P.zt[0].corners==='round'?'round':'chamfer'),cur=P.cfg||'closed';   /* the larger window shows the configurations as icons as well (decision 299) */
-     h+='<div class="cfgcards" role="group" aria-label="Configuration">'+CFG_LIST(P.sport).map(([v,n])=>`<button type="button" class="cfgcard${cur===v?' on':''}" data-cfgpick="${v}" aria-pressed="${cur===v}" title="${n}">${bowlIcon(shp,v,P.sport)}<b${v==='closed'?' class="def"':''}>${n}</b></button>`).join('')+'</div>';}
+     if(cur==='custom'||cur==='stands')h+=`<p class="cfgcustom">${cur==='stands'?'Custom: stands set by tier (below)':'Custom: sections switched on and off by hand'}</p>`;
+     h+='<div class="cfgcards" role="group" aria-label="Configuration">'+CFG_LIST(P.sport).map(([v,n])=>`<button type="button" class="cfgcard${cur===v?' on':''}" data-cfgpick="${v}" aria-pressed="${cur===v}" title="${n}">${bowlIcon(shp,v,P.sport,{thin:1})}<b${v==='closed'?' class="def"':''}>${n}</b></button>`).join('')+'</div>';}
     {const H=standH(),n=P.tierCount,ew=endWord(P.sport)==='end zone',nm={W:'West',E:'East',N:ew?'NEZ':'North',S:ew?'SEZ':'South'},full={W:'West stand',E:'East stand',N:`North ${endWord(P.sport)}`,S:`South ${endWord(P.sport)}`};
       h+='<div class="lab">Stands by tier</div><div class="stgrid" role="group" aria-label="Stands by tier" style="grid-template-columns:64px repeat(4,1fr)"><span></span>'+STAND_KEYS.map(k=>`<span class="st-h">${nm[k]}</span>`).join('')
         +Array.from({length:n},(_,r)=>n-1-r).map(ti=>`<span class="st-t">Tier ${ti+1}</span>`+STAND_KEYS.map(k=>`<button class="st-c${H[k]>ti?' on':''}${H[k]>ti&&(()=>{const S=P.secs||{};return standSecs(ti)[k].some(no=>S[no]&&S[no].off);})()?' part':''}" data-st="${k}:${ti}" aria-pressed="${H[k]>ti}" aria-label="${full[k]}, Tier ${ti+1}: ${H[k]>ti?'included':'omitted'}" title="${full[k]}: ${H[k]===ti+1?`remove Tier ${ti+1}`:`Tiers 1 to ${ti+1}`.replace('Tiers 1 to 1','Tier 1 only')}"></button>`).join('')).join('')+'</div>'
@@ -5440,7 +5443,7 @@ function titleCase(str){
       if(UNITS.has(lo))return p;                                       // keep units lowercase
       if(k===0&&!first&&!last&&SMALL.has(lo))return p;
       return p[0].toUpperCase()+p.slice(1);}).join('-');});}
-const SENTENCE='#busyDlg .bz-s,#busyDlg .bz-n,.pop-ph,.rcalc,.note-t,#pbRes,.hs-l,#pbStatus,.oname,#prStatus,#prDlg p,#setupDlg .su-hint,#setupDlg .su-card span,#setupDlg .su-tier span,#setupDlg .su-off,#setupDlg .su-form label em,.pi-sport,#secEd .se-n,#aisEd .se-n,#aisEd .se-h span,.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#secPanel table.wrap td+td,#v33dm,#v3Glb,#v3Ifc,#v3Html';
+const SENTENCE='.cfgcustom,#busyDlg .bz-s,#busyDlg .bz-n,.pop-ph,.rcalc,.note-t,#pbRes,.hs-l,#pbStatus,.oname,#prStatus,#prDlg p,#setupDlg .su-hint,#setupDlg .su-card span,#setupDlg .su-tier span,#setupDlg .su-off,#setupDlg .su-form label em,.pi-sport,#secEd .se-n,#aisEd .se-n,#aisEd .se-h span,.hint,#verdict,#planNote,#ver,#toast,.brand p,.empty,script,style,textarea,input,.capt,.step-h p,.pdfhost,#engTable td,#refTable td,#egrTable td,#v3Fmt td,#codePanel td+td,#secPanel table.wrap td+td,#v33dm,#v3Glb,#v3Ifc,#v3Html';
 function titleize(root){const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
   while((n=w.nextNode())){const el=n.parentElement;if(!el||el.closest(SENTENCE))continue;const t=titleCase(n.data);if(t!==n.data)n.data=t;}}
 new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData'){const el=m.target.parentElement;if(el&&!el.closest(SENTENCE)){const t=titleCase(m.target.data);if(t!==m.target.data)m.target.data=t;}}
@@ -5640,7 +5643,7 @@ function splitDialog(sports,opts){return new Promise(res=>{const old=$('prDlg');
 const SU={step:'start',info:null,sport:'ncaafb',cap:30000,tiers:'auto',shape:'curved',cfg:'closed'};
 /* plan-view bowl icons (decisions 257, 259, 260): a square, red for straight stands (chamfered or round corners), black for curved stands, the bowl outline in white at the sport's own field proportions, centred; included sections a solid 4 px line,
    omitted sections a dashed 2 px line on the same path, so the four sides and corners stay one continuous outline. No text. */
-function bowlIcon(shape,cfg,sport){const Sp=SPORTS[sport||SU.sport||P.sport]||SPORTS.ncaafb,fx=Sp.W/2,fy=Sp.L/2,cv=shape==='curved',d=Math.max(Sp.Dmin??6,6)+(cv?11:15),   /* curved: 11 m, so with its bowed sides (8 m / 6 m) it reads the same size as the straight bowls (decision 267) */   /* the line runs through the seating: 15 m behind the front row, 24 m on curved bowls (deeper, as on Joseph's reference plan) */
+function bowlIcon(shape,cfg,sport,io={}){const Sp=SPORTS[sport||SU.sport||P.sport]||SPORTS.ncaafb,fx=Sp.W/2,fy=Sp.L/2,cv=shape==='curved',d=Math.max(Sp.Dmin??6,6)+(cv?11:15),   /* curved: 11 m, so with its bowed sides (8 m / 6 m) it reads the same size as the straight bowls (decision 267) */   /* the line runs through the seating: 15 m behind the front row, 24 m on curved bowls (deeper, as on Joseph's reference plan) */
     bS=cv?8:0,bE=cv?6:0,   /* curved bowls after Joseph's reference plan (decision 263): sidelines bowed about 8 m, ends 6 m, corners radius 32 m */
     off=CFGS[cfg]||[];
   /* curved stands are circular arcs through the stand ends with the setback at the middle; each corner is an arc of radius d tangent to both stands, so the outline has no kinks */
@@ -5675,7 +5678,7 @@ function bowlIcon(shape,cfg,sport){const Sp=SPORTS[sport||SU.sport||P.sport]||SP
   const pitch=soc?`<circle cx="0" cy="0" r="${f(9.15)}" ${ln}/>`+[-1,1].map(e=>`<rect x="${f(-20.16)}" y="${f(e<0?-fy:fy-16.5)}" width="${f(40.32)}" height="${f(16.5)}" ${ln}/><rect x="${f(-9.16)}" y="${f(e<0?-fy:fy-5.5)}" width="${f(18.32)}" height="${f(5.5)}" ${ln}/>`).join(''):'';
   const join=arr=>{const o=[];arr.forEach(q=>q.g().forEach((p,i)=>{if(i===0&&o.length)return;o.push(p);}));return o;},pl=pts=>pts.map((p,i)=>(i?'L':'M')+f(p[0])+' '+f(p[1])).join('');
   const solid='fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round" vector-effect="non-scaling-stroke"',
-    dash='fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round" stroke-dasharray="2 2.5" vector-effect="non-scaling-stroke"';
+    dash=io.thin?`fill="none" stroke="${shape==='curved'?'#8C8C88':'#111111'}" stroke-width="1" stroke-linecap="butt" stroke-linejoin="round" vector-effect="non-scaling-stroke"`:'fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round" stroke-dasharray="2 2.5" vector-effect="non-scaling-stroke"';   /* Bowl window cards: open sides a thin solid line, black on the red icons, grey on the black (curved) ones (decision 300) */
   let svg='';if(pieces.every(q=>!q.open))svg=`<path d="${pl(join(pieces))}Z" ${solid}/>`;
   else{const s0=pieces.findIndex((q,i)=>q.open!==pieces[(i+11)%12].open),runs=[];for(let n=0;n<12;n++){const q=pieces[(s0+n)%12];if(!runs.length||runs[runs.length-1].open!==q.open)runs.push({open:q.open,ps:[]});runs[runs.length-1].ps.push(q);}
     runs.sort((a,b)=>a.open===b.open?0:a.open?-1:1).forEach(R=>{svg+=`<path d="${pl(join(R.ps))}" ${R.open?dash:solid}/>`;});}   /* dashed first, so the solid ends sit on top */
