@@ -585,6 +585,58 @@ aside .cfgcard.on::after{content:'';position:absolute;top:6px;right:6px;width:14
 html.popopen #toast{z-index:6100!important}   /* messages stay in front of the larger window */
 aside .cfgcustom{display:none}aside section.step.popped .cfgcustom{display:block;font-size:14px;margin:4px 0 8px;color:var(--sw-ink,#111)}
 aside section.step.popped #cfgSel{display:none!important}   /* the cards replace the list in the larger window (decision 301); the panel keeps the list */
+/* ===== left panel on the 24 px grid (decision 303): its own grid, scrolling with it; text centred in the cells (24 px lines); boxes 25 px from line to line; separators on grid lines. The larger window keeps its own layout. ===== */
+aside{padding:0 24px 24px!important;background-color:var(--sw-paper)!important;background-image:linear-gradient(var(--sw-gridc) 1px,transparent 1px),linear-gradient(90deg,var(--sw-gridc) 1px,transparent 1px)!important;background-size:24px 24px!important;background-position:-1px -1px!important;background-attachment:local!important}
+aside #controls{line-height:24px}
+aside section.step:not(.popped){padding:0 0 23px!important;margin:0!important;border-bottom:1px solid var(--sw-rule,#9A9A96)!important}
+aside section.step:not(.popped) > .step-h{display:grid!important;grid-template-columns:auto 1fr 24px 24px 24px!important;grid-template-rows:24px;column-gap:0!important;align-items:start!important;padding:24px 0 0!important;margin:0!important}
+aside section.step:not(.popped) > .step-h :is(.bub,h2){line-height:24px!important;margin:0!important;padding:0!important}
+aside section.step:not(.popped) > .step-h .bub{padding-right:8px!important}
+aside section.step:not(.popped) > .step-h .popout{grid-column:3;grid-row:1;width:25px!important;height:25px!important;min-height:25px!important;margin:-1px 0 0 -1px!important;box-sizing:border-box}
+aside section.step:not(.popped) > .step-h .popout svg{width:15px!important;height:15px!important}
+aside section.step:not(.popped) > .step-h .chev{grid-column:5;grid-row:1;width:24px;height:24px;display:flex;align-items:center;justify-content:center;line-height:24px!important}
+aside section.step:not(.popped) > .step-h .chev::before{line-height:24px!important}
+aside section.step:not(.popped) > .step-h .sum{grid-column:1/-1!important;grid-row:2;margin:0!important;line-height:24px!important;height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* contents of an open step */
+:is(aside section.step:not(.popped),aside #controls > details) :is(.lab,.zhead,p,label,summary,.sl-val,.note-t,.hint,td,th,.st-h,.st-t,.colrow,.sl-top){line-height:24px!important}
+:is(aside section.step:not(.popped),aside #controls > details) :is(.lab,.zhead){margin:24px 0 0!important;padding:0!important;min-height:24px}
+:is(aside section.step:not(.popped),aside #controls > details) > .step-h + * :is(.lab,.zhead):first-child,:is(aside section.step:not(.popped),aside #controls > details) > .step-h + :is(.lab,.zhead){margin-top:24px!important}
+:is(aside section.step:not(.popped),aside #controls > details) :is(.sl,.eyes,.cvlock,.tier){margin:0!important;padding:0!important}
+:is(aside section.step:not(.popped),aside #controls > details) .sl{margin-top:24px!important}
+:is(aside section.step:not(.popped),aside #controls > details) .sl-top{display:flex!important;align-items:flex-start!important;gap:8px;min-height:24px;margin:0!important;padding:0!important}
+:is(aside section.step:not(.popped),aside #controls > details) .sl-top label{margin:0!important;padding:0!important}
+:is(aside section.step:not(.popped),aside #controls > details) .sl-val{margin:0!important;display:flex;align-items:flex-start;gap:6px}
+:is(aside section.step:not(.popped),aside #controls > details) .sl-val input{height:25px!important;min-height:25px!important;margin:-1px 0 0!important;padding:0 6px!important;line-height:23px!important;box-sizing:border-box!important;font-size:14px!important}
+:is(aside section.step:not(.popped),aside #controls > details) .rng{display:flex!important;align-items:flex-start!important;height:24px!important;margin:0!important;padding:0!important}
+:is(aside section.step:not(.popped),aside #controls > details) .rng .nudge{width:25px!important;height:25px!important;min-height:25px!important;margin:-1px 0 0!important;padding:0!important;line-height:23px!important;box-sizing:border-box!important}
+:is(aside section.step:not(.popped),aside #controls > details) .rng .nudge + input[type=range]{margin:6px 0 0!important;height:12px}
+:is(aside section.step:not(.popped),aside #controls > details) .seg{display:flex!important;flex-wrap:wrap;gap:0!important;margin:23px 0 0!important;padding:0 0 1px 1px!important}
+:is(aside section.step:not(.popped),aside #controls > details) :is(.lab,.zhead) + .seg{margin-top:-1px!important}
+:is(aside section.step:not(.popped),aside #controls > details) .seg > :is(button,a){height:25px!important;min-height:25px!important;margin:0 0 -1px -1px!important;padding:0 12px!important;line-height:23px!important;box-sizing:border-box!important}
+:is(aside section.step:not(.popped),aside #controls > details) .seg.stack{flex-direction:column}
+:is(aside section.step:not(.popped),aside #controls > details) .seg.stack > button{width:calc(100% + 1px)!important}
+:is(aside section.step:not(.popped),aside #controls > details) :is(select.sel,.step-next,#fit,.tabs),:is(aside section.step:not(.popped),aside #controls > details) :is(.step-h,.tier,.cvlock,.eyes) ~ button:not(.step-next){margin:23px 0 0!important}
+:is(aside section.step:not(.popped),aside #controls > details) :is(.step-h,.tier,.cvlock,.eyes) ~ button:not(.step-next){height:25px!important;min-height:25px!important;padding-top:0!important;padding-bottom:0!important;line-height:23px!important;box-sizing:border-box!important}
+:is(aside section.step:not(.popped),aside #controls > details) :is(.lab,.zhead) + select.sel{margin-top:-1px!important}
+:is(aside section.step:not(.popped),aside #controls > details) :is(select.sel,.step-next,#fit){height:25px!important;min-height:25px!important;padding-top:0!important;padding-bottom:0!important;line-height:23px!important;box-sizing:border-box!important;font-size:14px!important}
+:is(aside section.step:not(.popped),aside #controls > details) .tabs{display:flex!important;gap:0!important;padding:0 0 0 1px!important;border-bottom:0!important;height:25px}
+:is(aside section.step:not(.popped),aside #controls > details) .tabs > button{height:25px!important;min-height:25px!important;border-bottom-width:1px!important;border-bottom-style:solid!important;margin:0 0 0 -1px!important;padding:0 12px!important;line-height:23px!important;box-sizing:border-box!important}
+:is(aside section.step:not(.popped),aside #controls > details) :is(p.hint,p.keep,.note-t){margin:0!important;padding-top:0!important;padding-bottom:0!important}
+:is(aside section.step:not(.popped),aside #controls > details) details{margin:0!important;padding:0!important}
+:is(aside section.step:not(.popped),aside #controls > details) details > summary{display:flex!important;align-items:center;margin:0!important;padding:0!important;line-height:24px!important;height:24px;overflow:hidden}
+:is(aside section.step:not(.popped),aside #controls > details) table.fixed{margin:0!important;border-collapse:collapse}
+:is(aside section.step:not(.popped),aside #controls > details) table.fixed td{height:24px!important;padding-top:0!important;padding-bottom:0!important;border-top:0!important;border-bottom:0!important}
+:is(aside section.step:not(.popped),aside #controls > details) .stgrid{gap:0!important;grid-auto-rows:24px!important;margin:24px 0 0!important;padding-left:1px}
+:is(aside section.step:not(.popped),aside #controls > details) .stgrid .st-c{height:25px!important;min-height:25px!important;margin:-1px 0 0 -1px!important}
+:is(aside section.step:not(.popped),aside #controls > details) .colrow{margin:0!important;height:24px;display:flex;align-items:flex-start;gap:8px}
+:is(aside section.step:not(.popped),aside #controls > details) .colrow :is(input){height:25px!important;min-height:25px!important;margin:-1px 0 0!important;box-sizing:border-box;padding-top:0!important;padding-bottom:0!important}
+aside section.step.shut:not(.popped):not(#_) > :not(.step-h){display:none!important}   /* (:not(#_) only raises the specificity) */
+aside section.step:not(.popped) > .step-h .sum{display:block}aside section.step:not(.shut):not(.popped) > .step-h .sum{display:none!important}
+aside #controls > details{margin:0!important;padding:24px 0 23px!important;border-bottom:1px solid var(--sw-rule,#9A9A96)}
+aside #controls > details > summary{line-height:24px!important;height:24px;margin:0!important;padding:0!important}
+aside #controls .ctlmark{line-height:0!important;position:relative;top:-2px}
+:is(aside section.step:not(.popped),aside #controls > details) .tier.tier{padding-bottom:23px!important}   /* the frame's bottom border on a grid line */
+:is(aside section.step:not(.popped),aside #controls > details) label :is(span,b,i,em){line-height:0!important}
 </style>
 </head>
 <body>
@@ -2262,7 +2314,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.23.07';
+const VERSION='2026.11.23.08';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -5776,6 +5828,8 @@ $('ver').textContent='Sightline Schematic '+VERSION+'. Everything runs in your b
 /* decision 295: the grid alignment pass runs once per frame, and waits while a slider is being dragged (it measures the whole page) */
 var DRAGGING=false;{const ga0=gridAlign;let raf=0,idle=0;gridAlign=function(){if(DRAGGING){clearTimeout(idle);idle=setTimeout(()=>{DRAGGING=false;gridAlign();},200);return;}
   if(raf)return;raf=requestAnimationFrame(()=>{raf=0;try{ga0();}catch(e){console.error(e);}});};gridAlign.now=ga0;}
+/* decision 303: whenever the right page changes height (a drawing redrawn as it comes into view, a section opened, fonts loaded), the grid pass runs again, so everything below stays on the grid */
+try{let h0=0;new ResizeObserver(es=>{const h=Math.round(es[0].contentRect.height);if(h!==h0){h0=h;gridAlign();}}).observe(document.querySelector('main'));}catch(e){}
 </script>
 </body>
 </html>
