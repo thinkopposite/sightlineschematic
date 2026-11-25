@@ -2551,7 +2551,7 @@ function cvEditor(pre,z,ti){const set=cvSet(P.sport),p=pre+'.target';META[p]={mi
     +`</div></div>`;}
 function seatDimEditor(){const imp=imperial(),u=w=>imp?Math.round(w/25.4)+'"':Math.round(w)+' mm';if(!P.seatW)P.seatW={standard:seatSpec('standard').def,bench:seatSpec('bench').def};let h=`<div class="seatdims"><div class="seg" style="margin-top:4px"><button id="seatLock" aria-pressed="${!SEATLOCK}" class="${SEATLOCK?'on':''}">${SEATLOCK?'🔒 Locked':'🔓 Unlocked'}</button></div>`;   /* step 4 Seat dimensions (decision 302): one set of dimensions per seat type */
   const used=new Set();for(let ti=0;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)used.add(z.seat==='bench'?'bench':'standard');});
-  const wB=k=>{const cur=P.seatW[k],o=seatSpec(k).opts,l=o.some(w=>Math.abs(cur-w)<0.1)?o:[...o,cur].sort((a,b)=>a-b);return '<div class="lab">Seat width</div><div class="seg">'+l.map(w=>`<button data-swk="${k}" data-swv="${w}" class="${Math.abs(cur-w)<0.1?'on':''}">${u(w)}</button>`).join('')+'</div>';};
+  const wB=k=>{const cur=P.seatW[k],o=seatSpec(k).opts,l=o.some(w=>Math.abs(cur-w)<0.1)?o:[...o,cur].sort((a,b)=>a-b);return '<div class="lab">Seat width</div><div class="seg">'+l.map(w=>`<button data-swk="${k}" data-swv="${w}" class="${Math.abs(cur-w)<0.1?'on':''}">${u(w)}${Math.abs(w-seatSpec(k).def)<0.1?' (default)':''}</button>`).join('')+'</div>';};
   /* each seat type in its own card, in the seat's drawing colour, with its profile (chair with backrest / bench) */
   const ico=k=>k==='bench'
       ?'<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><path d="M4 34H36" stroke="currentColor" stroke-width="2" fill="none"/><rect x="8" y="17" width="24" height="5" fill="currentColor"/><path d="M20 22V34" stroke="currentColor" stroke-width="3" fill="none"/></svg>'
@@ -2564,7 +2564,7 @@ function seatDimEditor(){const imp=imperial(),u=w=>imp?Math.round(w/25.4)+'"':Ma
   h+=tail+head('Bench seats','bench','No backrest')+wB('bench');
   if(imp){const bS=(key,lab,opts,cur,def)=>'<div class="lab">'+lab+'</div><div class="seg">'+opts.map(v=>`<button data-bench="${key}" data-benchv="${v}" class="${Math.abs(cur-v)<0.1?'on':''}" aria-pressed="${Math.abs(cur-v)<0.1}">${u(v)}${Math.abs(v-def)<0.1?' (default)':''}</button>`).join('')+'</div>';
     h+=bS('d','Bench depth',BENCH_D_OPTS,BENCH.d,12*25.4)+bS('h','Bench top above the tread',BENCH_H_OPTS,BENCH.h,17*25.4)
-      +`<table class="fixed"><tr><td>Bench thickness</td><td>${L(BENCH.t)}</td></tr></table>`;}
+      +`<div class="lab">Bench thickness</div><div class="seg"><button class="on" aria-pressed="true" data-fixed="1" title="Fixed">${u(BENCH.t)} (default)</button></div>`;}
   h+=tail;
   if(imp){const zs=[];for(let ti=0;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)zs.push([ti,k,z]);});
     const seen={},lines=[];zs.forEach(([ti,k,z])=>{const r=ibcRow(z),key=[z.seat,z.tread,z.seatW].join('|');if(seen[key])return;seen[key]=1;
