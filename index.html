@@ -5772,9 +5772,9 @@ function renderSetup(){let d=$('setupDlg');if(!d){d=document.createElement('div'
   const st=SU.step,idx={info:1,sport:2,tiers:3,shape:4,config:5}[st],I=SU.info,Sp=SPORTS[SU.sport],[lo,hi,typ]=capLim(SU.sport);let b='';
   const head=`<div class="su-head"><span>Guided setup${idx?` · Step ${idx} of 5`:''}</span>${idx?`<span class="su-dots">${[1,2,3,4,5].map(i=>`<i class="${i<=idx?'on':''}"></i>`).join('')}</span>`:''}</div>`;
   if(st==='start'){const had=HAD_STATE;b=`<h2>Where would you like to start?</h2><div class="su-cards">`
-      +(had?`<button class="su-card" data-su="continue"><b>Continue where I left off</b><span>${esc(PROJ.name)} · ${esc(SPORTS[projSport()].name)} · ${OPTS.length} option${OPTS.length===1?'':'s'}</span></button>`:'')
+      +`<button class="su-card" data-su="new"><b>New project</b><span>Project information, sport and capacity, tiers; the bowl is sized for you</span></button>`
       +`<button class="su-card" data-su="open"><b>Open project</b><span>A saved .json project file, on this computer or in Google Drive</span></button>`
-      +`<button class="su-card" data-su="new"><b>New project</b><span>Project information, sport and capacity, tiers; the bowl is sized for you</span></button></div>`
+      +(had?`<button class="su-card" data-su="continue"><b>Continue where I left off</b><span>${esc(PROJ.name)} · ${esc(SPORTS[projSport()].name)} · ${OPTS.length} option${OPTS.length===1?'':'s'}</span></button>`:'')+`</div>`
       +`<label class="su-off"><input type="checkbox" id="suOff"${(()=>{try{return localStorage.getItem('sl-setup-off')==='1'?' checked':'';}catch(e){return '';}})()}> Don't show this at start (reopen it with Setup in the header)</label>`;}
   else if(st==='info'){b=`<h2>New project</h2><div class="su-form">`
       +`<label for="suName">Project name</label><input id="suName" maxlength="80" placeholder="e.g., New Stadium Renovation" value="${esc(I.name)}">`
