@@ -1681,10 +1681,10 @@ const VOM_ON=false;                                                     // vomit
 // IBC 2024 §1030.13.2.1 (dual access): rows up to 100 seats; clear width between rows 12 in for 14 seats or fewer with backrests
 // (21 without), + 0.3 in per seat beyond, 22 in needs no more. The clear width is the row depth less the seat's depth with the seat
 // raised (self-rising chairback) or the bench depth. So the clear width sets the most seats a section between two aisles can hold.
-const BENCH_D=12*25.4;
+const BENCH_D_OPTS=[10,12].map(v=>v*25.4),BENCH_H_OPTS=[17,18].map(v=>v*25.4);   /* bench depth 10 or 12 in (12 default), top above the tread 17 or 18 in (17 default); kept per project in P.benchD, P.benchH */
 // bench (bleacher) seat (decisions 154-157): 18" wide, 12" deep, 2" thick, at the back of its tread with its back against the face of the riser behind;
-// top 18" above that tread (the tread in front of the riser). set: gap between the bench back and the riser face (0)
-const BENCH={w:18*25.4,d:BENCH_D,t:2*25.4,h:18*25.4,set:0};
+// top 17" (default) or 18" above that tread (the tread in front of the riser). set: gap between the bench back and the riser face (0)
+const BENCH={w:18*25.4,t:2*25.4,set:0,get d(){return (P&&P.benchD)||12*25.4;},get h(){return (P&&P.benchH)||17*25.4;}};
 // seat geometry in plan, mm, from the tread's back riser: cb back behind that riser face (negative: in front), cdn depth as used (seat down), cd depth tip to back (seat raised), cf front edge in front of the riser
 function seatGeo(seat,T){if(seat==='bench'){const cb=-BENCH.set;return {bench:true,cb,cdn:BENCH.d,cd:BENCH.d,cf:BENCH.d-cb};}const A=AIS(),cb=A.chairBack??2*25.4,cd=A.chairD||16*25.4;return {bench:false,cb,cdn:A.chairDown||24*25.4,cd,cf:cd-cb};}
 // benches in a section: the 2" seat board 16-18" above each tread, its back against the riser behind, on a support at its middle
@@ -1701,14 +1701,14 @@ function ibcRow1(z){const R=ibcRow(z),b=egBasis(),tb=b==='open'||b==='smoke',r=I
     path=Math.floor((tb?50:30)*304.8/z.seatW+1e-9),n=C<12?0:Math.min(path,tb?base+Math.floor((C-12)/0.6+1e-9):C>=22?path:base+Math.floor((C-12)/0.6+1e-9));return {n,base,path};}   /* open-air: table value + one seat per full 0.6 in beyond 12 in, no 22 in step; within the 50 ft common path */
 /* open-air and smoke-protected seating, Joseph's method (decision 279): the table value at 12 in clear, plus one seat for each full 0.3 in of clear width beyond 12 in,
    with no 22 in step to 100 seats; 100 seats per row at most. Indoor seating keeps §1030.13.2.1 as written for now (to review). */
-function ibcRow(z){const A=AIS(),back=z.seat!=='bench',dep=back?(A.chairD||16*25.4):BENCH_D,C=(z.tread-dep)/25.4,base=rowBase(back),tb=egBasis()==='open'||egBasis()==='smoke';
+function ibcRow(z){const A=AIS(),back=z.seat!=='bench',dep=back?(A.chairD||16*25.4):BENCH.d,C=(z.tread-dep)/25.4,base=rowBase(back),tb=egBasis()==='open'||egBasis()==='smoke';
   const n=C<12?0:tb?Math.min(100,base+Math.floor((C-12)/0.3+1e-9)):C>=22?100:Math.min(100,base+Math.floor((C-12)/0.3+1e-9));return {C:C*25.4,n,back,dep,base};}
 /* core framework (decision 249): the same section layout for all six sports; only the code's row limit differs by group.
    IBC (American): Table 1030.13.2.1 seats per row, capped at the 44-seat design maximum. Green Guide (international): 28 seats between gangways. */
 /* the seats-per-row calculation written out (decision 282), for the enlarged plan's x8 seat detail */
 function rowCalcLines(z,secLo,secHi){if(!imperial())return [];const R=ibcRow(z),R1=ibcRow1(z),b=egBasis(),tb=b==='open'||b==='smoke',C=R.C/25.4,ex=C-12,A=AIS(),q=v=>+v.toFixed(2)+'"',cap=P.capTarget||0,i=IBC_ROW_T.findIndex(t=>cap<t[0]),
     band=i<0?'':i===IBC_ROW_T.length-1?`${fmt(IBC_ROW_T[i-1][0])} and greater`:i===0?`under ${fmt(IBC_ROW_T[0][0])}`:`${fmt(IBC_ROW_T[i-1][0])} to ${fmt(IBC_ROW_T[i][0]-1)}`,
-    seatTxt=R.back?`${q((A.chairD-(A.backD??2*25.4))/25.4)} chair raised − ${q((A.backD??2*25.4)/25.4)} backrest`:`${q(BENCH_D/25.4)} bench`,o=[];
+    seatTxt=R.back?`${q((A.chairD-(A.backD??2*25.4))/25.4)} chair raised − ${q((A.backD??2*25.4)/25.4)} backrest`:`${q(BENCH.d/25.4)} bench`,o=[];
   o.push(tb?`Maximum seats per row: IBC 2024 Table 1030.13.2.1, ${b==='smoke'?'smoke-protected':'open-air'}, ${R.back?'with':'without'} backrests,`:'Maximum seats per row: IBC 2024 §1030.13.2.1 (indoor, to be reviewed)');
   if(tb)o.push(`${fmt(cap)} seats (${band} band): ${R.base} at 12" clear (${R1.base} with an aisle at one end).`);
   o.push(`Clear width: row depth ${q(z.tread/25.4)} − ${seatTxt} = ${q(C)}.`);
@@ -2540,7 +2540,9 @@ function seatDimEditor(){const imp=imperial(),u=w=>imp?Math.round(w/25.4)+'"':Ma
   if(imp)h+=slider('chairRaised','Raised seat depth, self-rising chair (14" default, 12" low limit)',12*25.4,14*25.4,3.175,'mm')+slider('chairBackrest','Backrest depth',0,4*25.4,3.175,'mm')+slider('ais.chairBack','Seat back behind the riser (1/8 inch)',0,6*25.4,3.175,'mm')+slider('ais.chairDown','Chair depth, seat down (1/2 inch; drawing only)',14*25.4,32*25.4,12.7,'mm')
       ;
   h+=head('Bench seats, no backrest','bench')+wB('bench');
-  if(imp)h+=`<table class="fixed"><tr><td>Bench depth</td><td>${L(BENCH_D)} (fixed)</td></tr><tr><td>Bench thickness; top above the tread</td><td>${L(BENCH.t)}; ${L(BENCH.h)}</td></tr></table>`;
+  if(imp){const bS=(key,lab,opts,cur,def)=>'<div class="lab">'+lab+'</div><div class="seg">'+opts.map(v=>`<button data-bench="${key}" data-benchv="${v}" class="${Math.abs(cur-v)<0.1?'on':''}" aria-pressed="${Math.abs(cur-v)<0.1}">${u(v)}${Math.abs(v-def)<0.1?' (default)':''}</button>`).join('')+'</div>';
+    h+=bS('d','Bench depth',BENCH_D_OPTS,BENCH.d,12*25.4)+bS('h','Bench top above the tread',BENCH_H_OPTS,BENCH.h,17*25.4)
+      +`<table class="fixed"><tr><td>Bench thickness</td><td>${L(BENCH.t)}</td></tr></table>`;}
   if(imp){const zs=[];for(let ti=0;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)zs.push([ti,k,z]);});
     const seen={},lines=[];zs.forEach(([ti,k,z])=>{const r=ibcRow(z),key=[z.seat,z.tread,z.seatW].join('|');if(seen[key])return;seen[key]=1;
       lines.push(`${r.back?'Chairback (with backrest)':'Bench (no backrest)'} ${L(z.seatW)} wide, ${L(z.tread)} row: ${L(r.C)} clear (row less ${r.back?'the chair with its seat raised':'the bench'}, ${L(r.dep)}) → <b>${r.n<1?'clear width under 12" — not allowed':r.n+' seats'}</b> between two aisles`);});
@@ -2682,6 +2684,7 @@ function resetAllDefaults(){const b=document.createElement('button');b.id='reset
 $('controls').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.seat){const pre=b.dataset.g;set(pre+'.seat',b.dataset.seat);if(!P.seatW)P.seatW={standard:seatSpec('standard').def,bench:seatSpec('bench').def};set(pre+'.seatW',P.seatW[b.dataset.seat==='bench'?'bench':'standard']);}
+  else if(b.dataset.bench){if(b.dataset.bench==='d')P.benchD=+b.dataset.benchv;else P.benchH=+b.dataset.benchv;}
   else if(b.dataset.swk){if(!P.seatW)P.seatW={standard:seatSpec('standard').def,bench:seatSpec('bench').def};P.seatW[b.dataset.swk]=+b.dataset.swv;seatSync(P);}
   else if(b.dataset.sw){set(b.dataset.g+'.seatW',+b.dataset.sw);}
   else if(b.dataset.cv){set(b.dataset.g+'.target',+b.dataset.cv);}
