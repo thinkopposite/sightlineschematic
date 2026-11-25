@@ -121,6 +121,8 @@ a.btnlink:hover{border-color:var(--ink)}
 .eyes h2,.eyes label,.eyes .sl-val,.eyes input.len,.eyes .sl-val input{color:var(--accent-deep)}
 .eyes input[type=range]{accent-color:var(--accent-deep)}
 .eyes input:disabled{opacity:.75;cursor:not-allowed}
+.seatdims input:disabled,.seatdims button:disabled{opacity:.6;cursor:not-allowed}
+.seatdims #seatLock.on,.seatdims #seatLock.on:hover{background:var(--accent);border-color:var(--accent);color:#fff}
 .eyes #eyeLock.on{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
 .fixed{width:100%;border-collapse:collapse;font-size:12px}.fixed td{padding:3px 0;border-bottom:1px solid var(--line)}.fixed td+td{text-align:right;font-weight:600}
 .rng{display:flex;align-items:center;gap:4px}.rng input[type=range]{flex:1;min-width:0}
@@ -1345,7 +1347,7 @@ const shoulderSvg=(X,Y,ex,ez,hr)=>{const E=P.eye,zs=ez-E.stH+(E.stSh??55.65*25.4
 const stHeadOf=E=>E.stHead!=null?E.stHead:E.stH+HEAD;   // standing head height (Exhibit B: 67.65 in)   /* wheelchair eye 30 in behind the platform riser (decision 120) */
 /* metric eye standard: the imperial values rounded to 5 mm (44 in, 63.5 in, 47.45 in, 8 in, 36 in) */
 const eyeDefaultsMetric=()=>({sitH:1120,stH:1615,wcH:1205,stOff:200,wcOff:760}),eyeFor=r=>r==='world'?eyeDefaultsMetric():eyeDefaults(),SLAB={america:[4,5,6].map(n=>n*25.4),world:[100,125,150]},slabDef=r=>r==='world'?125:5*25.4;   /* platform: eye 48 in above it, 36 in behind the inside face of the guard rail */   /* wheelchair: eye 48 in high, 3'-0" behind the front of the space (Joseph's reference) */
-let EYELOCK=true,CVLOCK=true;   // the absolute minimum C-value is locked too (decision 190)
+let EYELOCK=true,CVLOCK=true,SEATLOCK=true;   /* seat dimensions are locked too; unlock to change */   // the absolute minimum C-value is locked too (decision 190)
                                                         // eye sight values can only be edited once unlocked
 const isBench=seat=>seat==='bench';
 // eye position for a row: [distance back from the row's front riser, height above its tread]
@@ -1717,12 +1719,13 @@ function rowCalcLines(z,secLo,secHi){if(!imperial())return [];const R=ibcRow(z),
   o.push(`Beyond the 12" minimum: ${q(C)} − 12" = ${q(ex)}; ${q(ex)} ÷ 0.3" = ${n3} seats (rounded down).`);
   o.push(!tb&&C>=22?`Aisle at both ends: 22" or more clear allows 100 seats.`:`Aisle at both ends: ${R.base} + ${n3} = ${R.n} seats${R.base+n3>100?' (100 at most)':''}.`);
   o.push(`Aisle at one end: ${q(ex)} ÷ 0.6" = ${n6}; ${R1.base} + ${n6} = ${R1.base+n6}, within the common path ${tb?50:30} ft ÷ ${q(z.seatW/25.4)} = ${R1.path}: ${R1.n} seats.`);
-  o.push(`Design maximum ${A.smax||44} seats per section; this section ${secLo===secHi?secLo:secLo+'–'+secHi} seats per row.`);
+  o.push(`Code maximum ${codeMax()} seats per row (reference only); this section ${secLo===secHi?secLo:secLo+'–'+secHi} seats per row.`);
   return o;}
 const codeRowMax=z=>imperial()?ibcRow(z).n:Math.max(2,AIS().nmax);
-const secParams=A=>{if(imperial())return A;const n=Math.max(2,A.nmax),k=v=>Math.max(2,Math.round(n*v/44));   /* the IBC set (44 max, 38 middle, 40 typical, 36 min) scaled to the Green Guide 28 */
+function codeMax(){if(!imperial())return Math.max(2,AIS().nmax);let m=Infinity;(P.zt||[]).slice(0,P.tierCount).forEach(t=>GEO.forEach(k=>{const z=t.z[k];if(z)m=Math.min(m,ibcRow(z).n);}));return isFinite(m)?Math.max(1,m):44;}   /* the code maximum seats per row for the seats in this bowl (IBC Table 1030.13.2.1 at the row's clear width); reference only, it limits nothing set by hand */
+const secParams=A=>{if(imperial())return A.smaxMidCode?Object.assign({},A,{smaxMid:codeMax()}):A;const n=Math.max(2,A.nmax),k=v=>Math.max(2,Math.round(n*v/44));   /* the IBC set (44 max, 38 middle, 40 typical, 36 min) scaled to the Green Guide 28 */
   return Object.assign({},A,{smax:n,smaxMid:Math.min(A.smaxMidGG??k(38),n),styp:k(40),smid:k(40),smin:k(36)});};
-const nmaxZone=z=>imperial()?Math.max(1,Math.min(ibcRow(z).n,AIS().smax||44)):Math.max(2,AIS().nmax);
+const nmaxZone=z=>imperial()?Math.max(1,Math.min(ibcRow(z).n,codeMax())):Math.max(2,AIS().nmax);
 function capZone(z){const A=AIS();return nmaxZone(z)*z.seatW/1000+A.w/1000+2*(A.gap||0)/1000;}   // longest span between aisle centres, m
 const sameChain=(a,b)=>a&&b&&a!=='ring'&&b!=='ring'&&a.length===b.length&&a.every((g,i)=>g.t===b[i].t);
 // One tier as a closed ring of the four stands (T, R, B, L run on into each other round the corners)
@@ -1778,18 +1781,18 @@ function sectAisles(R,RG,runs,posOf,toA,A,align,prevN,ti,Q){const OV=(Q&&Q.secN)
     if(cs){const pc=posOf(c.zi,c.a),dl=posOf(c.zi,cs.L)-pc,dr=posOf(c.zi,cs.R)-pc;extra.push({s:C0+dl,zi:c.zi,a:cs.L},...cornerMids(posOf,c.zi,c.a.i,ti,cs,true).map(m=>({s:C0+posOf(c.zi,m)-pc,zi:c.zi,a:m})),{s:C0+dr,zi:c.zi,a:cs.R});hl=Math.max(-dl,dr);}
     else{const pc=posOf(c.zi,c.a);cornerMids(posOf,c.zi,c.a.i,ti,null,!!(sg&&segDiag(sg.g)),Q).forEach(m=>extra.push({s:C0+posOf(c.zi,m)-pc,zi:c.zi,a:m}));if(bends)extra.push({s:C0-hl,zi:c.zi,a:{i:c.a.i,f:0,miter:true,corner:true}},{s:C0+hl,zi:c.zi,a:{i:c.a.i,f:1,miter:true,corner:true}});}
     // each side of the corner aisle(s): an aisle at the end of the straight run if the corner section is still too long
-    [[S.rt,Ea,1,0,C0-hl],[N.lt,Eb,-1,wrap,C0+hl]].forEach(([list,E,dir,off,C])=>{const last=list[list.length-1]+off;if(seats(Math.abs(C-last),sw)<=A.smax)return;
-      if(Math.abs(E-last)<1e-3){if(seats(Math.abs(C-E),sw)>A.smax)flags.push(1);return;}
+    [[S.rt,Ea,1,0,C0-hl],[N.lt,Eb,-1,wrap,C0+hl]].forEach(([list,E,dir,off,C])=>{const last=list[list.length-1]+off;if(seats(Math.abs(C-last),sw)<=codeMax())return;
+      if(Math.abs(E-last)<1e-3){if(seats(Math.abs(C-E),sw)>codeMax())flags.push(1);return;}
       const al=align.map(x=>[x,x+L,x-L]).flat().filter(x=>(x-last)*dir>0.5&&(E-x)*dir>0.5).sort((p,q)=>(p-q)*dir);   // a Tier 1 aisle in between: keep the line
       if(al.length){al.forEach(x=>list.push(x-off));
         // a short section left over by keeping the Tier 1 line joins the section next to it, or the two are evened out if that would hold too many
         const x=al[al.length-1];if(seats(Math.abs(E-x),sw)<soft){const pv=al.length>1?al[al.length-2]:last;list.pop();
-          if(seats(Math.abs(E-pv),sw)>A.smax){const len=Math.abs(E-pv),k2=Math.max(2,Math.ceil(len/(A.smax*sw+2*gp+wA)-1e-9));for(let m=1;m<k2;m++)list.push(pv+dir*m*len/k2-off);}}
+          if(seats(Math.abs(E-pv),sw)>codeMax()){const len=Math.abs(E-pv),k2=Math.max(2,Math.ceil(len/(codeMax()*sw+2*gp+wA)-1e-9));for(let m=1;m<k2;m++)list.push(pv+dir*m*len/k2-off);}}
         list.push(E-off);}
       else if(seats(Math.abs(E-last),sw)<soft){}   // an extra aisle would only cut off a sliver: no aisle; the corner seats over the limit are left out
-      else{const len=Math.abs(E-last);if(seats(len,sw)>A.smax){const k2=Math.max(2,Math.ceil(len/(A.smax*sw+2*gp+wA)-1e-9));for(let m=1;m<k2;m++)list.push(last+dir*m*len/k2-off);}   /* a run end too long for one section: equal sections (decision 249) */
+      else{const len=Math.abs(E-last);if(seats(len,sw)>codeMax()){const k2=Math.max(2,Math.ceil(len/(codeMax()*sw+2*gp+wA)-1e-9));for(let m=1;m<k2;m++)list.push(last+dir*m*len/k2-off);}   /* a run end too long for one section: equal sections (decision 249) */
         list.push(E-off);}
-      if(seats(Math.abs(C-E),sw)>A.smax)flags.push(1);});});
+      if(seats(Math.abs(C-E),sw)>codeMax())flags.push(1);});});
   // corner sections set by hand (decision 151): the corner's own aisles move; sections not set share the rest of the corner equally
   const allS=()=>sides.flatMap(S=>S.rt.concat(S.lt)).concat(extra.map(x=>x.s)),ED=[],sOf=(x,v)=>Math.floor((x-wA-2*gp)/v+1e-9),mo=v=>((v%L)+L)%L;
   {const grp={};extra.forEach(x=>{const a=x.a;if(a.corner&&!a.miter&&!a.ray&&!a.cl&&(a.t!=null||a.f>0&&a.f<1))(grp[x.zi+'.'+a.i]||(grp[x.zi+'.'+a.i]=[])).push(x);});
@@ -1893,24 +1896,28 @@ function egress(){const AL=M.AL;if(!AL)return null;const imp=imperial(),fS=egFac
 function aisEditor(){const A=AIS(),imp=imperial(),lay=A.mode==='layout';
   let h='';   /* computed layout only; the percentage allowance is gone (decision 190) */
   if(!lay)return h+slider('loss','Seats lost to aisles (1 %)',0,30,1,'%')+'<p class="hint">A flat allowance off every row. Switch to the computed layout to draw the aisles on the plan and check them.</p>';
-  if(imp){h+=''
-      +slider('ais.nSL','Equal middle sections, West and East sidelines (1 section)',1,9,1,'sections')
-      +slider('ais.nEZ','Equal middle sections, North and South end zones (1 section)',1,9,1,'sections')
-      +slider('ais.smaxMid','Most seats in a middle section (1 seat)',20,44,1,'seats')+slider('ais.ctolp','Top rows where corner seats over the limit are left out (5 %)',0,50,5,'%')+slider('ais.smax','Most seats in a section (1 seat; code limit above)',20,100,1,'seats');}
+  if(imp){const A0=AIS(),cm=codeMax(),mc=!!A0.smaxMidCode,ty=[...new Set(P.zt.slice(0,P.tierCount).flatMap(t=>GEO.map(k=>t.z[k]).filter(Boolean).map(z=>z.seat==='bench'?'bench':'chairback')))].join(' and ');
+    h+=`<div class="lab">Maximum seats per row (by code)</div><table class="fixed"><tr><td>${ty.charAt(0).toUpperCase()+ty.slice(1)}, IBC Table 1030.13.2.1</td><td>${cm} seats</td></tr></table>`
+      +`<p class="hint">Reference only: it does not limit the seats you set on a row. A row over it is flagged red on the plan.</p>`
+      +`<div class="lab">Maximum seats per row, middle section</div><div class="seg"><button data-midcode="0" class="${mc?'':'on'}" aria-pressed="${!mc}">Set value</button><button data-midcode="1" class="${mc?'on':''}" aria-pressed="${mc}">Code limit (${cm})</button></div>`
+      +(mc?'':slider('ais.smaxMid','Seats in a middle section (1 seat; 38 default)',20,44,1,'seats'))
+      +slider('ais.nSL','Equal rectangular middle sections, West and East sidelines (1 section)',1,9,1,'sections')
+      +slider('ais.nEZ','Equal rectangular middle sections, North and South end zones (1 section)',1,9,1,'sections')
+      +slider('ais.ctolp','Top rows where corner seats over the limit are left out (5 %)',0,50,5,'%');}
   else{if(AIS().smaxMidGG==null)AIS().smaxMidGG=24;h+=slider('ais.nmax','Maximum seats between aisles (1 seat; Green Guide 28)',10,28,1,'seats')   /* the same middle-section controls as the IBC sports (decision 249) */
-    +slider('ais.nSL','Equal middle sections, sidelines (1 section)',1,9,1,'sections')+slider('ais.nEZ','Equal middle sections, ends (1 section)',1,9,1,'sections')
+    +slider('ais.nSL','Equal rectangular middle sections, sidelines (1 section)',1,9,1,'sections')+slider('ais.nEZ','Equal rectangular middle sections, ends (1 section)',1,9,1,'sections')
     +slider('ais.smaxMidGG','Most seats in a middle section (1 seat)',10,28,1,'seats');}
   h+=slider('ais.gap',`Space between end seat and aisle (${imp?'1/2 inch; 2.00" minimum, 4.00" ideal':'10 mm; 50 mm minimum, 100 mm ideal'})`,imp?2*25.4:50,imp?6*25.4:150,imp?12.7:10,'mm')
     +slider('ais.w',`Aisle clear width (${imp?'1 inch; IBC 1030.9.1 minimum 48"':'50 mm; 1,200 mm minimum'})`,imp?36*25.4:900,imp?96*25.4:2400,imp?25.4:50,'mm');
   if(imp)h+='<div class="lab">Egress width basis</div><div class="seg stack">'+[['auto',`By sport: ${INDOOR[P.sport]?'smoke-protected arena':'open-air stadium'}`],['open','Open-air seating (IBC 1030.6.3)'],['smoke','Smoke-protected (IBC Table 1030.6.2)'],['std','Not smoke-protected (IBC 1030.6.1)']]
     .map(([k,n])=>`<button data-egb="${k}" class="${(A.basis||'auto')===k?'on':''}" aria-pressed="${(A.basis||'auto')===k}">${n}</button>`).join('')+'</div>';
-  return h+`<p class="hint">${`Each sideline has ${A.nSL} equal middle sections and each end zone ${A.nEZ}, centred on the ${P.sport==='nfl'||P.sport==='ncaafb'?'50-yard line':'halfway line'} and the North–South centre line, as large as the straight run allows up to ${secParams(A).smaxMid} seats. Upper tiers use the Tier 1 size so the aisles line up. Where the section round a corner would hold more than ${secParams(A).smax}, a chamfered corner takes an aisle along each outer edge of its 45° wedge, on the straight rows so each step is one straight tread; its centreline is a section line (a half switched off is cut there), or an aisle where a row across the wedge would hold more than ${secParams(A).smax}. Then an aisle at the end of the straight run too if needed. Corner sections vary row by row. `}Round corners take one aisle on the centreline, square to the rows. The rest sit on the straight runs, evenly spaced so no section between two aisles holds more than ${imp?'IBC':'the Green Guide'} allows, with none on the ${P.sport==='nfl'||P.sport==='ncaafb'?'50-yard line':'halfway line'} or the north–south centre line. Upper tiers carry every Tier 1 aisle up, adding aisles only where longer rows need them. Every row end at an aisle keeps the end-seat space for construction tolerance.</p>`;}
+  return h+`<p class="hint">${`Each sideline has ${A.nSL} equal middle sections and each end zone ${A.nEZ}, centred on the ${P.sport==='nfl'||P.sport==='ncaafb'?'50-yard line':'halfway line'} and the North–South centre line, as large as the straight run allows up to ${secParams(A).smaxMid} seats. Upper tiers use the Tier 1 size so the aisles line up. Where the section round a corner would hold more than ${codeMax()}, a chamfered corner takes an aisle along each outer edge of its 45° wedge, on the straight rows so each step is one straight tread; its centreline is a section line (a half switched off is cut there), or an aisle where a row across the wedge would hold more than ${codeMax()}. Then an aisle at the end of the straight run too if needed. Corner sections vary row by row. `}Round corners take one aisle on the centreline, square to the rows. The rest sit on the straight runs, evenly spaced so no section between two aisles holds more than ${imp?'IBC':'the Green Guide'} allows, with none on the ${P.sport==='nfl'||P.sport==='ncaafb'?'50-yard line':'halfway line'} or the north–south centre line. Upper tiers carry every Tier 1 aisle up, adding aisles only where longer rows need them. Every row end at an aisle keeps the end-seat space for construction tolerance.</p>`;}
 function egressRows(){const e=egress();if(!e)return null;const imp=imperial(),rows=[],gross=ROWS.reduce((a,r)=>a+r.gross,0);
   rows.push(['Egress width basis',EG_NAMES[e.basis],null]);
   rows.push(['Width per person',imp?`${(e.fS/25.4).toFixed(3)}" per seat on stepped aisles`:`${e.fS.toFixed(2)} mm per person on stepped gangways (${GG_FLOW.step}/m/min over ${GG_FLOW.min} min)`,null]);
   e.tiers.forEach(t=>{const n=`Tier ${t.ti+1}`;
     rows.push([`${n}: aisles`,`${t.aisles} aisles; ${fmt(t.lostA-(t.omit||0))} seats lost to aisles and end-seat space${t.omit?`, ${fmt(t.omit)} left out at the top of corner sections`:''}`,null]);
-    rows.push([`${n}: largest section`,`${t.secMax} seats between two aisles; ${imp?`limit ${t.limMin} (IBC ${egBasis()==='open'||egBasis()==='smoke'?'Table 1030.13.2.1':'1030.13.2.1'} at ${L(ibcRow(P.zt[0].z.T).C)} clear, middle sections up to ${AIS().smaxMid}, most ${AIS().smax})`:'Green Guide allows '+t.limMin}${t.over?` (${t.over} section-rows over)`:''}`,t.over===0&&t.secMax<=t.limMin]);
+    rows.push([`${n}: largest section`,`${t.secMax} seats between two aisles; ${imp?`limit ${t.limMin} (IBC ${egBasis()==='open'||egBasis()==='smoke'?'Table 1030.13.2.1':'1030.13.2.1'} at ${L(ibcRow(P.zt[0].z.T).C)} clear, middle sections up to ${secParams(AIS()).smaxMid}, code maximum ${codeMax()})`:'Green Guide allows '+t.limMin}${t.over?` (${t.over} section-rows over)`:''}`,t.over===0&&t.secMax<=t.limMin]);
     {const st=aisleStepSummary(t.ti);if(st)rows.push([`${n}: aisle steps`,`${st.ns.map(k=>`${stepName(k)}${k>1?` (${k-1} step${k>2?'s':''} per row)`:''}`).join(' and ')}; aisle risers ${L(st.rhMin)}${st.rhMax-st.rhMin>1?'–'+L(st.rhMax):''}, aisle treads ${L(st.tdMin)}${st.tdMax-st.tdMin>1?'–'+L(st.tdMax):''} (${STEPRULE().src})${st.bad.length?`; ${st.bad.length} rows fail: ${[...new Set(st.bad.map(b=>b.bad))].join(', ')}`:''}${st.strip?`; ${st.strip} riser changes over ${L(STEPRULE().tol)} need a marking stripe`:''}`,!st.bad.length]);}
     if(t.aMax)rows.push([`${n}: busiest aisle`,`${fmt(t.aMax.q)} seats need ${L(t.aMax.req)}; ${L(t.aMax.w)} provided`,t.aMax.w>=t.aMax.req-0.5]);});
   if(imp)rows.push(['Clear width between rows',`${L(Math.min(...P.zt.slice(0,P.tierCount).flatMap(t=>GEO.map(k=>ibcRow(t.z[k]).C))))} least (row depth less the seat); 12" minimum; ${egBasis()==='open'||egBasis()==='smoke'?'open-air: the Table 1030.13.2.1 value + one seat per full 0.3" beyond 12", 100 at most (no 22" step)':'+ 0.3" per seat over 14 with backrests, 22" covers 100 seats'}`,null]);
@@ -2532,7 +2539,7 @@ function cvEditor(pre,z,ti){const set=cvSet(P.sport),p=pre+'.target';META[p]={mi
     +`<div class="hint" style="margin:2px 0 6px">${set.src}</div><div class="seg stack">`
     +set.opts.map(([n,mm])=>`<button data-cv="${mm}" data-g="${pre}" class="${Math.abs(z.target-mm)<0.01?'on':''}" title="${n}">${n}: ${lab(mm)}</button>`).join('')
     +`</div></div>`;}
-function seatDimEditor(){const imp=imperial(),u=w=>imp?Math.round(w/25.4)+'"':Math.round(w)+' mm';if(!P.seatW)P.seatW={standard:seatSpec('standard').def,bench:seatSpec('bench').def};let h='';   /* step 4 Seat dimensions (decision 302): one set of dimensions per seat type */
+function seatDimEditor(){const imp=imperial(),u=w=>imp?Math.round(w/25.4)+'"':Math.round(w)+' mm';if(!P.seatW)P.seatW={standard:seatSpec('standard').def,bench:seatSpec('bench').def};let h=`<div class="seatdims"><div class="seg" style="margin-top:4px"><button id="seatLock" aria-pressed="${!SEATLOCK}" class="${SEATLOCK?'on':''}">${SEATLOCK?'🔒 Locked':'🔓 Unlocked'}</button></div>`;   /* step 4 Seat dimensions (decision 302): one set of dimensions per seat type */
   const used=new Set();for(let ti=0;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)used.add(z.seat==='bench'?'bench':'standard');});
   const wB=k=>{const cur=P.seatW[k],o=seatSpec(k).opts,l=o.some(w=>Math.abs(cur-w)<0.1)?o:[...o,cur].sort((a,b)=>a-b);return '<div class="lab">Seat width</div><div class="seg">'+l.map(w=>`<button data-swk="${k}" data-swv="${w}" class="${Math.abs(cur-w)<0.1?'on':''}">${u(w)}</button>`).join('')+'</div>';};
   const head=(t,k)=>`<p class="zhead" style="margin-top:16px">${t}${used.has(k)?'':' <span style="font-weight:400;color:var(--muted)">(not used in this bowl)</span>'}</p>`;
@@ -2549,7 +2556,7 @@ function seatDimEditor(){const imp=imperial(),u=w=>imp?Math.round(w/25.4)+'"':Ma
 const b=rowBase(true),tb=egBasis()==='open'||egBasis()==='smoke';
 
     h+=`<div class="lab" style="margin-top:16px">Maximum seats per row</div><p class="hint" style="margin-top:2px">Self-rising seats are measured raised (IBC 1030.13.2). Clear width = row depth less the raised chair depth and the backrest depth: 34" − 14" − 2" = 18" by default (41 seats at 22,000 and over, open-air); with a 12" chair, 20" (47 seats). ${tb?`Open-air or smoke-protected, ${fmt(P.capTarget)} seats: Table 1030.13.2.1 allows ${b} seats at 12" clear`:'IBC 1030.13.2.1: 14 seats at 12" clear'}, plus one seat per 0.3" more (0.6" with an aisle at one end only); open-air rows do not rely on the 22" provision. Benches count at 18" per person (IBC 1004.6).</p><p class="hint keep" style="margin-top:6px">${lines.join('<br>')}</p>`;}
-  return h;}
+  return h+'</div>';}
 function setbackText(ti,k){const zr=solveZone(P,k),lo=zr.filter(r=>r.tier===ti-1),up=zr.find(r=>r.tier===ti);if(!lo.length||!up)return '';
   const sb=up.x-(lo[lo.length-1].x+lo[lo.length-1].T);return sb<0?`Overhangs the tier below by ${L(-sb)}.`:`${L(sb)} behind the top row of the tier below.`;}
 function zoneEditor(ti,g){
@@ -2648,6 +2655,7 @@ function renderControls(){
   const c=$('controls'), open=c.querySelector('details')?.open;
   c.innerHTML=h; if(open)c.querySelector('details').open=true;
   c.querySelectorAll('.eyes input,.eyes .nudge').forEach(i=>{i.disabled=EYELOCK;i.title=EYELOCK?'Unlock to change':'';});
+  c.querySelectorAll('.seatdims input,.seatdims .nudge,.seatdims .seg button:not(#seatLock)').forEach(i=>{i.disabled=SEATLOCK;i.title=SEATLOCK?'Unlock to change':'';});
   renderUnits();
 }
 function syncField(p,el){const mt=META[p],v=get(p);
@@ -2684,6 +2692,7 @@ function resetAllDefaults(){const b=document.createElement('button');b.id='reset
 $('controls').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.seat){const pre=b.dataset.g;set(pre+'.seat',b.dataset.seat);if(!P.seatW)P.seatW={standard:seatSpec('standard').def,bench:seatSpec('bench').def};set(pre+'.seatW',P.seatW[b.dataset.seat==='bench'?'bench':'standard']);}
+  else if(b.dataset.midcode!=null){AIS().smaxMidCode=b.dataset.midcode==='1';}
   else if(b.dataset.bench){if(b.dataset.bench==='d')P.benchD=+b.dataset.benchv;else P.benchH=+b.dataset.benchv;}
   else if(b.dataset.swk){if(!P.seatW)P.seatW={standard:seatSpec('standard').def,bench:seatSpec('bench').def};P.seatW[b.dataset.swk]=+b.dataset.swv;seatSync(P);}
   else if(b.dataset.sw){set(b.dataset.g+'.seatW',+b.dataset.sw);}
@@ -2698,6 +2707,7 @@ $('controls').addEventListener('click',e=>{
   else if(b.id==='advReset'){const d=defaults();Object.assign(P,{maxRake:d.maxRake,vd:d.vd,loss:d.loss});toast('Advanced values reset to the defaults.');}
   else if(b.id==='eyeLock'){EYELOCK=!EYELOCK;renderControls();return;}
   else if(b.id==='cvLock'){CVLOCK=!CVLOCK;renderControls();return;}
+  else if(b.id==='seatLock'){SEATLOCK=!SEATLOCK;renderControls();return;}
   else if(b.id==='eyeReset'){P.eye=eyeDefaults();toast('Eye sight values reset to the standard.');}
   else if(b.dataset.on){set(b.dataset.on+'.on',!get(b.dataset.on+'.on'));}
   else if(b.dataset.tc){const n=+b.dataset.tc;if(n===2&&P.tierCount!==2)GEO.forEach(k=>{const a=P.zt[0].z[k],c=P.zt[1].z[k];if(!a||!c)return;const N=a.rows+c.rows;a.rows=Math.ceil(N/2);c.rows=N-a.rows;});P.tierCount=n;}
@@ -2728,7 +2738,7 @@ $('controls').addEventListener('click',e=>{
     const sf=cShortfalls(),sfx=sf.seats||sf.wc?`. Does not meet the specified C-values: ${fmt(sf.seats)} seats${sf.wc?` and ${sf.wc} wheelchair spaces`:''} below the minimum (see C-value shortfalls)`:'. Every seat meets the specified C-values';
     toast((ok?'Rows sized to hit the target'+sp:`Target is out of reach within the row limits (${P.rowMax.slice(0,P.tierCount).map((n,i)=>`Tier ${i+1} ${n}`).join(', ')} rows). Raise a limit or add a tier`)+sfx+(lines.length?`. Tiers moved so their front rows meet the absolute minimum C: ${lines.join('; ')}`:'. Tier relationships at their defaults')+(bt.length?`. ${bt.join(', ')} front rows can't reach the minimum over the guard and the tier below; set to the closest`:'')+(FITWC.length?`. Wheelchair platforms in the default centre sections: ${FITWC.slice().sort((x,y)=>x-y).join(', ')}${FITADA&&FITADA.wc<FITADA.req?` (${fmt(FITADA.wc)} wheelchair spaces of ${fmt(FITADA.req)} required; add platforms in the section editor)`:''}`:'')+'.');b.disabled=false;CUR=null;},40);return;}   /* a few seconds for three tiers: the message first */
   else if(b.id==='reset'){const met=regionOf(P.sport)==='world';
-    P=defaultsPinned();EDIT={tier:0,g:0};EYELOCK=true;CVLOCK=true;CUR=null;
+    P=defaultsPinned();EDIT={tier:0,g:0};EYELOCK=true;CVLOCK=true;SEATLOCK=true;CUR=null;
     if(met){applySport('fifa');P.zt.forEach(t=>GEO.forEach(k=>t.z[k].target=60));}clampCap(P);toast(met?'All values reset to the metric defaults.':'All values reset to the imperial defaults.');}
   else return;
   CUR=null;renderControls();update();
@@ -3838,8 +3848,8 @@ function secPanelHTML(){if(!M.AL||!zoned(P))return '<p class="hint" style="paddi
   const ctl=`<div class="seg" style="margin:4px 0 8px;flex-wrap:wrap;gap:6px;align-items:center"><span class="hint" style="margin:0">Design margin over the minimum</span><input id="adaMargin" type="number" min="0" max="200" step="5" value="${P.adaMargin??25}" style="width:64px"> %<button id="adaAuto" title="Spread platforms round every tier until the requirement plus the margin is met">Auto platforms</button><button id="adaClear">Clear platforms</button><button id="secSym" class="${P.secSym===false?'':'on'}" aria-pressed="${P.secSym!==false}" title="On: a seat count also goes to the mirror sections (the other end zone, the other side of the stand, the other three corners). Off: every section is edited on its own.">Symmetric ${P.secSym===false?'off':'on'}</button><button id="aisRestore" title="This tier: aisles removed or added by hand back to the computed layout">Restore aisles</button><button id="secReset" title="All sections on, seats per row and aisles back to the computed layout">Reset sections</button></div>`;
   const list=sectionList(ti);
   const rows=list.map(q=>{const e=S[q.no]||{},md=secEdOf(ti,q.key),pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a),st=zoneName(P,pc.Lz.k,true),w=D&&D.secs[q.no];
-    const set=md&&md.set,cnt=md?`<input type="number" data-secn="${md.id}" min="1" max="${A.smax}" step="1" value="${set?md.n:(q.lo===q.hi?q.lo:md.n)}" style="width:58px${set?';border-color:#E8590C':''}"${e.off?' disabled':''}>${set?` <button data-secnclr="${md.id}" title="Back to the computed size">↺</button>`:''}`:(q.lo===q.hi?q.lo:q.lo+'–'+q.hi);
-    const over=md&&md.n>A.smax;
+    const set=md&&md.set,cnt=md?`<input type="number" data-secn="${md.id}" min="1" step="1" value="${set?md.n:(q.lo===q.hi?q.lo:md.n)}" style="width:58px${set?';border-color:#E8590C':''}"${e.off?' disabled':''}>${set?` <button data-secnclr="${md.id}" title="Back to the computed size">↺</button>`:''}`:(q.lo===q.hi?q.lo:q.lo+'–'+q.hi);
+    const over=md&&md.n>codeMax();
     return `<tr data-secrow="${q.no}" class="${SECT_HL===q.no?'hl':''}"><td><b>${q.no}</b></td><td>${st}</td><td class="${over?'steep':''}">${cnt}</td><td><input type="checkbox" data-secon="${q.no}"${e.off?'':' checked'} aria-label="Section ${q.no} on"></td>`
       +`<td><input type="checkbox" data-secwc="${q.no}"${e.wc?' checked':''}${e.off||!wcTier(secTier(q.no))?' disabled title="Platforms only at the main and upper concourses"':''} aria-label="Section ${q.no} wheelchair platform"></td><td>${w&&!e.off?`${w.wc} / ${w.comp}${w.single?' <span class="hint" style="margin:0">(+1 single)</span>':''}`:''}</td>`
       +`<td>${w&&!e.off?(w.sight&&w.deep?'✓':'<span style="color:#C0262D">'+(!w.sight?'sightline':'depth')+'</span>'):''}</td></tr>`;}).join('');
@@ -3857,7 +3867,7 @@ function secEdRender(){let el=$('secEd');if(!SECED){if(el)el.remove();return;}co
   if(!el){el=document.createElement('div');el.id='secEd';el.setAttribute('role','dialog');document.body.appendChild(el);}
   const {q,md,stand,off,set}=I,cnt=q.lo===q.hi?q.lo:q.lo+'–'+q.hi,A=AIS();
   el.innerHTML=`<div class="se-h"><b>Section ${q.no}</b><span>Tier ${I.ti+1} · ${stand}</span><button class="se-x" data-se="close" aria-label="Close">×</button></div>`
-    +(off?`<p class="se-n">Switched off.</p>`:md?`<div class="se-row"><span class="se-l">Seats per row</span><button data-se="-1" aria-label="One seat fewer"${md.n<=1?' disabled':''}>−</button><b class="se-v">${md.n}</b><button data-se="1" aria-label="One seat more"${md.n>=A.smax?' disabled':''}>+</button></div>`
+    +(off?`<p class="se-n">Switched off.</p>`:md?`<div class="se-row"><span class="se-l">Seats per row</span><button data-se="-1" aria-label="One seat fewer"${md.n<=1?' disabled':''}>−</button><b class="se-v">${md.n}</b><button data-se="1" aria-label="One seat more">+</button></div>`
       +`<p class="se-n">${set?'Set by hand. ':''}${md.kind==='mid'?`The other middle sections of ${stand} share the change (Spread).`:md.kind==='corner'?'The other sections of this corner share the change.':'The middle sections of this stand share the change.'} ${P.secSym===false?'Independent: this section only.':'Symmetric: the mirror sections follow.'}</p>${set?'<button data-se="clear" class="se-w">Back to automatic</button>':''}`
       :`<p class="se-n">${cnt} seats per row. Corner and end sections follow the geometry.</p>`)
     +`<button data-se="table" class="se-w">Open in the section table</button>`;
@@ -3868,7 +3878,7 @@ document.addEventListener('click',e=>{const el=$('secEd');if(!el||!SECED)return;
     if(a==='table'){const no=SECED.no;SECED=null;secEdRender();SECT_TI=Math.max(0,Math.floor(no/100)-1);SECT_HL=no;$('secBox').open=true;renderSecPanel();$('secBox').scrollIntoView({behavior:'smooth',block:'start'});return;}
     if(!I||!I.md)return;
     if(a==='clear'){const n=secSetN(I.ti,I.md.id,null);toast(`Section ${I.q.no}${n>1?` and ${n-1} mirror section${n>2?'s':''}`:''}: back to automatic.`);return;}
-    const v=Math.max(1,Math.min(AIS().smax,I.md.n+(+a)));secSetN(I.ti,I.md.id,v);return;}
+    const v=Math.max(1,I.md.n+(+a));secSetN(I.ti,I.md.id,v);return;}
   if(!el.contains(e.target)&&!e.target.closest('[data-secno]')){SECED=null;secEdRender();}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&SECED){SECED=null;secEdRender();}});
 function secEntry(no){const S=SECS();return S[no]||(S[no]={});}
@@ -3894,7 +3904,7 @@ $('secPanel').addEventListener('click',e=>{const b=e.target.closest('button');if
 $('secPanel').addEventListener('change',e=>{const t=e.target;
   if(t.dataset.secon){const x=secEntry(t.dataset.secon);if(t.checked)delete x.off;else x.off=true;secTidy(t.dataset.secon);update();return;}
   if(t.dataset.secwc){const x=secEntry(t.dataset.secwc);if(t.checked)x.wc=true;else delete x.wc;secTidy(t.dataset.secwc);update();return;}
-  if(t.dataset.secn){const v=Math.round(+t.value);if(!(v>=1)){t.value='';return;}const n=secSetN(SECT_TI_(),t.dataset.secn,Math.min(AIS().smax,v));if(n>1)toast(`${n} sections set to ${Math.min(AIS().smax,v)} seats per row (Symmetric).`);return;}
+  if(t.dataset.secn){const v=Math.round(+t.value);if(!(v>=1)){t.value='';return;}const n=secSetN(SECT_TI_(),t.dataset.secn,v);if(n>1)toast(`${n} sections set to ${v} seats per row (Symmetric).`);return;}
   if(t.dataset.vom){const on=P.vomOn||(P.vomOn={});if(t.checked)on[t.dataset.vom]=true;else delete on[t.dataset.vom];update();return;}
   if(t.dataset.vomk!=null){P.vomK=Math.max(1,Math.round(+t.value||6));update();return;}
   if(t.dataset.vomc!=null){VT(+t.dataset.vomc).c=Math.max(0,Math.round(+t.value||1)-1);update();return;}
@@ -3916,10 +3926,10 @@ function aisInfo(ti,id){const T=M.AL&&M.AL[ti];if(!T)return null;let f=null;for(
   const v=vomCands(M.AL,ti).find(c=>c.id===id),on=v&&(P.vomOn||{})[v.key];return {a:f.a,Lz:f.Lz,secs,vom:on?v:null,user:!!f.a.user};}
 function aisEdRender(){let el=$('aisEd');if(!AISED){if(el)el.remove();return;}const I=aisInfo(AISED.ti,AISED.id);if(!I){AISED=null;if(el)el.remove();return;}
   if(!el){el=document.createElement('div');el.id='aisEd';el.setAttribute('role','dialog');document.body.appendChild(el);}
-  const A=AIS(),sw=(I.Lz.tr[0]||{}).seatW||22*25.4,extra=Math.floor((A.w+2*(A.gap||0))/sw),lo=I.secs.reduce((t,q)=>t+q.lo,0)+extra,hi=I.secs.reduce((t,q)=>t+q.hi,0)+extra,over=hi>A.smax;
+  const A=AIS(),sw=(I.Lz.tr[0]||{}).seatW||22*25.4,extra=Math.floor((A.w+2*(A.gap||0))/sw),lo=I.secs.reduce((t,q)=>t+q.lo,0)+extra,hi=I.secs.reduce((t,q)=>t+q.hi,0)+extra,over=hi>codeMax();
   const tunnel=I.vom&&I.vom.kind==='corner';
   el.innerHTML=`<div class="se-h"><b>Aisle</b><span>Tier ${AISED.ti+1}${I.secs.length?' · between sections '+I.secs.map(q=>q.no).join(' and '):''}${I.user?' · added by hand':''}</span><button class="se-x" data-ae="close" aria-label="Close">×</button></div>`
-    +(I.secs.length===2?`<p class="se-n">Removing it joins ${I.secs[0].no} and ${I.secs[1].no}: about ${lo}–${hi} seats per row${over?` <b style="color:#C0262D">over the ${A.smax}-seat maximum</b>`:''}.</p>`:'')
+    +(I.secs.length===2?`<p class="se-n">Removing it joins ${I.secs[0].no} and ${I.secs[1].no}: about ${lo}–${hi} seats per row${over?` <b style="color:#C0262D">over the ${codeMax()}-seat maximum</b>`:''}.</p>`:'')
     +(I.vom?`<p class="se-n">${tunnel?`The player tunnel ${I.vom.label} stays, as an opening on its own.`:`Vomitory ${I.vom.label} goes with it.`}</p>`:'')
     +`<p class="se-n">${P.secSym===false?'Independent: this aisle only.':'Symmetric: the mirror aisles go too.'}</p>`
     +`<button data-ae="rm" class="se-w">Remove aisle</button>`;
