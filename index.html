@@ -122,6 +122,17 @@ a.btnlink:hover{border-color:var(--ink)}
 .eyes input[type=range]{accent-color:var(--accent-deep)}
 .eyes input:disabled{opacity:.75;cursor:not-allowed}
 .seatdims input:disabled,.seatdims button:disabled{opacity:.6;cursor:not-allowed}
+/* step 4: one card per seat type, coloured as the seat on the drawings */
+.seatcard{margin:18px 0 0;border:1px solid var(--sw-ink,#111);border-left:8px solid var(--sc,#111);background:var(--panel,#fff)}
+.seatcard.sc-chair{--sc:var(--seat-chair)}.seatcard.sc-bench{--sc:var(--seat-bench)}.seatcard.sc-row{--sc:var(--sw-ink,#111)}
+.seatcard .sc-h{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--sc);color:#fff}
+.seatcard .sc-h svg{flex:none}.seatcard .sc-t{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.seatcard .sc-t b{font-size:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff}.seatcard .sc-t span{font-size:13px;color:#fff;opacity:.9}
+.seatcard .sc-h em{font-style:normal;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border:1px solid #fff;color:#fff;white-space:nowrap}
+.seatcard:not(.sc-off) .sc-h em{background:#fff;color:var(--sc)}
+.seatcard .sc-b{padding:4px 14px 14px}.seatcard .sc-b>.lab:first-child{margin-top:8px}
+.seatcard.sc-off .sc-b{opacity:.7}.seatcard.sc-off .sc-h em{border-style:dashed}
+.seatcard.sc-row .sc-h{padding:8px 14px}.seatcard.sc-row .sc-t b{font-size:14px}
 .seatdims #seatLock.on,.seatdims #seatLock.on:hover{background:var(--accent);border-color:var(--accent);color:#fff}
 .eyes #eyeLock.on{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
 .fixed{width:100%;border-collapse:collapse;font-size:12px}.fixed td{padding:3px 0;border-bottom:1px solid var(--line)}.fixed td+td{text-align:right;font-weight:600}
@@ -2542,20 +2553,26 @@ function cvEditor(pre,z,ti){const set=cvSet(P.sport),p=pre+'.target';META[p]={mi
 function seatDimEditor(){const imp=imperial(),u=w=>imp?Math.round(w/25.4)+'"':Math.round(w)+' mm';if(!P.seatW)P.seatW={standard:seatSpec('standard').def,bench:seatSpec('bench').def};let h=`<div class="seatdims"><div class="seg" style="margin-top:4px"><button id="seatLock" aria-pressed="${!SEATLOCK}" class="${SEATLOCK?'on':''}">${SEATLOCK?'🔒 Locked':'🔓 Unlocked'}</button></div>`;   /* step 4 Seat dimensions (decision 302): one set of dimensions per seat type */
   const used=new Set();for(let ti=0;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)used.add(z.seat==='bench'?'bench':'standard');});
   const wB=k=>{const cur=P.seatW[k],o=seatSpec(k).opts,l=o.some(w=>Math.abs(cur-w)<0.1)?o:[...o,cur].sort((a,b)=>a-b);return '<div class="lab">Seat width</div><div class="seg">'+l.map(w=>`<button data-swk="${k}" data-swv="${w}" class="${Math.abs(cur-w)<0.1?'on':''}">${u(w)}</button>`).join('')+'</div>';};
-  const head=(t,k)=>`<p class="zhead" style="margin-top:16px">${t}${used.has(k)?'':' <span style="font-weight:400;color:var(--muted)">(not used in this bowl)</span>'}</p>`;
-  h+=head('Chairback seats, with backrest','standard')+wB('standard');
+  /* each seat type in its own card, in the seat's drawing colour, with its profile (chair with backrest / bench) */
+  const ico=k=>k==='bench'
+      ?'<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><path d="M4 34H36" stroke="currentColor" stroke-width="2" fill="none"/><rect x="8" y="17" width="24" height="5" fill="currentColor"/><path d="M20 22V34" stroke="currentColor" stroke-width="3" fill="none"/></svg>'
+      :'<svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><path d="M4 34H36" stroke="currentColor" stroke-width="2" fill="none"/><path d="M28 34V6" stroke="currentColor" stroke-width="3.5" fill="none"/><rect x="10" y="18" width="18" height="5" fill="currentColor"/><path d="M14 23V34" stroke="currentColor" stroke-width="2" fill="none"/></svg>';
+  const head=(t,k,sub)=>`<section class="seatcard ${k==='bench'?'sc-bench':'sc-chair'}${used.has(k)?'':' sc-off'}"><div class="sc-h">${ico(k)}<div class="sc-t"><b>${t}</b><span>${sub}</span></div><em>${used.has(k)?'In use':'Not used in this bowl'}</em></div><div class="sc-b">`;
+  const tail='</div></section>';
+  h+=head('Chairback seats','standard','With backrest, self-rising')+wB('standard');
   if(imp)h+=slider('chairRaised','Raised seat depth, self-rising chair (14" default, 12" low limit)',12*25.4,14*25.4,3.175,'mm')+slider('chairBackrest','Backrest depth',0,4*25.4,3.175,'mm')+slider('ais.chairBack','Seat back behind the riser (1/8 inch)',0,6*25.4,3.175,'mm')+slider('ais.chairDown','Chair depth, seat down (1/2 inch; drawing only)',14*25.4,32*25.4,12.7,'mm')
       ;
-  h+=head('Bench seats, no backrest','bench')+wB('bench');
+  h+=tail+head('Bench seats','bench','No backrest')+wB('bench');
   if(imp){const bS=(key,lab,opts,cur,def)=>'<div class="lab">'+lab+'</div><div class="seg">'+opts.map(v=>`<button data-bench="${key}" data-benchv="${v}" class="${Math.abs(cur-v)<0.1?'on':''}" aria-pressed="${Math.abs(cur-v)<0.1}">${u(v)}${Math.abs(v-def)<0.1?' (default)':''}</button>`).join('')+'</div>';
     h+=bS('d','Bench depth',BENCH_D_OPTS,BENCH.d,12*25.4)+bS('h','Bench top above the tread',BENCH_H_OPTS,BENCH.h,17*25.4)
       +`<table class="fixed"><tr><td>Bench thickness</td><td>${L(BENCH.t)}</td></tr></table>`;}
+  h+=tail;
   if(imp){const zs=[];for(let ti=0;ti<P.tierCount;ti++)GEO.forEach(k=>{const z=P.zt[ti].z[k];if(z)zs.push([ti,k,z]);});
     const seen={},lines=[];zs.forEach(([ti,k,z])=>{const r=ibcRow(z),key=[z.seat,z.tread,z.seatW].join('|');if(seen[key])return;seen[key]=1;
       lines.push(`${r.back?'Chairback (with backrest)':'Bench (no backrest)'} ${L(z.seatW)} wide, ${L(z.tread)} row: ${L(r.C)} clear (row less ${r.back?'the chair with its seat raised':'the bench'}, ${L(r.dep)}) → <b>${r.n<1?'clear width under 12" — not allowed':r.n+' seats'}</b> between two aisles`);});
 const b=rowBase(true),tb=egBasis()==='open'||egBasis()==='smoke';
 
-    h+=`<div class="lab" style="margin-top:16px">Maximum seats per row</div><p class="hint" style="margin-top:2px">Self-rising seats are measured raised (IBC 1030.13.2). Clear width = row depth less the raised chair depth and the backrest depth: 34" − 14" − 2" = 18" by default (41 seats at 22,000 and over, open-air); with a 12" chair, 20" (47 seats). ${tb?`Open-air or smoke-protected, ${fmt(P.capTarget)} seats: Table 1030.13.2.1 allows ${b} seats at 12" clear`:'IBC 1030.13.2.1: 14 seats at 12" clear'}, plus one seat per 0.3" more (0.6" with an aisle at one end only); open-air rows do not rely on the 22" provision. Benches count at 18" per person (IBC 1004.6).</p><p class="hint keep" style="margin-top:6px">${lines.join('<br>')}</p>`;}
+    h+=`<section class="seatcard sc-row"><div class="sc-h"><div class="sc-t"><b>Maximum seats per row</b><span>From the seats above and the row depth</span></div></div><div class="sc-b"><p class="hint" style="margin-top:0">Self-rising seats are measured raised (IBC 1030.13.2). Clear width = row depth less the raised chair depth and the backrest depth: 34" − 14" − 2" = 18" by default (41 seats at 22,000 and over, open-air); with a 12" chair, 20" (47 seats). ${tb?`Open-air or smoke-protected, ${fmt(P.capTarget)} seats: Table 1030.13.2.1 allows ${b} seats at 12" clear`:'IBC 1030.13.2.1: 14 seats at 12" clear'}, plus one seat per 0.3" more (0.6" with an aisle at one end only); open-air rows do not rely on the 22" provision. Benches count at 18" per person (IBC 1004.6).</p><p class="hint keep" style="margin-top:6px">${lines.join('<br>')}</p></div></section>`;}
   return h+'</div>';}
 function setbackText(ti,k){const zr=solveZone(P,k),lo=zr.filter(r=>r.tier===ti-1),up=zr.find(r=>r.tier===ti);if(!lo.length||!up)return '';
   const sb=up.x-(lo[lo.length-1].x+lo[lo.length-1].T);return sb<0?`Overhangs the tier below by ${L(-sb)}.`:`${L(sb)} behind the top row of the tier below.`;}
