@@ -1517,7 +1517,7 @@ function gapsOf(P){const Q=Object.assign({},P,{tierCount:3}),g={};
     g[k][ti]=lo.length&&up?(up.x-(lo[lo.length-1].x+lo[lo.length-1].T))/1000:P.zt[ti].z[k].gap;}}return g;}
 function alignUpperTiers(P){P.zt.forEach((t,i)=>{if(i)GEO.forEach(k=>{t.z[k].X=null;t.z[k].Xr=null;});});}
 function keepGaps(P,g){for(let ti=1;ti<3;ti++)for(const k of GEO)Object.assign(P.zt[ti].z[k],{X:null,Xr:null,gap:g[k][ti]});pinUpperTiers(P);}
-function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';if(!FIELD_SPORTS.includes(P.sport))P.sport='ncaafb';if(!P.bulge||typeof P.bulge!=='object')P.bulge={S:0,E:0};['S','E'].forEach(k=>{P.bulge[k]=Math.max(0,Math.min(k==='S'?7.62:6.096,+P.bulge[k]||0));});   /* sidelines up to 25 ft (7.6 m), end stands 20 ft (6.1 m) (decision 145) */   /* court and rink sports are out of scope (decision 81) */const d=defaults();if(P.ais&&P.ais.mode==='loss')P.ais.mode='layout';if(!Array.isArray(P.rowMax))P.rowMax=[80,80,80];P.rowMax=[0,1,2].map(i=>Math.max(3,Math.min(80,Math.round(+P.rowMax[i]||80))));   /* row limits per tier for sizing (decision 185) */
+function fixP(P){if(!SPORTS[P.sport])P.sport=SPORTS[LEGACY_SPORT[P.sport]]?LEGACY_SPORT[P.sport]:'ncaafb';if(!FIELD_SPORTS.includes(P.sport))P.sport='ncaafb';if(!P.bulge||typeof P.bulge!=='object')P.bulge={S:0,E:0};['S','E'].forEach(k=>{P.bulge[k]=Math.max(0,Math.min(k==='S'?7.62:6.096,+P.bulge[k]||0));});if((P.bulge.S>0||P.bulge.E>0)&&Array.isArray(P.zt))P.zt.forEach(t=>{if(t)t.corners='round';});   /* a curved bowl always has round corners (decision 315) */   /* sidelines up to 25 ft (7.6 m), end stands 20 ft (6.1 m) (decision 145) */   /* court and rink sports are out of scope (decision 81) */const d=defaults();if(P.ais&&P.ais.mode==='loss')P.ais.mode='layout';if(!Array.isArray(P.rowMax))P.rowMax=[80,80,80];P.rowMax=[0,1,2].map(i=>Math.max(3,Math.min(80,Math.round(+P.rowMax[i]||80))));   /* row limits per tier for sizing (decision 185) */
   if(P.eyeRev===3&&P.eye){const w=P.eye.wcOff;if(Math.abs(w-36*25.4)<1||Math.abs(w-915)<1)P.eye.wcOff=w>914.5&&w<915.5?760:30*25.4;P.eyeRev=EYE_REV;}   /* rev 4: only the old 36 in default moves to 30 in; other eye values kept */
   if(P.eyeRev===4&&P.eye){if(Math.abs(P.eye.stH-63.5*25.4)<1)P.eye.stH=63.45*25.4;P.eye.stHead=67.65*25.4;P.eye.stSh=55.65*25.4;P.eyeRev=EYE_REV;}   /* rev 5: Exhibit B standing values */
   if(P.eyeRev!==EYE_REV){P.eye=eyeDefaults();P.eyeRev=EYE_REV;}P.eye=Object.assign(eyeDefaults(),P.eye||{});delete P.eye.bnFront;if(P.eyeMode!=='stand')P.eyeMode='sit';
@@ -2405,7 +2405,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.08';
+const VERSION='2026.11.26.09';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2699,7 +2699,9 @@ function renderControls(){
           :slider('bulge.S','Sideline setback, halfway (6 m default)',0,7.5,im?0.3048:0.25,'m')+slider('bulge.E','End setback, centre line (3 m default)',0,6,im?0.3048:0.25,'m'))
         +`<p class="hint">The stand ends stay at the front-row distance and the middle of each stand sits further back by the setback, so its rows are arcs through both ends of the field side (every tier follows). <span id="bulgeRad">${bulgeRadTxt()}</span> Aisles run radially. Straight bowl sets both to 0.</p>`;
       else{const f=im?"0'-0\"":'0 m',fl=P.sport==='nfl'||P.sport==='ncaafb';h+=`<table class="fixed"><tr><td>Sideline setback, ${fl?'50-yard line':'halfway'}</td><td><b>${f}</b></td></tr><tr><td>End setback, centre line</td><td><b>${f}</b></td></tr></table><p class="hint">Every stand runs straight, parallel to the field. Curved bowl sets them back ${im?`20'-0" at ${fl?'the 50-yard line':'halfway'} and 10'-0"`:'6 m at halfway and 3 m'} at the centre line (defaults), adjustable.</p>`;}}
-    h+='<div class="lab">Corners</div><div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>'
+    {const cvB=P.bulge.S>0||P.bulge.E>0;h+='<div class="lab">Corners</div>'+(cvB?'<table class="fixed"><tr><td>Round corner</td><td><b>Always with a curved bowl</b></td></tr></table>'   /* decision 315: no choice on a curved bowl */
+      :'<div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>');}
+    h+=''
       +(P.zt[0].corners==='round'?'<div class="lab">Corner aisles, each corner (equally spaced)</div>'+Array.from({length:P.tierCount-1},(_,i)=>i+1).map(ti=>`<div class="cornrow"><span>Tier ${ti+1}</span><div class="seg">${[1,2,3].map(v=>`<button data-cornais="${ti}:${v}" class="${cornCount(P,ti)===v?'on':''}" aria-pressed="${cornCount(P,ti)===v}">${v}</button>`).join('')}</div></div>`).join('')
         +`<p class="hint">Tier 1: one aisle on the corner centreline, over the player tunnel.${P.tierCount>1?` Upper tiers: 1, 2 or 3 aisles make 2, 3 or 4 equal sections; default 2.${P.tierCount>2?' With the same count, the Tier 3 corner aisles line up with Tier 2.':''}`:''}</p>`:'');
     h+='<div class="lab">Configuration</div><select id="cfgSel" class="sel">'+CFG_LIST(P.sport).concat(P.cfg==='custom'?[['custom','Custom (sections switched by hand)']]:P.cfg==='stands'?[['stands','Custom, stands by tier']]:[]).map(([v,n])=>`<option value="${v}"${(P.cfg||'closed')===v?' selected':''}>${n}</option>`).join('')+'</select>';
@@ -2816,10 +2818,10 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.et){EDIT={tier:+b.dataset.et,g:0};renderControls();return;}
   else if(b.dataset.eg){EDIT.g=+b.dataset.eg;renderControls();return;}
   else if(b.dataset.link){relink(EDIT.tier,b.dataset.link);}
-  else if(b.dataset.corner){P.zt.forEach(t=>t.corners=b.dataset.corner);}
+  else if(b.dataset.corner){if(b.dataset.corner!=='round'&&(P.bulge.S>0||P.bulge.E>0))return;P.zt.forEach(t=>t.corners=b.dataset.corner);}   /* curved bowl: round only (decision 315) */
   else if(b.dataset.bshape){const cv=P.bulge.S>0||P.bulge.E>0,w=!imperial();   /* bowl shape (decision 311): Straight bowl 0 / 0; Curved bowl 20' / 10' (6 m / 3 m) */
     if(b.dataset.bshape==='straight'){if(!cv)return;P.bulgeKeep={S:P.bulge.S,E:P.bulge.E};P.bulge.S=0;P.bulge.E=0;}
-    else{if(cv)return;P.bulge.S=w?6:20*0.3048;P.bulge.E=w?3:10*0.3048;}}   /* Curved bowl starts at its defaults: 20'-0" at the 50-yard line, 10'-0" at the centre line (6 m / 3 m) */
+    else{if(cv)return;P.bulge.S=w?6:20*0.3048;P.bulge.E=w?3:10*0.3048;P.zt.forEach(t=>t.corners='round');}}   /* Curved bowl starts at its defaults: 20'-0" at the 50-yard line, 10'-0" at the centre line (6 m / 3 m) */
   else if(b.dataset.resize){const q=$('quickCalc');if(q)q.click();return;}
   else if(b.dataset.cfgpick){P.cfg=b.dataset.cfgpick;if(P.cfg!=='stands')delete P.standT;toast(`Configuration: ${b.title}. Press Size the bowl to size the remaining stands to the target.`);}
   else if(b.dataset.st){const [k,t]=b.dataset.st.split(':');if(!standSet(k,+t))return;}
