@@ -2405,7 +2405,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.07';
+const VERSION='2026.11.26.08';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2485,7 +2485,7 @@ try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.P){HAD_STATE=true;P=fi
 // When the defaults change (DREV goes up), each browser starts once from the new default bowl; saved options are kept.
 const DREV=9;let NEWDEF=false;
 try{if((+localStorage.getItem('sightline-defaults-rev')||0)<DREV){NEWDEF=!!P;P=null;localStorage.setItem('sightline-defaults-rev',String(DREV));localStorage.setItem('sightline-units',JSON.stringify({sys:'imperial',metric:'mm-m',imperial:'arch'}));}}catch(e){}
-if(!P)P=defaultsPinned();
+let WC_FRESH=false;if(!P){P=defaultsPinned();WC_FRESH=true;}   /* a fresh default bowl gets its default wheelchair platforms on the first redraw (decision 314) */
 const $=id=>document.getElementById(id);
 function persist(){try{localStorage.setItem(KEY,JSON.stringify({P,OPTS,proj:PROJ.name,projFile:PROJ.fileName,projSaved:PROJ.saved,projSnap:PROJ.snap,projInfo:{number:PROJ.number,country:PROJ.country,region:PROJ.region,city:PROJ.city,sport:PROJ.sport}}))}catch(e){}if(typeof prStatus==='function'){cancelAnimationFrame(persist.r);persist.r=requestAnimationFrame(prStatus);}}
 function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.remove('show'),2200);}
@@ -3839,14 +3839,14 @@ function wcReq(n){if(n<4)return 0;if(n<=25)return 1;if(n<=50)return 2;if(n<=150)
 function wcModules(len,sw){const IN=0.0254,pair=2*sw+66*IN,one=sw+36*IN;let np=Math.max(0,Math.floor(len/pair+1e-9)),rem=len-np*pair,single=rem>=one-1e-9?1:0;return {pairs:np,single,wc:2*np+single,comp:2*np+single,used:np*pair+single*one};}
 function secNoMap(ti,AL){const m={};sectionList(ti,AL).forEach(q=>m[q.key]=q.no);return m;}
 // seats off: switched-off sections lose every row; platform sections lose the two rows below the tier's top row (the infill, decision 56)
-/* default wheelchair platform sections for Size rows to hit target (decision 216): on each concourse tier, per stand, its centre
-   sections, those on the stand's straight run (a section crossing the joint with a corner counts). East/West: 4 -> centre 2,
-   5 -> centre 3, 6 -> centre 4; North/South: 2 -> both, 3 -> all 3. Other counts follow the same pattern: 4 or more -> all but
-   the end one on each side; fewer -> all. Round bowls (not zoned): none here, Auto spreads them. */
+/* default wheelchair platform sections (decision 314, replaces the centre-sections rule of 216): a platform at the top of every
+   rectangular section of each stand (West, East, NEZ, SEZ; North / South for the other sports), i.e. the sections on the stand's
+   straight run (a section crossing the joint with a corner counts); none in the corners (users add them by hand). Tiers: the
+   concourse tiers only (wcTier): 2 tiers -> top of Tier 1; 3 tiers -> top of Tiers 1 and 2. Round bowls (not zoned): none here. */
 function wcDefaultSet(ti,AL){const out=new Set();AL=AL||(M&&M.AL);const T=AL&&AL[ti];if(!T||!zoned(P)||!wcTier(ti))return out;const at={};
   Object.values(T).forEach(Lz=>{const gl=Lz.ch.map((g,i)=>g.t==='LINE'?i:-1).filter(i=>i>=0);Lz.ais.forEach(a=>{if(gl.includes(a.i))at[a.id]=Lz.k;});});
   const by={};sectionList(ti,AL).forEach(q=>{const k=at[q.mid.l]!=null?at[q.mid.l]:at[q.mid.r];if(k==null)return;const pc=q.mid.pieces.find(x=>x.Lz.k===k);(by[k]=by[k]||[]).push({no:q.no,a:pc?pc.a:0});});
-  Object.values(by).forEach(L=>{L.sort((x,y)=>x.a-y.a);const n=L.length,m=n>=4?n-2:n,s0=Math.floor((n-m)/2);L.slice(s0,s0+m).forEach(x=>out.add(x.no));});
+  Object.values(by).forEach(L=>L.forEach(x=>out.add(x.no)));   /* every rectangular section of each stand (decision 314) */
   return out;}
 const isPlat=(S,no,DW)=>{const e=S[no];if(e&&e.off)return false;return DW?DW.has(+no):!!(e&&e.wc);};
 function secAdjust(P,AL){const S=P.secs||{},IN=25.4,out={secs:{},wc:0,comp:0,lost:0,off:0,aisleSeats:0,byTier:[],byStand:{}};
@@ -5637,7 +5637,7 @@ new MutationObserver(ms=>{for(const m of ms){if(m.type==='characterData'){const 
   .observe(document.body,{childList:true,subtree:true,characterData:true});
 document.querySelectorAll('title').forEach(t=>t.textContent=titleCase(t.textContent));
 
-renderUnits();renderControls();update();titleize(document.body);
+renderUnits();renderControls();update();if(WC_FRESH){placeDefaultPlatforms();update();HIST.st=[JSON.stringify(P)];HIST.redo=[];histUI();}titleize(document.body);
 if(NEWDEF)toast('Started from the new default bowl. Saved options are unchanged.');
 /* ---------- projects (decision 242): a project is a name plus its saved options and the bowl on screen, kept in one .json file.
    Chrome and Edge save straight back to the file you opened or saved (put it in a Google Drive folder to have it in the cloud);
