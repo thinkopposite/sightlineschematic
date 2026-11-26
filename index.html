@@ -627,6 +627,11 @@ aside .cfgcard b.def{text-decoration:underline;text-decoration-thickness:2px;tex
 aside .cfgcard:hover{outline:2px solid #E10600;outline-offset:-2px}
 aside .cfgcard.on{outline:4px solid #E10600!important;outline-offset:-4px!important}
 aside .cfgcard.on::after{content:'';position:absolute;top:6px;right:6px;width:14px;height:14px;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath d='M3 9.5l4 4L15 4.5' fill='none' stroke='%23E10600' stroke-width='2' stroke-linecap='square'/%3E%3C/svg%3E")}
+/* bowl shape (decision 311): two buttons in the panel; picture cards in the larger window */
+aside section.step.popped:not(.deliver) .seg.shpseg.shpseg.shpseg.shpseg{display:none!important}   /* (repeated class only raises the specificity) */
+aside section.step.popped .shpcards{grid-template-columns:repeat(2,1fr)}
+aside .colrow label{white-space:nowrap}
+aside .shpcards .cfgcard span{font-size:10.5px!important;line-height:1.25;color:var(--muted,#666);text-align:center}
 html.popopen #toast{z-index:6100!important}   /* messages stay in front of the larger window */
 aside .cfgcustom{display:none}aside section.step.popped .cfgcustom{display:block;font-size:14px;margin:4px 0 8px;color:var(--sw-ink,#111)}
 aside section.step.popped #cfgSel{display:none!important}   /* the cards replace the list in the larger window (decision 301); the panel keeps the list */
@@ -2380,7 +2385,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.02';
+const VERSION='2026.11.26.04';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2666,6 +2671,16 @@ function renderControls(){
   h+=`<div class="lab">Precast thickness: <b style="color:var(--ink)">${L(slabT())}</b></div><p class="hint" style="margin:2px 0 0">Standard for every precast bowl unit (treads and risers), vomitory wall and header wall.</p>`;
   if(zoned(P)){
     h+='<div class="lab">Side profiles: <b style="color:var(--ink)">All four sides match</b></div>';
+    {const im=imperial(),cv=P.bulge.S>0||P.bulge.E>0,cs=P.zt[0].corners==='round'?'round':'chamfer';   /* bowl shape (decision 311): Straight bowl or Curved bowl; the curved bowl's setbacks below (decision 82) */
+      h+='<div class="lab">Bowl shape</div><div class="seg shpseg">'+[['straight','Straight bowl'],['curved','Curved bowl']].map(([k,n])=>`<button data-bshape="${k}" class="${(k==='curved')===cv?'on':''}" aria-pressed="${(k==='curved')===cv}">${n}</button>`).join('')+'</div>'
+        +'<div class="cfgcards shpcards" role="group" aria-label="Bowl shape">'+[['straight','Straight bowl','Stands parallel to the field'],['curved','Curved bowl','Stands set back at their middles']].map(([k,n,d])=>`<button type="button" class="cfgcard${(k==='curved')===cv?' on':''}" data-bshape="${k}" aria-pressed="${(k==='curved')===cv}" title="${n}: ${d}">${bowlIcon(k==='curved'?'curved':cs,P.cfg&&P.cfg!=='custom'&&P.cfg!=='stands'?P.cfg:'closed',P.sport,{thin:1})}<b>${n}</b><span>${d}</span></button>`).join('')+'</div>';
+      if(cv)h+=(im?slider('bulgeFt.S',`Sideline setback, ${P.sport==='nfl'||P.sport==='ncaafb'?'50-yard line':'halfway'} (20' default)`,0,25,1,"'")+slider('bulgeFt.E',`End setback, centre line (10' default)`,0,20,1,"'")
+          :slider('bulge.S','Sideline setback, halfway (6 m default)',0,7.5,im?0.3048:0.25,'m')+slider('bulge.E','End setback, centre line (3 m default)',0,6,im?0.3048:0.25,'m'))
+        +`<p class="hint">The stand ends stay at the front-row distance and the middle of each stand sits further back by the setback, so its rows are arcs through both ends of the field side (every tier follows). <span id="bulgeRad">${bulgeRadTxt()}</span> Aisles run radially. Straight bowl sets both to 0.</p>`;
+      else{const f=im?"0'-0\"":'0 m',fl=P.sport==='nfl'||P.sport==='ncaafb';h+=`<table class="fixed"><tr><td>Sideline setback, ${fl?'50-yard line':'halfway'}</td><td><b>${f}</b></td></tr><tr><td>End setback, centre line</td><td><b>${f}</b></td></tr></table><p class="hint">Every stand runs straight, parallel to the field. Curved bowl sets them back ${im?`20'-0" at ${fl?'the 50-yard line':'halfway'} and 10'-0"`:'6 m at halfway and 3 m'} at the centre line (defaults), adjustable.</p>`;}}
+    h+='<div class="lab">Corners</div><div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>'
+      +(P.zt[0].corners==='round'?'<div class="lab">Corner aisles, each corner (equally spaced)</div>'+Array.from({length:P.tierCount-1},(_,i)=>i+1).map(ti=>`<div class="cornrow"><span>Tier ${ti+1}</span><div class="seg">${[1,2,3].map(v=>`<button data-cornais="${ti}:${v}" class="${cornCount(P,ti)===v?'on':''}" aria-pressed="${cornCount(P,ti)===v}">${v}</button>`).join('')}</div></div>`).join('')
+        +`<p class="hint">Tier 1: one aisle on the corner centreline, over the player tunnel.${P.tierCount>1?` Upper tiers: 1, 2 or 3 aisles make 2, 3 or 4 equal sections; default 2.${P.tierCount>2?' With the same count, the Tier 3 corner aisles line up with Tier 2.':''}`:''}</p>`:'');
     h+='<div class="lab">Configuration</div><select id="cfgSel" class="sel">'+CFG_LIST(P.sport).concat(P.cfg==='custom'?[['custom','Custom (sections switched by hand)']]:P.cfg==='stands'?[['stands','Custom, stands by tier']]:[]).map(([v,n])=>`<option value="${v}"${(P.cfg||'closed')===v?' selected':''}>${n}</option>`).join('')+'</select>';
     {const shp=(P.bulge.S>0||P.bulge.E>0)?'curved':(P.zt[0].corners==='round'?'round':'chamfer'),cur=P.cfg||'closed';   /* the larger window shows the configurations as icons as well (decision 299) */
      if(cur==='custom'||cur==='stands')h+=`<p class="cfgcustom">${cur==='stands'?'Custom: stands set by tier (below)':'Custom: sections switched on and off by hand'}</p>`;
@@ -2675,13 +2690,7 @@ function renderControls(){
         +Array.from({length:n},(_,r)=>n-1-r).map(ti=>`<span class="st-t">Tier ${ti+1}</span>`+STAND_KEYS.map(k=>`<button class="st-c${H[k]>ti?' on':''}${H[k]>ti&&(()=>{const S=P.secs||{};return standSecs(ti)[k].some(no=>S[no]&&S[no].off);})()?' part':''}" data-st="${k}:${ti}" aria-pressed="${H[k]>ti}" aria-label="${full[k]}, Tier ${ti+1}: ${H[k]>ti?'included':'omitted'}" title="${full[k]}: ${H[k]===ti+1?`remove Tier ${ti+1}`:`Tiers 1 to ${ti+1}`.replace('Tiers 1 to 1','Tier 1 only')}"></button>`).join('')).join('')+'</div>'
         +'<button data-resize="1" style="width:100%;margin:8px 0 0" title="Sizes the rows of the stands that remain so the bowl holds the target seats">Size the bowl to the target</button>'
         +'<p class="hint">Click a cell to set how high a stand goes; click its top cell again to lower it. Each half corner follows the stand beside it. A hatched cell has some sections switched off on the plan; clicking it puts the whole stand back under the grid.</p>';}
-    h+='<div class="lab">Corners</div><div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>'
-      +(P.zt[0].corners==='round'?'<div class="lab">Corner aisles, each corner (equally spaced)</div>'+Array.from({length:P.tierCount-1},(_,i)=>i+1).map(ti=>`<div class="cornrow"><span>Tier ${ti+1}</span><div class="seg">${[1,2,3].map(v=>`<button data-cornais="${ti}:${v}" class="${cornCount(P,ti)===v?'on':''}" aria-pressed="${cornCount(P,ti)===v}">${v}</button>`).join('')}</div></div>`).join('')
-        +`<p class="hint">Tier 1: one aisle on the corner centreline, over the player tunnel.${P.tierCount>1?` Upper tiers: 1, 2 or 3 aisles make 2, 3 or 4 equal sections; default 2.${P.tierCount>2?' With the same count, the Tier 3 corner aisles line up with Tier 2.':''}`:''}</p>`:'');
-    {const im=imperial(),st=im?0.3048:0.25,mx=im?30*0.3048:9;   /* curved stands (decision 82) */
-      h+='<div class="lab">Curved stands</div>'+(im?slider('bulgeFt.S',`Sidelines: set back at ${P.sport==='nfl'||P.sport==='ncaafb'?'the 50-yard line':'halfway'} (1 foot; 0' to 25')`,0,25,1,"'")+slider('bulgeFt.E',`End stands: set back at the centre line (1 foot; 0' to 20')`,0,20,1,"'")
-        :slider('bulge.S','Sidelines: set back at halfway',0,7.5,st,'m')+slider('bulge.E','End stands: set back at the centre line',0,6,st,'m'))
-        +`<p class="hint">0 keeps a stand straight. Otherwise its rows are arcs through both ends of the field side: the stand ends stay at the front-row distance and the middle sits further back by this much (every tier follows). <span id="bulgeRad">${bulgeRadTxt()}</span> Aisles run radially.</p>`;}}
+}
   h+='<div class="lab">Bowl colours (HEX)</div>'+[0,1,2].map(i=>`<div class="colrow"><label for="tcol${i}">Tier ${i+1}</label>`
     +`<input type="color" class="swatch" data-tcolpick="${i}" value="${tierFill(i)}" aria-label="Pick the Tier ${i+1} colour">`
     +`<input type="text" class="hex" id="tcol${i}" data-tcol="${i}" value="${tierFill(i)}" maxlength="7" spellcheck="false" autocomplete="off"></div>`).join('')
@@ -2787,6 +2796,9 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.eg){EDIT.g=+b.dataset.eg;renderControls();return;}
   else if(b.dataset.link){relink(EDIT.tier,b.dataset.link);}
   else if(b.dataset.corner){P.zt.forEach(t=>t.corners=b.dataset.corner);}
+  else if(b.dataset.bshape){const cv=P.bulge.S>0||P.bulge.E>0,w=!imperial();   /* bowl shape (decision 311): Straight bowl 0 / 0; Curved bowl 20' / 10' (6 m / 3 m) */
+    if(b.dataset.bshape==='straight'){if(!cv)return;P.bulgeKeep={S:P.bulge.S,E:P.bulge.E};P.bulge.S=0;P.bulge.E=0;}
+    else{if(cv)return;P.bulge.S=w?6:20*0.3048;P.bulge.E=w?3:10*0.3048;}}   /* Curved bowl starts at its defaults: 20'-0" at the 50-yard line, 10'-0" at the centre line (6 m / 3 m) */
   else if(b.dataset.resize){const q=$('quickCalc');if(q)q.click();return;}
   else if(b.dataset.cfgpick){P.cfg=b.dataset.cfgpick;if(P.cfg!=='stands')delete P.standT;toast(`Configuration: ${b.title}. Press Size the bowl to size the remaining stands to the target.`);}
   else if(b.dataset.st){const [k,t]=b.dataset.st.split(':');if(!standSet(k,+t))return;}
@@ -5878,7 +5890,7 @@ function renderSetup(){let d=$('setupDlg');if(!d){d=document.createElement('div'
       +`</div><p class="su-hint">Next: the bowl shape and configuration.</p>`;}
   else if(st==='shape'){const w=SPORTS[SU.sport].region==='world';b=`<h2>Bowl shape</h2><div class="su-tiers su-3">`
       +[['chamfer','Straight, chamfered corners'],['round','Straight, round corners'],['curved','Curved, round corners']].map(([v,n])=>`<button class="su-tier${SU.shape===v?' on':''}" data-shape="${v}" aria-pressed="${SU.shape===v}">${bowlIcon(v,'closed',SU.sport)}<b${v==='curved'?' class="def" title="Default"':''}>${n}</b></button>`).join('')
-      +`</div><p class="su-hint">Curved stands are set back ${w?'6 m at the halfway line and 3 m at the centre of each end':`20'-0" at the 50-yard line and 10'-0" at the centre of each end`}; change them later under Bowl, Curved stands. Round corners: one aisle in each Tier 1 corner, two in the upper tiers (Bowl, Corner aisles).</p>`;}
+      +`</div><p class="su-hint">Curved stands are set back ${w?'6 m at the halfway line and 3 m at the centre of each end':`20'-0" at the 50-yard line and 10'-0" at the centre of each end`}; change them later under Bowl, Bowl shape. Round corners: one aisle in each Tier 1 corner, two in the upper tiers (Bowl, Corner aisles).</p>`;}
   else if(st==='config'){b=`<h2>Bowl configuration</h2><div class="su-tiers su-cfg">`
       +CFG_LIST(SU.sport).map(([v,n])=>`<button class="su-tier${SU.cfg===v?' on':''}" data-cfg="${v}" aria-pressed="${SU.cfg===v}">${bowlIcon(SU.shape,v,SU.sport)}<b${v==='closed'?' class="def" title="Default"':''}>${n}</b></button>`).join('')
       +`</div><p class="su-hint">Open stands are sections switched off (whole sections, cut on a corner aisle); the rows are then sized so the stands that remain hold ${fmt(SU.cap)} seats. Change it later under Bowl, Configuration.</p>`;}
