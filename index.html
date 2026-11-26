@@ -528,6 +528,7 @@ aside p.hint.keep{color:var(--sw-ink,#111)}
 #hdrSeats .hs-n{font-size:40px;font-weight:700;line-height:1;color:var(--sw-red,#E10600);letter-spacing:-.02em}
 #hdrSeats .hs-t{display:flex;flex-direction:column;gap:2px;font-size:14px;line-height:1.3;min-width:0}
 #hdrSeats .hs-l{font-weight:700}#hdrSeats .hs-n.short+.hs-t .hs-l{color:var(--sw-red,#E10600)}
+#hdrSeats .hs-wc{padding-right:14px;border-right:1px solid var(--sw-rule,#9A9A96)}#hdrSeats .hs-wc .hs-l{font-weight:400}#hdrSeats .hs-wc .short{color:var(--sw-red,#E10600)}#hdrSeats .hs-wc .short b{color:var(--sw-red,#E10600)}
 #hdrSeats .hs-r{color:var(--sw-ink,#111)}#hdrSeats .hs-r b{font-weight:700}#hdrSeats .hs-r i{display:inline-block;width:14px}
 header .brand{flex:none}header .actions{flex:none}
 @media (max-width:1700px){header #verTop{display:none}}
@@ -1413,7 +1414,9 @@ const PER_SIDE=['seat','seatW'];                                       // only s
 const SURFACE={nfl:'Field',ncaafb:'Field',mls:'Field',nba:'Court',ncaabb:'Court',ncaawbb:'Court',fiba:'Court',usta:'Court',itf:'Court',nhl:'Rink',fifa:'Pitch',rugbyu:'Pitch',rugbyl:'Pitch',fih:'Pitch'};
 const surf=()=>SURFACE[P.sport]||'Pitch',surfLow=()=>surf().toLowerCase();   // US football and soccer: field; international football: pitch
 const SPECT_NAMES={both:'1. Sitting and standing spectators',plat:'2. Wheelchair eyesight with standing spectators',t2:'3. Tier 2 row 1 spectators at the guard rail'},SPECT_MODES=['both','plat','t2'];
-const RAIL_SET=-1*25.4,RAIL_DROP=8*25.4;                               // guard rail centreline 1 in in front of the riser (inside face on the riser line); extends 8 in below the tread
+const RAIL_SET=-1*25.4,RAIL_DROP=8*25.4,AEG_H=42*25.4;
+/* 42 in aisle-end guard (decision 317): side-mounted on the tier front where each aisle ends; in a section it stands beyond the cut, drawn as a grey outline behind the 26 in seating guard */
+const aegSvg=(r,X,Y)=>`<rect x="${X(r.x+RAIL_SET-25.4)}" y="${Y(r.z+AEG_H)}" width="50.8" height="${(AEG_H+RAIL_DROP).toFixed(1)}" fill="#FFFFFF" fill-opacity=".6" stroke="#6E6E6E" stroke-width="0.9" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"><title>42" aisle-end guard, side-mounted on the tier front, at each aisle (beyond the section; IBC 2024 §1030.17.4)</title></rect>`;                               // guard rail centreline 1 in in front of the riser (inside face on the riser line); extends 8 in below the tread
 const TIER_COL=['#CCCCCC','#999999','#707070'];                        // 20%, 40% and 56% grey
 const tierFill=ti=>(P.tierColors&&P.tierColors[ti])||TIER_COL[ti]||TIER_COL[1];
 function zp(o){return Object.assign({on:true,rows:20,seat:'standard',riser:'parabolic',basis:'sit',tread:34*25.4,tread0:36*25.4,treadN:34*25.4,seatW:22*25.4,target:2.25*25.4,D:35*0.3048,Z:8*0.3048,X:null,dx:0,gap:2.4,rise:10*0.3048,suites:0},o);}
@@ -1973,7 +1976,7 @@ function egress(){const AL=M.AL;if(!AL)return null;const imp=imperial(),fS=egFac
     for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{{const e=SS[smap[sc.l+'_'+sc.r]];if(e&&e.off)return;}if(sc.n>lim){t.omit=(t.omit||0)+sc.n-lim;sc.n=lim;}t.secMax=Math.max(t.secMax,sc.n);const l=CLs.has(sc.l)?null:sc.l,r=CLs.has(sc.r)?null:sc.r,both=l!=null&&r!=null;   /* a corner half leaves by its own aisle */
       if(l!=null)load[l]=(load[l]||0)+sc.n*(both?0.5:1);if(r!=null)load[r]=(load[r]||0)+sc.n*(both?0.5:1);});
     t.lostA=Math.round(gross-net);
-    Object.values(load).forEach(q=>{const w=AIS().w,req=Math.max(imp?(q<50?36:48)*25.4:0,q*fS);if(!t.aMax||req>t.aMax.req)t.aMax={q:Math.round(q),req,w};});
+    t.byA={};Object.entries(load).forEach(([id,q])=>{const w=AIS().w,req=Math.max(imp?(q<50?36:48)*25.4:0,q*fS);t.byA[id]={q:Math.round(q),req,w};if(!t.aMax||req>t.aMax.req)t.aMax={q:Math.round(q),req,w};});   /* per aisle, for the plan's egress alert (decision 317) */
     out.tiers.push(t);}
   out.secMax=Math.max(...out.tiers.map(t=>t.secMax));return out;}
 function aisEditor(){const A=AIS(),imp=imperial(),lay=A.mode==='layout';
@@ -2116,8 +2119,20 @@ function smokeFactor(seats,col){const t=IBC_SMOKE;if(seats<=t[0][0])return t[0][
 // egress width per person in mm, stepped aisle or level (vomitory)
 function egFactor(level,seats){const b=egBasis();
   if(b==='gg')return 1000/((level?GG_FLOW.level:GG_FLOW.step)*GG_FLOW.min);
-  if(b==='std')return (level?0.2:0.3)*25.4;
+  if(b==='std'){if(level)return 0.2*25.4;let rm=0;(typeof ROWS!=='undefined'&&ROWS||[]).forEach(r=>{if(r.riser==null)return;const n=r.riser<=8*25.4+0.01?1:r.riser<=16*25.4+0.01?2:3;rm=Math.max(rm,r.riser/n/25.4);});
+    return (0.3+0.005*Math.max(0,(rm-7)/0.1))*25.4;}   /* IBC 2024 §1030.6.1 items 1-2: 0.3 in per occupant, + 0.005 in for each 0.10 in of aisle riser above 7 in (decision 316); handrails within 30 in assumed (item 3) */
   const sm=smokeFactor(seats,level?2:1);return (b==='open'?Math.min(level?0.06:0.08,sm):sm)*25.4;}   // open-air may use the table where it permits less
+/* dead-end aisles (decision 317; IBC 2024 §1030.9.5): each end of an aisle must reach a cross aisle, vomitory or concourse. Exits counted: the tier's
+   cross aisle, the aisle's own vomitory (when shown) and the concourse at the top of a concourse tier (wcTier). A row from which only one direction
+   leads to an exit is in a dead end; it is flagged when more than the limit of rows lies between it and the exit: 21 rows for open-air or smoke-protected
+   seating (Exception 3), otherwise 20 ft. Exception 4 (rows within 40 seats of another aisle) is not applied, so the flag is conservative. */
+function deadEnds(){const AL=M&&M.AL;if(!AL||!imperial())return [];const b=egBasis(),tb=b==='open'||b==='smoke',out=[],gone=goneAisles(AL),hid=vomHidden(AL);
+  AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>{const n=Lz.tr.length;if(!n)return;const lim=tb?21:Math.max(1,Math.floor(6096/(Lz.tr[Math.min(1,n-1)].T||864))),
+      cross=Lz.tr.map((r,j)=>r.cross?j:-1).filter(j=>j>=0),top=wcTier(ti);
+    Lz.ais.forEach((ai,i)=>{if(gone.has(ai.id)||ai.cl||ai.ghost)return;const ex=[...cross];if(Lz.vom[i]&&ai.vr&&ai.vr.rows&&!hid.has(ai.id)){ex.push(...ai.vr.rows);if(ai.vr.cross!=null)ex.push(ai.vr.cross);}if(top)ex.push(n);
+      const bad=j=>{const lo=ex.filter(e=>e<=j),hi=ex.filter(e=>e>=j);if(lo.length&&hi.length)return false;const d=hi.length?Math.min(...hi)-j:lo.length?j-Math.max(...lo):Infinity;return d>lim;};
+      let j0=-1;for(let j=0;j<=n;j++){const f=j<n&&bad(j);if(f&&j0<0)j0=j;if(!f&&j0>=0){out.push({ti,Lz,i,id:ai.id,j0,j1:j-1,lim,tb});j0=-1;}}});}));
+  return out;}
 // plan: aisles as white strips through the rows, vomitories dark from the portal to the first clear row, the tunnel dashed beyond
 let AISHIT='';
 function aisleSvg(){const AL=M.AL;if(!AL||PLAN!=='bowl')return '';const A=AIS(),wA=A.w/1000,wV=(A.vomW+2*vomWall())/1000+2*wA,vc=A.vomW/1000,f=v=>v.toFixed(3);let a='',v='',tun='';
@@ -2138,12 +2153,21 @@ function aisleSvg(){const AL=M.AL;if(!AL||PLAN!=='bowl')return '';const A=AIS(),
       if(Lz.vom[i]&&ai.vr&&ai.vr.rows.length){const j0=ai.vr.rows[0],j1=ai.vr.rows[ai.vr.rows.length-1];a+=strip(Lz,i,j0,j1,vomCut(ai));
         vo+=band(Lz,i,j0,j1,-W2,W2);vw+=band(Lz,i,j0,j1,-W2-tw,-W2)+band(Lz,i,j0,j1,W2,W2+tw);   // opening (to field level) and the two 8 in walls
         if(j1<last){const rk=Lz.tr[j1+1];vw+=band(Lz,i,j1+1,j1+1,-W2-tw,W2+tw,rk.x,rk.x+vomWall());tun+=band(Lz,i,j1+1,last,-W2,W2);}}});}   // header over the top tread; the tunnel beyond, dashed
+  /* code alerts on the plan (decision 317): dead-end rows (purple), aisles short of the egress width (red outline), 42 in aisle-end guards (heavy line, side-mounted on the tier front) */
+  let dead='',egs='',gd='';{const ex=imperial()?egress():null,f2=v=>v.toFixed(2);
+    deadEnds().forEach(d=>{const ai=d.Lz.ais[d.i],n=d.j1-d.j0+1;dead+=`<path d="${strip(d.Lz,d.i,d.j0,d.j1,Math.max(cutW(ai,wA),1.2))}"><title>Dead-end aisle: ${n} row${n>1?'s':''} beyond the ${d.tb?'21-row':'20 ft'} limit (IBC 2024 §1030.9.5${d.tb?', Exception 3':''}). Add a vomitory or cross aisle on this aisle, or check Exception 4.</title></path>`;});
+    AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>{const last=Lz.tr.length-1;Lz.ais.forEach((ai,i)=>{if(gone.has(ai.id)||ai.cl||ai.ghost)return;const w=cutW(ai,wA);
+      const e=ex&&ex.tiers[ti]&&ex.tiers[ti].byA&&ex.tiers[ti].byA[ai.id];if(e&&e.req>e.w+0.5)egs+=`<path d="${strip(Lz,i,0,last,Math.max(w,1.2))}"><title>Aisle short of the egress width: ${fmt(e.q)} seats × ${(ex.fS/25.4).toFixed(3)}" = ${f2(e.req/25.4)}" required, ${f2(e.w/25.4)}" provided (${EG_NAMES[ex.basis]||''}; IBC 2024 §1030.6). Widen the aisle, add a vomitory or split the load.</title></path>`;
+      if(imperial()&&Lz.tr[0]){const d0=Lz.tr[0].x/1000-0.05,s0=chainS(Lz.ch,ai,d0),p=chainPtS(Lz.ch,s0-w/2,d0),q=chainPtS(Lz.ch,s0+w/2,d0);gd+=`M${f(p[0])} ${f(p[1])}L${f(q[0])} ${f(q[1])}`;}});}));}
   AISHIT=hit;   // click targets for the aisle editor (screen only, added by drawPlan)
   return `<g class="aisles"><path d="${a}" fill="#FFFFFF" fill-rule="nonzero" stroke="var(--ink)" stroke-width="0.35" vector-effect="non-scaling-stroke"/>`
     +(red?`<path d="${red}" fill="#FF8A8A" fill-opacity=".6" stroke="none"/>`:'')+(stp?`<path d="${stp}" fill="none" stroke="#7A7A7A" stroke-width="0.2" vector-effect="non-scaling-stroke"/>`:'')
     +`<path d="${v}" fill="#3C3C3C" stroke="var(--ink)" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
     +(vo?`<path d="${vo}" fill="#9A9A96" stroke="none"/>`:'')+(vw?`<path d="${vw}" fill="#1E1E1E" stroke="none"/>`:'')
     +`<path d="${tun}" fill="none" stroke="#3C3C3C" stroke-width="0.8" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`
+    +(egs?`<g class="egshort" fill="#E10600" fill-opacity=".35" stroke="#E10600" stroke-width="0.8" stroke-dasharray="4 2" vector-effect="non-scaling-stroke">${egs}</g>`:'')
+    +(dead?`<g class="deadend" fill="#8E44AD" fill-opacity=".85" stroke="#5B2C6F" stroke-width="1.2" vector-effect="non-scaling-stroke">${dead}</g>`:'')
+    +(gd?`<path class="aisleguard" d="${gd}" fill="none" stroke="#111111" stroke-width="2.4" stroke-linecap="butt" vector-effect="non-scaling-stroke"><title>42" aisle-end guard, side-mounted on the tier front (IBC 2024 §1030.17.4: 36" minimum, 42" measured diagonally to the nearest tread nosing)</title></path>`:'')
     +(cl?`<path d="${cl}" fill="none" stroke="var(--ink)" stroke-width="0.5" stroke-dasharray="6 2 1 2" opacity=".7" vector-effect="non-scaling-stroke"><title>Corner centreline: section line, no aisle</title></path>`:'')+'</g>';}
 function egressHTML(){const r=egressRows();if(!r)return '<tbody><tr><td>Percentage allowance: '+P.loss+'% off every row. Choose the computed layout under Aisles to check the sections and egress.</td></tr></tbody>';
   return '<tbody>'+r.map(([k,v,ok])=>`<tr><td>${k}</td><td class="${ok===false?'fail':ok?'pass':''}">${v}${ok===false?' — short':ok?' — meets':''}</td></tr>`).join('')+'</tbody>';}
@@ -2405,7 +2429,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.09';
+const VERSION='2026.11.26.13';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3028,8 +3052,8 @@ function drawSection0(rows,o={}){
     s+=`<line x1="${X(cx0)}" y1="${Y(cz)}" x2="${X(cx1)}" y2="${Y(cz)}" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${X(cx0+fs*.3)}" y="${+Y(cz)-fs*.35}" font-size="${PT(6,TP(o,10,fs*.62))}" fill="var(--muted)">${ti===1?'Main':'Upper'} concourse</text>`;
 });
   tiers.forEach(ti=>{const f=rows.find(r=>r.tier===ti);                              // 26 in sightline guard rail at row 1 of every tier
-    s+=`<rect x="${X(f.x+RAIL_SET-25.4)}" y="${Y(f.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"><title>Guard rail ${L(P.railH)}, 2 in</title></rect>`
-      ;K.note(f.x-fs*.25,f.z+P.railH+fs*.2,`${inchText(P.railH)} guard rail`,{size:PT(6,TP(o,8,fs*.45)),anchor:'end',fill:'var(--muted)',wt:400});});
+    s+=(imperial()?aegSvg(f,X,Y):'')+`<rect x="${X(f.x+RAIL_SET-25.4)}" y="${Y(f.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"><title>Guard rail ${L(P.railH)}, 2 in</title></rect>`
+      ;K.note(f.x-fs*.25,f.z+P.railH+fs*.2,`${inchText(P.railH)} guard rail`,{size:PT(6,TP(o,8,fs*.45)),anchor:'end',fill:'var(--muted)',wt:400});if(imperial())K.note(f.x-fs*.25,f.z+AEG_H+fs*.2,'42" aisle-end guard (at aisles)',{size:PT(6,TP(o,8,fs*.45)),anchor:'end',fill:'var(--muted)',wt:400});});
   rows.forEach(r=>{const tf=PT(6,T9(o,Math.min(fs*.28,r.T*.3)));                               // row numbers: above their tread, clear of the riser behind
     s+=`<text x="${X(r.x+r.T*.35)}" y="${(+Y(r.z)-tf*.3).toFixed(0)}" font-size="${tf.toFixed(1)}" fill="var(--ink)" text-anchor="middle" font-weight="400">${r.row}</text>`;});
   s+=EXtop;rows.forEach(r=>{if(SK.has(r))return;K.avoid(r.ex,r.ez,0,0);s+=`<line x1="${X(r.ex)}" y1="${Y(r.ez)}" x2="${X(0)}" y2="${Y(0)}" stroke="${status(r)==='pass'||status(r)==='front'?'var(--sl-ok)':'var(--sl-low)'}" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`;});   // sightlines by C-value only: blue meets the minimum, red is below it
@@ -3100,7 +3124,7 @@ function drawDetail0(all,o={}){
     +`<text x="${f1(+X(0)+bufX/2)}" y="${f1(+Y(0)+band/2+fs*.25)}" font-size="${f1(TP(o,8,fs*.65))}" fill="var(--ink)" font-weight="600" text-anchor="middle">Buffer zone</text>`
     +`<line x1="${X(0)}" y1="${f1(+Y(0)+band)}" x2="${X(0)}" y2="${f1(+Y(0)-fs*1.6)}" stroke="${FOCAL}" stroke-width="1.2" vector-effect="non-scaling-stroke"/><circle cx="${X(0)}" cy="${Y(0)}" r="${f1(fs*.22)}" fill="var(--ink)"/>`;}
   const EXd=secExtras(all,ti,X,Y,o,NF?X0:0),SKd=EXd.skip,vcD=vomClip(EXd.ops,X,Y,W,H);K.avoidPoly(profileOf(rs,ti));s+=vcD.defs+`<g${vcD.attr}><polygon points="${profileOf(rs,ti).map(p=>X(p[0])+','+Y(p[1])).join(' ')}" fill="${tierFill(ti)}" fill-opacity=".45" stroke="var(--ink)" stroke-width="0.75" vector-effect="non-scaling-stroke"/>`+benchSvg(rs,X,Y)+'</g>';
-  s+=`<rect x="${X(r0.x+RAIL_SET-25.4)}" y="${Y(r0.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"/>`;   // 26 in guard rail, 2 in thick, centreline 3 in behind the riser
+  s+=(imperial()?aegSvg(r0,X,Y):'')+`<rect x="${X(r0.x+RAIL_SET-25.4)}" y="${Y(r0.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"/>`;   // 26 in guard rail, 2 in thick, centreline 3 in behind the riser
   s+=EXd.s+EXd.top;if(o.cut&&!NF)s+=secGoal(o.zone,X,Y,fs);
   // sightlines to the point of focus
   rs.forEach((r,i)=>{if(SKd.has(r))return;const e=ey[i],C=Cs[i],ok=C==null||C>=r.target-0.05;
@@ -3426,6 +3450,15 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
           for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];tri.push([...a,z0],[...b,z0],[...b,z1],[...a,z0],[...b,z1],[...a,z1]);}});
         if(tri.length>t0)parts.push({a:t0,b:tri.length,name:`Wheelchair platform ${q.no}`,meta:{ti,mark:'WC-'+q.no,props:{Tier:ti+1,Section:q.no,Stand:w.stand,'Wheelchair spaces':w.wc,'Companion seats':w.comp,'Platform level':+z1.toFixed(4),'Rows filled':w.rows.join('–')}}});});});
     if(tri.length)out.push({name:'Wheelchair platforms',kind:'platform',tri,parts,col:[255,69,0],prisms:pz});}
+  /* 42 in aisle-end guards (decision 317b): a 2 in rail, side-mounted on the tier front where each aisle ends, from 8 in below the first tread to 42 in above it, across the aisle */
+  if(M&&M.AL&&imperial()){const tri=[],parts=[],wA=AIS().w/1000,gone2=goneAisles(M.AL);
+    M.AL.forEach((T,ti)=>Object.values(T).forEach(Lz=>{const r0=(ZR[Lz.k]||[]).find(r=>r.tier===ti);if(!r0||!Lz.tr[0])return;const d0=Lz.tr[0].x/1000,dA=d0+(RAIL_SET-25.4)/1000,dB=d0+(RAIL_SET+25.4)/1000,za=(r0.z-RAIL_DROP)/1000,zb=(r0.z+AEG_H)/1000;
+      Lz.ais.forEach(ai=>{if(gone2.has(ai.id)||ai.cl||ai.ghost)return;const w=cutW(ai,wA),pt=(o,d)=>{const sc=chainS(Lz.ch,ai,d),q=chainPtS(Lz.ch,sc+o,d);return [q[0],-q[1]];};
+        const c=[pt(-w/2,dA),pt(w/2,dA),pt(w/2,dB),pt(-w/2,dB)],t0=tri.length,v=(p,z)=>[p[0],p[1],z];
+        tri.push(v(c[0],zb),v(c[1],zb),v(c[2],zb),v(c[0],zb),v(c[2],zb),v(c[3],zb),v(c[0],za),v(c[2],za),v(c[1],za),v(c[0],za),v(c[3],za),v(c[2],za));
+        for(let i=0;i<4;i++){const a=c[i],b=c[(i+1)%4];tri.push(v(a,za),v(b,za),v(b,zb),v(a,za),v(b,zb),v(a,zb));}
+        parts.push({a:t0,b:tri.length,name:`Aisle-end guard T${ti+1}-${zoneName(P,Lz.k,true)}-A${ai.id}`,meta:{ti,mark:`G-T${ti+1}-A${ai.id}`,props:{Tier:ti+1,Stand:zoneName(P,Lz.k),Aisle:ai.id,Height:'42 in above the first tread',Mounting:'side-mounted on the tier front','Code':'IBC 2024 1030.17.4'}}});});}));
+    if(tri.length)out.push({name:'Aisle-end guards (42 in)',kind:'guard',tri,parts,col:[30,30,30]});}
   {const tri=[],parts=[];vomSolids().forEach(v=>{const t0=tri.length;tri.push(...v.tri);parts.push({a:t0,b:tri.length,name:v.name,meta:v.meta});});   // vomitory walls and headers
     if(tri.length)out.push({name:'Vomitories (walls and headers)',kind:'vom',tri,parts,col:[150,150,146]});}
   return {groups:out,edges};}
@@ -3544,6 +3577,7 @@ function buildIFC(){const parts=modelParts(),L=[];let n=0;const E=t=>{L.push(`#$
     E(`IFCSTYLEDITEM(${fs},(${style(p.col)}),$)`);const sr=E(`IFCSHAPEREPRESENTATION(${body},'Body','Tessellation',(${fs}))`),pds=E(`IFCPRODUCTDEFINITIONSHAPE($,$,(${sr}))`),lp=E(`IFCLOCALPLACEMENT(${pl[p.meta.ti]},${ax})`);
     const el=p.kind==='stand'?E(`IFCSLAB('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Seating tier (raker and treads) by stand')},'Seating tier',${lp},${pds},$,.NOTDEFINED.)`)
       :p.kind==='vom'?E(`IFCWALL('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Vomitory side walls (tops 26 in above the nosings) and header over the top tread')},'Vomitory',${lp},${pds},${ifcStr(p.meta.mark||'')},.NOTDEFINED.)`)
+      :p.kind==='guard'?E(`IFCRAILING('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('42 in aisle-end guard, side-mounted on the tier front (IBC 2024 1030.17.4)')},'Aisle-end guard',${lp},${pds},${ifcStr(p.meta.mark||'')},.GUARDRAIL.)`)
       :p.kind==='platform'?E(`IFCBUILDINGELEMENTPROXY('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Wheelchair platform: infill over the two rows below the top row, level with the top tread, front face 6 in behind the row riser')},'Wheelchair platform',${lp},${pds},${ifcStr(p.meta.mark||'')},.ELEMENT.)`)
       :E(`IFCBUILDINGELEMENTPROXY('${ifcGuid()}',$,${ifcStr(p.name)},${ifcStr('Precast concrete aisle step block on the bowl tread')},'Precast aisle step',${lp},${pds},${ifcStr(p.meta.mark||'')},.ELEMENT.)`);
     S.els.push(el);const props=Object.entries(p.meta.props||{}).map(([k,v])=>E(`IFCPROPERTYSINGLEVALUE(${ifcStr(k)},$,${val(v,k)},$)`));
@@ -3561,7 +3595,7 @@ async function loadRhino(){if(R3)return R3;let base='vendor/rhino3dm/';try{await
 async function export3DM(){toast('Building the Rhino model…');try{const r=await loadRhino(),parts=modelParts(),doc=new r.File3dm();doc.settings().modelUnitSystem=r.UnitSystem.Meters;
     const lay={},layer=(name,c)=>lay[name]??(lay[name]=doc.layers().addLayer(name,[c[0],c[1],c[2],255]));
     parts.forEach(p=>{const {pts,f}=meshIndex(p.tri);if(!f.length)return;const m=new r.Mesh(),vs=m.vertices(),fc=m.faces();pts.forEach(q=>vs.add(q[0],q[1],q[2]));f.forEach(t=>fc.addTriFace(t[0],t[1],t[2]));m.normals().computeNormals();m.compact();
-      const at=new r.ObjectAttributes();at.layerIndex=layer(p.kind==='stand'?`Tier ${p.meta.ti+1}`:p.kind==='platform'?'Wheelchair platforms':p.kind==='vom'?'Vomitories':'Precast aisle steps',p.col);at.name=p.name;Object.entries(p.meta.props||{}).forEach(([k,v])=>at.setUserString(k,typeof v==='number'&&!Number.isInteger(v)?String(+v.toFixed(4)):String(v)));doc.objects().add(m,at);m.delete();at.delete();});
+      const at=new r.ObjectAttributes();at.layerIndex=layer(p.kind==='stand'?`Tier ${p.meta.ti+1}`:p.kind==='platform'?'Wheelchair platforms':p.kind==='vom'?'Vomitories':p.kind==='guard'?'Aisle-end guards':'Precast aisle steps',p.col);at.name=p.name;Object.entries(p.meta.props||{}).forEach(([k,v])=>at.setUserString(k,typeof v==='number'&&!Number.isInteger(v)?String(+v.toFixed(4)):String(v)));doc.objects().add(m,at);m.delete();at.delete();});
     const b=doc.toByteArray();doc.delete();dlBlob(b,'application/octet-stream',`Sightline_${slug()}.3dm`);toast('Rhino model downloaded (.3dm)');}
   catch(e){toast('3dm export failed: '+e.message);}}
 // ---------- vomitories (decisions 67-70, 72): candidates on each tier's interior middle aisles, plus the Tier 1 corner centrelines ----------
@@ -3703,7 +3737,7 @@ function drawSpectator0(mode,o={}){
   const X=x=>(x-X0).toFixed(1),Y=z=>(Z1-z).toFixed(1),f1=v=>(+v).toFixed(1),K=SecDim(X,Y,fs,[W,H],{noLab:1,center:1,grid:[r0.x,r0.z],avoid:1,vs:T9(o,null)});
   let s=`<svg viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="${SPECT_NAMES[mode]}">`+gridBg(X0,X1,Z0,Z1,X,Y,r0.x,r0.z,T9(o,fs*.8/.9));   // 0,0 at the top of the bottom tread
   s+=`<polygon points="${profileOf(rs,T2?1:-1).map(q=>X(q[0])+','+Y(q[1])).join(' ')}" fill="${tierFill(T2?1:0)}" fill-opacity=".45" stroke="var(--ink)" stroke-width="0.75" vector-effect="non-scaling-stroke"/>`+benchSvg(rs,X,Y);
-  if(T2)s+=`<rect x="${X(r0.x+RAIL_SET-25.4)}" y="${Y(r0.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"/>`;   // guard rail on the row 1 riser face
+  if(T2)s+=(imperial()?aegSvg(r0,X,Y):'')+`<rect x="${X(r0.x+RAIL_SET-25.4)}" y="${Y(r0.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"/>`;   // guard rail on the row 1 riser face
   if(T2){const x0=r0.x+RAIL_SET-25.4,x1=x0+50.8,z1=r0.z+P.railH,z0=z1-P.railH-RAIL_DROP;K.reserve(x0,z0,x1,z1);}   /* text keeps off the rail */
   // sightlines toward the point of focus: sitting solid, standing dashed; red where row 1 does not clear the rail
   const full=(ZR.T||[]).filter(q=>q.tier===r0.tier);
@@ -4094,6 +4128,8 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
   for(const uc of [0,span])g+=`<rect x="${X(uc-wA/2)}" y="${Y(depth)}" width="${f(wA)}" height="${f(depth)}" fill="#FFFFFF" stroke="var(--ink)" stroke-width="0.9" vector-effect="non-scaling-stroke"/>`
     +tr.map((r,j)=>{const v=r.x-x0,st=aisleStep(tr,j);let o=st.bad?`<rect x="${X(uc-wA/2)}" y="${Y(v+r.T)}" width="${f(wA)}" height="${f(r.T)}" fill="#FF8A8A" fill-opacity=".6"/>`:'';
       for(let k=0;k<st.n;k++)o+=`<line x1="${X(uc-wA/2)}" y1="${Y(v+k*r.T/st.n)}" x2="${X(uc+wA/2)}" y2="${Y(v+k*r.T/st.n)}" stroke="var(--ink)" stroke-width="${k?0.45:0.7}" vector-effect="non-scaling-stroke"/>`;return o;}).join('');   // aisle steps: the row riser and each step nosing
+  if(imperial())for(const uc of [0,span])g+=`<rect x="${X(uc-wA/2)}" y="${Y(RAIL_SET+25.4)}" width="${f(wA)}" height="50.8" fill="#111111"><title>42" aisle-end guard, side-mounted on the tier front (IBC 2024 §1030.17.4)</title></rect>`;   /* decision 317b */
+  if(imperial())g+=[['42" aisle-end guard',0],['side-mounted',1]].map(([t,i])=>`<text x="${X(-wA/2-fs*.25)}" y="${Y(-fs*(.15+i*.5))}" font-size="${f(fs*.42)}" text-anchor="end" dominant-baseline="hanging" fill="var(--muted)">${t}</text>`).join('');
   // seats: chair at the back of each tread, seat raised (envelope), clear width in front
   const iL=Lz.ais.indexOf(L0.a)+1,counts=[],nzCW=(()=>{if(!isNEZ(k))return false;const a=chainPtS(Lz.ch,sa,d),b=chainPtS(Lz.ch,sb,d);return cwOf([(a[0]+b[0])/2,(a[1]+b[1])/2],[b[0]-a[0],b[1]-a[1]]);})();   // true: clockwise runs left to right, seat 1 on the left
   tr.forEach((r,j)=>{const S=rowSections(Lz,j),n=S.secs[iL]||0,v=r.x-x0,{cb,cdn,cf}=seatGeo(r.seat,r.T);counts.push(n);
@@ -4510,7 +4546,7 @@ function update00(){seatSync(P);
   ROWS=Object.values(ZR).flat();CH=chains(P,ZR);M=metrics(P,ZR,CH);SLC=M.AL?{AL:M.AL,m:{}}:null;
   const pct=Math.min(100,M.cap/P.capTarget*100),ok=M.cap>=P.capTarget;
   $('cap').innerHTML=`<div><div class="big">${fmt(M.cap)}</div><div class="lbl">Estimated seats</div></div><div><div class="bar"><i class="${ok?'ok':''}" style="width:${pct}%"></i></div><div class="lbl" style="margin-top:5px">${ok?'Meets':'Short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</div><div class="cap-side">${M.tierSeats.map((s,i)=>`Tier ${i+1}: ${fmt(s)}`).join('<br>')}</div></div>`;
-  {const hs=$('hdrSeats');if(hs)hs.innerHTML=`<b class="hs-n${ok?'':' short'}">${fmt(M.cap)}</b><span class="hs-t"><span class="hs-l">Estimated seats<span class="hs-w"> · ${ok?'meets':'short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</span><span class="hs-s"> · ${ok?'meets target':'short by '+fmt(P.capTarget-M.cap)}</span></span><span class="hs-r">${M.tierSeats.map((s,i)=>`<span class="hs-w">Tier </span><span class="hs-s">T</span>${i+1} <b>${fmt(s)}</b>`).join('<i></i>')}</span></span>`;}   /* estimated seats and tier seats in the title bar, always in view (decision 274) */
+  {const hs=$('hdrSeats');if(hs)hs.innerHTML=(M.ADA&&M.ADA.req?(()=>{const D=M.ADA,sw=D.wc<D.req,sc=D.comp<D.reqComp;return `<span class="hs-t hs-wc" title="Wheelchair spaces and companion seats provided / required (IBC Table 1108.2.2.1; ADA 221.2.1.1, 221.3)"><span class="hs-l${sw?' short':''}">Wheelchair <b>${fmt(D.wc)}</b> / ${fmt(D.req)}</span><span class="hs-r${sc?' short':''}">Companion <b>${fmt(D.comp)}</b> / ${fmt(D.reqComp)}</span></span>`;})():'')+`<b class="hs-n${ok?'':' short'}">${fmt(M.cap)}</b><span class="hs-t"><span class="hs-l">Estimated seats<span class="hs-w"> · ${ok?'meets':'short of'} the ${fmt(P.capTarget)} target${ok?'':' by '+fmt(P.capTarget-M.cap)}</span><span class="hs-s"> · ${ok?'meets target':'short by '+fmt(P.capTarget-M.cap)}</span></span><span class="hs-r">${M.tierSeats.map((s,i)=>`<span class="hs-w">Tier </span><span class="hs-s">T</span>${i+1} <b>${fmt(s)}</b>`).join('<i></i>')}</span></span>`;}   /* live wheelchair and companion counts (decision 317) */   /* estimated seats and tier seats in the title bar, always in view (decision 274) */
   {const c2=$('cap2');if(c2)c2.innerHTML=$('cap').innerHTML;}   /* the seat box repeated at the bottom of the page (decision 233) */
   $('zones').innerHTML=zoneTable();SHORT=cShortfalls();$('comply').innerHTML=complyHTML();$('shortTable').innerHTML=shortHTML();$('shortSum').textContent=`C-value shortfalls: ${SHORT.seats||SHORT.wc?fmt(SHORT.seats)+' seats'+(SHORT.wc?' + '+SHORT.wc+' wheelchair':''):'none'}${SHORT.railSeats?`; guard rail in the front-row sightline: ${fmt(SHORT.railSeats)} seats`:''}`;$('shortHint').textContent='Each row of a section below its tier\'s absolute minimum C-value. Row 1 of every tier has no spectators in front, so no C-value applies; it is only checked for the guard rail blocking the view. Seated spectators; the C-value per tier is set under Sightline standard.';renderSecPanel();secEdRender();{const cp=$('codePanel');if(cp)cp.innerHTML=codeHTML();}
   const hmin=M.heads.length?Math.min(...M.heads.map(h=>h.h)):null;
@@ -4525,7 +4561,9 @@ function update00(){seatSync(P);
   if(M.vd>P.vd)msg.push(`back row beyond the ${L(P.vd*1000,'m',0,true)} viewing distance limit`);
   M.rails.forEach(r=>msg.push(`${zl(r)} front row can't see the point of focus over the ${L(P.railH)} guard`));
   M.lowHead.forEach(h=>msg.push(`${L(h.h)} headroom under ${zl(h)}`));
-  {const er=egressRows();if(er)er.filter(r=>r[2]===false).forEach(r=>msg.push(r[0].replace(/^Tier (\d): /,'Tier $1 ')+' short of the egress requirement'));}
+  {const er=egressRows();if(er)er.filter(r=>r[2]===false).forEach(r=>msg.push(r[0].replace(/^Tier (\d): /,'Tier $1 ')+' short of the egress requirement (IBC 2024 §1030.6; red on the plan)'));}
+  {const de=deadEnds(),by={};de.forEach(d=>{const k=d.ti;(by[k]=by[k]||new Set()).add(d.id);});Object.entries(by).forEach(([ti,S])=>msg.push(`Tier ${+ti+1}: ${S.size} aisle${S.size>1?'s':''} with dead-end rows beyond ${de[0].tb?'21 rows':'20 ft'} (IBC 2024 §1030.9.5; purple on the plan)`));}
+  if(M.ADA&&M.ADA.req>M.ADA.wc)msg.push(`${fmt(M.ADA.req-M.ADA.wc)} wheelchair spaces short of the ${fmt(M.ADA.req)} required (IBC Table 1108.2.2.1; ADA 221.2.1.1)`);   /* decision 316 */
   M.issues=msg.slice();if(typeof pbResUI==='function')pbResUI();
   const v=$('verdict');v.className='verdict g24 '+(msg.length?'bad':'ok');
   v.textContent=msg.length?msg.join('; ')+'.':`All rows meet their C-value targets, front rows included, within ${rakeRule()} and ${L(P.vd*1000,'m',0,true)}.`;
@@ -4558,7 +4596,8 @@ function update00(){seatSync(P);
   $('detTitle').textContent=`Sightline detail: Tier 1, ${zoneName(P,P.sec)}, ${DETMODE==='stand'?'standing':'sitting'}`;
   document.querySelectorAll('#detTabs [data-dm]').forEach(b=>{const on=b.dataset.dm===DETMODE;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});lazyRun('plan',renderPlan);
   const Sp=SPORTS[P.sport];$('planTitle').textContent=`${Sp.org}: ${Sp.name}`;
-  $('planNote').innerHTML=`<span style="display:inline-block;width:18px;height:3px;background:${FOCAL};vertical-align:middle;margin-right:6px"></span>Point-of-focus boundary, dimensioned. Drawn from ${Sp.rule}. Field ${fieldDesc(P)}. Check against the current edition before issuing drawings.`+(SHORT&&SHORT.rails.length?` <br><span style="display:inline-block;width:14px;height:9px;background:#EF9F27;opacity:.7;vertical-align:middle;margin-right:5px"></span>Front-row seats with the guard rail in the sightline (${fmt(SHORT.railSeats)})`:'')+(SHORT&&SHORT.rows.length?` <br><span style="display:inline-block;width:14px;height:9px;background:var(--sl-low);opacity:.55;vertical-align:middle;margin-right:5px"></span>Seats below the minimum C-value (${fmt(SHORT.seats)})`:'')+(M.AL?` <br><span style="display:inline-block;width:14px;height:9px;background:#FFFFFF;border:1px solid var(--ink);vertical-align:middle;margin-right:5px"></span>Aisles`+(imperial()?` <span style="display:inline-block;width:14px;height:9px;background:#FF8A8A;vertical-align:middle;margin:0 5px 0 10px"></span>Row over the IBC maximum of ${ibcRow(P.zt[0].z.T).n} seats per row (${L(ibcRow(P.zt[0].z.T).C)} clear, ${L(ibcRow(P.zt[0].z.T).dep)} ${ibcRow(P.zt[0].z.T).back?'chair':'bench'})`:''):'');
+  $('planNote').innerHTML=`<span style="display:inline-block;width:18px;height:3px;background:${FOCAL};vertical-align:middle;margin-right:6px"></span>Point-of-focus boundary, dimensioned. Drawn from ${Sp.rule}. Field ${fieldDesc(P)}. Check against the current edition before issuing drawings.`+(SHORT&&SHORT.rails.length?` <br><span style="display:inline-block;width:14px;height:9px;background:#EF9F27;opacity:.7;vertical-align:middle;margin-right:5px"></span>Front-row seats with the guard rail in the sightline (${fmt(SHORT.railSeats)})`:'')+(SHORT&&SHORT.rows.length?` <br><span style="display:inline-block;width:14px;height:9px;background:var(--sl-low);opacity:.55;vertical-align:middle;margin-right:5px"></span>Seats below the minimum C-value (${fmt(SHORT.seats)})`:'')+(M.AL?` <br><span style="display:inline-block;width:14px;height:9px;background:#FFFFFF;border:1px solid var(--ink);vertical-align:middle;margin-right:5px"></span>Aisles`+(imperial()?` <span style="display:inline-block;width:14px;height:9px;background:#FF8A8A;vertical-align:middle;margin:0 5px 0 10px"></span>Row over the IBC maximum of ${ibcRow(P.zt[0].z.T).n} seats per row (${L(ibcRow(P.zt[0].z.T).C)} clear, ${L(ibcRow(P.zt[0].z.T).dep)} ${ibcRow(P.zt[0].z.T).back?'chair':'bench'})`:''):'')+(M.AL&&imperial()?(()=>{const de=deadEnds().length,ex=egress(),es=ex&&ex.tiers.some(t=>t.byA&&Object.values(t.byA).some(e=>e.req>e.w+0.5)),sq=(c,x='')=>`<span style="display:inline-block;width:14px;height:9px;${c};vertical-align:middle;margin:0 5px 0 0"></span>`;   /* decision 317 */
+    return ` <br>${sq('background:#111;height:3px')}42" aisle-end guard, side-mounted (IBC 2024 §1030.17.4)`+(es?` <br>${sq('background:rgba(225,6,0,.35);border:1px dashed #E10600')}Aisle short of the egress width (IBC 2024 §1030.6; hover an aisle for the numbers)`:'')+(de?` <br>${sq('background:#8E44AD;opacity:.7')}Dead-end aisle rows beyond ${egBasis()==='open'||egBasis()==='smoke'?'21 rows':'20 ft'} (IBC 2024 §1030.9.5)`:'');})():'');
   const tc=mm=>plain(mm),tu=imperial()||!unitSuffix().trim()?'':` (${unitSuffix().trim()})`;
   $('schedHead').textContent='Row schedule: '+zoneName(P,P.sec);
   $('table').innerHTML=`<thead><tr><th>Row</th><th>Riser from focus${tu}</th><th>Tread height${tu}</th><th>Riser${tu}</th><th>Rake</th><th>C-value${tu}</th></tr></thead><tbody>`+ZR[P.sec].map(r=>`<tr><td>Tier ${r.tier+1}, row ${r.row}</td><td>${tc(r.x)}</td><td>${tc(r.z)}</td><td class="${r.riser>P.maxRiser+0.01?'steep':''}">${r.riser==null?'':tc(r.riser)}</td><td class="${overRake(r)?'steep':''}">${r.rake==null?'':r.rake.toFixed(1)+'°'}</td><td class="${status(r)}">${r.C!=null?CV(r.C):r.railC!=null?'guard '+(r.railC>=0?'+':'')+CV(r.railC):'front row'}</td></tr>`).join('')+'</tbody>';
@@ -5011,7 +5050,7 @@ function drawJunction0(all,o={}){const tu=o.tier||1,lo=all.filter(r=>r.tier===tu
   const cx0=lb.x+lb.T,cx1=Math.max(cx0+fs*4,f.x);   // the concourse floor behind the lower tier
   s+=`<line x1="${X(cx0)}" y1="${Y(lb.z)}" x2="${X(cx1)}" y2="${Y(lb.z)}" stroke="var(--ink)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
   const EXd=secExtras(all,tu-1,X,Y,{cut:'seat',zone:o.zone},X0),SK=EXd.skip;s+=EXd.s+EXd.top;   // the wheelchair platform, its guard and wheelchair spectator
-  s+=`<rect x="${X(f.x+RAIL_SET-25.4)}" y="${Y(f.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"><title>Guard ${L(P.railH)}</title></rect>`;
+  s+=(imperial()?aegSvg(f,X,Y):'')+`<rect x="${X(f.x+RAIL_SET-25.4)}" y="${Y(f.z+P.railH)}" width="50.8" height="${(P.railH+RAIL_DROP).toFixed(1)}" fill="#000000"><title>Guard ${L(P.railH)}</title></rect>`+(imperial()?`<text x="${X(f.x-fs*.3)}" y="${Y(f.z+AEG_H)}" font-size="${(fs*.45).toFixed(1)}" text-anchor="end" dominant-baseline="middle" fill="var(--muted)">42" aisle-end guard (at aisles)</text>`:'');
   const stR=pg?new Set(lo.slice(Math.max(0,n-5),n-3)):new Set();   // the rows in front of the wheelchair platform stand (decision 150)
   const vis=r=>(loD.includes(r)||upD.includes(r))&&r.x+r.T>X0+1&&r.x<X1-1&&r.z<Z1&&r.z>Z0;   // every tread in the view (decision 182)
   const sp=[...lo,...up].filter(r=>vis(r)&&!SK.has(r));   // every row seated (decisions 159, 182); the rows in front of the platform also stand
@@ -5358,7 +5397,7 @@ function refList(){const E=P.eye,Sp=SPORTS[P.sport],cv=cvSet(P.sport),z=P.zt[0].
       basis:'A passage through the seating to the concourse, square to the rows it passes through: one on the centreline of each corner, the rest on the straight runs, with none in the premium zone at midfield. Its clear height is a means of egress ceiling height, and its width carries the seats it serves at the level width per person. Seats are removed from the portal row up to the first row whose underside clears the vomitory.',
       cite:'IBC 2024 §1003.2 ceiling height (7\'-6" minimum) and §1030.6 capacity; vomitory travel limits for smoke-protected seating per §1030.7.1.'},
     egress:{item:'Egress width per person',val:M.AL?EG_NAMES[egBasis()]:'Percentage allowance (no check)',type:'code',
-      basis:'Open-air seating: 0.08" per seat on stepped aisles, 0.06" level, or the smoke-protected table where it allows less. Smoke-protected: Table 1030.6.2 by total seats (0.200" to 0.060" stepped). Otherwise 0.3" stepped and 0.2" level. Smoke-protected travel: 200 ft to a vomitory or concourse entrance.',
+      basis:'Open-air seating: 0.08" per seat on stepped aisles, 0.06" level, or the smoke-protected table where it allows less. Smoke-protected: Table 1030.6.2 by total seats (0.200" to 0.060" stepped). Otherwise (not smoke-protected) 0.3" stepped, + 0.005" for each 0.1" of aisle riser above 7" (0.35" at 8" risers), and 0.2" level. Smoke-protected travel: 200 ft to a vomitory or concourse entrance.',
       cite:'IBC 2024 §1030.6.1, Table 1030.6.2, §1030.6.3, §1030.7 (IBC 2021 §1029.6, §1029.7); NFPA 101 life safety evaluation where Table 1030.6.2 is used.'}};
   if(!imperial()){const GG='Guide to Safety at Sports Grounds (Green Guide), 6th ed., SGSA 2018';Object.assign(R,{   /* metric: UK and European references */
     cval:{...R.cval,cite:`${GG}, seated viewing standards and C-value method; BS EN 13200-1:2019 Spectator facilities, viewing area (sightline method); FIFA Football Stadiums Guidelines for football venues. C targets: ${cv.src}.`},
