@@ -557,7 +557,16 @@ aside section.step.popped>.step-h .chev,aside section.step.popped>.step-h .popou
 aside section.step.popped>.step-h:hover h2{color:inherit}
 aside section.step.popped>.step-h .popclose{display:inline-flex;align-items:center;gap:10px;font-size:16px!important;font-weight:700;padding:10px 18px!important;min-height:48px;background:var(--sw-ink,#111)!important;color:#fff!important;border:0!important;cursor:pointer;text-transform:uppercase;letter-spacing:.04em}
 aside section.step.popped>.step-h .popclose:hover,aside section.step.popped>.step-h .popclose:focus-visible{background:var(--sw-red,#E10600)!important;outline:none}
-aside section.step.popped>:not(.step-h){zoom:calc(8 / 7)}   /* larger window (decision 308): 14 px panel text shows at 16 px */
+aside section.step.popped>:not(.step-h){zoom:calc(8 / 7)}
+/* Larger window, steps 1-7 drawn like 8 Export (decision 309): rounded 6 px buttons, fields and lists; choices as separate bars 8 px apart, filling the width, text centred; stacked actions full width */
+aside section.step.popped:not(.deliver) :is(button,a.btnlink,select,input:not([type=range]),.nudge){border-radius:6px!important}
+aside section.step.popped:not(.deliver) .popclose{justify-content:center}
+aside section.step.popped:not(.deliver) .seg:not(.stack):not(.cfgcards):not(.tabs){display:grid!important;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px!important}
+aside section.step.popped:not(.deliver) .seg:not(.stack):not(.cfgcards):not(.tabs)>:is(button,a){margin:0!important;width:100%;justify-content:center;text-align:center}
+aside section.step.popped:not(.deliver) .seg.stack{display:grid!important;gap:8px!important}
+aside section.step.popped:not(.deliver) .seg.stack>button{margin:0!important;width:100%!important}
+aside section.step.popped:not(.deliver) .step-next{border-radius:6px!important}
+aside section.step.popped:not(.deliver) .tabs>button{border-radius:6px 6px 0 0!important}   /* larger window (decision 308): 14 px panel text shows at 16 px */
 aside section.step.popped :is(.lab,.zhead,.lab *,.zhead *,.cfgcards b,.ctlmark){font-size:10.5px!important}   /* 10 px labels show at 12 px */
 aside .pop-ph{padding:12px 0;border-bottom:1px solid var(--sw-rule,#9A9A96);font-size:14px;color:var(--muted)}
 aside .pop-ph b{color:var(--sw-ink,#111)}
@@ -2351,7 +2360,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.25.02';
+const VERSION='2026.11.25.03';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
