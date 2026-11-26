@@ -702,6 +702,17 @@ aside #controls .ctlmark{line-height:0!important;position:relative;top:-2px}
 :is(aside section.step:not(.popped)) .calcbox .calc-l{margin:0!important;padding:0 0 0 24px!important;line-height:24px!important}
 :is(aside section.step:not(.popped)) .seatdims > .lab + .calcbox{margin-top:-1px!important}
 :is(aside section.step:not(.popped)) .seatdims > p.hint{margin-top:24px!important}
+
+/* value box with its unit inside (decision 312): one frame round the number and its unit (Seats, Sections, %, '); no spinner arrows */
+.sl-val .numbox{width:118px;display:inline-flex;align-items:center;border:1px solid var(--sw-rule,#9A9A96);background:var(--panel,#fff);box-sizing:border-box;border-radius:0}
+.sl-val .numbox:focus-within{outline:2px solid var(--sw-ink,#111);outline-offset:-1px}
+.sl-val .numbox input{flex:1 1 auto;width:auto!important;min-width:0;border:0!important;background:transparent!important;outline:none!important;margin:0!important;border-radius:0!important;padding-right:2px!important}
+.sl-val .numbox .u{padding:0 8px 0 2px;color:var(--muted,#666);font-size:14px;white-space:nowrap}
+.sl-val input[type=number]{-moz-appearance:textfield;appearance:textfield}.sl-val input[type=number]::-webkit-inner-spin-button,.sl-val input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+:is(aside section.step:not(.popped),aside #controls > details) .sl-val .numbox{height:25px;margin:-1px 0 0}
+:is(aside section.step:not(.popped),aside #controls > details) .sl-val .numbox input{height:23px!important;min-height:23px!important;margin:0!important;line-height:23px!important}
+:is(aside section.step:not(.popped),aside #controls > details) .sl-val .numbox .u{line-height:23px}
+aside section.step.popped .sl-val .numbox{border-radius:6px}aside section.step.popped .sl-val .numbox input{border-radius:6px!important}
 :root[data-grid="off"] aside{background-image:none!important}   /* Light and Dark themes: no grid in the panel either (decision 304) */
 </style>
 </head>
@@ -2385,7 +2396,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.04';
+const VERSION='2026.11.26.05';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2559,8 +2570,9 @@ function ctlKey(path){const E={'eye.sitH':'SIT','eye.stH':'STAND','eye.stOff':'S
 const CTLMARK='<span class="ctlmark" title="Set on the drawings: hover to see the dimension">●</span> ';
 function slider(path,label,min,max,step,unit){
   const v=get(path),kind=(unit==='m'||unit==='mm')?unit:null;META[path]={min,max,step,kind};
-  const box=kind?`<input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="len" id="n_${path}" data-p="${path}" value="${fieldText(v*(kind==='m'?1000:1),kind,step).replace(/"/g,'&quot;')}">${unitLabel(kind)}`
-    :`<input type="number" id="n_${path}" data-p="${path}" min="${min}" max="${max}" step="${step}" value="${v}">${unit}`;
+  const wrap=(inp,u)=>u?`<span class="numbox">${inp}<span class="u" aria-hidden="true">${u}</span></span>`:inp;   /* the unit sits inside the value box (decision 312) */
+  const box=kind?wrap(`<input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" class="len" id="n_${path}" data-p="${path}" value="${fieldText(v*(kind==='m'?1000:1),kind,step).replace(/"/g,'&quot;')}">`,unitLabel(kind))
+    :wrap(`<input type="number" id="n_${path}" data-p="${path}" min="${min}" max="${max}" step="${step}" value="${v}">`,unit);
   const ck=ctlKey(path);
   return `<div class="sl"${ck?` data-ctl="${ck}"`:''}><div class="sl-top"><label for="n_${path}">${ck?CTLMARK:''}${label}</label><span class="sl-val">${box}</span></div>
   <div class="rng"><button class="nudge" data-nudge="-1" data-np="${path}" aria-label="${label}: down one step">◀</button><input type="range" data-p="${path}" min="${min}" max="${max}" step="${step}" value="${v}" aria-label="${label}"><button class="nudge" data-nudge="1" data-np="${path}" aria-label="${label}: up one step">▶</button></div></div>`;
