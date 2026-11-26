@@ -713,6 +713,15 @@ aside #controls .ctlmark{line-height:0!important;position:relative;top:-2px}
 :is(aside section.step:not(.popped),aside #controls > details) .sl-val .numbox input{height:23px!important;min-height:23px!important;margin:0!important;line-height:23px!important}
 :is(aside section.step:not(.popped),aside #controls > details) .sl-val .numbox .u{line-height:23px}
 aside section.step.popped .sl-val .numbox{border-radius:6px}aside section.step.popped .sl-val .numbox input{border-radius:6px!important}
+
+/* Larger window: each area of a step opens with a full-width black rule and a red square before its name, so the areas read as separate blocks (decision 313) */
+:is(aside section.step.popped > :is(.lab,.zhead):not(.lab-inline),aside section.step.popped > :is(.eyes,.cvlock,.seatdims) > .lab,aside section.step.popped > .tier > .lab){display:flex!important;align-items:center;gap:8px;border-top:2px solid var(--sw-ink,#111);padding-top:16px!important;margin-top:24px!important}
+:is(aside section.step.popped > :is(.lab,.zhead):not(.lab-inline),aside section.step.popped > :is(.eyes,.cvlock,.seatdims) > .lab,aside section.step.popped > .tier > .lab)::before{content:'';display:block;flex:none;width:8px;height:8px;background:var(--sw-red,#E10600)}
+aside section.step.popped > .lab-inline{margin-top:4px!important}
+:is(aside section.step.popped > .step-h + :is(.lab,.zhead),aside section.step.popped > .step-h + :is(.eyes,.seatdims) > .lab:first-child,aside section.step.popped > .tabs + .tier > .zhead:first-child + .lab){border-top:0!important;margin-top:8px!important;padding-top:0!important}
+:root[data-theme="dark"] :is(aside section.step.popped > :is(.lab,.zhead):not(.lab-inline),aside section.step.popped > :is(.eyes,.cvlock,.seatdims) > .lab,aside section.step.popped > .tier > .lab){border-top-color:#fff}
+aside section.step.popped > .tier > details.note + .sl{border-top:2px solid var(--sw-ink,#111);margin-top:24px!important;padding-top:16px!important}
+aside section.step.popped > .tier > details.note + .sl::before{content:'Rows and dimensions';display:block;margin:0 0 8px;padding-left:16px;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sw-ink,#111);background:linear-gradient(var(--sw-red,#E10600),var(--sw-red,#E10600)) left center/8px 8px no-repeat}
 :root[data-grid="off"] aside{background-image:none!important}   /* Light and Dark themes: no grid in the panel either (decision 304) */
 </style>
 </head>
@@ -2396,7 +2405,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.05';
+const VERSION='2026.11.26.06';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2682,7 +2691,7 @@ function renderControls(){
   h+=step(2,'Bowl','Slab and corners for the whole bowl (tiers set above).');
   h+=`<div class="lab">Precast thickness: <b style="color:var(--ink)">${L(slabT())}</b></div><p class="hint" style="margin:2px 0 0">Standard for every precast bowl unit (treads and risers), vomitory wall and header wall.</p>`;
   if(zoned(P)){
-    h+='<div class="lab">Side profiles: <b style="color:var(--ink)">All four sides match</b></div>';
+    h+='<div class="lab lab-inline">Side profiles: <b style="color:var(--ink)">All four sides match</b></div>';
     {const im=imperial(),cv=P.bulge.S>0||P.bulge.E>0,cs=P.zt[0].corners==='round'?'round':'chamfer';   /* bowl shape (decision 311): Straight bowl or Curved bowl; the curved bowl's setbacks below (decision 82) */
       h+='<div class="lab">Bowl shape</div><div class="seg shpseg">'+[['straight','Straight bowl'],['curved','Curved bowl']].map(([k,n])=>`<button data-bshape="${k}" class="${(k==='curved')===cv?'on':''}" aria-pressed="${(k==='curved')===cv}">${n}</button>`).join('')+'</div>'
         +'<div class="cfgcards shpcards" role="group" aria-label="Bowl shape">'+[['straight','Straight bowl','Stands parallel to the field'],['curved','Curved bowl','Stands set back at their middles']].map(([k,n,d])=>`<button type="button" class="cfgcard${(k==='curved')===cv?' on':''}" data-bshape="${k}" aria-pressed="${(k==='curved')===cv}" title="${n}: ${d}">${bowlIcon(k==='curved'?'curved':cs,P.cfg&&P.cfg!=='custom'&&P.cfg!=='stands'?P.cfg:'closed',P.sport,{thin:1})}<b>${n}</b><span>${d}</span></button>`).join('')+'</div>';
