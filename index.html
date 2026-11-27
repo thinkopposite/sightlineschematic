@@ -2438,7 +2438,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.19';
+const VERSION='2026.11.26.20';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3479,7 +3479,7 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
         runs.forEach(([u0,u1])=>{const n=Math.max(1,Math.ceil((u1-u0)*L0/1.5)),t0=tS.length;for(let k=0;k<n;k++){const a=u0+(u1-u0)*k/n,b=u0+(u1-u0)*(k+1)/n;if(isOff(atP((a+b)/2,dm)))continue;
             box(tS,[at(a,dA),at(b,dA),at(b,dB),at(a,dB)],za,(r0.z+P.railH)/1000);}
           if(tS.length>t0)pS.push({a:t0,b:tS.length,name:`Sightline guard T${ti+1}-${zoneName(P,Lz.k,true)}`,meta:{ti,mark:`SG-T${ti+1}`,props:{Tier:ti+1,Stand:zoneName(P,Lz.k),Height:`${inchText(P.railH)} above the first tread`,Mounting:'side-mounted on the tier front',Code:'IBC 2024 1030.17.3'}}});});});
-      const col=[255,204,0];   /* solid yellow, opaque (decision 320a) */
+      const col=[74,74,74];   /* solid dark grey, opaque (decision 320b) */
       if(tS.length)out.push({name:`Tier ${ti+1} sightline guard (${inchText(P.railH)})`,kind:'guard',tri:tS,parts:pS,col,alpha:1});
       if(tA.length)out.push({name:`Tier ${ti+1} aisle-end guards (42 in)`,kind:'guard',tri:tA,parts:pA,col,alpha:1});});}
   {const tri=[],parts=[];vomSolids().forEach(v=>{const t0=tri.length;tri.push(...v.tri);parts.push({a:t0,b:tri.length,name:v.name,meta:v.meta});});   // vomitory walls and headers
