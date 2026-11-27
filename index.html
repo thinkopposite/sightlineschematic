@@ -2438,7 +2438,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.16';
+const VERSION='2026.11.26.17';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3903,8 +3903,8 @@ function secNoMap(ti,AL){const m={};sectionList(ti,AL).forEach(q=>m[q.key]=q.no)
    straight run (a section crossing the joint with a corner counts); none in the corners (users add them by hand). Tiers: the
    concourse tiers only (wcTier): 2 tiers -> top of Tier 1; 3 tiers -> top of Tiers 1 and 2. Round bowls (not zoned): none here. */
 function wcDefaultSet(ti,AL){const out=new Set();AL=AL||(M&&M.AL);const T=AL&&AL[ti];if(!T||!zoned(P)||!wcTier(ti))return out;const at={};
-  Object.values(T).forEach(Lz=>{const gl=Lz.ch.map((g,i)=>g.t==='LINE'?i:-1).filter(i=>i>=0);Lz.ais.forEach(a=>{if(gl.includes(a.i))at[a.id]=Lz.k;});});
-  const by={};sectionList(ti,AL).forEach(q=>{const k=at[q.mid.l]!=null?at[q.mid.l]:at[q.mid.r];if(k==null)return;const pc=q.mid.pieces.find(x=>x.Lz.k===k);(by[k]=by[k]||[]).push({no:q.no,a:pc?pc.a:0});});
+  Object.values(T).forEach(Lz=>{const gl=Lz.ch.map((g,i)=>g.t==='LINE'||g.side?i:-1).filter(i=>i>=0);   /* the stand's run: straight, or its curved stand arc on a curved bowl (decision 319) */Lz.ais.forEach(a=>{if(gl.includes(a.i))at[a.id]=Lz.k;});});
+  const by={},cb=curvedBowl();sectionList(ti,AL).forEach(q=>{const k=at[q.mid.l]!=null?at[q.mid.l]:at[q.mid.r];if(k==null)return;if(cb&&(at[q.mid.l]==null||at[q.mid.r]==null))return;   /* curved bowl: both aisles on the stand arc, so the corner sections stay without (decision 319) */const pc=q.mid.pieces.find(x=>x.Lz.k===k);(by[k]=by[k]||[]).push({no:q.no,a:pc?pc.a:0});});
   Object.values(by).forEach(L=>L.forEach(x=>out.add(x.no)));   /* every rectangular section of each stand (decision 314) */
   return out;}
 const isPlat=(S,no,DW)=>{const e=S[no];if(e&&e.off)return false;return DW?DW.has(+no):!!(e&&e.wc);};
