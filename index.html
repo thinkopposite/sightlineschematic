@@ -2086,9 +2086,11 @@ function topSE(T){if(!T)return null;const c=SEC.get(T);if(c&&c.sig===JSON.string
   const g=n=>Math.pow(best.p[0]/b,n)+Math.pow(best.p[1]/a,n)-1;let lo=1.5,hi=30,n=2;if(g(hi)>0)n=hi;else if(g(lo)<0)n=lo;else{for(let k=0;k<50;k++){const m=(lo+hi)/2;if(g(m)>0)lo=m;else hi=m;}n=(lo+hi)/2;}
   const o={sig:JSON.stringify(P.topArc),a,b,n,loc,inside:p=>{const q=loc(p);return Math.pow(q[0]/b,n)+Math.pow(q[1]/a,n)<=1;}};SEC.set(T,o);return o;}
 /* where row j of a stand may hold seats (chain s at depth d), or null when the whole row is in use */
-function arcCut(Lz,j,d){const r=Lz.tr[j];if(!r||r.arcE==null)return null;const E=topSE(Lz.grp);if(!E)return null;const dB=(r.x+r.T)/1000,Ld=chainLen(Lz.ch,d),gi=runIdx(Lz.ch);
-  const ins=sv=>{const c=chainAt(Lz.ch,sv,d);return E.inside(segPt(Lz.ch[c.i],c.f,dB));};let acc=0;for(let i=0;i<gi;i++)acc+=segLen(Lz.ch[i],d);const sm=acc+segLen(Lz.ch[gi],d)/2;
-  if(!ins(sm))return [0,0];const edge=(o,i)=>{if(ins(o))return o;let a=i,b=o;for(let k=0;k<30;k++){const m=(a+b)/2;if(ins(m))a=m;else b=m;}return a;};return [edge(0,sm),edge(Ld,sm)];}
+function arcCut(Lz,j,d){const r=Lz.tr[j];if(!r||r.arcE==null)return null;const E=topSE(Lz.grp);if(!E)return null;const dB=(r.x+r.T)/1000,Ld=chainLen(Lz.ch,d);
+  /* decision 329e: every stretch of the row whose back lies inside the curve (a row can leave the curve at a corner and come back in further on), as [[s0,s1],...] */
+  const ins=sv=>{const c=chainAt(Lz.ch,sv,d);return E.inside(segPt(Lz.ch[c.i],c.f,dB));},N=Math.max(8,Math.ceil(Ld/0.1)),out=[];let prev=ins(0),s0=prev?0:null;
+  const edge=(a,b,inA)=>{for(let k=0;k<30;k++){const m=(a+b)/2;if(ins(m)===inA)a=m;else b=m;}return inA?a:b;};
+  for(let q=1;q<=N;q++){const sv=Ld*q/N,cur=ins(sv);if(cur!==prev){const e=edge(Ld*(q-1)/N,sv,prev);if(cur)s0=e;else{out.push([s0,e]);s0=null;}}prev=cur;}if(s0!=null)out.push([s0,Ld]);return out;}
 /* the area beyond the curved top edge, per stand (plan coordinates, m) */
 function arcVoids(ti,AL){AL=AL||(M&&M.AL);const out=[];if(!topArcOn(P,ti)||!AL||!AL[ti])return out;
   Object.values(AL[ti]).forEach(Lz=>{const ra=Lz.tr.find(r=>r.arcE!=null);if(!ra)return;const E=topSE(Lz.grp||AL[ti]);if(!E)return;const last=Lz.tr[Lz.tr.length-1],bN=(ra.x+ra.T-ra.arcE)/1000,dO=(last.x+last.T)/1000+0.02,I=[],O=[];
@@ -2098,13 +2100,13 @@ function arcVoids(ti,AL){AL=AL||(M&&M.AL);const out=[];if(!topArcOn(P,ti)||!AL||
 /* the last row an aisle runs up to (decision 329) */
 function arcAisleLast(Lz,ai){const n=Lz.tr.length,A=AIS(),w=cutW(ai,A.w/1000),g=gapA(ai,(A.gap||0)/1000);for(let j=n-1;j>=0;j--){const r=Lz.tr[j],d=(r.x+r.T/2)/1000,AC=arcCut(Lz,j,d);if(!AC)return j;const sc=chainS(Lz.ch,ai,d),sw=r.seatW/1000,eR=sc+w/2+g,eL=sc-w/2-g;   /* decision 329d: the aisle reaches a row only where a whole seat lies inside the curve beside it */
   const E=topSE(Lz.grp),dB=(r.x+r.T)/1000,inB=!E||E.inside(chainPtS(Lz.ch,chainS(Lz.ch,ai,dB),dB));   /* the whole tread at the aisle lies inside the curve */
-  if(inB&&AC[0]<=sc&&AC[1]>=sc&&((AC[0]<=eR+1e-3&&AC[1]>=eR+sw)||(AC[1]>=eL-1e-3&&AC[0]<=eL-sw)))return j;}return -1;}   /* and the aisle's own centre line lies inside the curve */
+  if(inB&&AC.some(([u,v])=>u<=sc&&v>=sc)&&AC.some(([u,v])=>(u<=eR+1e-3&&v>=eR+sw)||(v>=eL-1e-3&&u<=eL-sw)))return j;}return -1;}   /* and the aisle's own centre line lies inside the curve */
 function rowSections(Lz,j){const A=AIS(),r=Lz.tr[j],d=(r.x+r.T/2)/1000,Ld=chainLen(Lz.ch,d),sw=r.seatW/1000,wA=A.w/1000,gp=(A.gap||0)/1000,inV=false,wV=(A.vomW+2*vomWall())/1000+2*wA;
   let prev=0,cut=false;const secs=[],cuts=[];                            // each row end at an aisle keeps the end-seat space (construction tolerance)
   const K=chainKinks(Lz.ch,d,r.T/1000),kd=(p0,p1)=>K.reduce((t,k)=>t+Math.max(0,Math.min(p1,k.s+k.e)-Math.max(p0,k.s-k.e)),0);   // knee space at each bend of the row
   let eff=(p0,p1)=>{const z=K.map(k=>[k.s-k.e,k.s+k.e]).filter(q=>q[1]>p0&&q[0]<p1).sort((x,y)=>x[0]-y[0]);if(!z.length)return p1-p0;   // runs between bends each hold whole seats
     let n=0,s0=p0;for(const q of z){n+=Math.max(0,Math.floor((q[0]-s0)/sw+1e-9));s0=Math.max(s0,q[1]);}n+=Math.max(0,Math.floor((p1-s0)/sw+1e-9));return n*sw+1e-7;};
-  {const AC=arcCut(Lz,j,d);if(AC){const e0=eff;eff=(p0,p1)=>{p0=Math.max(p0,AC[0]);p1=Math.min(p1,AC[1]);return p1>p0?e0(p0,p1):0;};}}   /* the curved top edge (decision 329) */
+  {const AC=arcCut(Lz,j,d);if(AC){const e0=eff;eff=(p0,p1)=>AC.reduce((t,[a,b])=>{const q0=Math.max(p0,a),q1=Math.min(p1,b);return t+(q1>q0?e0(q0,q1):0);},0);}}   /* the curved top edge (decision 329) */
   let pg=gp;const raws=[];Lz.ais.forEach((a,i)=>{const iv=Lz.vom[i]&&a.vr&&a.vr.rows.includes(j),s=chainS(Lz.ch,a,d),w=iv?vomCut(a):cutW(a,wA),g=iv?gp:gapA(a,gp),p0=prev+(cut?pg:0),p1=s-w/2-g,rw=eff(p0,p1);raws.push(rw);secs.push(Math.max(0,Math.floor(rw/sw+1e-9)));cuts.push([s,w,g]);prev=s+w/2;pg=g;cut=true;});
   {const p0=prev+(cut?pg:0);raws.push(eff(p0,Ld));}secs.push(Math.max(0,Math.floor(raws[raws.length-1]/sw+1e-9)));if(r.cross){secs.fill(0);raws.fill(0);}return {secs,raws,cuts,seats:secs.reduce((a,b)=>a+b,0),d,Ld,sw,gp,K};}
 // Bends in a row (chamfered corners turn 45 degrees): seats either side keep their fronts apart so knees and feet don't meet.
@@ -2144,7 +2146,7 @@ function placeSeats(a,b,sw,K,fromEnd){const out=[],zones=K.map(k=>[k.s-k.e,k.s+k
 function ringSecs(ti,j,AL){AL=AL||(M&&M.AL);const T=AL&&AL[ti];if(!T)return [];const zs=GEO.map(k=>T[k]).filter(Boolean),ring=zs.length===4&&zs.every(z=>z.ring);const seq=[];
   zs.forEach(Lz=>{if(j>=Lz.tr.length){seq.push({brk:true});return;}const S=rowSections(Lz,j),n=Lz.ais.length;
     S.raws.forEach((rw,m)=>{const a=m?S.cuts[m-1][0]+S.cuts[m-1][1]/2+S.cuts[m-1][2]:0,b=m<n?S.cuts[m][0]-S.cuts[m][1]/2-S.cuts[m][2]:S.Ld;
-      const AC=arcCut(Lz,j,S.d),a2=AC?Math.max(a,AC[0]):a,b2=AC?Math.max(a2,Math.min(b,AC[1])):b;   /* the curved top edge (decision 329) */
+      const AC=arcCut(Lz,j,S.d),iv=AC?AC.map(([u,v])=>[Math.max(a,u),Math.min(b,v)]).filter(([u,v])=>v>u).sort((x,y)=>(y[1]-y[0])-(x[1]-x[0]))[0]:null,a2=AC?(iv?iv[0]:a):a,b2=AC?(iv?iv[1]:a):b;   /* the curved top edge (decision 329) */
       seq.push({raw:Math.max(0,rw),sw:S.sw,piece:{Lz,a:a2,b:b2,d:S.d,raw:Math.max(0,rw)}});if(m<n){const am=Lz.ais[m];if(!am.ghost||(Lz.vom[m]&&am.vr&&am.vr.rows&&am.vr.rows.includes(j)))seq.push({id:am.id});}});
     if(!ring)seq.push({brk:true});});
   const secs=[];let cur=null,lastId=null;
@@ -2478,7 +2480,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.27.02';
+const VERSION='2026.11.27.03';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
