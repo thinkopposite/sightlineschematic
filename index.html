@@ -2096,7 +2096,9 @@ function arcVoids(ti,AL){AL=AL||(M&&M.AL);const out=[];if(!topArcOn(P,ti)||!AL||
       I.push(segPt(g,f,dI));O.push(segPt(g,f,dO));}});
     out.push({Lz,pts:I.concat(O.reverse())});});return out;}
 /* the last row an aisle runs up to (decision 329) */
-function arcAisleLast(Lz,ai){const n=Lz.tr.length,w=cutW(ai,AIS().w/1000);for(let j=n-1;j>=0;j--){const r=Lz.tr[j],d=(r.x+r.T/2)/1000,AC=arcCut(Lz,j,d);if(!AC)return j;const sc=chainS(Lz.ch,ai,d);if(AC[1]>sc-w/2-0.6&&AC[0]<sc+w/2+0.6)return j;}return -1;}
+function arcAisleLast(Lz,ai){const n=Lz.tr.length,A=AIS(),w=cutW(ai,A.w/1000),g=gapA(ai,(A.gap||0)/1000);for(let j=n-1;j>=0;j--){const r=Lz.tr[j],d=(r.x+r.T/2)/1000,AC=arcCut(Lz,j,d);if(!AC)return j;const sc=chainS(Lz.ch,ai,d),sw=r.seatW/1000,eR=sc+w/2+g,eL=sc-w/2-g;   /* decision 329d: the aisle reaches a row only where a whole seat lies inside the curve beside it */
+  const E=topSE(Lz.grp),dB=(r.x+r.T)/1000,inB=!E||E.inside(chainPtS(Lz.ch,chainS(Lz.ch,ai,dB),dB));   /* the whole tread at the aisle lies inside the curve */
+  if(inB&&AC[0]<=sc&&AC[1]>=sc&&((AC[0]<=eR+1e-3&&AC[1]>=eR+sw)||(AC[1]>=eL-1e-3&&AC[0]<=eL-sw)))return j;}return -1;}   /* and the aisle's own centre line lies inside the curve */
 function rowSections(Lz,j){const A=AIS(),r=Lz.tr[j],d=(r.x+r.T/2)/1000,Ld=chainLen(Lz.ch,d),sw=r.seatW/1000,wA=A.w/1000,gp=(A.gap||0)/1000,inV=false,wV=(A.vomW+2*vomWall())/1000+2*wA;
   let prev=0,cut=false;const secs=[],cuts=[];                            // each row end at an aisle keeps the end-seat space (construction tolerance)
   const K=chainKinks(Lz.ch,d,r.T/1000),kd=(p0,p1)=>K.reduce((t,k)=>t+Math.max(0,Math.min(p1,k.s+k.e)-Math.max(p0,k.s-k.e)),0);   // knee space at each bend of the row
@@ -2476,7 +2478,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.27.01';
+const VERSION='2026.11.27.02';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3467,6 +3469,7 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
       for(let i=0;i<st0.length;i++){const a=st0[i],b=closed?st0[(i+1)%st0.length]:st0[i+1];st.push(a);if(!b)continue;
         const A=[a[0]+a[2]*d0,a[1]+a[3]*d0],B=[b[0]+b[2]*d0,b[1]+b[3]*d0],ab=[B[0]-A[0],B[1]-A[1]],l2=ab[0]*ab[0]+ab[1]*ab[1],ts=[];
         if(l2>1e-9)for(const p of EP){const t=((p[0]-A[0])*ab[0]+(p[1]-A[1])*ab[1])/l2;if(t>1e-4&&t<1-1e-4&&Math.hypot(A[0]+ab[0]*t-p[0],A[1]+ab[1]*t-p[1])<0.05)ts.push({t,n:p.length>2?[p[2],p[3]]:null});}
+        if(topArcOn(P,ti)){const l=Math.hypot(B[0]-A[0],B[1]-A[1]),kk=Math.ceil(l/0.75);for(let q=1;q<kk;q++)ts.push({t:q/kk,n:null});}   /* curved top edge: pieces of 0.75 m at most, so the stand follows the curve row by row (decision 329d) */
         ts.sort((x,y)=>x.t-y.t);ts.filter((q,i)=>!i||q.t-ts[i-1].t>1e-4).forEach(({t,n})=>{const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,nx=n?n[0]:a[2]+(b[2]-a[2])*t,ny=n?n[1]:a[3]+(b[3]-a[3])*t;
           st.push(n?[x+(a[2]+(b[2]-a[2])*t-n[0])*d0,y+(a[3]+(b[3]-a[3])*t-n[1])*d0,nx,ny,[x,y,a[2]+(b[2]-a[2])*t,a[3]+(b[3]-a[3])*t]]:[x,y,nx,ny]);});}   // a vom split: offset along the vom axis, kept on the same point at the front row
       {const dX=(rows[rows.length-1].x+rows[rows.length-1].T)/1000,Pd=(q,d)=>[q[0]+q[2]*d,q[1]+q[3]*d];   /* a vom split that would cross its neighbours within the tier (a vom wider than the corner it sits in, decision 82) falls back to the plain station */
@@ -3488,17 +3491,18 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
       /* curved top edge (decision 329): each piece of the stand stops at the last row inside the arc; step faces capped with the taller profile */
       const wk=[],AV=arcVoids(ti);if(AV.length){const av=AV.find(v=>v.Lz.k===z);if(av){const ex=rows.map((r,j)=>j).filter(j=>rows[j].arcE!=null);
         for(let s=0;s<np;s++){const a=st[s],b=st[(s+1)%m],at=dd=>{const x=(a[0]+b[0])/2,y=(a[1]+b[1])/2,nx=(a[2]+b[2])/2,ny=(a[3]+b[3])/2;return [x+nx*dd,-(y+ny*dd)];};
-          let k=rows.length;for(const j of ex){if(inPoly(at((rows[j].x+rows[j].T/2)/1000),av.pts)){k=j;break;}}if(k<rows.length)wk[s]=k;}}}
+          let k=rows.length;for(const j of ex){if(inPoly(at((rows[j].x+rows[j].T/2)/1000),av.pts)){k=j;break;}}if(k<rows.length)wk[s]=k;}
+        for(let s=0;s<np;s++){const a=st[s],b=st[(s+1)%m];if(Math.hypot(b[0]-a[0],b[1]-a[1])<0.05){const kp=s?wk[s-1]??rows.length:rows.length,kn=s+1<np?wk[s+1]??rows.length:rows.length,k=Math.min(kp,kn);if(k<rows.length)wk[s]=k;}}}}   /* a sliver piece takes the lower of its neighbours, so no cap stands up beyond the curve */
       const prS=s=>{const k=wk[s];if(k==null)return vp[s]||[pr];const rs=rows.slice(0,k);if(!vp[s])return [mm(profileOf(rs,ti))];
         const v=VZ.find(v=>v.profs===vp[s]);if(!v)return [mm(profileOf(rs,ti))];return [v.sV?mm(profileOf(rs.slice(0,v.sV),ti)):null,rs.length>v.sV+v.kV+1?mm(profileOf(rs.slice(v.sV+v.kV),-1)):null].filter(Boolean);};
       for(let s=0;s<np;s++){if(hid[s])continue;const s2=(s+1)%m;for(const q0 of prS(s)){const nq=q0.length;for(let i=0;i<nq;i++){const i2=(i+1)%nq,q=[V(s,i,q0),V(s,i2,q0),V(s2,i2,q0),V(s2,i,q0)];tri.push(q[0],q[1],q[2],q[0],q[2],q[3]);
         if(Math.abs(q0[i][1]-q0[i2][1])<1e-6&&q0[i2][0]>q0[i][0])edges.push(q[0],q[3]);}}}   // tread nosing
       // end caps: at every cut between a kept and an open piece, and at the two ends of a stand that does not close on itself
-      const ear=earClip(pr),cap=s=>ear.forEach(([a,b,c2])=>tri.push(V(s,a),V(s,b),V(s,c2)));
-      for(let s=0;s<np;s++){const pv=s?s-1:(closed?np-1:-1);if(pv>=0&&!!hid[s]!==!!hid[pv])cap(s);}
+      const ear=earClip(pr),cap=(s,sg)=>{const k=wk[sg!=null?sg:s];if(k==null){ear.forEach(([a,b,c2])=>tri.push(V(s,a),V(s,b),V(s,c2)));return;}const q=mm(profileOf(rows.slice(0,k),ti));earClip(q).forEach(([a,b,c2])=>tri.push(V(s,a,q),V(s,b,q),V(s,c2,q)));};   /* end caps follow the curved top too (decision 329d) */
+      for(let s=0;s<np;s++){const pv=s?s-1:(closed?np-1:-1);if(pv>=0&&!!hid[s]!==!!hid[pv])cap(s,hid[s]?pv:s);}
       if(wk.length)for(let s=0;s<np;s++){const pv=s?s-1:(closed?np-1:-1);if(pv<0||hid[s]||hid[pv])continue;const ka=wk[pv]??rows.length,kb=wk[s]??rows.length;if(ka===kb)continue;
         const qT=mm(profileOf(rows.slice(0,Math.max(ka,kb)),ti));earClip(qT).forEach(([a,b,c2])=>tri.push(V(s,a,qT),V(s,b,qT),V(s,c2,qT)));}
-      if(!closed){if(!hid[0])cap(0);if(!hid[np-1])cap(m-1);}
+      if(!closed){if(!hid[0])cap(0,0);if(!hid[np-1])cap(m-1,np-1);}
       const sn=zoneName(P,z);parts.push({a:t0,b:tri.length,name:`Tier ${ti+1} ${sn}`,meta:{ti,props:{Tier:ti+1,Stand:sn,Rows:rows.length,Seats:Math.round(((M.zoneSeats||[])[ti]||{})[z]||0),'Row 1 tread height':+(rows[0].z/1000).toFixed(4),'Top tread height':+(rows[rows.length-1].z/1000).toFixed(4)}}});}
     out.push({name:`Tier ${ti+1}`,kind:'stand',tri,parts,col:rgbOf(tierFill(ti))});});
   {const tri=[],parts=[];for(const pc of aislePieces()){if(gone.has(pc.aisle))continue;const t0=tri.length;for(const fc of pc.faces){const q=fc.idx.map(i=>pc.V[i]);
