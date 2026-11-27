@@ -2241,7 +2241,7 @@ function metrics(P,ZR,CH){SLC=null;
       h=Math.min(h,u0.z-LEG2-lb.z);   /* clear height under the upper-tier leg wall, over the top tread below */
       heads.push({zone:k,tier:ti,h});}}
   const rails=rows.filter(r=>r.railC!=null&&r.railC<0),lowHead=heads.filter(h=>h.h<P.minHead-0.5);
-  if(ADA){cap+=ADA.comp;ADA.byTier.forEach((t,ti)=>tierSeats[ti]=(tierSeats[ti]||0)+t.comp);adaFinish(ADA,Math.round(cap));}
+  if(ADA){adaFinish(ADA,Math.round(cap));}   /* decision 322: no seats on the platforms; wheelchair spaces and companion seats are reported apart (and count in the spectators for the code) */
   return {AL,ADA,omit,cap:Math.round(cap),tierSeats:tierSeats.map(x=>Math.round(x||0)),zoneSeats,worst,steep,rails,heads,lowHead,
     below:cs.filter(r=>status(r)!=='pass').length,over:rk.filter(overRake).length,height,depth,vd,rows:rows.length};
 }
@@ -2438,7 +2438,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.22';
+const VERSION='2026.11.26.23';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3406,7 +3406,7 @@ function drawIso(){
 // ---------- 3D view (WebGL; three.js r147 in vendor/three): the live bowl, rotate / pan / zoom; .glb download ----------
 // model coordinates as in the isometric view (x, y north, z up, metres); three.js is y-up: (x, y, z) -> (x, z, -y)
 const V3={on:false,ready:null,r:null,scene:null,cam:null,ctl:null,grp:null,tm:null,fitted:false,view:'SE',proj:'persp',oh:100};
-function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[],gp=(AIS().gap||0)/1000;
+function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[],unitLines=[],gp=(AIS().gap||0)/1000;
   const rgbOf=v=>{v=String(v).trim();if(/^#[0-9a-f]{6}$/i.test(v))return [1,3,5].map(i=>parseInt(v.slice(i,i+2),16));const m=v.match(/\d+/g);return m?m.slice(0,3).map(Number):[180,180,180];};
   let bp=boundary(P).map(([x,y])=>[x,-y]);if(polyArea(bp)<0)bp.reverse();
   CH.forEach((c,ti)=>{const tri=[],parts=[];
@@ -3461,6 +3461,7 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
         secGeom(ti,q.key,nr-3,nr-2,RS,true,WC_SETBACK/1000).polys.forEach(pp=>{const pts=pp.map(([x,y])=>[x,-y]);   /* front face 6 in behind the row riser */if(pts.length<3)return;pz.push({pts,z0,z1});
           earClip(pts).forEach(([a,b,c2])=>tri.push([...pts[a],z1],[...pts[b],z1],[...pts[c2],z1]));
           for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];tri.push([...a,z0],[...b,z0],[...b,z1],[...a,z0],[...b,z1],[...a,z1]);}});
+        wcUnits(ti,q.key).quads.forEach(Q=>{const V=Q.map(p=>[p[0],-p[1],z1+0.012]);for(let i=0;i<4;i++)unitLines.push(V[i],V[(i+1)%4]);});   /* wheelchair + companion units, dashed on the platform (decision 322) */
         if(tri.length>t0)parts.push({a:t0,b:tri.length,name:`Wheelchair platform ${q.no}`,meta:{ti,mark:'WC-'+q.no,props:{Tier:ti+1,Section:q.no,Stand:w.stand,'Wheelchair spaces':w.wc,'Companion seats':w.comp,'Platform level':+z1.toFixed(4),'Rows filled':w.rows.join('–')}}});});});
     if(tri.length)out.push({name:'Wheelchair platforms',kind:'platform',tri,parts,col:[255,69,0],prisms:pz});}
   /* guards in 3D (decisions 317b, 318): the 42 in aisle-end guard at the front end of every aisle (tier colour, 75% transparent) and the 26 in sightline
@@ -3484,7 +3485,7 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
       if(tA.length)out.push({name:`Tier ${ti+1} aisle-end guards (42 in)`,kind:'guard',tri:tA,parts:pA,col,alpha:1});});}
   {const tri=[],parts=[];vomSolids().forEach(v=>{const t0=tri.length;tri.push(...v.tri);parts.push({a:t0,b:tri.length,name:v.name,meta:v.meta});});   // vomitory walls and headers
     if(tri.length)out.push({name:'Vomitories (walls and headers)',kind:'vom',tri,parts,col:[150,150,146]});}
-  return {groups:out,edges};}
+  return {groups:out,edges,unitLines};}
 // Archivo (the plan's typeface), embedded in the field texture: an SVG drawn as an image can't reach the page's web fonts
 let ARCHIVO_CSS=null;async function archivoCSS(){if(ARCHIVO_CSS!=null)return ARCHIVO_CSS;const b64=async f=>{const r=await fetch('vendor/fonts/'+f);if(!r.ok)throw 0;const u=new Uint8Array(await r.arrayBuffer());let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s);};
   try{ARCHIVO_CSS=`@font-face{font-family:'SL Helvetica';font-weight:400;src:url(data:font/ttf;base64,${await b64('TeXGyreHeros-400.ttf')}) format('truetype')}@font-face{font-family:'SL Helvetica';font-weight:700;src:url(data:font/ttf;base64,${await b64('TeXGyreHeros-700.ttf')}) format('truetype')}`;}catch(e){ARCHIVO_CSS='';}return ARCHIVO_CSS;}
@@ -3531,10 +3532,12 @@ function v3Proj(mode){if(!V3.ctl||mode===V3.proj){v3Tabs();return;}const from=V3
   if(mode==='ortho')to.position.copy(from.position);to.up.copy(from.up);V3.cam=to;V3.ctl.object=to;V3.proj=mode;V3.ctl.update();v3Tabs();v3Render();}
 function v3Tabs(){document.querySelectorAll('#v3Tabs [data-v3]').forEach(b=>b.classList.toggle('on',b.dataset.v3===V3.view));document.querySelectorAll('#v3Tabs [data-v3p]').forEach(b=>b.classList.toggle('on',b.dataset.v3p===V3.proj));}
 function v3Render(){if(V3.r){V3.r.setClearColor(new THREE.Color('#C0C0C0'));   /* light-mid grey sky (decision 90) */V3.r.render(V3.scene,V3.cam);}}
-async function v3Build(){if(!V3.on||!M)return;await v3Init();await archivoCSS();const {groups,edges}=model3D(),T=THREE,g=new T.Group(),to=p=>[p[0],p[2],-p[1]];
+async function v3Build(){if(!V3.on||!M)return;await v3Init();await archivoCSS();const {groups,edges,unitLines}=model3D(),T=THREE,g=new T.Group(),to=p=>[p[0],p[2],-p[1]];
   for(const G of groups){if(!G.tri.length)continue;const a=new Float32Array(G.tri.length*3);G.tri.forEach((p,i)=>{const v=to(p);a[i*3]=v[0];a[i*3+1]=v[1];a[i*3+2]=v[2];});
     const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(a,3));geo.computeVertexNormals();
     const mesh=new T.Mesh(geo,new T.MeshLambertMaterial({color:new T.Color(`rgb(${G.col.join(',')})`),side:T.DoubleSide,flatShading:true,...(G.alpha<1?{transparent:true,opacity:G.alpha,depthWrite:false}:{})}));   /* guards: see-through (decision 318) */mesh.name=G.name;g.add(mesh);}
+  if(unitLines&&unitLines.length){const a=new Float32Array(unitLines.length*3);unitLines.forEach((p,i)=>{const v=to(p);a[i*3]=v[0];a[i*3+1]=v[1];a[i*3+2]=v[2];});const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(a,3));
+    const ln=new T.LineSegments(geo,new T.LineDashedMaterial({color:0x111111,dashSize:0.15,gapSize:0.1}));ln.computeLineDistances();ln.name='Wheelchair and companion units';g.add(ln);}
   if(edges.length){const a=new Float32Array(edges.length*3);edges.forEach((p,i)=>{const v=to(p);a[i*3]=v[0];a[i*3+1]=v[1]+0.003;a[i*3+2]=v[2];});const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(a,3));
     const ln=new T.LineSegments(geo,new T.LineBasicMaterial({color:0x000000,transparent:true,opacity:0.16}));ln.name='Nosings';g.add(ln);}
   // ground and field
@@ -4379,9 +4382,10 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CE
     f.Lz.tr.forEach((r,j)=>{const st=aisleStep(f.Lz.tr,j),w=cutW(f.a,wA);for(let k=0;k<st.n;k++){const d=(r.x+k*r.T/st.n)/1000,s=chainS(f.Lz.ch,f.a,d),p=loc(chainPtS(f.Lz.ch,s-w/2,d)),q=loc(chainPtS(f.Lz.ch,s+w/2,d));
       aisSvg+=`<path d="M${F(p[0])} ${F(p[1])}L${F(q[0])} ${F(q[1])}" fill="none" stroke="var(--ink)" stroke-width="${k?0.35:0.6}" vector-effect="non-scaling-stroke"/>`;}});}   // the row riser and each aisle step nosing
   // treads, seats, rows over the code limit, seats left out by the section cap
-  rows.forEach((secs,j)=>secs.forEach(sc=>{const over=sc.n>ibc,omit=Math.max(0,sc.n-cap),list=[],fe=seatsFromEnd(T,sc);
+  const wcMap=secNoMap(ti),wcSS=P.secs||{},platKey=sc=>{const no=wcMap[sc.l+'_'+sc.r],e=no&&wcSS[no];return !!(e&&e.wc&&!e.off&&wcTier(ti)&&nr>=4);},platKeys=new Set();   /* decision 322: platform rows carry no seats */
+  rows.forEach((secs,j)=>secs.forEach(sc=>{const over=sc.n>ibc,omit=Math.max(0,sc.n-cap),list=[],fe=seatsFromEnd(T,sc),inPl=platKey(sc)&&(j===nr-3||j===nr-2);if(platKey(sc))platKeys.add(sc.l+'_'+sc.r);
     const all=sectionSeats(T,sc,j);   // start 4 in from the aisles square to the rows; one placement across stand joints
-    sc.pieces.forEach((pc,pi)=>{const r=pc.Lz.tr[j];if(!r)return;const sw=r.seatW/1000,pos=all.filter(x=>x.pc===pc).map(x=>x.s0);
+    sc.pieces.forEach((pc,pi)=>{const r=pc.Lz.tr[j];if(!r)return;const sw=r.seatW/1000,pos=inPl?[]:all.filter(x=>x.pc===pc).map(x=>x.s0);
       // tread band across the piece (and its end spaces)
       const N=14,Fr=[],Bk=[];for(let q=0;q<=N;q++){const s=pc.a-gp+(pc.b-pc.a+2*gp)*q/N,a=chainAt(pc.Lz.ch,s,pc.d),gg=pc.Lz.ch[a.i];Fr.push(loc(segPt(gg,a.f,r.x/1000)));Bk.push(loc(segPt(gg,a.f,(r.x+r.T)/1000)));}
       pts.push(...Fr,...Bk);rowsSvg+=`<path d="${poly(Fr,Bk)}" fill="${over?'#FF8A8A':tierFill(ti)}" fill-opacity="${over?.45:.28}" stroke="var(--ink)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`;
@@ -4403,6 +4407,10 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CE
       if(cut.has(i))omitSvg+=`<path d="${d}" fill="none" stroke="#C0392B" stroke-width="0.7" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/><path d="M${F(q[0][0])} ${F(q[0][1])}L${F(q[2][0])} ${F(q[2][1])}M${F(q[1][0])} ${F(q[1][1])}L${F(q[3][0])} ${F(q[3][1])}" stroke="#C0392B" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`;
       else seatSvg+=`<path d="${d}" fill="${tierFill(ti)}" fill-opacity=".6" stroke="var(--ink)" stroke-width="0.4" vector-effect="non-scaling-stroke"/><path d="M${F(q[4][0])} ${F(q[4][1])}L${F(q[5][0])} ${F(q[5][1])}" stroke="var(--ink)" stroke-width="0.45" stroke-dasharray="2.5 1.5" vector-effect="non-scaling-stroke"/>`
         +(()=>{const c=[(q[0][0]+q[1][0]+q[2][0]+q[3][0])/4,(q[0][1]+q[1][1]+q[2][1]+q[3][1])/4],w=Math.hypot(q[1][0]-q[0][0],q[1][1]-q[0][1]);return `<text x="${F(c[0])}" y="${F(c[1])}" font-size="${F(w*.42)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${num[i]}</text>`;})();});}));
+  {const RC={},RS=(t,j)=>RC[t+':'+j]||(RC[t+':'+j]=ringSecs(t,j));platKeys.forEach(key=>{   /* the platform (6 in behind the row riser) and its wheelchair + companion units, dashed (decision 322) */
+    secGeom(ti,key,nr-3,nr-2,RS,true,WC_SETBACK/1000).polys.forEach(pp=>{const Q=pp.map(loc);pts.push(...Q);seatSvg+=`<path d="M${Q.map(q=>F(q[0])+' '+F(q[1])).join('L')}Z" fill="#FF4500" fill-opacity=".3" stroke="#B33000" stroke-width="0.8" vector-effect="non-scaling-stroke"><title>Wheelchair platform</title></path>`;});
+    const U=wcUnits(ti,key);U.quads.forEach((Qd,i)=>{const Q=Qd.map(loc);seatSvg+=`<path d="M${Q.map(q=>F(q[0])+' '+F(q[1])).join('L')}Z" fill="none" stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"><title>Wheelchair and companion unit ${i+1}: 56" x 48"</title></path>`;});
+    if(U.quads.length){const c=U.quads[Math.floor(U.quads.length/2)].map(loc),cx=(c[0][0]+c[2][0])/2,cy=(c[0][1]+c[2][1])/2,w=Math.hypot(c[1][0]-c[0][0],c[1][1]-c[0][1]);txt+=`<text x="${F(cx)}" y="${F(cy)}" font-size="${F(w*.22)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${U.n} units, 56" × 48"</text>`;}});}
   if(!pts.length)return '<p class="empty" style="padding:16px">No corner section on this tier.</p>';
   const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=minOf(xs),x1=maxOf(xs),y0=minOf(ys),y1=maxOf(ys);
   if(o.measure)return {w:x1-x0,h:y1-y0};
