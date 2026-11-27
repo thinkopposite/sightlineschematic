@@ -2480,7 +2480,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.27.05';
+const VERSION='2026.11.27.06';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3491,10 +3491,10 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
       if(offT.length)for(let s=0;s<np;s++){const a=st[s],b=st[(s+1)%m],at=t=>{const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,nx=a[2]+(b[2]-a[2])*t,ny=a[3]+(b[3]-a[3])*t;return [x+nx*dm,-(y+ny*dm)];};
         hid[s]=[.25,.75].every(t=>{const p=at(t);return offT.some(q=>inPoly(p,q));});}
       /* curved top edge (decision 329): each piece of the stand stops at the last row inside the arc; step faces capped with the taller profile */
-      const wk=[],AV=arcVoids(ti);if(AV.length){const av=AV.find(v=>v.Lz.k===z);if(av){const ex=rows.map((r,j)=>j).filter(j=>rows[j].arcE!=null);
-        for(let s=0;s<np;s++){const a=st[s],b=st[(s+1)%m],at=dd=>{const x=(a[0]+b[0])/2,y=(a[1]+b[1])/2,nx=(a[2]+b[2])/2,ny=(a[3]+b[3])/2;return [x+nx*dd,-(y+ny*dd)];};
-          let k=rows.length;for(const j of ex){if(inPoly(at((rows[j].x+rows[j].T/2)/1000),av.pts)){k=j;break;}}if(k<rows.length)wk[s]=k;}
-        for(let s=0;s<np;s++){const a=st[s],b=st[(s+1)%m];if(Math.hypot(b[0]-a[0],b[1]-a[1])<0.05){const kp=s?wk[s-1]??rows.length:rows.length,kn=s+1<np?wk[s+1]??rows.length:rows.length,k=Math.min(kp,kn);if(k<rows.length)wk[s]=k;}}}}   /* a sliver piece takes the lower of its neighbours, so no cap stands up beyond the curve */
+      const wk=[],SE=topArcOn(P,ti)&&M&&M.AL?topSE(M.AL[ti]):null;if(SE){const ex=rows.map((r,j)=>j).filter(j=>rows[j].arcE!=null);   /* decision 331a: tested against the curve itself, so both halves of the bowl match */
+        for(let s=0;s<np;s++){const a=st[s],b=st[(s+1)%m],at=dd=>{const x=(a[0]+b[0])/2,y=(a[1]+b[1])/2,nx=(a[2]+b[2])/2,ny=(a[3]+b[3])/2,l=Math.hypot(nx,ny)||1;return [x+nx/l*dd,-(y+ny/l*dd)];};
+          let k=rows.length;for(const j of ex){if(!SE.inside(at((rows[j].x+rows[j].T)/1000))){k=j;break;}}if(k<rows.length)wk[s]=k;}
+        for(let s=0;s<np;s++){const a=st[s],b=st[(s+1)%m];if(Math.hypot(b[0]-a[0],b[1]-a[1])<0.05){const kp=s?wk[s-1]??rows.length:rows.length,kn=s+1<np?wk[s+1]??rows.length:rows.length,k=Math.min(kp,kn);if(k<rows.length)wk[s]=k;}}}   /* a sliver piece takes the lower of its neighbours, so no cap stands up beyond the curve */
       const prS=s=>{const k=wk[s];if(k==null)return vp[s]||[pr];const rs=rows.slice(0,k);if(!vp[s])return [mm(profileOf(rs,ti))];
         const v=VZ.find(v=>v.profs===vp[s]);if(!v)return [mm(profileOf(rs,ti))];return [v.sV?mm(profileOf(rs.slice(0,v.sV),ti)):null,rs.length>v.sV+v.kV+1?mm(profileOf(rs.slice(v.sV+v.kV),-1)):null].filter(Boolean);};
       for(let s=0;s<np;s++){if(hid[s])continue;const s2=(s+1)%m;for(const q0 of prS(s)){const nq=q0.length;for(let i=0;i<nq;i++){const i2=(i+1)%nq,q=[V(s,i,q0),V(s,i2,q0),V(s2,i2,q0),V(s2,i,q0)];tri.push(q[0],q[1],q[2],q[0],q[2],q[3]);
