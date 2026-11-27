@@ -2476,7 +2476,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.32';
+const VERSION='2026.11.26.33';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2787,9 +2787,10 @@ function renderControls(){
 }
   if(zoned(P)&&P.tierCount>=2){const A=P.topArc||{},on=!!A.on,tt=P.tierCount,im=imperial(),fl=P.sport==='nfl'||P.sport==='ncaafb';   /* curved top edge of the top tier (decision 329) */
     h+=`<div class="lab">Top of Tier ${tt}</div><div class="seg">`+[['flat','Level top'],['arc','Curved top']].map(([k,n])=>`<button data-toparc="${k}" class="${(k==='arc')===on?'on':''}" aria-pressed="${(k==='arc')===on}">${n}</button>`).join('')+'</div>';
-    if(on)h+=slider('topArc.S',`Sideline top setback, ${fl?'50-yard line':'halfway'} (${im?"20' default":'6 m default'})`,0,im?40*0.3048:12,im?0.3048:0.25,'m')
-      +slider('topArc.E',`End top setback, centre line (${im?"10' default":'3 m default'})`,0,im?40*0.3048:12,im?0.3048:0.25,'m')
-      +`<p class="hint">The top edge of Tier ${tt} stays at its ${P.zt[tt-1].z.T.rows} rows at the ends of each stand and is pushed out by the setback at the ${fl?'50-yard line':'halfway line'} and the centre line, on an arc through both ends (as the curved bowl does at the front). The extra rows end row by row at the arc. Seats, egress, the plan and the 3D model follow.</p>`;}
+    const zt=P.zt[tt-1].z.T,tq=zt.tread/1000,nT=zt.rows,tl=L(zt.tread);   /* one tread per step (decision 329b) */
+    if(on)h+=slider('topArc.S',`Sideline top setback, ${fl?'50-yard line':'halfway'} (7 treads default)`,0,14*tq,tq,'m')
+      +slider('topArc.E',`End top setback, centre line (4 treads default)`,0,14*tq,tq,'m')
+      +`<p class="hint">Both setbacks are measured on plan beyond the back of row ${P.zt[tt-1].z.T.rows} (the tier's own top row), in steps of one ${L(P.zt[tt-1].z.T.tread)} tread. The top edge of Tier ${tt} stays at its ${P.zt[tt-1].z.T.rows} rows at the ends of each stand and is pushed out by the setback at the ${fl?'50-yard line':'halfway line'} and the centre line, on an arc through both ends (as the curved bowl does at the front). The extra rows end row by row at the arc. Seats, egress, the plan and the 3D model follow.</p>`;}
   h+='<div class="lab">Bowl colours (HEX)</div>'+[0,1,2].map(i=>`<div class="colrow"><label for="tcol${i}">Tier ${i+1}</label>`
     +`<input type="color" class="swatch" data-tcolpick="${i}" value="${tierFill(i)}" aria-label="Pick the Tier ${i+1} colour">`
     +`<input type="text" class="hex" id="tcol${i}" data-tcol="${i}" value="${tierFill(i)}" maxlength="7" spellcheck="false" autocomplete="off"></div>`).join('')
@@ -2895,7 +2896,7 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.eg){EDIT.g=+b.dataset.eg;renderControls();return;}
   else if(b.dataset.link){relink(EDIT.tier,b.dataset.link);}
   else if(b.dataset.corner){if(b.dataset.corner!=='round'&&(P.bulge.S>0||P.bulge.E>0))return;P.zt.forEach(t=>t.corners=b.dataset.corner);}   /* curved bowl: round only (decision 315) */
-  else if(b.dataset.toparc){const w=!imperial();P.topArc=Object.assign({S:w?6:20*0.3048,E:w?3:10*0.3048},P.topArc||{},{on:b.dataset.toparc==='arc'});}   /* decision 329 */
+  else if(b.dataset.toparc){const tq=P.zt[P.tierCount-1].z.T.tread/1000;P.topArc=Object.assign({S:7*tq,E:4*tq},P.topArc||{},{on:b.dataset.toparc==='arc'});}   /* defaults in whole treads (decision 329b) */   /* decision 329 */
   else if(b.dataset.bshape){const cv=P.bulge.S>0||P.bulge.E>0,w=!imperial();   /* bowl shape (decision 311): Straight bowl 0 / 0; Curved bowl 20' / 10' (6 m / 3 m) */
     if(b.dataset.bshape==='straight'){if(!cv)return;P.bulgeKeep={S:P.bulge.S,E:P.bulge.E};P.bulge.S=0;P.bulge.E=0;}
     else{if(cv)return;P.bulge.S=w?6:20*0.3048;P.bulge.E=w?3:10*0.3048;P.zt.forEach(t=>t.corners='round');}}   /* Curved bowl starts at its defaults: 20'-0" at the 50-yard line, 10'-0" at the centre line (6 m / 3 m) */
