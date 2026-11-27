@@ -1458,7 +1458,7 @@ function solveZone(P,k){
   const rows=[];let prev=null;const step=Math.max(1,P.step),bank=Math.max(1,Math.round(P.bank));
   for(let ti=0;ti<P.tierCount;ti++){
     const z=P.zt[ti].z[k];if(!z.on)break;
-    const tgt=z.target,nB=Math.max(1,Math.min(80,Math.round(z.rows))),aS=topArcOn(P,ti)?Math.max(topArcS(P,'T'),topArcS(P,'R'),topArcC(P)):0,n=Math.min(80,nB+(aS>0?Math.ceil(aS*1000/Math.max(500,z.tread)):0));   /* curved top edge: extra rows that the arc may reach (decision 329) */
+    const tgt=z.target,nB=Math.max(1,Math.min(80,Math.round(z.rows))),aS=topArcOn(P,ti)?Math.max(topArcS(P,'T'),topArcS(P,'R')):0,n=Math.min(80,nB+(aS>0?Math.ceil(aS*1000/Math.max(500,z.tread)):0));   /* curved top edge: extra rows that the arc may reach (decision 329) */
     const Tn=j=>Math.max(500,j===0?(z.tread0??z.tread):z.tread);   // bottom row, then typical (the top row is a typical row)
     const modes=z.basis==='both'?['sit','stand']:[z.basis==='stand'?'stand':'sit'];     // risers sized for these spectators
     const mk=(j,x,zz,p,riser)=>{const E={};for(const m of modes){const [sb,eh]=eyeAt(P,z.seat,Tn(j),m);E[m]={ex:x+sb,ez:zz+eh};}
@@ -2069,7 +2069,6 @@ const stepNote=(n,rh)=>n===1?`no aisle step (row riser ${L(rh)})`:`${stepName(n)
    tier's own rows; at the 50-yard line (sidelines, P.topArc.S) and the centre line (ends, P.topArc.E) it is pushed out by the setback, on a circular
    arc through both ends of the run. The rows beyond the tier's own count end row by row where they meet the arc. Top tier of a 2- or 3-tier bowl. */
 const topArcOn=(P,ti)=>!!(P.topArc&&P.topArc.on&&P.tierCount>=2&&ti===P.tierCount-1);
-const topArcC=P=>{const z=P.zt[P.tierCount-1].z.T;return Math.max(0,Math.round(+P.topArc.nC||0))*(z.tread||864)/1000;};   /* corner top setback, treads (decision 332) */
 const topArcS=(P,k)=>{const A=P.topArc,z=P.zt[P.tierCount-1].z[k]||P.zt[P.tierCount-1].z.T,n=isSide(k)?A.nS:A.nE;return Math.max(0,Math.round(+n||0))*(z.tread||864)/1000;};   /* setbacks in whole treads of the top tier (decision 329c) */
 const runIdx=ch=>{let i=ch.findIndex(g=>g.side);if(i<0){const L=ch.map((g,i)=>g.t==='LINE'?i:-1).filter(i=>i>=0);i=L.length?L[Math.floor(L.length/2)]:-1;}return i;};
 /* the arc's offset beyond the tier's own top row, m, at fraction f of the run (0 outside the run) */
@@ -2084,7 +2083,6 @@ function topSE(T){if(!T)return null;const c=SEC.get(T);if(c&&c.sig===JSON.string
   const pS=mid(sd,bS),pE=mid(en,bE),rS=Math.hypot(...pS),rE=Math.hypot(...pE),uS=[pS[0]/rS,pS[1]/rS],uE=[pE[0]/rE,pE[1]/rE],a=rS+topArcS(P,sd.k),b=rE+topArcS(P,en.k);
   const loc=p=>[Math.abs(p[0]*uE[0]+p[1]*uE[1]),Math.abs(p[0]*uS[0]+p[1]*uS[1])];
   const phd=Math.atan2(rS,rE);let best=null;for(const Lz of [en,sd]){const d=bk(Lz),L=chainLen(Lz.ch,d);for(let q=0;q<=400;q++){const p=loc(chainPtS(Lz.ch,L*q/400,d)),dv=Math.abs(Math.atan2(p[1],p[0])-phd);if(!best||dv<best.dv)best={dv,p};}}
-  {const c=topArcC(P),l=Math.hypot(...best.p);if(c>0&&l>0)best.p=[best.p[0]*(l+c)/l,best.p[1]*(l+c)/l];}   /* the corner pushed out by its own setback (decision 332) */
   const g=n=>Math.pow(best.p[0]/b,n)+Math.pow(best.p[1]/a,n)-1;let lo=1.5,hi=30,n=2;if(g(hi)>0)n=hi;else if(g(lo)<0)n=lo;else{for(let k=0;k<50;k++){const m=(lo+hi)/2;if(g(m)>0)lo=m;else hi=m;}n=(lo+hi)/2;}
   const o={sig:JSON.stringify(P.topArc),a,b,n,loc,inside:p=>{const q=loc(p);return Math.pow(q[0]/b,n)+Math.pow(q[1]/a,n)<=1;}};SEC.set(T,o);return o;}
 /* where row j of a stand may hold seats (chain s at depth d), or null when the whole row is in use */
@@ -2482,7 +2480,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.27.08';
+const VERSION='2026.11.27.09';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2795,8 +2793,8 @@ function renderControls(){
     h+=`<div class="lab">Top of Tier ${tt}</div><div class="seg">`+[['flat','Level top'],['arc','Curved top']].map(([k,n])=>`<button data-toparc="${k}" class="${(k==='arc')===on?'on':''}" aria-pressed="${(k==='arc')===on}">${n}</button>`).join('')+'</div>';
     const zt=P.zt[tt-1].z.T,tq=zt.tread/1000,nT=zt.rows,tl=L(zt.tread);   /* one tread per step (decision 329b) */
     if(on)h+=slider('topArc.nS',`Sideline top setback, ${fl?'50-yard line':'halfway'} (1 tread)`,0,14,1,'treads')
-      +slider('topArc.nE',`End top setback, centre line (1 tread)`,0,14,1,'treads')+slider('topArc.nC',`Corner top setback, 4 corners (1 tread)`,0,14,1,'treads')
-      +`<p class="hint">Both setbacks are counted in treads (${L(P.zt[tt-1].z.T.tread)} each) on plan beyond the back of row ${P.zt[tt-1].z.T.rows}, the tier's own top row; 0 is a level top. The corner setback pushes the curve out at the four corners (0 keeps the corners at the tier's own rows). The top edge of Tier ${tt} stays at its ${P.zt[tt-1].z.T.rows} rows at the ends of each stand and is pushed out by the setback at the ${fl?'50-yard line':'halfway line'} and the centre line, on an arc through both ends (as the curved bowl does at the front). The extra rows end row by row at the arc. Seats, egress, the plan and the 3D model follow.</p>`;}
+      +slider('topArc.nE',`End top setback, centre line (1 tread)`,0,14,1,'treads')
+      +`<p class="hint">Both setbacks are counted in treads (${L(P.zt[tt-1].z.T.tread)} each) on plan beyond the back of row ${P.zt[tt-1].z.T.rows}, the tier's own top row; 0 is a level top. The top edge of Tier ${tt} stays at its ${P.zt[tt-1].z.T.rows} rows at the ends of each stand and is pushed out by the setback at the ${fl?'50-yard line':'halfway line'} and the centre line, on an arc through both ends (as the curved bowl does at the front). The extra rows end row by row at the arc. Seats, egress, the plan and the 3D model follow.</p>`;}
   h+='<div class="lab">Bowl colours (HEX)</div>'+[0,1,2].map(i=>`<div class="colrow"><label for="tcol${i}">Tier ${i+1}</label>`
     +`<input type="color" class="swatch" data-tcolpick="${i}" value="${tierFill(i)}" aria-label="Pick the Tier ${i+1} colour">`
     +`<input type="text" class="hex" id="tcol${i}" data-tcol="${i}" value="${tierFill(i)}" maxlength="7" spellcheck="false" autocomplete="off"></div>`).join('')
@@ -2902,7 +2900,7 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.eg){EDIT.g=+b.dataset.eg;renderControls();return;}
   else if(b.dataset.link){relink(EDIT.tier,b.dataset.link);}
   else if(b.dataset.corner){if(b.dataset.corner!=='round'&&(P.bulge.S>0||P.bulge.E>0))return;P.zt.forEach(t=>t.corners=b.dataset.corner);}   /* curved bowl: round only (decision 315) */
-  else if(b.dataset.toparc){P.topArc=Object.assign({nS:0,nE:0,nC:0},P.topArc||{},{on:b.dataset.toparc==='arc'});}   /* 0 treads by default (decision 329c) */   /* decision 329 */
+  else if(b.dataset.toparc){P.topArc=Object.assign({nS:0,nE:0},P.topArc||{},{on:b.dataset.toparc==='arc'});}   /* 0 treads by default (decision 329c) */   /* decision 329 */
   else if(b.dataset.bshape){const cv=P.bulge.S>0||P.bulge.E>0,w=!imperial();   /* bowl shape (decision 311): Straight bowl 0 / 0; Curved bowl 20' / 10' (6 m / 3 m) */
     if(b.dataset.bshape==='straight'){if(!cv)return;P.bulgeKeep={S:P.bulge.S,E:P.bulge.E};P.bulge.S=0;P.bulge.E=0;}
     else{if(cv)return;P.bulge.S=8*bTread();P.bulge.E=4*bTread();P.zt.forEach(t=>t.corners='round');}}   /* Curved bowl starts at 8 treads at the 50-yard line and 4 at the centre line (decision 331) */
