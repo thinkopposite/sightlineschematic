@@ -2480,7 +2480,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.27.03';
+const VERSION='2026.11.27.05';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2675,16 +2675,17 @@ function applySport(k){const x=SPORTS[k],g=gapsOf(P);sportUnits(k);renderUnits()
 const DSTEP1=()=>imperial()?0.3048:0.3,DSTEPN=z=>((z&&z.tread)||34*25.4)/2000;   /* half the tier's typical row depth: 17" at the 34" default (decision 230) */
 function tierFronts(k){const rs=solveZone(P,k),f=[];rs.forEach(r=>{if(f[r.tier]==null)f[r.tier]=r.x/1000;});return f;}   // each tier's front riser from the point of focus, m
 function lowerTop(ti,k){const lo=solveZone(Object.assign({},P,{tierCount:Math.max(P.tierCount,ti+1)}),k).filter(r=>r.tier===ti-1);return lo[lo.length-1];}
-const BULGE_MAX={S:25,E:20};   // set-back limits in feet: sidelines 25', end stands 20' (decision 145)
+const BULGE_MAX={S:25,E:20};
+const bTread=()=>((P.zt[0].z.T||{}).tread||864)/1000,bTmax=k=>Math.floor((k==='S'?7.62:6.096)/bTread()+1e-6);   /* one Tier 1 tread (34" default) per step, within the 25' / 20' set-back limits (decisions 145, 331) */   // set-back limits in feet: sidelines 25', end stands 20' (decision 145)
 function get(path){if(path==='chairRaised'){const A=AIS();return (A.chairD||16*25.4)-(A.backD??2*25.4);}if(path==='chairBackrest')return AIS().backD??2*25.4;   /* decision 278: the chair depth used for clear width = raised chair depth + backrest depth */
-  if(path==='cvAll.target'){const z=P.zt[0].z[GEO.find(k=>P.zt[0].z[k])];return z.target;}if(path.startsWith('bulgeFt.'))return Math.round((P.bulge[path.slice(8)]||0)/0.3048);   // set-backs in whole feet (decisions 143, 144)
+  if(path==='cvAll.target'){const z=P.zt[0].z[GEO.find(k=>P.zt[0].z[k])];return z.target;}if(path.startsWith('bulgeFt.'))return Math.round((P.bulge[path.slice(8)]||0)/0.3048);if(path.startsWith('bulgeT.'))return Math.round((P.bulge[path.slice(7)]||0)/bTread()+1e-6);   /* curved bowl setbacks in treads (decision 331) */   // set-backs in whole feet (decisions 143, 144)
   if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.'),z=P.zt[+ti].z[ks[0]];
     if(p==='Zabs'){const t=lowerTop(+ti,ks[0]);return Math.round(((t?t.z:0)/1000+z.rise)*1e4)/1e4;}
     if(p==='X'&&z.X==null){const t=lowerTop(+ti,ks[0]);return t?Math.round(t.x/1000*1e4)/1e4:0;}
     if(p==='Xrel'){const f=tierFronts(ks[0]);return f[+ti]!=null&&f[+ti-1]!=null?Math.round((f[+ti]-f[+ti-1])*1e4)/1e4:0;}
     return z[p];}return path.split('.').reduce((o,k)=>o[k],P);}
 function set(path,v){if(path==='chairRaised'){const A=AIS(),bd=A.backD??2*25.4;A.backD=bd;A.chairD=Math.max(12*25.4,Math.min(14*25.4,+v))+bd;return;}if(path==='chairBackrest'){const A=AIS(),bd0=A.backD??2*25.4,r=(A.chairD||16*25.4)-bd0,bd=Math.max(0,Math.min(4*25.4,+v));A.backD=bd;A.chairD=r+bd;return;}
-  if(path==='cvAll.target'){for(let ti=0;ti<3;ti++)GEO.forEach(k=>{const z=P.zt[ti]&&P.zt[ti].z[k];if(z)z.target=v;});return;}if(path.startsWith('bulgeFt.')){const k=path.slice(8);P.bulge[k]=Math.max(0,Math.min(BULGE_MAX[k],Math.round(+v||0)))*0.3048;const e=document.getElementById('bulgeRad');if(e)e.textContent=bulgeRadTxt();return;}
+  if(path==='cvAll.target'){for(let ti=0;ti<3;ti++)GEO.forEach(k=>{const z=P.zt[ti]&&P.zt[ti].z[k];if(z)z.target=v;});return;}if(path.startsWith('bulgeT.')){const k=path.slice(7);P.bulge[k]=Math.max(0,Math.min(bTmax(k),Math.round(+v||0)))*bTread();const e=document.getElementById('bulgeRad');if(e)e.textContent=bulgeRadTxt();return;}if(path.startsWith('bulgeFt.')){const k=path.slice(8);P.bulge[k]=Math.max(0,Math.min(BULGE_MAX[k],Math.round(+v||0)))*0.3048;const e=document.getElementById('bulgeRad');if(e)e.textContent=bulgeRadTxt();return;}
   if(path.startsWith('zt.')){const [,ti,ks,p]=path.split('.');
     if(p==='Zabs'){for(const k of ks){const t=lowerTop(+ti,k);P.zt[+ti].z[k].rise=Math.max(RD().rise,v-(t?t.z:0)/1000);}return;}   // never under 10'-0" (3.0 m) above the tier below (decision 132)
     if(p==='Xrel'){const st=DSTEPN(P.zt[+ti].z[ks[0]]),q=Math.max(0,Math.round(v/st)*st);for(const k of ks){const z=P.zt[+ti].z[k];z.Xr=Math.round(q*1e6)/1e6;z.X=null;}renderControls();return;}   /* kept relative: moving the tier below carries this tier with it */   /* from the tier below's front riser, whole 34" steps (decision 229) */
@@ -2770,10 +2771,9 @@ function renderControls(){
     {const im=imperial(),cv=P.bulge.S>0||P.bulge.E>0,cs=P.zt[0].corners==='round'?'round':'chamfer';   /* bowl shape (decision 311): Straight bowl or Curved bowl; the curved bowl's setbacks below (decision 82) */
       h+='<div class="lab">Bowl shape</div><div class="seg shpseg">'+[['straight','Straight bowl'],['curved','Curved bowl']].map(([k,n])=>`<button data-bshape="${k}" class="${(k==='curved')===cv?'on':''}" aria-pressed="${(k==='curved')===cv}">${n}</button>`).join('')+'</div>'
         +'<div class="cfgcards shpcards" role="group" aria-label="Bowl shape">'+[['straight','Straight bowl','Stands parallel to the field'],['curved','Curved bowl','Stands set back at their middles']].map(([k,n,d])=>`<button type="button" class="cfgcard${(k==='curved')===cv?' on':''}" data-bshape="${k}" aria-pressed="${(k==='curved')===cv}" title="${n}: ${d}">${bowlIcon(k==='curved'?'curved':cs,P.cfg&&P.cfg!=='custom'&&P.cfg!=='stands'?P.cfg:'closed',P.sport,{thin:1})}<b>${n}</b><span>${d}</span></button>`).join('')+'</div>';
-      if(cv)h+=(im?slider('bulgeFt.S',`Sideline setback, ${P.sport==='nfl'||P.sport==='ncaafb'?'50-yard line':'halfway'} (20' default)`,0,25,1,"'")+slider('bulgeFt.E',`End setback, centre line (10' default)`,0,20,1,"'")
-          :slider('bulge.S','Sideline setback, halfway (6 m default)',0,7.5,im?0.3048:0.25,'m')+slider('bulge.E','End setback, centre line (3 m default)',0,6,im?0.3048:0.25,'m'))
-        +`<p class="hint">The stand ends stay at the front-row distance and the middle of each stand sits further back by the setback, so its rows are arcs through both ends of the field side (every tier follows). <span id="bulgeRad">${bulgeRadTxt()}</span> Aisles run radially. Straight bowl sets both to 0.</p>`;
-      else{const f=im?"0'-0\"":'0 m',fl=P.sport==='nfl'||P.sport==='ncaafb';h+=`<table class="fixed"><tr><td>Sideline setback, ${fl?'50-yard line':'halfway'}</td><td><b>${f}</b></td></tr><tr><td>End setback, centre line</td><td><b>${f}</b></td></tr></table><p class="hint">Every stand runs straight, parallel to the field. Curved bowl sets them back ${im?`20'-0" at ${fl?'the 50-yard line':'halfway'} and 10'-0"`:'6 m at halfway and 3 m'} at the centre line (defaults), adjustable.</p>`;}}
+      if(cv)h+=slider('bulgeT.S',`Sideline setback, ${P.sport==='nfl'||P.sport==='ncaafb'?'50-yard line':'halfway'} (1 tread; 8 treads default)`,0,bTmax('S'),1,'treads')+slider('bulgeT.E',`End setback, centre line (1 tread; 4 treads default)`,0,bTmax('E'),1,'treads')
+        +`<p class="hint">Setbacks are counted in Tier 1 treads (${L(P.zt[0].z.T.tread)} each). The stand ends stay at the front-row distance and the middle of each stand sits further back by the setback, so its rows are arcs through both ends of the field side (every tier follows). <span id="bulgeRad">${bulgeRadTxt()}</span> Aisles run radially. Straight bowl sets both to 0.</p>`;
+      else{const f=im?"0'-0\"":'0 m',fl=P.sport==='nfl'||P.sport==='ncaafb';h+=`<table class="fixed"><tr><td>Sideline setback, ${fl?'50-yard line':'halfway'}</td><td><b>${f}</b></td></tr><tr><td>End setback, centre line</td><td><b>${f}</b></td></tr></table><p class="hint">Every stand runs straight, parallel to the field. Curved bowl sets them back 8 treads at ${fl?'the 50-yard line':'halfway'} and 4 treads at the centre line (defaults), adjustable by the tread.</p>`;}}
     {const cvB=P.bulge.S>0||P.bulge.E>0;h+='<div class="lab">Corners</div>'+(cvB?'<table class="fixed"><tr><td>Round corner</td><td><b>Always with a curved bowl</b></td></tr></table>'   /* decision 315: no choice on a curved bowl */
       :'<div class="seg">'+[['chamfer','Chamfered corner'],['round','Round corner']].map(([k,n])=>`<button data-corner="${k}" class="${P.zt[0].corners===k?'on':''}">${n}</button>`).join('')+'</div>');}
     h+=''
@@ -2903,7 +2903,7 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.toparc){P.topArc=Object.assign({nS:0,nE:0},P.topArc||{},{on:b.dataset.toparc==='arc'});}   /* 0 treads by default (decision 329c) */   /* decision 329 */
   else if(b.dataset.bshape){const cv=P.bulge.S>0||P.bulge.E>0,w=!imperial();   /* bowl shape (decision 311): Straight bowl 0 / 0; Curved bowl 20' / 10' (6 m / 3 m) */
     if(b.dataset.bshape==='straight'){if(!cv)return;P.bulgeKeep={S:P.bulge.S,E:P.bulge.E};P.bulge.S=0;P.bulge.E=0;}
-    else{if(cv)return;P.bulge.S=w?6:20*0.3048;P.bulge.E=w?3:10*0.3048;P.zt.forEach(t=>t.corners='round');}}   /* Curved bowl starts at its defaults: 20'-0" at the 50-yard line, 10'-0" at the centre line (6 m / 3 m) */
+    else{if(cv)return;P.bulge.S=8*bTread();P.bulge.E=4*bTread();P.zt.forEach(t=>t.corners='round');}}   /* Curved bowl starts at 8 treads at the 50-yard line and 4 at the centre line (decision 331) */
   else if(b.dataset.resize){const q=$('quickCalc');if(q)q.click();return;}
   else if(b.dataset.cfgpick){P.cfg=b.dataset.cfgpick;if(P.cfg!=='stands')delete P.standT;toast(`Configuration: ${b.title}. Press Size the bowl to size the remaining stands to the target.`);}
   else if(b.dataset.st){const [k,t]=b.dataset.st.split(':');if(!standSet(k,+t))return;}
@@ -5904,7 +5904,7 @@ function renderProjInfo(){const el=$('projInfo');if(!el)return;
   $('piRegen').onclick=()=>{PROJ.number=newNumber(PROJ.country);$('piNum').value=PROJ.number;persist();};}
 /* ---------- control panel as a numbered workflow (decision 273): eight steps, one open at a time, each closed step showing its current values; explanations behind Notes;
    a Next button at the foot of each step; the results readout in the project bar ---------- */
-const PANEL={open:0,notes:new Set(),pop:-1};
+const PANEL={open:-1,notes:new Set(),pop:-1};   /* every step collapsed on opening (decision 330) */
 function panelSteps(){return [...document.querySelectorAll('aside section.step')];}
 function panelSum(i){try{const Sp=SPORTS[P.sport],n=P.tierCount,k0=GEO.find(k=>P.zt[0].z[k]),A=AIS();
   return [()=>`${Sp.name} (${Sp.org}) · ${fmt(P.capTarget)} seats · ${n} tier${n>1?'s':''}`,
@@ -6089,7 +6089,7 @@ function renderSetup(){let d=$('setupDlg');if(!d){d=document.createElement('div'
       +`</div><p class="su-hint">Next: the bowl shape and configuration.</p>`;}
   else if(st==='shape'){const w=SPORTS[SU.sport].region==='world';b=`<h2>Bowl shape</h2><div class="su-tiers su-3">`
       +[['chamfer','Straight, chamfered corners'],['round','Straight, round corners'],['curved','Curved, round corners']].map(([v,n])=>`<button class="su-tier${SU.shape===v?' on':''}" data-shape="${v}" aria-pressed="${SU.shape===v}">${bowlIcon(v,'closed',SU.sport)}<b${v==='curved'?' class="def" title="Default"':''}>${n}</b></button>`).join('')
-      +`</div><p class="su-hint">Curved stands are set back ${w?'6 m at the halfway line and 3 m at the centre of each end':`20'-0" at the 50-yard line and 10'-0" at the centre of each end`}; change them later under Bowl, Bowl shape. Round corners: one aisle in each Tier 1 corner, two in the upper tiers (Bowl, Corner aisles).</p>`;}
+      +`</div><p class="su-hint">Curved stands are set back 8 treads (${w?'about 6.9 m':`22'-8"`}) at the ${w?'halfway line':'50-yard line'} and 4 treads (${w?'about 3.5 m':`11'-4"`}) at the centre of each end; change them later under Bowl, Bowl shape. Round corners: one aisle in each Tier 1 corner, two in the upper tiers (Bowl, Corner aisles).</p>`;}
   else if(st==='config'){b=`<h2>Bowl configuration</h2><div class="su-tiers su-cfg">`
       +CFG_LIST(SU.sport).map(([v,n])=>`<button class="su-tier${SU.cfg===v?' on':''}" data-cfg="${v}" aria-pressed="${SU.cfg===v}">${bowlIcon(SU.shape,v,SU.sport)}<b${v==='closed'?' class="def" title="Default"':''}>${n}</b></button>`).join('')
       +`</div><p class="su-hint">Open stands are sections switched off (whole sections, cut on a corner aisle); the rows are then sized so the stands that remain hold ${fmt(SU.cap)} seats. Change it later under Bowl, Configuration.</p>`;}
@@ -6115,7 +6115,7 @@ async function setupClick(e){const t=e.target.closest('[data-su],[data-tier],[da
 async function setupFinish(){const I=SU.info||{name:PROJ.name,country:PROJ.country,region:PROJ.region,city:PROJ.city,number:newNumber(PROJ.country)};closeSetup();
   Object.assign(PROJ,{name:(I.name||'Untitled project').slice(0,80),country:I.country||'US',region:I.region||'',city:I.city||'',number:I.number||newNumber(I.country),fileName:'',handle:null,saved:'',snap:null,sport:SU.sport});
   OPTS=[];CUR=null;if(P.sport!==SU.sport)applySport(SU.sport);P.capTarget=SU.cap;clampCap(P);if(SU.tiers!=='auto')P.tierCount=SU.tiers;
-  {const w=SPORTS[SU.sport].region==='world',cv=SU.shape==='curved';P.zt.forEach(t=>t.corners=SU.shape==='chamfer'?'chamfer':'round');P.bulge=Object.assign({},P.bulge,{S:cv?(w?6:20*0.3048):0,E:cv?(w?3:10*0.3048):0});
+  {const w=SPORTS[SU.sport].region==='world',cv=SU.shape==='curved';P.zt.forEach(t=>t.corners=SU.shape==='chamfer'?'chamfer':'round');P.bulge=Object.assign({},P.bulge,{S:cv?8*bTread():0,E:cv?4*bTread():0});
     P.cfg=SU.cfg;P.secN={};P.aisEd={};P.secs={};P.cornAis=CORN_DEF.slice();}   /* steps 4 and 5 (decision 257) */
   renderControls();update();renderOpts();renderProjInfo();persist();
   if(FSA){try{await saveProject(true);}catch(e){}}   /* the Save window opens while the click still counts (Chrome, Edge) */
