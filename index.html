@@ -2438,7 +2438,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.20';
+const VERSION='2026.11.26.22';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3895,6 +3895,22 @@ const SECS=()=>P.secs||(P.secs={});
 // IBC Table 1108.2.2.1 / 2010 ADA Table 221.2.1.1: wheelchair spaces for the number of seats
 function wcReq(n){if(n<4)return 0;if(n<=25)return 1;if(n<=50)return 2;if(n<=150)return 4;if(n<=300)return 5;if(n<=500)return 6;if(n<=5000)return 6+Math.ceil((n-500)/150);return 36+Math.ceil((n-5000)/200);}
 // platform module along the row: companion + two adjacent wheelchair spaces (33 in each) + companion, repeated; a single companion + 36 in space in the leftover
+/* wheelchair and companion units (decision 321): each unit is 56 in wide by 48 in deep and holds one wheelchair space (36 in, ADA 802.1.2 / 802.1.3)
+   and one companion seat (20 in, shoulder-aligned, 802.7). On each platform they sit in one row against the platform's front face (6 in behind the
+   row riser), between the aisle edges plus the end-seat space, side by side without overlapping, centred in the length; the count is what fits along
+   the front face. On a curved run the unit sides follow the aisles, so each unit stays inside the platform. Returns {n, quads} (plan coordinates, m). */
+const WC_UNIT_W=56*0.0254,WC_UNIT_D=48*0.0254;
+function wcUnits(ti,key,AL){AL=AL||(M&&M.AL);const T=AL&&AL[ti];if(!T)return {n:0,quads:[]};const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return {n:0,quads:[]};
+  const nr=Math.max(...zs.map(z=>z.tr.length));if(nr<4)return {n:0,quads:[]};const j=nr-3,sc=ringSecs(ti,j,AL).find(x=>x.l+'_'+x.r===key);if(!sc)return {n:0,quads:[]};
+  const A=AIS(),wA=A.w/1000,gp=(A.gap||0)/1000,quads=[];let n=0;
+  sc.pieces.forEach(pc=>{const r=pc.Lz.tr[j],r2=pc.Lz.tr[j+1];if(!r||!r2||pc.b-pc.a<1e-4)return;const ch=pc.Lz.ch,aL=pc.Lz.ais.find(a=>a.id===sc.l),aR=pc.Lz.ais.find(a=>a.id===sc.r);
+    const span=d=>{const Ld=chainLen(ch,d),sl=aL&&pc.a>1e-6||aL&&chainS(ch,aL,d)<1e-6?chainS(ch,aL,d)+cutW(aL,wA)/2+gapA(aL,gp):pc.a<1e-6?0:chainS(ch,aL||{i:0,f:0},d),
+        sr=aR&&(Ld-pc.b)>1e-6||aR&&Ld-chainS(ch,aR,d)<1e-6?chainS(ch,aR,d)-cutW(aR,wA)/2-gapA(aR,gp):Ld;return [sl,sr];};
+    const dF=r.x/1000+WC_SETBACK/1000,dB=dF+WC_UNIT_D;if(dB>(r2.x+r2.T)/1000+1e-6)return;   /* the unit must fit the platform depth */
+    const [fl,fr]=span(dF),[bl,br]=span(dB),len=fr-fl,k=Math.max(0,Math.floor(len/WC_UNIT_W+1e-9));if(!k)return;n+=k;
+    const s0=fl+(len-k*WC_UNIT_W)/2,toB=sf=>bl+(sf-fl)/(len||1)*(br-bl);
+    for(let i=0;i<k;i++){const a=s0+i*WC_UNIT_W,b=a+WC_UNIT_W;quads.push([chainPtS(ch,a,dF),chainPtS(ch,b,dF),chainPtS(ch,toB(b),dB),chainPtS(ch,toB(a),dB)]);}});
+  return {n,quads};}
 function wcModules(len,sw){const IN=0.0254,pair=2*sw+66*IN,one=sw+36*IN;let np=Math.max(0,Math.floor(len/pair+1e-9)),rem=len-np*pair,single=rem>=one-1e-9?1:0;return {pairs:np,single,wc:2*np+single,comp:2*np+single,used:np*pair+single*one};}
 function secNoMap(ti,AL){const m={};sectionList(ti,AL).forEach(q=>m[q.key]=q.no);return m;}
 // seats off: switched-off sections lose every row; platform sections lose the two rows below the tier's top row (the infill, decision 56)
@@ -3925,7 +3941,7 @@ function secAdjust(P,AL){const S=P.secs||{},IN=25.4,out={secs:{},wc:0,comp:0,los
       tk.forEach((pc,i)=>{const r=pc.Lz.tr[j];if(r.net==null)return;const t=Math.min(sh[i],r.net);r.net-=t;r.secOff=(r.secOff||0)+t;if(plat)out.lost+=t;else out.off+=t;});});
     // the platforms: spaces along the platform row (the row below the top row) and the sightline over standing spectators per stand
     sectionList(ti,AL).forEach(q=>{if(!isPlat(S,q.no,DW))return;const pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a),Lz=pc.Lz,tr=Lz.tr,L=tr.length;if(L<4)return;
-      const j=L-2,sc=ringSecs(ti,j,AL).find(x=>x.l+'_'+x.r===q.key);if(!sc)return;const mod=wcModules(sc.raw,sc.sw);
+      const j=L-2,sc=ringSecs(ti,j,AL).find(x=>x.l+'_'+x.r===q.key);if(!sc)return;const un=wcUnits(ti,q.key,AL),mod={units:un.n,wc:un.n,comp:un.n,used:un.n*WC_UNIT_W};
       const sd=tr[L-4],p1=tr[L-3],top=tr[L-1],X=sd.T/IN,Y=((sd.riser??p1.riser)||0)/IN,Hreq=(2*X+34)*(Y-2.25)/X+(20.2-Y),H=(top.z-sd.z)/IN,depth=(p1.T+tr[L-2].T)/IN-6;
       const st=zoneName(P,Lz.k,true);out.secs[q.no]={no:q.no,ti,k:Lz.k,stand:st,len:sc.raw,...mod,H,Hreq,sight:!imperial()||H>=Hreq-0.01,depth,deep:depth>=48-0.01,rows:[tr[L-3].row,tr[L-2].row]};
       out.wc+=mod.wc;out.comp+=mod.comp;out.byTier[ti].wc+=mod.wc;out.byTier[ti].comp+=mod.comp;out.byTier[ti].secs++;const b=out.byStand[st]||(out.byStand[st]={wc:0,secs:0});b.wc+=mod.wc;b.secs++;});});
@@ -3940,7 +3956,7 @@ function wcClean(){const S=P.secs||{};let n=0;Object.keys(S).forEach(k=>{if(S[k]
 function adaAuto(){const S=SECS(),mg=(P.adaMargin??25)/100;Object.keys(S).forEach(k=>{if(S[k].wc){delete S[k].wc;if(!Object.keys(S[k]).length)delete S[k];}});
   update();const D=M.ADA;if(!D)return;const target=Math.ceil(wcReq(M.cap)*(1+mg)),tot=M.tierSeats.reduce((a,b,i)=>a+(wcTier(i)?b:0),0)||1;   // shared over the concourse tiers only
   for(let ti=0;ti<P.tierCount;ti++){if(!wcTier(ti))continue;const list=sectionList(ti).filter(q=>!(S[q.no]&&S[q.no].off));if(!list.length)continue;
-    const need=Math.ceil(target*M.tierSeats[ti]/tot),per=Math.max(1,(()=>{const q=list.reduce((a,b)=>b.lo>a.lo?b:a);const pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a);return wcModules(pc.raw,q.mid.sw).wc;})());
+    const need=Math.ceil(target*M.tierSeats[ti]/tot),per=Math.max(1,(()=>{const q=list.reduce((a,b)=>b.lo>a.lo?b:a);const pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a);return Math.floor(pc.raw/WC_UNIT_W+1e-9);})());
     const cnt=Math.min(list.length,Math.ceil(need/per)),wt=list.map(q=>q.mid.raw||q.hi||1),tw=wt.reduce((a,b)=>a+b,0),cum=[];wt.reduce((a,w,i)=>(cum[i]=a+w/2,a+w),0);   // evenly by length round the tier
     const used=new Set();for(let i=0;i<cnt;i++){const at=(i+0.5)*tw/cnt;let bi=0;cum.forEach((c,j)=>{if(Math.abs(c-at)<Math.abs(cum[bi]-at))bi=j;});while(used.has(bi))bi=(bi+1)%list.length;used.add(bi);(S[list[bi].no]=S[list[bi].no]||{}).wc=true;}}
   update();
@@ -3983,12 +3999,13 @@ function wcHitSvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},R
   return o?`<g>${o}</g>`:'';}
 // switch a section off (open space) or back on, from the bowl plan or the 3D view (decision 86); the Sections panel buttons do the same
 function secOnOff(no){const S=SECS();if(P.cfg&&P.cfg!=='closed'&&P.cfg!=='custom'){Object.values(S).forEach(e=>delete e.cfg);P.cfg='custom';}const x=S[no]||(S[no]={});if(x.off){delete x.off;}else{x.off=true;}secTidy(no);update();toast(`Section ${no} ${S[no]&&S[no].off?'switched off':'switched back on'}.`);}
-function secOverlaySvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),gone=goneAisles(M.AL),keep=id=>!gone.has(+id);let off='',wc='';
+function secOverlaySvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),gone=goneAisles(M.AL),keep=id=>!gone.has(+id);let off='',wc='',un='';const wcU=(ti,k)=>wcUnits(ti,k);
   M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));
-    sectionList(ti).forEach(q=>{const e=S[q.no];if(!e)return;if(e.off)off+=secGeom(ti,q.key,0,nr-1,RS,keep).poly;else if(e.wc&&nr>=4)wc+=secGeom(ti,q.key,nr-3,nr-2,RS,true,WC_SETBACK/1000).poly;});});
+    sectionList(ti).forEach(q=>{const e=S[q.no];if(!e)return;if(e.off)off+=secGeom(ti,q.key,0,nr-1,RS,keep).poly;else if(e.wc&&nr>=4&&wcTier(ti)){wc+=secGeom(ti,q.key,nr-3,nr-2,RS,true,WC_SETBACK/1000).poly;if(imperial())wcU(ti,q.key).quads.forEach(Q=>{un+='M'+Q.map(p=>p[0].toFixed(3)+' '+p[1].toFixed(3)).join('L')+'Z';});}});});
   if(!off&&!wc)return '';
   return (off?`<defs><clipPath id="secOffClip"><path d="${off}"/></clipPath></defs><path d="${off}" fill="var(--panel)" stroke="none"/><g clip-path="url(#secOffClip)">${planGrid()}</g>`:'')
-    +(wc?`<path d="${wc}" fill="#FF4500" fill-opacity=".95" stroke="#B33000" stroke-width="0.8" vector-effect="non-scaling-stroke"/>`:'');}
+    +(wc?`<path d="${wc}" fill="#FF4500" fill-opacity=".95" stroke="#B33000" stroke-width="0.8" vector-effect="non-scaling-stroke"/>`:'')
+    +(un?`<path class="wcunits" d="${un}" fill="none" stroke="#FFFFFF" stroke-width="0.7" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"><title>Wheelchair and companion units, 56" x 48" (one wheelchair space and one companion seat each)</title></path>`:'');}
 // ---------- the Sections panel: seats per row, on/off and wheelchair platforms by section ----------
 let SECT_TI=0,SECT_HL=null;const SECT_TI_=()=>Math.min(SECT_TI,P.tierCount-1);
 function secPanelHTML(){if(!M.AL||!zoned(P))return '<p class="hint" style="padding:8px 0">Choose the computed aisle layout to edit sections.</p>';
@@ -4116,7 +4133,7 @@ function plumbing(occ){const m=Math.ceil(occ/2),f=Math.ceil(occ/2),wm=m<=1500?Ma
 function codeSummary(){if(!M)return [];const D=M.ADA,B=PLB(),seats=M.cap,wc=D?D.wc:0,occ=seats+wc+(+B.extra||0),pl=plumbing(occ),fx=+B.factor||1,tg=v=>Math.ceil(v*fx-1e-9),out=[];
   if(D)out.push(['Accessible seating',[['Wheelchair spaces',`${fmt(D.wc)} provided; ${fmt(D.req)} required for ${fmt(D.total)} spectators (IBC Table 1108.2.2.1; 2010 ADA Table 221.2.1.1: over 5,000 seats, 36 + 1 per 200 over 5,000)`],
     ['Companion seats',`${fmt(D.comp)} provided; ${fmt(D.reqComp)} required (1 per wheelchair space; ADA 221.3, 802.7)`],['Designated aisle seats',`${fmt(D.reqAisle)} required: 5% of ${fmt(D.aisleSeats)} aisle seats (IBC 1108.2.4; ADA 221.4)`],
-    ['Platforms',`${Object.keys(D.secs).length} sections, back of each tier: companion, two wheelchair spaces at 33" each (ADA 802.1.2), companion; ${fmt(D.lost)} seats taken by the infill`],
+    ['Platforms',`${Object.keys(D.secs).length} sections, back of each tier: units of one wheelchair space and one companion seat, 56" wide x 48" deep (36" wheelchair space, ADA 802.1.2 / 802.1.3; 20" companion seat, shoulder-aligned, 802.7), one row against the platform face; ${fmt(D.lost)} seats taken by the infill`],
     ['Dispersion',D.byTier.slice(0,P.tierCount).map((t,i)=>`Tier ${i+1}: ${t.wc}`).join('; ')+' | '+(Object.entries(D.byStand).map(([k,v])=>`${k} ${v.wc}`).join(', ')||'none')+' (ADA 221.2.3)']]]);
   const row=(n,code,t)=>[n,`${fmt(code)} code minimum; ${fmt(tg(code))} design target${t?' ('+t+')':''}`];
   out.push(['Plumbing fixtures (IPC Table 403.1, stadiums)',[['Occupant load',`${fmt(occ)} = ${fmt(seats)} seats + ${fmt(wc)} wheelchair spaces${+B.extra?` + ${fmt(+B.extra)} other occupants (standing, suites, club)`:''}; divided 50/50, ${fmt(pl.m)} male and ${fmt(pl.f)} female (IPC 403.1.1)`],
@@ -4158,13 +4175,18 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
   if(imperial())g+=[['42" aisle-end guard',0],['side-mounted',1]].map(([t,i])=>`<text x="${X(-wA/2-fs*.25)}" y="${Y(-fs*(.15+i*.5))}" font-size="${f(fs*.42)}" text-anchor="end" dominant-baseline="hanging" fill="var(--muted)">${t}</text>`).join('');
   // seats: chair at the back of each tread, seat raised (envelope), clear width in front
   const iL=Lz.ais.indexOf(L0.a)+1,counts=[],nzCW=(()=>{if(!isNEZ(k))return false;const a=chainPtS(Lz.ch,sa,d),b=chainPtS(Lz.ch,sb,d);return cwOf([(a[0]+b[0])/2,(a[1]+b[1])/2],[b[0]-a[0],b[1]-a[1]]);})();   // true: clockwise runs left to right, seat 1 on the left
-  tr.forEach((r,j)=>{const S=rowSections(Lz,j),n=S.secs[iL]||0,v=r.x-x0,{cb,cdn,cf}=seatGeo(r.seat,r.T);counts.push(n);
+  const eKey=L0.a.id+'_'+R0.a.id,eNo=secNoMap(ti)[eKey],eS=(P.secs||{})[eNo],eL=tr.length,ePlat=!!(eS&&eS.wc&&!eS.off&&wcTier(ti)&&eL>=4);   /* a platform section: rows L-3 and L-2 are the platform (decision 321) */
+  tr.forEach((r,j)=>{const S=rowSections(Lz,j),n=(ePlat&&(j===eL-3||j===eL-2))?0:(S.secs[iL]||0),v=r.x-x0,{cb,cdn,cf}=seatGeo(r.seat,r.T);counts.push(n);
     const lead=gp+Math.max(0,span-wA-2*gp-n*r.seatW)/2;   // 4 in at each aisle at least, the leftover split equally (decision 124)
     for(let q=0;q<n;q++){const u=wA/2+lead+(n-1-q)*r.seatW,yb=v+r.T+cb,no=nzCW?n-q:q+1;   // seat 1 at the right-hand aisle (in the north end zone, where the row starts clockwise); seat down (solid), raised seat tip (dashed), back 2 in behind the riser
       seats+=`<rect x="${X(u)}" y="${Y(yb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="${tierFill(ti)}" fill-opacity=".55" stroke="var(--ink)" stroke-width="0.45" vector-effect="non-scaling-stroke"/>`
       +(G0.bench?'':`<line x1="${X(u)}" y1="${Y(v+r.T-cf)}" x2="${X(u+r.seatW)}" y2="${Y(v+r.T-cf)}" stroke="var(--ink)" stroke-width="0.5" stroke-dasharray="2.5 1.5" vector-effect="non-scaling-stroke"/>`)
       +`<text x="${X(u+r.seatW/2)}" y="${Y(yb-cdn*.42)}" font-size="${f(PX(8,r.seatW*.42))}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${no}</text>`;}
     for(const s of [-1,1])for(let q=0;q<2;q++){const u=s<0?-wA/2-gp-(q+1)*r.seatW:span+wA/2+gp+q*r.seatW;nb+=`<rect x="${X(u)}" y="${Y(v+r.T+cb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="none" stroke="var(--muted)" stroke-width="0.4" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/>`;}});
+  if(ePlat){const UW=WC_UNIT_W*1000,UD=WC_UNIT_D*1000,vf=tr[eL-3].x-x0+WC_SETBACK,vb=tr[eL-2].x+tr[eL-2].T-x0,u0=wA/2+gp,u1=span-wA/2-gp,nU=Math.min(wcUnits(ti,eKey).n,Math.floor((u1-u0)/UW+1e-9)),us=u0+(u1-u0-nU*UW)/2;
+    seats+=`<rect x="${X(u0)}" y="${Y(vb)}" width="${f(u1-u0)}" height="${f(vb-vf)}" fill="#FF4500" fill-opacity=".25" stroke="#B33000" stroke-width="0.8" vector-effect="non-scaling-stroke"><title>Wheelchair platform, face ${inchText(WC_SETBACK)} behind the row riser</title></rect>`;
+    for(let i=0;i<nU;i++)seats+=`<rect x="${X(us+i*UW)}" y="${Y(vf+UD)}" width="${f(UW)}" height="${f(UD)}" fill="none" stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"><title>Wheelchair and companion unit ${i+1}: 56" x 48"</title></rect>`;
+    seats+=`<text x="${X((u0+u1)/2)}" y="${Y(vf+UD+fs*.15)}" font-size="${f(fs*.5)}" text-anchor="middle" fill="var(--ink)">${nU} wheelchair + companion units, 56" × 48"</text>`;}
   // row numbers in the left aisle
   let rn='';tr.forEach(r=>{const v=r.x-x0;rn+=`<text x="${X(0)}" y="${Y(v+r.T*.75)}" font-size="${f(PX(8,Math.max(fs,(span+2*side)/62)*.6))}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${r.row}</text>`;});
   // dimensions: along the front, one row below the next
