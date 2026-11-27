@@ -1970,7 +1970,7 @@ function aisleLayout(Q,ZR,CH){const A=AIS(Q);if(A.mode!=='layout')return null;co
           if(nz===zi&&Math.abs(sx-L0)<1e-6)ais.unshift(Object.assign({},{i:0,f:0,id:x.id}));}});
       T[z.k]={ch:z.ch,tr:z.tr,n:ais.length,ais,vom:ais.map(()=>false),vr:null,Lb:chainLen(z.ch,dB),k:z.k,ti,ring:true};});
     Object.defineProperty(T,'__ring',{enumerable:false,value:Object.assign(R.map(z=>({ch:z.ch})),{list:list.map(x=>({zi:x.zi,a:x.a}))})});}
-  return out;}
+  out.forEach(T=>T&&GEO.forEach(k=>{if(T[k])Object.defineProperty(T[k],'grp',{value:T,configurable:true,enumerable:false});}));   /* each stand knows its tier (decision 329a) */return out;}
 // egress check: sections joined round each tier, aisle loads, the IBC section limit and the clear width between rows
 function egress(){const AL=M.AL;if(!AL)return null;const imp=imperial(),fS=egFactor(false,M.cap),out={tiers:[],fS,basis:egBasis()};
   for(let ti=0;ti<AL.length;ti++){const zs=GEO.map(k=>AL[ti][k]).filter(Boolean),ring=zs.length&&zs[0].ring,t={ti,aisles:0,lostA:0,secMax:0,limMin:Infinity,aMax:null,over:0};
@@ -2073,14 +2073,29 @@ const topArcS=(P,k)=>Math.max(0,+(isSide(k)?P.topArc.S:P.topArc.E)||0);
 const runIdx=ch=>{let i=ch.findIndex(g=>g.side);if(i<0){const L=ch.map((g,i)=>g.t==='LINE'?i:-1).filter(i=>i>=0);i=L.length?L[Math.floor(L.length/2)]:-1;}return i;};
 /* the arc's offset beyond the tier's own top row, m, at fraction f of the run (0 outside the run) */
 function arcOff(Lz,f,d){const S=topArcS(P,Lz.k);if(S<=0||f<=0||f>=1)return 0;const gi=runIdx(Lz.ch);if(gi<0)return 0;const h=segLen(Lz.ch[gi],d)/2,R=(h*h+S*S)/(2*S),u=(f-.5)*2*h;return Math.max(0,Math.sqrt(Math.max(0,R*R-u*u))-(R-S));}
+/* decision 329a: the top edge is one smooth closed curve, a superellipse round the field centre: out by the sideline setback beyond the tier's own
+   top row at the 50-yard line, by the end setback at the centre line, and through the tier's own top row at each corner, so it runs on into
+   the corners and the ends without a kink. Rows beyond the tier's own count hold seats only inside it. */
+const SEC=new WeakMap();
+function topSE(T){if(!T)return null;const c=SEC.get(T);if(c&&c.sig===JSON.stringify(P.topArc))return c;const sd=T.T||T.B,en=T.R||T.L;if(!sd||!en)return null;
+  const bk=Lz=>{const r=Lz.tr.find(r=>r.arcE!=null);return r?(r.x+r.T-r.arcE)/1000:null;},bS=bk(sd),bE=bk(en);if(bS==null||bE==null)return null;
+  const mid=(Lz,d)=>{const gi=runIdx(Lz.ch);let acc=0;for(let i=0;i<gi;i++)acc+=segLen(Lz.ch[i],d);return chainPtS(Lz.ch,acc+segLen(Lz.ch[gi],d)/2,d);};
+  const pS=mid(sd,bS),pE=mid(en,bE),rS=Math.hypot(...pS),rE=Math.hypot(...pE),uS=[pS[0]/rS,pS[1]/rS],uE=[pE[0]/rE,pE[1]/rE],a=rS+topArcS(P,sd.k),b=rE+topArcS(P,en.k);
+  const loc=p=>[Math.abs(p[0]*uE[0]+p[1]*uE[1]),Math.abs(p[0]*uS[0]+p[1]*uS[1])];
+  const phd=Math.atan2(rS,rE);let best=null;for(const Lz of [en,sd]){const d=bk(Lz),L=chainLen(Lz.ch,d);for(let q=0;q<=400;q++){const p=loc(chainPtS(Lz.ch,L*q/400,d)),dv=Math.abs(Math.atan2(p[1],p[0])-phd);if(!best||dv<best.dv)best={dv,p};}}
+  const g=n=>Math.pow(best.p[0]/b,n)+Math.pow(best.p[1]/a,n)-1;let lo=1.5,hi=30,n=2;if(g(hi)>0)n=hi;else if(g(lo)<0)n=lo;else{for(let k=0;k<50;k++){const m=(lo+hi)/2;if(g(m)>0)lo=m;else hi=m;}n=(lo+hi)/2;}
+  const o={sig:JSON.stringify(P.topArc),a,b,n,loc,inside:p=>{const q=loc(p);return Math.pow(q[0]/b,n)+Math.pow(q[1]/a,n)<=1;}};SEC.set(T,o);return o;}
 /* where row j of a stand may hold seats (chain s at depth d), or null when the whole row is in use */
-function arcCut(Lz,j,d){const r=Lz.tr[j];if(!r||r.arcE==null)return null;const S=topArcS(P,Lz.k),e=r.arcE/1000,gi=runIdx(Lz.ch);if(S<=e||gi<0)return [0,0];
-  let acc=0;for(let i=0;i<gi;i++)acc+=segLen(Lz.ch[i],d);const h=segLen(Lz.ch[gi],d)/2,R=(h*h+S*S)/(2*S),um=Math.sqrt(Math.max(0,R*R-(e+R-S)**2));return [acc+h-um,acc+h+um];}
-/* the area beyond the curved top edge, per stand (plan coordinates, m), and the last row an aisle runs up to (decision 329) */
+function arcCut(Lz,j,d){const r=Lz.tr[j];if(!r||r.arcE==null)return null;const E=topSE(Lz.grp);if(!E)return null;const dB=(r.x+r.T)/1000,Ld=chainLen(Lz.ch,d),gi=runIdx(Lz.ch);
+  const ins=sv=>{const c=chainAt(Lz.ch,sv,d);return E.inside(segPt(Lz.ch[c.i],c.f,dB));};let acc=0;for(let i=0;i<gi;i++)acc+=segLen(Lz.ch[i],d);const sm=acc+segLen(Lz.ch[gi],d)/2;
+  if(!ins(sm))return [0,0];const edge=(o,i)=>{if(ins(o))return o;let a=i,b=o;for(let k=0;k<30;k++){const m=(a+b)/2;if(ins(m))a=m;else b=m;}return a;};return [edge(0,sm),edge(Ld,sm)];}
+/* the area beyond the curved top edge, per stand (plan coordinates, m) */
 function arcVoids(ti,AL){AL=AL||(M&&M.AL);const out=[];if(!topArcOn(P,ti)||!AL||!AL[ti])return out;
-  Object.values(AL[ti]).forEach(Lz=>{const ra=Lz.tr.find(r=>r.arcE!=null);if(!ra)return;const last=Lz.tr[Lz.tr.length-1],bN=(ra.x+ra.T-ra.arcE)/1000,dO=(last.x+last.T)/1000+0.02,gi=runIdx(Lz.ch),I=[],O=[];
-    Lz.ch.forEach((g,i)=>{const n=i===gi?48:(g.t==='LINE'?1:12);for(let q=0;q<=n;q++){const f=q/n,dI=Math.min(dO,bN+(i===gi?arcOff(Lz,f,bN):0));I.push(segPt(g,f,dI));O.push(segPt(g,f,dO));}});
+  Object.values(AL[ti]).forEach(Lz=>{const ra=Lz.tr.find(r=>r.arcE!=null);if(!ra)return;const E=topSE(Lz.grp||AL[ti]);if(!E)return;const last=Lz.tr[Lz.tr.length-1],bN=(ra.x+ra.T-ra.arcE)/1000,dO=(last.x+last.T)/1000+0.02,I=[],O=[];
+    Lz.ch.forEach(g=>{const n=g.t==='LINE'?40:24;for(let q=0;q<=n;q++){const f=q/n;let dI=bN;if(E.inside(segPt(g,f,bN+0.01))){if(E.inside(segPt(g,f,dO)))dI=dO;else{let a=bN,b=dO;for(let k=0;k<30;k++){const m=(a+b)/2;if(E.inside(segPt(g,f,m)))a=m;else b=m;}dI=a;}}
+      I.push(segPt(g,f,dI));O.push(segPt(g,f,dO));}});
     out.push({Lz,pts:I.concat(O.reverse())});});return out;}
+/* the last row an aisle runs up to (decision 329) */
 function arcAisleLast(Lz,ai){const n=Lz.tr.length,w=cutW(ai,AIS().w/1000);for(let j=n-1;j>=0;j--){const r=Lz.tr[j],d=(r.x+r.T/2)/1000,AC=arcCut(Lz,j,d);if(!AC)return j;const sc=chainS(Lz.ch,ai,d);if(AC[1]>sc-w/2-0.6&&AC[0]<sc+w/2+0.6)return j;}return -1;}
 function rowSections(Lz,j){const A=AIS(),r=Lz.tr[j],d=(r.x+r.T/2)/1000,Ld=chainLen(Lz.ch,d),sw=r.seatW/1000,wA=A.w/1000,gp=(A.gap||0)/1000,inV=false,wV=(A.vomW+2*vomWall())/1000+2*wA;
   let prev=0,cut=false;const secs=[],cuts=[];                            // each row end at an aisle keeps the end-seat space (construction tolerance)
@@ -2461,7 +2476,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.31';
+const VERSION='2026.11.26.32';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
