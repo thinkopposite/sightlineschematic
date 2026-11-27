@@ -1978,7 +1978,7 @@ function egress(){const AL=M.AL;if(!AL)return null;const imp=imperial(),fS=egFac
     const nr=Math.max(...zs.map(z=>z.tr.length));let gross=0,net=0;zs.forEach(Lz=>Lz.tr.forEach(r=>{gross+=r.gross;net+=r.net??0;}));
     const lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
     const smap=secNoMap(ti),SS=P.secs||{};
-    for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{{const e=SS[smap[sc.l+'_'+sc.r]];if(e&&e.off)return;}if(sc.n>lim){t.omit=(t.omit||0)+sc.n-lim;sc.n=lim;}t.secMax=Math.max(t.secMax,sc.n);const l=CLs.has(sc.l)?null:sc.l,r=CLs.has(sc.r)?null:sc.r,both=l!=null&&r!=null;   /* a corner half leaves by its own aisle */
+    for(let j=0;j<nr;j++)ringSecs(ti,j).forEach(sc=>{{const e=SS[smap[sc.l+'_'+sc.r]];if(e&&e.off)return;if(j>=waveLim(ti,sc.l+'_'+sc.r))return;}if(sc.n>lim){t.omit=(t.omit||0)+sc.n-lim;sc.n=lim;}t.secMax=Math.max(t.secMax,sc.n);const l=CLs.has(sc.l)?null:sc.l,r=CLs.has(sc.r)?null:sc.r,both=l!=null&&r!=null;   /* a corner half leaves by its own aisle */
       if(l!=null)load[l]=(load[l]||0)+sc.n*(both?0.5:1);if(r!=null)load[r]=(load[r]||0)+sc.n*(both?0.5:1);});
     t.lostA=Math.round(gross-net);
     t.byA={};Object.entries(load).forEach(([id,q])=>{const w=AIS().w,req=Math.max(imp?(q<50?36:48)*25.4:0,q*fS);t.byA[id]={q:Math.round(q),req,w};if(!t.aMax||req>t.aMax.req)t.aMax={q:Math.round(q),req,w};});   /* per aisle, for the plan's egress alert (decision 317) */
@@ -2039,7 +2039,7 @@ function aislePieces(){let AL=null;try{AL=M&&M.AL;}catch(e){}if(!AL)return [];  
   AL.forEach((T,ti)=>Object.entries(T).forEach(([zk,Lz])=>Lz.ais.forEach(ai=>{const w0=cutW(ai,wA);
     const cross=(u,o,w)=>{const sc=chainS(Lz.ch,ai,u)+o,sL=sc-w/2,sR=sc+w/2,ks=chainKinks(Lz.ch,u,0).map(k=>k.s).filter(x=>x>sL+1e-4&&x<sR-1e-4);   // left edge, any bend, right edge
       return [sL,...ks,sR].map(x=>{const p=chainPtS(Lz.ch,x,u);return [p[0],-p[1]];});};
-    const ii=Lz.ais.indexOf(ai);Lz.tr.forEach((r,j)=>{const st=aisleStep(Lz.tr,j);if(st.top||st.n<2)return;const flr=!!(Lz.vom[ii]&&ai.vr&&ai.vr.cross===j),inv=vomAt(Lz,ii,j)||flr,   /* the vom floor row: the two 36 in side aisles only, no 4 ft step */W2=vomClear(ai)/2000,tw=vomWall()/1000,sa=vSide(ai)/1000;
+    const ii=Lz.ais.indexOf(ai),wa=waveAisle(ti,ai.id,AL);Lz.tr.forEach((r,j)=>{const st=aisleStep(Lz.tr,j);if(st.top||st.n<2||j>=wa-1)return;const flr=!!(Lz.vom[ii]&&ai.vr&&ai.vr.cross===j),inv=vomAt(Lz,ii,j)||flr,   /* the vom floor row: the two 36 in side aisles only, no 4 ft step */W2=vomClear(ai)/2000,tw=vomWall()/1000,sa=vSide(ai)/1000;
       if(ai.cl&&!inv)return;   // a corner centreline: a section line, no aisle steps
       for(const [o,w,side] of inv?(sa>0?[[-(W2+tw+sa/2),sa,'L'],[W2+tw+sa/2,sa,'R']]:[]):[[0,w0,'']]){   /* inside a vom: a 36 in stepped aisle along each wall */
       const z0=r.z/1000,h=st.rh/1000,ub=(r.x+r.T)/1000,uk=k=>(r.x+k*r.T/st.n)/1000;
@@ -2149,10 +2149,10 @@ function aisleSvg(){const AL=M.AL;if(!AL||PLAN!=='bowl')return '';const A=AIS(),
   const gone=goneAisles(AL);   // an aisle with open space on both sides is not drawn
   for(const T of AL)for(const Lz of Object.values(T)){const r=Lz.tr.find(q=>q.cross);if(!r)continue;const st=chainStations(Lz.ch),q1=offsetPts(st,r.x/1000),q2=offsetPts(st,(r.x+r.T)/1000).reverse();   // the cross aisle
     a+='M'+q1.concat(q2).map(p=>f(p[0])+' '+f(p[1])).join('L')+'Z';}
-  for(const T of AL)for(const Lz of Object.values(T)){const last=Lz.tr.length-1;
-    Lz.ais.forEach((ai,i)=>{if(gone.has(ai.id))return;if(ai.ghost){}else if(ai.cl)cl+=band(Lz,i,0,last,0,0);else{a+=strip(Lz,i,0,last,cutW(ai,wA));hit+=`<path data-aisle="${AL.indexOf(T)}:${ai.id}" d="${strip(Lz,i,0,last,Math.max(cutW(ai,wA),1.5))}" fill="#000000" fill-opacity="0" stroke="none" style="cursor:pointer"><title>Aisle (click to edit)</title></path>`;}
+  for(const T of AL)for(const Lz of Object.values(T)){const last0=Lz.tr.length-1,tiA=AL.indexOf(T);
+    Lz.ais.forEach((ai,i)=>{if(gone.has(ai.id))return;const last=Math.min(last0,waveAisle(tiA,ai.id)-1);   /* curved top: the aisle stops with the taller section beside it (decision 328) */if(ai.ghost){}else if(ai.cl)cl+=band(Lz,i,0,last,0,0);else{a+=strip(Lz,i,0,last,cutW(ai,wA));hit+=`<path data-aisle="${AL.indexOf(T)}:${ai.id}" d="${strip(Lz,i,0,last,Math.max(cutW(ai,wA),1.5))}" fill="#000000" fill-opacity="0" stroke="none" style="cursor:pointer"><title>Aisle (click to edit)</title></path>`;}
       const W2=vomClear(ai)/2000,tw=vomWall()/1000,sa=vSide(ai)/1000;
-      Lz.tr.forEach((r,j)=>{const st=aisleStep(Lz.tr,j),w=cutW(ai,wA),inv=vomAt(Lz,i,j)||!!(Lz.vom[i]&&ai.vr&&ai.vr.cross===j),spans=inv?(sa>0?[[-W2-tw-sa,-W2-tw],[W2+tw,W2+tw+sa]]:[]):ai.cl?[]:[[-w/2,w/2]];   // in a vom: the nosings of the two 36 in side aisles
+      Lz.tr.forEach((r,j)=>{if(j>last)return;const st=aisleStep(Lz.tr,j),w=cutW(ai,wA),inv=vomAt(Lz,i,j)||!!(Lz.vom[i]&&ai.vr&&ai.vr.cross===j),spans=inv?(sa>0?[[-W2-tw-sa,-W2-tw],[W2+tw,W2+tw+sa]]:[]):ai.cl?[]:[[-w/2,w/2]];   // in a vom: the nosings of the two 36 in side aisles
         for(let k=0;k<st.n;k++){const d=(r.x+k*r.T/st.n)/1000,s=chainS(Lz.ch,ai,d);for(const [o0,o1] of spans){const p=chainPtS(Lz.ch,s+o0,d),q=chainPtS(Lz.ch,s+o1,d);stp+=`M${f(p[0])} ${f(p[1])}L${f(q[0])} ${f(q[1])}`;}}
         if(st.bad&&!inv&&!ai.cl)red+=strip(Lz,i,j,j,w);});
       if(Lz.vom[i]&&ai.vr&&ai.vr.rows.length){const j0=ai.vr.rows[0],j1=ai.vr.rows[ai.vr.rows.length-1];a+=strip(Lz,i,j0,j1,vomCut(ai));
@@ -2441,7 +2441,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.28';
+const VERSION='2026.11.26.29';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -2750,6 +2750,12 @@ function renderControls(){
         +'<button data-resize="1" style="width:100%;margin:8px 0 0" title="Sizes the rows of the stands that remain so the bowl holds the target seats">Size the bowl to the target</button>'
         +'<p class="hint">Click a cell to set how high a stand goes; click its top cell again to lower it. Each half corner follows the stand beside it. A hatched cell has some sections switched off on the plan; clicking it puts the whole stand back under the grid.</p>';}
 }
+  if(zoned(P)&&P.tierCount>=2){const W=P.wave||{},on=!!W.on,tt=P.tierCount,nrT=Math.max(...GEO.map(k=>P.zt[tt-1].z[k]?P.zt[tt-1].z[k].rows:0)),fl=P.sport==='nfl'||P.sport==='ncaafb';   /* curved top of the top tier (decision 328) */
+    h+=`<div class="lab">Top of Tier ${tt}</div><div class="seg">`+[['flat','Level top'],['wave','Curved top']].map(([k,n])=>`<button data-wave="${k}" class="${(k==='wave')===on?'on':''}" aria-pressed="${(k==='wave')===on}">${n}</button>`).join('')+'</div>';
+    if(on)h+=`<table class="fixed"><tr><td>Rows at the ${fl?'50-yard line':'halfway line'}</td><td><b>${nrT} (Tiers step)</b></td></tr></table>`
+      +slider('wave.c',`Rows at the corners (4 to ${nrT})`,4,Math.max(4,nrT),1,'rows')+slider('wave.e',`Rows at the centre of the ${fl?'end zones':'ends'} (4 to ${nrT})`,4,Math.max(4,nrT),1,'rows')
+      +'<div class="lab">Curve</div><div class="seg">'+[['smooth','Smooth'],['straight','Straight']].map(([k,n])=>`<button data-waveshape="${k}" class="${(W.shape||'smooth')===k?'on':''}">${n}</button>`).join('')+'</div>'
+      +`<p class="hint">Each section of Tier ${tt} takes its own number of rows from a curve round the bowl: all ${nrT} rows at the ${fl?'50-yard line':'halfway line'}, falling to the corner and end values; the top edge steps at the aisles. Seats, egress, the plan and the 3D model follow; the sections through the 50-yard line are unchanged.</p>`;}
   h+='<div class="lab">Bowl colours (HEX)</div>'+[0,1,2].map(i=>`<div class="colrow"><label for="tcol${i}">Tier ${i+1}</label>`
     +`<input type="color" class="swatch" data-tcolpick="${i}" value="${tierFill(i)}" aria-label="Pick the Tier ${i+1} colour">`
     +`<input type="text" class="hex" id="tcol${i}" data-tcol="${i}" value="${tierFill(i)}" maxlength="7" spellcheck="false" autocomplete="off"></div>`).join('')
@@ -2855,6 +2861,8 @@ $('controls').addEventListener('click',e=>{
   else if(b.dataset.eg){EDIT.g=+b.dataset.eg;renderControls();return;}
   else if(b.dataset.link){relink(EDIT.tier,b.dataset.link);}
   else if(b.dataset.corner){if(b.dataset.corner!=='round'&&(P.bulge.S>0||P.bulge.E>0))return;P.zt.forEach(t=>t.corners=b.dataset.corner);}   /* curved bowl: round only (decision 315) */
+  else if(b.dataset.wave){const on=b.dataset.wave==='wave',tt=P.tierCount-1,nr=Math.max(...GEO.map(k=>P.zt[tt].z[k]?P.zt[tt].z[k].rows:0));P.wave=Object.assign({c:Math.max(4,Math.round(nr*0.75)),e:Math.max(4,Math.round(nr*0.55)),shape:'smooth'},P.wave||{},{on});}   /* decision 328 */
+  else if(b.dataset.waveshape){P.wave=Object.assign({},P.wave||{},{shape:b.dataset.waveshape});}
   else if(b.dataset.bshape){const cv=P.bulge.S>0||P.bulge.E>0,w=!imperial();   /* bowl shape (decision 311): Straight bowl 0 / 0; Curved bowl 20' / 10' (6 m / 3 m) */
     if(b.dataset.bshape==='straight'){if(!cv)return;P.bulgeKeep={S:P.bulge.S,E:P.bulge.E};P.bulge.S=0;P.bulge.E=0;}
     else{if(cv)return;P.bulge.S=w?6:20*0.3048;P.bulge.E=w?3:10*0.3048;P.zt.forEach(t=>t.corners='round');}}   /* Curved bowl starts at its defaults: 20'-0" at the 50-yard line, 10'-0" at the centre line (6 m / 3 m) */
@@ -3443,11 +3451,20 @@ function model3D(){const OFF=offPolys(),gone=goneAisles(M&&M.AL),out=[],edges=[]
       const offT=OFF.filter(o=>o.ti===ti).map(o=>o.pts),dm=(rows[0].x+rows[rows.length-1].x+rows[rows.length-1].T)/2000,hid=[];   // switched-off sections
       if(offT.length)for(let s=0;s<np;s++){const a=st[s],b=st[(s+1)%m],at=t=>{const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,nx=a[2]+(b[2]-a[2])*t,ny=a[3]+(b[3]-a[3])*t;return [x+nx*dm,-(y+ny*dm)];};
         hid[s]=[.25,.75].every(t=>{const p=at(t);return offT.some(q=>inPoly(p,q));});}
-      for(let s=0;s<np;s++){if(hid[s])continue;const s2=(s+1)%m;for(const q0 of (vp[s]||[pr])){const nq=q0.length;for(let i=0;i<nq;i++){const i2=(i+1)%nq,q=[V(s,i,q0),V(s,i2,q0),V(s2,i2,q0),V(s2,i,q0)];tri.push(q[0],q[1],q[2],q[0],q[2],q[3]);
+      /* curved top (decision 328): each segment's profile stops at its section's own rows; vom profiles cut the same way */
+      const wk=[];if(waveOn(ti)&&M&&M.AL){const RCw={},RSw=(t,j)=>RCw[t+':'+j]||(RCw[t+':'+j]=ringSecs(t,j)),nrW=Math.max(...GEO.map(k=>M.AL[ti][k]).filter(Boolean).map(z=>z.tr.length)),gw=goneAisles(M.AL),kw=id=>!gw.has(+id),WP=[];
+        sectionList(ti).forEach(q=>{const k=waveLim(ti,q.key);if(k<rows.length)secGeom(ti,q.key,0,nrW-1,RSw,kw).polys.forEach(pp=>WP.push({pts:pp,k}));});
+        if(WP.length)for(let s=0;s<np;s++){const a=st[s],b=st[(s+1)%m],at=t=>{const x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,nx=a[2]+(b[2]-a[2])*t,ny=a[3]+(b[3]-a[3])*t;return [x+nx*dm,-(y+ny*dm)];};
+          const w=WP.find(w=>inPoly(at(.5),w.pts));if(w)wk[s]=w.k;}}
+      const prS=s=>{const k=wk[s];if(k==null)return vp[s]||[pr];const rs=rows.slice(0,k);if(!vp[s])return [mm(profileOf(rs,ti))];
+        const v=VZ.find(v=>v.profs===vp[s]);if(!v)return [mm(profileOf(rs,ti))];return [v.sV?mm(profileOf(rs.slice(0,v.sV),ti)):null,rs.length>v.sV+v.kV+1?mm(profileOf(rs.slice(v.sV+v.kV),-1)):null].filter(Boolean);};
+      for(let s=0;s<np;s++){if(hid[s])continue;const s2=(s+1)%m;for(const q0 of prS(s)){const nq=q0.length;for(let i=0;i<nq;i++){const i2=(i+1)%nq,q=[V(s,i,q0),V(s,i2,q0),V(s2,i2,q0),V(s2,i,q0)];tri.push(q[0],q[1],q[2],q[0],q[2],q[3]);
         if(Math.abs(q0[i][1]-q0[i2][1])<1e-6&&q0[i2][0]>q0[i][0])edges.push(q[0],q[3]);}}}   // tread nosing
       // end caps: at every cut between a kept and an open piece, and at the two ends of a stand that does not close on itself
       const ear=earClip(pr),cap=s=>ear.forEach(([a,b,c2])=>tri.push(V(s,a),V(s,b),V(s,c2)));
       for(let s=0;s<np;s++){const pv=s?s-1:(closed?np-1:-1);if(pv>=0&&!!hid[s]!==!!hid[pv])cap(s);}
+      if(wk.length)for(let s=0;s<np;s++){const pv=s?s-1:(closed?np-1:-1);if(pv<0||hid[s]||hid[pv])continue;const ka=wk[pv]??rows.length,kb=wk[s]??rows.length;if(ka===kb)continue;   /* the step face where two sections' row counts differ: capped with the taller profile */
+        const qT=mm(profileOf(rows.slice(0,Math.max(ka,kb)),ti)),eT=earClip(qT);eT.forEach(([a,b,c2])=>tri.push(V(s,a,qT),V(s,b,qT),V(s,c2,qT)));}
       if(!closed){if(!hid[0])cap(0);if(!hid[np-1])cap(m-1);}
       const sn=zoneName(P,z);parts.push({a:t0,b:tri.length,name:`Tier ${ti+1} ${sn}`,meta:{ti,props:{Tier:ti+1,Stand:sn,Rows:rows.length,Seats:Math.round(((M.zoneSeats||[])[ti]||{})[z]||0),'Row 1 tread height':+(rows[0].z/1000).toFixed(4),'Top tread height':+(rows[rows.length-1].z/1000).toFixed(4)}}});}
     out.push({name:`Tier ${ti+1}`,kind:'stand',tri,parts,col:rgbOf(tierFill(ti))});});
@@ -3875,7 +3892,7 @@ var SLC=null;   /* decision 295: the section list of a finished calculation, reu
 function sectionList(ti,AL){AL=AL||(M&&M.AL);if(SLC&&SLC.AL===AL&&AL){const c=SLC.m[ti];if(c)return c;return SLC.m[ti]=sectionList0(ti,AL);}return sectionList0(ti,AL);}
 function sectionList0(ti,AL){const T=AL&&AL[ti];if(!T)return [];const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return [];
   const nr=Math.max(...zs.map(z=>z.tr.length)),jm=Math.floor((nr-1)/2),jw=Math.floor((nr-1)*0.78),st={},lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
-  for(let j=0;j<nr;j++)ringSecs(ti,j,AL).forEach(sc=>{sc.n=Math.min(sc.n,lim);const k=sc.l+'_'+sc.r,q=st[k]||(st[k]={key:k,lo:Infinity,hi:0,mid:null});if(sc.n>0)q.lo=Math.min(q.lo,sc.n);q.hi=Math.max(q.hi,sc.n);if(j===jm)q.mid=sc;if(j===jw)q.wide=sc;});
+  for(let j=0;j<nr;j++)ringSecs(ti,j,AL).forEach(sc=>{sc.n=Math.min(sc.n,lim);const k=sc.l+'_'+sc.r,q=st[k]||(st[k]={key:k,lo:Infinity,hi:0,mid:null});const wc=j>=waveLim(ti,k,AL);if(sc.n>0&&!wc)q.lo=Math.min(q.lo,sc.n);if(!wc)q.hi=Math.max(q.hi,sc.n);if(j===jm)q.mid=sc;if(j===jw)q.wide=sc;});
   const out=Object.values(st).filter(q=>q.mid&&q.mid.pieces.length&&q.hi>0).map(q=>{const pc=q.mid.pieces.reduce((a,b)=>b.b-b.a>a.b-a.a?b:a);
     // the label sits on the middle row of every section (so labels line up round the tier), halfway along the section's seats, across stand joints too
     {const ps=q.mid.pieces,tot=ps.reduce((t,x)=>t+Math.max(0,x.b-x.a),0);let h=tot/2,at=null;for(const x of ps){const l=Math.max(0,x.b-x.a);if(h<=l+1e-9){at=chainPtS(x.Lz.ch,x.a+h,x.d);break;}h-=l;}q.pt=at||chainPtS(pc.Lz.ch,(pc.a+pc.b)/2,pc.d);}q.mpt=chainPtS(pc.Lz.ch,(pc.a+pc.b)/2,pc.d);q.th=Math.atan2(q.mpt[1],q.mpt[0]);return q;});
@@ -3933,18 +3950,36 @@ function wcDefaultSet(ti,AL){const out=new Set();AL=AL||(M&&M.AL);const T=AL&&AL
     if(all>0&&on/all>=0.5)out.add(q.no);});
   return out;}
 const isPlat=(S,no,DW)=>{const e=S[no];if(e&&e.off)return false;return DW?DW.has(+no):!!(e&&e.wc);};
+/* curved top of the top tier (decision 328, Option A): each section of the top tier takes its own row count from a smooth curve round the bowl,
+   P.wave={on,c,e,shape}: full rows at the 50-yard line (the tier's rows), c rows at the corners, e rows at the centre of the ends; the angle of the
+   section's centre from the field centre picks the value (0 deg at the sideline centre, the field-corner angle at the corners, 90 deg at the end centre),
+   straight (linear) or smooth (monotone cubic) between them; whole rows, at least 4. The top edge steps at the aisles. Top tier of a 2- or 3-tier bowl only. */
+let WAVEC=null;
+const waveOn=ti=>!!(P.wave&&P.wave.on&&zoned(P)&&P.tierCount>=2&&ti===P.tierCount-1);
+function waveVal(th,nr){const W=P.wave,tc=Math.atan2((P.L||110)/2,(P.W||49)/2)*180/Math.PI,c=Math.min(nr,Math.max(4,+W.c||nr)),e=Math.min(nr,Math.max(4,+W.e||nr)),X=[0,tc,90],Y=[nr,c,e];
+  th=Math.max(0,Math.min(90,th));const i=th<=tc?0:1,h=X[i+1]-X[i],t=(th-X[i])/h;if(W.shape==='straight')return Y[i]+(Y[i+1]-Y[i])*t;
+  const d0=(Y[1]-Y[0])/(X[1]-X[0]),d1=(Y[2]-Y[1])/(X[2]-X[1]),mc=d0*d1>0?2/(1/d0+1/d1):0,m=[0,mc,0],h00=2*t*t*t-3*t*t+1,h10=t*t*t-2*t*t+t,h01=-2*t*t*t+3*t*t,h11=t*t*t-t*t;
+  return h00*Y[i]+h10*h*m[i]+h01*Y[i+1]+h11*h*m[i+1];}
+function waveLim(ti,key,AL){AL=AL||(M&&M.AL);if(!waveOn(ti)||!AL||!AL[ti])return Infinity;if(!WAVEC||WAVEC.AL!==AL||WAVEC.sig!==JSON.stringify(P.wave))WAVEC={AL,sig:JSON.stringify(P.wave),m:{}};
+  const ck=ti+':'+key;if(WAVEC.m[ck]!=null)return WAVEC.m[ck];const zs=GEO.map(k=>AL[ti][k]).filter(Boolean),nr=Math.max(...zs.map(z=>z.tr.length));let sc=null;
+  for(const j of [Math.floor(nr/2),0,nr-1])if(!sc)sc=ringSecs(ti,j,AL).find(x=>x.l+'_'+x.r===key);
+  if(!sc||!sc.pieces.length)return WAVEC.m[ck]=Infinity;let L=0,X=0,Y=0;sc.pieces.forEach(pc=>{const l=pc.b-pc.a;if(l<=0)return;const q=chainPtS(pc.Lz.ch,(pc.a+pc.b)/2,pc.d);X+=q[0]*l;Y+=q[1]*l;L+=l;});
+  if(!L)return WAVEC.m[ck]=Infinity;const th=Math.atan2(Math.abs(X/L),Math.abs(Y/L))*180/Math.PI;return WAVEC.m[ck]=Math.max(4,Math.min(nr,Math.round(waveVal(th,nr))));}
+/* the rows an aisle runs up to: the taller of the two sections beside it */
+function waveAisle(ti,id,AL){AL=AL||(M&&M.AL);if(!waveOn(ti))return Infinity;const zs=GEO.map(k=>AL[ti][k]).filter(Boolean),nr=Math.max(...zs.map(z=>z.tr.length));let m=0,any=false;
+  ringSecs(ti,Math.floor(nr/2),AL).forEach(sc=>{if(sc.l===id||sc.r===id){any=true;m=Math.max(m,waveLim(ti,sc.l+'_'+sc.r,AL));}});return any?m:Infinity;}
 function secAdjust(P,AL){const S=P.secs||{},IN=25.4,out={secs:{},wc:0,comp:0,lost:0,off:0,aisleSeats:0,byTier:[],byStand:{}};
   AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);out.byTier[ti]={wc:0,comp:0,secs:0};if(!zs.length)return;const DW=P.wcMode==='default'?wcDefaultSet(ti,AL):null,map=secNoMap(ti,AL),lim=Math.min(...zs.map(Lz=>nmaxZone(P.zt[ti].z[Lz.k])));
     const nr=Math.max(...zs.map(z=>z.tr.length));
     for(let j=0;j<nr;j++)ringSecs(ti,j,AL).forEach(sc=>{const no=map[sc.l+'_'+sc.r],e=no&&S[no];const n=Math.min(sc.n,lim);if(n<=0)return;
-      const plat=!!no&&isPlat(S,no,DW),take=e&&e.off?n:0;
+      const wcut=j>=waveLim(ti,sc.l+'_'+sc.r,AL),plat=!wcut&&!!no&&isPlat(S,no,DW),take=e&&e.off||wcut?n:0;   /* curved top: rows above the section's own count carry no seats (decision 328) */
       // aisle seats: one at each aisle end of the row (decision 57, 5% designated)
-      if(!(e&&e.off)){out.aisleSeats+=Math.min(n,(sc.l!=null)+(sc.r!=null));}
+      if(!(e&&e.off)&&!wcut){out.aisleSeats+=Math.min(n,(sc.l!=null)+(sc.r!=null));}
       const pcs=sc.pieces.filter(pc=>pc.Lz.tr[j]),inPlat=pc=>{const L=pc.Lz.tr.length;return j>=L-3;};   /* the two platform rows and the top row behind them (no seats behind the wheelchair + companion row: they would block its sightline; decision 323) */
       const tk=plat?pcs.filter(inPlat):take?pcs:[];if(!tk.length)return;
       let want=plat?Math.round(n*tk.reduce((a,pc)=>a+pc.raw,0)/Math.max(1e-9,pcs.reduce((a,pc)=>a+pc.raw,0))):n;
       const sh=tk.map(pc=>Math.min(want,Math.floor(pc.raw/sc.sw+1e-9)));let d=want-sh.reduce((a,b)=>a+b,0);if(d>0){const bi=tk.reduce((b,pc,i)=>pc.raw>tk[b].raw?i:b,0);sh[bi]+=d;}
-      tk.forEach((pc,i)=>{const r=pc.Lz.tr[j];if(r.net==null)return;const t=Math.min(sh[i],r.net);r.net-=t;r.secOff=(r.secOff||0)+t;if(plat)out.lost+=t;else out.off+=t;});});
+      tk.forEach((pc,i)=>{const r=pc.Lz.tr[j];if(r.net==null)return;const t=Math.min(sh[i],r.net);r.net-=t;r.secOff=(r.secOff||0)+t;if(plat)out.lost+=t;else if(wcut)out.wave=(out.wave||0)+t;else out.off+=t;});});
     // the platforms: spaces along the platform row (the row below the top row) and the sightline over standing spectators per stand
     sectionList(ti,AL).forEach(q=>{if(!isPlat(S,q.no,DW))return;const pc=q.mid.pieces.reduce((a,b)=>b.raw>a.raw?b:a),Lz=pc.Lz,tr=Lz.tr,L=tr.length;if(L<4)return;
       const j=L-2,sc=ringSecs(ti,j,AL).find(x=>x.l+'_'+x.r===q.key);if(!sc)return;const un=wcUnits(ti,q.key,AL),mod={units:un.n,wc:un.n,comp:un.n,used:un.n*WC_UNIT_W};
@@ -4007,6 +4042,7 @@ function wcHitSvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},R
 function secOnOff(no){const S=SECS();if(P.cfg&&P.cfg!=='closed'&&P.cfg!=='custom'){Object.values(S).forEach(e=>delete e.cfg);P.cfg='custom';}const x=S[no]||(S[no]={});if(x.off){delete x.off;}else{x.off=true;}secTidy(no);update();toast(`Section ${no} ${S[no]&&S[no].off?'switched off':'switched back on'}.`);}
 function secOverlaySvg(){if(!M.AL||PLAN!=='bowl')return '';const S=P.secs||{},RC={},RS=(ti,j)=>RC[ti+':'+j]||(RC[ti+':'+j]=ringSecs(ti,j)),gone=goneAisles(M.AL),keep=id=>!gone.has(+id);let off='',wc='',un='';const wcU=(ti,k)=>wcUnits(ti,k);
   M.AL.forEach((T,ti)=>{const zs=GEO.map(k=>T[k]).filter(Boolean);if(!zs.length)return;const nr=Math.max(...zs.map(z=>z.tr.length));
+    if(waveOn(ti))sectionList(ti).forEach(q=>{const e=S[q.no];if(e&&e.off)return;const k=waveLim(ti,q.key);if(k<nr)off+=secGeom(ti,q.key,k,nr-1,RS,keep).poly;});   /* curved top (decision 328) */
     sectionList(ti).forEach(q=>{const e=S[q.no];if(!e)return;if(e.off)off+=secGeom(ti,q.key,0,nr-1,RS,keep).poly;else if(e.wc&&nr>=4&&wcTier(ti)){wc+=secGeom(ti,q.key,nr-3,nr-2,RS,true,WC_SETBACK/1000).poly;if(imperial())wcU(ti,q.key).quads.forEach(Q=>{un+='M'+Q.map(p=>p[0].toFixed(3)+' '+p[1].toFixed(3)).join('L')+'Z';});}});});
   if(!off&&!wc)return '';
   return (off?`<defs><clipPath id="secOffClip"><path d="${off}"/></clipPath></defs><path d="${off}" fill="var(--panel)" stroke="none"/><g clip-path="url(#secOffClip)">${planGrid()}</g>`:'')
@@ -4381,7 +4417,7 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CE
   const pts=[],F=v=>v.toFixed(1);let rowsSvg='',aisSvg='',seatSvg='',omitSvg='',redSvg='',txt='';
   const poly=(L,R)=>'M'+L.concat(R.slice().reverse()).map(q=>F(q[0])+' '+F(q[1])).join('L')+'Z';
   // aisles: the corner aisle and the two outer aisles
-  for(const id of bothIds){const f=findAisle(T,id);if(!f)continue;const L=[],R=[];
+  for(const id of bothIds){const f0=findAisle(T,id);if(!f0)continue;const wa=Math.min(f0.Lz.tr.length,waveAisle(ti,id)),f=wa<f0.Lz.tr.length?{...f0,Lz:{...f0.Lz,tr:f0.Lz.tr.slice(0,wa)}}:f0;const L=[],R=[];   /* curved top: the aisle stops with the taller section (decision 328) */
     if(f.a.cl){const Q=f.Lz.tr.flatMap(r=>[r.x/1000,(r.x+r.T)/1000]).map(d=>loc(chainPtS(f.Lz.ch,chainS(f.Lz.ch,f.a,d),d)));pts.push(...Q);
       aisSvg+=`<path d="M${Q.map(q=>F(q[0])+' '+F(q[1])).join('L')}" fill="none" stroke="var(--ink)" stroke-width="0.7" stroke-dasharray="8 3 1.5 3" vector-effect="non-scaling-stroke"/>`;continue;}
     f.Lz.tr.forEach(r=>{for(const d of [r.x/1000,(r.x+r.T)/1000]){const s=chainS(f.Lz.ch,f.a,d),w=cutW(f.a,wA);L.push(loc(chainPtS(f.Lz.ch,s-w/2,d)));R.push(loc(chainPtS(f.Lz.ch,s+w/2,d)));}});
@@ -4390,12 +4426,12 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CE
       aisSvg+=`<path d="M${F(p[0])} ${F(p[1])}L${F(q[0])} ${F(q[1])}" fill="none" stroke="var(--ink)" stroke-width="${k?0.35:0.6}" vector-effect="non-scaling-stroke"/>`;}});}   // the row riser and each aisle step nosing
   // treads, seats, rows over the code limit, seats left out by the section cap
   let fixN=0,topBand=null;const wcMap=secNoMap(ti),wcSS=P.secs||{},platKey=sc=>{const no=wcMap[sc.l+'_'+sc.r],e=no&&wcSS[no];return !!(e&&e.wc&&!e.off&&wcTier(ti)&&nr>=4);},platKeys=new Set();   /* decision 322: platform rows carry no seats */
-  rows.forEach((secs,j)=>secs.forEach(sc=>{const over=sc.n>ibc,omit=Math.max(0,sc.n-cap),list=[],fe=seatsFromEnd(T,sc),inPl=platKey(sc)&&j>=nr-3;if(platKey(sc))platKeys.add(sc.l+'_'+sc.r);
+  rows.forEach((secs,j)=>secs.forEach(sc=>{const over=sc.n>ibc,omit=Math.max(0,sc.n-cap),list=[],fe=seatsFromEnd(T,sc),inPl=platKey(sc)&&j>=nr-3,wLim=Math.min(nr,waveLim(ti,sc.l+'_'+sc.r));if(j>=wLim)return;   /* curved top: no rows above the section's own count (decision 328) */if(platKey(sc))platKeys.add(sc.l+'_'+sc.r);
     const all=sectionSeats(T,sc,j);   // start 4 in from the aisles square to the rows; one placement across stand joints
     sc.pieces.forEach((pc,pi)=>{const r=pc.Lz.tr[j];if(!r)return;const sw=r.seatW/1000,pos=inPl?[]:all.filter(x=>x.pc===pc).map(x=>x.s0);
       // tread band across the piece (and its end spaces)
       const N=14,Fr=[],Bk=[];for(let q=0;q<=N;q++){const s=pc.a-gp+(pc.b-pc.a+2*gp)*q/N,a=chainAt(pc.Lz.ch,s,pc.d),gg=pc.Lz.ch[a.i];Fr.push(loc(segPt(gg,a.f,r.x/1000)));Bk.push(loc(segPt(gg,a.f,(r.x+r.T)/1000)));}
-      if(j===nr-1&&(!topBand||Bk.length>topBand.Bk.length))topBand={Fr,Bk};
+      if(j===wLim-1&&(!topBand||Bk.length>topBand.Bk.length))topBand={Fr,Bk};
       pts.push(...Fr,...Bk);rowsSvg+=`<path d="${poly(Fr,Bk)}" fill="${over?'#FF8A8A':tierFill(ti)}" fill-opacity="${over?.45:.28}" stroke="var(--ink)" stroke-width="0.5" vector-effect="non-scaling-stroke"/>`;
       const G=seatGeo(r.seat,r.T),cb=G.cb/1000,cdn=G.cdn/1000,cf=G.cf/1000;
       for(const s0 of pos){const s1=s0+sw,dm=pc.d,bk=(r.x+r.T)/1000+cb-dm,fr=bk-cdn,rz=(r.x+r.T)/1000-cf-dm;
