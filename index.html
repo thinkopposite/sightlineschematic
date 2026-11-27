@@ -2438,7 +2438,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.23';
+const VERSION='2026.11.26.24';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -3937,7 +3937,7 @@ function secAdjust(P,AL){const S=P.secs||{},IN=25.4,out={secs:{},wc:0,comp:0,los
       const plat=!!no&&isPlat(S,no,DW),take=e&&e.off?n:0;
       // aisle seats: one at each aisle end of the row (decision 57, 5% designated)
       if(!(e&&e.off)){out.aisleSeats+=Math.min(n,(sc.l!=null)+(sc.r!=null));}
-      const pcs=sc.pieces.filter(pc=>pc.Lz.tr[j]),inPlat=pc=>{const L=pc.Lz.tr.length;return j===L-3||j===L-2;};
+      const pcs=sc.pieces.filter(pc=>pc.Lz.tr[j]),inPlat=pc=>{const L=pc.Lz.tr.length;return j>=L-3;};   /* the two platform rows and the top row behind them (no seats behind the wheelchair + companion row: they would block its sightline; decision 323) */
       const tk=plat?pcs.filter(inPlat):take?pcs:[];if(!tk.length)return;
       let want=plat?Math.round(n*tk.reduce((a,pc)=>a+pc.raw,0)/Math.max(1e-9,pcs.reduce((a,pc)=>a+pc.raw,0))):n;
       const sh=tk.map(pc=>Math.min(want,Math.floor(pc.raw/sc.sw+1e-9)));let d=want-sh.reduce((a,b)=>a+b,0);if(d>0){const bi=tk.reduce((b,pc,i)=>pc.raw>tk[b].raw?i:b,0);sh[bi]+=d;}
@@ -4179,7 +4179,7 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
   // seats: chair at the back of each tread, seat raised (envelope), clear width in front
   const iL=Lz.ais.indexOf(L0.a)+1,counts=[],nzCW=(()=>{if(!isNEZ(k))return false;const a=chainPtS(Lz.ch,sa,d),b=chainPtS(Lz.ch,sb,d);return cwOf([(a[0]+b[0])/2,(a[1]+b[1])/2],[b[0]-a[0],b[1]-a[1]]);})();   // true: clockwise runs left to right, seat 1 on the left
   const eKey=L0.a.id+'_'+R0.a.id,eNo=secNoMap(ti)[eKey],eS=(P.secs||{})[eNo],eL=tr.length,ePlat=!!(eS&&eS.wc&&!eS.off&&wcTier(ti)&&eL>=4);   /* a platform section: rows L-3 and L-2 are the platform (decision 321) */
-  tr.forEach((r,j)=>{const S=rowSections(Lz,j),n=(ePlat&&(j===eL-3||j===eL-2))?0:(S.secs[iL]||0),v=r.x-x0,{cb,cdn,cf}=seatGeo(r.seat,r.T);counts.push(n);
+  tr.forEach((r,j)=>{const S=rowSections(Lz,j),n=(ePlat&&j>=eL-3)?0:(S.secs[iL]||0),v=r.x-x0,{cb,cdn,cf}=seatGeo(r.seat,r.T);counts.push(n);
     const lead=gp+Math.max(0,span-wA-2*gp-n*r.seatW)/2;   // 4 in at each aisle at least, the leftover split equally (decision 124)
     for(let q=0;q<n;q++){const u=wA/2+lead+(n-1-q)*r.seatW,yb=v+r.T+cb,no=nzCW?n-q:q+1;   // seat 1 at the right-hand aisle (in the north end zone, where the row starts clockwise); seat down (solid), raised seat tip (dashed), back 2 in behind the riser
       seats+=`<rect x="${X(u)}" y="${Y(yb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="${tierFill(ti)}" fill-opacity=".55" stroke="var(--ink)" stroke-width="0.45" vector-effect="non-scaling-stroke"/>`
@@ -4383,7 +4383,7 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CE
       aisSvg+=`<path d="M${F(p[0])} ${F(p[1])}L${F(q[0])} ${F(q[1])}" fill="none" stroke="var(--ink)" stroke-width="${k?0.35:0.6}" vector-effect="non-scaling-stroke"/>`;}});}   // the row riser and each aisle step nosing
   // treads, seats, rows over the code limit, seats left out by the section cap
   const wcMap=secNoMap(ti),wcSS=P.secs||{},platKey=sc=>{const no=wcMap[sc.l+'_'+sc.r],e=no&&wcSS[no];return !!(e&&e.wc&&!e.off&&wcTier(ti)&&nr>=4);},platKeys=new Set();   /* decision 322: platform rows carry no seats */
-  rows.forEach((secs,j)=>secs.forEach(sc=>{const over=sc.n>ibc,omit=Math.max(0,sc.n-cap),list=[],fe=seatsFromEnd(T,sc),inPl=platKey(sc)&&(j===nr-3||j===nr-2);if(platKey(sc))platKeys.add(sc.l+'_'+sc.r);
+  rows.forEach((secs,j)=>secs.forEach(sc=>{const over=sc.n>ibc,omit=Math.max(0,sc.n-cap),list=[],fe=seatsFromEnd(T,sc),inPl=platKey(sc)&&j>=nr-3;if(platKey(sc))platKeys.add(sc.l+'_'+sc.r);
     const all=sectionSeats(T,sc,j);   // start 4 in from the aisles square to the rows; one placement across stand joints
     sc.pieces.forEach((pc,pi)=>{const r=pc.Lz.tr[j];if(!r)return;const sw=r.seatW/1000,pos=inPl?[]:all.filter(x=>x.pc===pc).map(x=>x.s0);
       // tread band across the piece (and its end spaces)
