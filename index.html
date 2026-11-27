@@ -2438,7 +2438,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.26.24';
+const VERSION='2026.11.26.25';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
@@ -4188,8 +4188,10 @@ function drawEnlarged(o={}){if(ENL.one)return drawCornerEnlarged({...o,only:ENL.
     for(const s of [-1,1])for(let q=0;q<2;q++){const u=s<0?-wA/2-gp-(q+1)*r.seatW:span+wA/2+gp+q*r.seatW;nb+=`<rect x="${X(u)}" y="${Y(v+r.T+cb)}" width="${f(r.seatW)}" height="${f(cdn)}" fill="none" stroke="var(--muted)" stroke-width="0.4" stroke-dasharray="2 1.5" vector-effect="non-scaling-stroke"/>`;}});
   if(ePlat){const UW=WC_UNIT_W*1000,UD=WC_UNIT_D*1000,vf=tr[eL-3].x-x0+WC_SETBACK,vb=tr[eL-2].x+tr[eL-2].T-x0,u0=wA/2+gp,u1=span-wA/2-gp,nU=Math.min(wcUnits(ti,eKey).n,Math.floor((u1-u0)/UW+1e-9)),us=u0+(u1-u0-nU*UW)/2;
     seats+=`<rect x="${X(u0)}" y="${Y(vb)}" width="${f(u1-u0)}" height="${f(vb-vf)}" fill="#FF4500" fill-opacity=".25" stroke="#B33000" stroke-width="0.8" vector-effect="non-scaling-stroke"><title>Wheelchair platform, face ${inchText(WC_SETBACK)} behind the row riser</title></rect>`;
-    for(let i=0;i<nU;i++)seats+=`<rect x="${X(us+i*UW)}" y="${Y(vf+UD)}" width="${f(UW)}" height="${f(UD)}" fill="none" stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"><title>Wheelchair and companion unit ${i+1}: 56" x 48"</title></rect>`;
-    seats+=`<text x="${X((u0+u1)/2)}" y="${Y(vf+UD+fs*.15)}" font-size="${f(fs*.5)}" text-anchor="middle" fill="var(--ink)">${nU} wheelchair + companion units, 56" × 48"</text>`;}
+    for(let i=0;i<nU;i++){const num=nzCW?i+1:nU-i;   /* numbered like the seats: unit 1 at the aisle where seat 1 is (decision 324) */
+      seats+=`<rect x="${X(us+i*UW)}" y="${Y(vf+UD)}" width="${f(UW)}" height="${f(UD)}" fill="none" stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"><title>Wheelchair and companion unit ${num}: 56" x 48"</title></rect>`
+        +`<text x="${X(us+i*UW+UW/2)}" y="${Y(vf+UD/2)}" font-size="${f(Math.min(UW,UD)*.45)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${num}</text>`;}
+    {const rt=tr[eL-1],vt=rt.x-x0+rt.T/2;seats+=`<text x="${X((u0+u1)/2)}" y="${Y(vt)}" font-size="${f(Math.min(fs*.6,rt.T*.5))}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${nU} wheelchair + companion units, 56" × 48" (${2*nU} seats)</text>`;}}
   // row numbers in the left aisle
   let rn='';tr.forEach(r=>{const v=r.x-x0;rn+=`<text x="${X(0)}" y="${Y(v+r.T*.75)}" font-size="${f(PX(8,Math.max(fs,(span+2*side)/62)*.6))}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${r.row}</text>`;});
   // dimensions: along the front, one row below the next
@@ -4409,8 +4411,14 @@ function drawCornerEnlarged(o={}){const ti=Math.min(o.only?o.only.ti:(o.tier??CE
         +(()=>{const c=[(q[0][0]+q[1][0]+q[2][0]+q[3][0])/4,(q[0][1]+q[1][1]+q[2][1]+q[3][1])/4],w=Math.hypot(q[1][0]-q[0][0],q[1][1]-q[0][1]);return `<text x="${F(c[0])}" y="${F(c[1])}" font-size="${F(w*.42)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${num[i]}</text>`;})();});}));
   {const RC={},RS=(t,j)=>RC[t+':'+j]||(RC[t+':'+j]=ringSecs(t,j));platKeys.forEach(key=>{   /* the platform (6 in behind the row riser) and its wheelchair + companion units, dashed (decision 322) */
     secGeom(ti,key,nr-3,nr-2,RS,true,WC_SETBACK/1000).polys.forEach(pp=>{const Q=pp.map(loc);pts.push(...Q);seatSvg+=`<path d="M${Q.map(q=>F(q[0])+' '+F(q[1])).join('L')}Z" fill="#FF4500" fill-opacity=".3" stroke="#B33000" stroke-width="0.8" vector-effect="non-scaling-stroke"><title>Wheelchair platform</title></path>`;});
-    const U=wcUnits(ti,key);U.quads.forEach((Qd,i)=>{const Q=Qd.map(loc);seatSvg+=`<path d="M${Q.map(q=>F(q[0])+' '+F(q[1])).join('L')}Z" fill="none" stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"><title>Wheelchair and companion unit ${i+1}: 56" x 48"</title></path>`;});
-    if(U.quads.length){const c=U.quads[Math.floor(U.quads.length/2)].map(loc),cx=(c[0][0]+c[2][0])/2,cy=(c[0][1]+c[2][1])/2,w=Math.hypot(c[1][0]-c[0][0],c[1][1]-c[0][1]);txt+=`<text x="${F(cx)}" y="${F(cy)}" font-size="${F(w*.22)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${U.n} units, 56" × 48"</text>`;}});}
+    const U=wcUnits(ti,key),QL=U.quads.map(Qd=>Qd.map(loc)),ord=QL.map((Q,i)=>[i,(Q[0][0]+Q[1][0])/2]).sort((a,b)=>a[1]-b[1]).map(x=>x[0]),numOf={};ord.forEach((i,k)=>numOf[i]=k+1);   /* units numbered left to right as drawn, like the seats (decision 324) */
+    QL.forEach((Q,i)=>{const c=[(Q[0][0]+Q[1][0]+Q[2][0]+Q[3][0])/4,(Q[0][1]+Q[1][1]+Q[2][1]+Q[3][1])/4],w=Math.hypot(Q[1][0]-Q[0][0],Q[1][1]-Q[0][1]);
+      seatSvg+=`<path d="M${Q.map(q=>F(q[0])+' '+F(q[1])).join('L')}Z" fill="none" stroke="var(--ink)" stroke-width="0.6" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"><title>Wheelchair and companion unit ${numOf[i]}: 56" x 48"</title></path>`;
+      txt+=`<text x="${F(c[0])}" y="${F(c[1])}" font-size="${F(w*.42)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${numOf[i]}</text>`;});
+    if(QL.length){const m=QL[ord[Math.floor(ord.length/2)]],fm=[(m[0][0]+m[1][0])/2,(m[0][1]+m[1][1])/2],bm=[(m[2][0]+m[3][0])/2,(m[2][1]+m[3][1])/2],dl=Math.hypot(bm[0]-fm[0],bm[1]-fm[1])||1,dir=[(bm[0]-fm[0])/dl,(bm[1]-fm[1])/dl],
+        top=T[Object.keys(T)[0]]&&Object.values(T).find(z=>z.tr.length===nr),rt=top?top.tr[nr-1]:null,f0=rt?(rt.x+rt.T/2)/1000:0,u0d=WC_UNIT_D*1000,off=rt?((rt.x+rt.T/2)-(top.tr[nr-3].x+WC_SETBACK))-u0d:u0d*.4,
+        cx=bm[0]+dir[0]*off,cy=bm[1]+dir[1]*off,w=Math.hypot(m[1][0]-m[0][0],m[1][1]-m[0][1]);
+      txt+=`<text x="${F((QL[ord[0]][0][0]+QL[ord[ord.length-1]][1][0])/2*0+cx)}" y="${F(cy)}" font-size="${F(w*.24)}" text-anchor="middle" dominant-baseline="middle" fill="var(--ink)">${U.n} wheelchair + companion units, 56" × 48" (${2*U.n} seats)</text>`;}});}
   if(!pts.length)return '<p class="empty" style="padding:16px">No corner section on this tier.</p>';
   const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=minOf(xs),x1=maxOf(xs),y0=minOf(ys),y1=maxOf(ys);
   if(o.measure)return {w:x1-x0,h:y1-y0};
