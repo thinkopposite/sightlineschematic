@@ -2089,7 +2089,9 @@ function topSE(T){if(!T)return null;const c=SEC.get(T);if(c&&c.sig===JSON.string
     /* decision 333: the corners extended by C along each ray, fading smoothly to nothing at the 50-yard line and the centre line (weight (sin 2phi)^4 in the curve's own scaled angle), so the sides and ends keep their setbacks */
     const r=Math.hypot(q[0],q[1]);if(r<1e-9)return true;const cx=q[0]/r,cy=q[1]/r,r0=1/Math.pow(Math.pow(cx/b,n)+Math.pow(cy/a,n),1/n),u=q[0]/b,v=q[1]/a,t=2*u*v/(u*u+v*v||1);return r<=r0+C*t*t*t*t;}};SEC.set(T,o);return o;}
 /* where row j of a stand may hold seats (chain s at depth d), or null when the whole row is in use */
-function arcCut(Lz,j,d){const r=Lz.tr[j];if(!r||r.arcE==null)return null;const E=topSE(Lz.grp);if(!E)return null;const dB=(r.x+r.T)/1000,Ld=chainLen(Lz.ch,d);
+const ACC=new WeakMap();   /* decision 334: each row's stretches inside the curve are worked out once per redraw (they were recomputed ~20,000 times) */
+function arcCut(Lz,j,d){const r=Lz.tr[j];if(!r||r.arcE==null)return null;let m=ACC.get(Lz);const sig=JSON.stringify(P.topArc);if(!m||m.sig!==sig){m={sig,c:{}};ACC.set(Lz,m);}const ck=j+':'+d.toFixed(4);if(ck in m.c)return m.c[ck];return m.c[ck]=arcCut0(Lz,j,d);}
+function arcCut0(Lz,j,d){const r=Lz.tr[j];const E=topSE(Lz.grp);if(!E)return null;const dB=(r.x+r.T)/1000,Ld=chainLen(Lz.ch,d);
   /* decision 329e: every stretch of the row whose back lies inside the curve (a row can leave the curve at a corner and come back in further on), as [[s0,s1],...] */
   const ins=sv=>{const c=chainAt(Lz.ch,sv,d);return E.inside(segPt(Lz.ch[c.i],c.f,dB));},N=Math.max(8,Math.ceil(Ld/0.1)),out=[];let prev=ins(0),s0=prev?0:null;
   const edge=(a,b,inA)=>{for(let k=0;k<30;k++){const m=(a+b)/2;if(ins(m)===inA)a=m;else b=m;}return inA?a:b;};
@@ -2483,7 +2485,7 @@ function buildDAE(P,ZR,CH){
   return `<?xml version="1.0" encoding="utf-8"?>\n<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1"><asset><unit name="meter" meter="1"/><up_axis>Z_UP</up_axis></asset><library_effects>${fx('concrete','0.74 0.75 0.73')}${fx('pitch','0.33 0.55 0.27')}${fx('precast','0.502 0.502 0.486')}</library_effects><library_materials><material id="concrete" name="Concrete"><instance_effect url="#concrete-fx"/></material><material id="precast" name="Precast aisle step"><instance_effect url="#precast-fx"/></material><material id="pitch" name="Pitch"><instance_effect url="#pitch-fx"/></material></library_materials><library_geometries>${geos.join('')}</library_geometries><library_visual_scenes><visual_scene id="Scene">${nodes.join('')}</visual_scene></library_visual_scenes><scene><instance_visual_scene url="#Scene"/></scene></COLLADA>`;
 }
 /*ENDCORE*/
-const VERSION='2026.11.27.11';
+const VERSION='2026.11.27.12';
 {const e=document.getElementById('verTop');if(e)e.textContent='Version '+VERSION;}   /* the version in the header, in place of the tagline (decision 234) */
 let JUNSC=null;   // tier-junction drawing scale {W viewBox mm, fs}; the spectator views reuse it (decision 149)
 // the tier junction and enlarged spectator frames at twice the drawing scale of the Tier 2 sightline detail (decision 162); they scroll sideways if wider than the page
